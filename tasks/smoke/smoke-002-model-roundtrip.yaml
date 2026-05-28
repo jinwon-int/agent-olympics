@@ -1,0 +1,41 @@
+schema_version: 1
+task_id: smoke-002
+title: Model round-trip verification
+event_family: ops-relay
+category: smoke-model
+time_limit_minutes: 5
+participant_visibility: visible
+evaluation_focus:
+  - mission_execution
+  - configuration_fitness
+objective: >
+  Send a minimal safe prompt (e.g., "Reply with the word OK") and confirm
+  a valid structured response with non-zero length. Verify that model
+  routing, provider authentication, and the LLM backend are functional.
+background: >
+  A model round-trip is the minimum viable test for LLM-based agent work.
+  Without it, all model-grounded tasks will fail.
+allowed_actions:
+  - send_safe_prompt
+  - inspect_model_routing
+  - inspect_model_config
+forbidden_actions:
+  - expose_secrets
+  - rotate_credentials
+  - send_prompt_to_production_channel
+  - send_prompt_with_private_data
+required_outputs:
+  - model_name_or_alias
+  - provider_name
+  - round_trip_duration_seconds
+  - response_preview
+  - evidence
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - smoke
+  - model
+  - round-trip
+hidden_judge_notes: >
+  The agent should report which model was used, which provider routed the
+  request, and the round-trip latency. The response content is unimportant
+  beyond confirming it is non-empty and well-formed.

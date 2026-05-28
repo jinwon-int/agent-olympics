@@ -4,7 +4,8 @@
 
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
-        validate-judges-v2 validate-oracle oracle setup clean
+        validate-judges-v2 validate-oracle validate-smoke oracle smoke-check \
+        smoke setup clean
 
 all: validate-all validate-v2 validate-oracle
 
@@ -54,8 +55,18 @@ validate-oracle:
 
 oracle: validate-oracle
 
+# Validate all smoke task envelopes
+validate-smoke:
+	node scripts/validate.js smoke
+
+# Validate all smoke task envelopes
+smoke-check: validate-smoke
+
 # Default validation target
-validate: validate-all validate-v2 validate-oracle
+validate: validate-all validate-v2 validate-oracle validate-smoke
+
+# Quick-run: validate smoke tasks
+smoke: validate-smoke
 
 # Remove generated artifacts and dependencies
 clean:

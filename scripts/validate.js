@@ -311,6 +311,7 @@ function detectKind(doc) {
   if (doc.task_id && doc.agent_id && doc.status && doc.evidence) return 'result-packet';
   if (doc.task_id && doc.judge_record_id && doc.score_dimensions) return 'judge-record';
   if (doc.task_id && doc.judge_type && doc.verdict) return 'judge-record';
+  if (doc.manifest_id && doc.tasks && Array.isArray(doc.tasks) && doc.tasks.length > 0) return 'smoke-manifest';
   return null;
 }
 
@@ -396,6 +397,39 @@ function validateFile(filePath) {
       fileCount++;
       return;
     }
+  }
+
+  // Manifest-specific validation
+  if (kind === 'smoke-manifest') {
+    // Validate manifest structure
+    const taskIds = doc.tasks.map(t => t.task_id);
+    const dups = taskIds.filter((id, i) => taskIds.indexOf(id) !== i);
+    if (dups.length) {
+      console.error(`FAIL  ${rel}  — manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
+      totalErrors++;
+    }
+
+    // Check minimum task count (5 required)
+    if (doc.tasks.length < 5) {
+      console.error(`FAIL  ${rel}  — manifest has ${doc.tasks.length} tasks, minimum is 5`);
+      totalErrors++;
+    }
+
+    // Check each task has required fields
+    for (const task of doc.tasks) {
+      const missing = [];
+      if (!task.task_id) missing.push('task_id');
+      if (!task.title) missing.push('title');
+      if (!task.envelope) missing.push('envelope');
+      if (missing.length) {
+        console.error(`FAIL  ${rel}  — task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
+        totalErrors++;
+      }
+    }
+
+    console.log(`OK    ${rel}  (smoke-manifest)`);
+    fileCount++;
+    return;
   }
 
   // Semantic checks
@@ -509,6 +543,7 @@ const MODES = {
   'judges-v2':     { kinds: ['judge-record'], versions: [2] },
   'all':           { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [1, 2] },
   'all-v2':        { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [2] },
+  'smoke':         { kinds: ['task-envelope', 'smoke-manifest'], versions: [1] },
 };
 
 // ---------------------------------------------------------------------------
@@ -552,7 +587,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|judges|judges-v2|all|all-v2|oracle|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|judges|judges-v2|smoke|all|all-v2|oracle|file>`);
     process.exit(1);
   }
 
@@ -562,12 +597,19 @@ function main() {
   let files = [];
 
   const wantsEnvelopes = modeConfig.kinds.includes('task-envelope');
+  const wantsSmoke = modeConfig.kinds.includes('smoke-manifest');
   const wantsPackets = modeConfig.kinds.includes('result-packet');
   const wantsJudges = modeConfig.kinds.includes('judge-record');
 
-  if (wantsEnvelopes) {
+  if (wantsSmoke) {
+    const smokeDir = path.join(tasksDir, 'smoke');
+    if (fs.existsSync(smokeDir)) {
+      files = files.concat(findFiles(smokeDir, /\.ya?ml$/));
+    }
+  } else if (wantsEnvelopes) {
     files = files.concat(findFiles(tasksDir, /\.ya?ml$/));
   }
+
   if (wantsPackets || wantsJudges) {
     files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
   }
