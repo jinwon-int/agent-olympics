@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/task-envelope-v2.schema.json",
+  "title": "Agent Olympics Task Envelope v2",
+  "description": "Task Envelope v2 with formal public/private separation. Judge notes and oracle answer keys are stored externally and referenced by path, never inlined in the participant-visible envelope.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "title",
+    "event_family",
+    "category",
+    "time_limit_minutes",
+    "objective",
+    "allowed_actions",
+    "forbidden_actions",
+    "required_outputs",
+    "scoring_rubric"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Envelope schema version. v2 adds formal public/private separation via judge_notes_ref and oracle_ref."
+    },
+    "schema_description": {
+      "type": "string",
+      "description": "Human-readable description of this schema version for documentation and tooling."
+    },
+    "task_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "event_family": {
+      "type": "string",
+      "enum": [
+        "ops-relay",
+        "node-readiness",
+        "performance-trial",
+        "code-sprint",
+        "wiki-marathon",
+        "safety-trial",
+        "coordination-drill"
+      ]
+    },
+    "category": { "type": "string", "minLength": 1 },
+    "time_limit_minutes": { "type": "integer", "minimum": 1 },
+
+    "participant_visibility": {
+      "type": "string",
+      "enum": ["visible", "blind", "internal"],
+      "default": "visible"
+    },
+
+    "objective": { "type": "string", "minLength": 1 },
+
+    "evaluation_focus": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "mission_execution",
+          "configuration_fitness",
+          "hardware_capacity",
+          "resource_efficiency",
+          "safety",
+          "durability",
+          "communication"
+        ]
+      }
+    },
+
+    "background": { "type": "string" },
+    "environment": { "type": "object" },
+    "hardware_profile": { "type": "object" },
+    "baseline_profile": { "type": "object" },
+    "fixtures": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "allowed_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "required_outputs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+
+    "scoring_rubric": { "type": "string", "minLength": 1 },
+
+    "labels": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "v1_compat": {
+      "type": "object",
+      "description": "Metadata for v1→v2 migration tracking. Present only when migrated from a v1 envelope.",
+      "properties": {
+        "original_task_id": { "type": "string" },
+        "schema_version_1_path": { "type": "string" },
+        "migrated_at": { "type": "string", "format": "date-time" },
+        "migration_notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "expected_artifacts": {
+      "type": "object",
+      "description": "Expected artifacts and their required-or-optional status."
+    },
+    "approval_policy": {
+      "type": "string",
+      "description": "Describes which actions require explicit approval before execution."
+    },
+    "cost_limit": {
+      "type": "object",
+      "description": "Maximum allowed cost (e.g., USD, tokens, API calls).",
+      "properties": {
+        "max_cost_usd": { "type": "number", "minimum": 0 },
+        "max_tokens": { "type": "integer", "minimum": 0 },
+        "max_api_calls": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "model_visibility_policy": {
+      "type": "string",
+      "enum": ["required", "optional", "hidden"],
+      "description": "Whether the participant model identity must be reported."
+    },
+    "transcript_policy": {
+      "type": "string",
+      "description": "Whether and how the participant transcript should be preserved for judging."
+    },
+
+    "judge_notes_ref": {
+      "type": "string",
+      "description": "Path to the external judge notes file (replaces inline hidden_judge_notes from v1). The referenced file is private and not visible to participants."
+    },
+    "oracle_ref": {
+      "type": "string",
+      "description": "Path to the oracle / answer key file containing expected answer categories, scoring guidance, and strong answer markers. The referenced file is private and not visible to participants."
+    }
+  },
+  "allOf": [
+    {
+      "description": "v1 field hidden_judge_notes must not appear in v2 envelopes; use judge_notes_ref instead.",
+      "if": {
+        "properties": { "hidden_judge_notes": { "not": {} } }
+      },
+      "then": {
+        "not": {
+          "required": ["hidden_judge_notes"]
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

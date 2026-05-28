@@ -62,21 +62,31 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 | required_outputs | Result sections that must be submitted. |
 | scoring_rubric | Rubric path or version. |
 
-## Optional Fields
+## Optional Fields (v1 and v2)
 
-- background
-- environment
-- evaluation_focus
-- hardware_profile
-- baseline_profile
-- fixtures
-- hidden_judge_notes
-- labels
-- expected_artifacts
-- approval_policy
-- cost_limit
-- model_visibility_policy
-- transcript_policy
+| Field | v1 | v2 | Meaning |
+|---|---|---|---|
+| background | ✅ | ✅ | Context and background information |
+| environment | ✅ | ✅ | Runtime environment description |
+| evaluation_focus | ✅ | ✅ | Which dimensions the task targets |
+| hardware_profile | ✅ | ✅ | Required or optional hardware metadata |
+| baseline_profile | ✅ | ✅ | Comparison baseline reference |
+| fixtures | ✅ | ✅ | Fixture data paths or references |
+| hidden_judge_notes | ✅ | ❌ | Inline judge notes (v1 only; replaced in v2) |
+| labels | ✅ | ✅ | Categorization labels |
+| expected_artifacts | ✅ | ✅ | Expected artifacts and their importance |
+| approval_policy | ✅ | ✅ | Actions requiring explicit approval |
+| cost_limit | ✅ | ✅ | Maximum allowed cost |
+| model_visibility_policy | ✅ | ✅ | Whether model identity must be reported |
+| transcript_policy | ✅ | ✅ | How participant transcript should be preserved |
+| schema_description | ❌ | ✅ | Human-readable schema description |
+| judge_notes_ref | ❌ | ✅ | Path to external judge notes (private) |
+| oracle_ref | ❌ | ✅ | Path to external oracle/answer key (private) |
+| v1_compat | ❌ | ✅ | Migration metadata from v1 source |
+
+> **v2 change:** `hidden_judge_notes` is removed. Use `judge_notes_ref` and
+> `oracle_ref` to reference external private files. See
+> [migration-v1-to-v2.md](migration-v1-to-v2.md) for details.
 
 ## Task Quality Checklist
 
@@ -88,3 +98,4 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 - Node-readiness and performance tasks state whether they reward absolute hardware capacity, configuration quality, or both.
 - Hardware and configuration metadata are requested explicitly when needed, so judges do not confuse a stronger machine with a better-tuned node.
 - The task has an expected answer key or judge notes, even if not shown to participants.
+- For v2 envelopes, oracle and judge notes are stored externally (see [oracle/](/oracle) directory).
