@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/result-packet.schema.json",
+  "title": "Agent Olympics Result Packet",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "agent_id",
+    "runtime",
+    "started_at",
+    "ended_at",
+    "status",
+    "summary",
+    "evidence",
+    "findings",
+    "outputs"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "agent_id": { "type": "string", "minLength": 1 },
+    "runtime": { "type": "string", "minLength": 1 },
+    "model": { "type": "string" },
+    "node": { "type": "string" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "partial", "blocked", "failed", "disqualified"]
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "actions": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "summary"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "source": { "type": "string" },
+          "summary": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim", "evidence"],
+        "properties": {
+          "claim": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputs": { "type": "object" }
+  },
+  "additionalProperties": true
+}

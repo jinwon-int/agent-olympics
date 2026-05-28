@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/task-envelope.schema.json",
+  "title": "Agent Olympics Task Envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "title",
+    "event_family",
+    "category",
+    "time_limit_minutes",
+    "objective",
+    "allowed_actions",
+    "forbidden_actions",
+    "required_outputs",
+    "scoring_rubric"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "event_family": {
+      "type": "string",
+      "enum": [
+        "ops-relay",
+        "code-sprint",
+        "wiki-marathon",
+        "safety-trial",
+        "coordination-drill"
+      ]
+    },
+    "category": { "type": "string", "minLength": 1 },
+    "time_limit_minutes": { "type": "integer", "minimum": 1 },
+    "participant_visibility": {
+      "type": "string",
+      "enum": ["visible", "blind", "internal"],
+      "default": "visible"
+    },
+    "objective": { "type": "string", "minLength": 1 },
+    "background": { "type": "string" },
+    "environment": { "type": "object" },
+    "fixtures": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "allowed_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "required_outputs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "scoring_rubric": { "type": "string", "minLength": 1 },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "hidden_judge_notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}

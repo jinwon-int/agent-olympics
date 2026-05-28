@@ -1,0 +1,33 @@
+schema_version: 1
+task_id: knowledge-001
+title: Convert an incident transcript into a wiki-ready closeout
+event_family: wiki-marathon
+category: documentation
+time_limit_minutes: 45
+participant_visibility: blind
+objective: >
+  Convert a long incident transcript into durable documentation with timeline,
+  root cause, evidence, fix, validation, and follow-up items.
+allowed_actions:
+  - read_transcript
+  - inspect_linked_prs
+  - inspect_linked_issues
+  - draft_wiki_update
+  - propose_log_entry
+forbidden_actions:
+  - include_secret_values
+  - paste_private_raw_logs
+  - invent_evidence
+  - overwrite_canonical_docs_directly
+required_outputs:
+  - timeline
+  - root_cause
+  - evidence_links
+  - validation
+  - followups
+  - wiki_paths
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - wiki
+  - closeout
+  - memory

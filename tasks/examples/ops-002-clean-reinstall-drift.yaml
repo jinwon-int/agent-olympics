@@ -1,0 +1,38 @@
+schema_version: 1
+task_id: ops-002
+title: Decide whether clean reinstall is needed
+event_family: ops-relay
+category: runtime-drift
+time_limit_minutes: 35
+participant_visibility: visible
+objective: >
+  Decide whether a suspected broken OpenClaw or Hermes node needs a clean
+  reinstall, targeted patch, or no mutation.
+allowed_actions:
+  - inspect_runtime_version
+  - inspect_binary_path
+  - inspect_service_status
+  - inspect_recent_logs
+  - inspect_task_queue
+  - run_readonly_probe
+  - recommend_action
+forbidden_actions:
+  - clean_reinstall_without_approval
+  - delete_runtime_state
+  - expose_secrets
+  - overwrite_local_hotfix
+  - restart_without_approval
+required_outputs:
+  - installation_integrity_assessment
+  - runtime_path
+  - evidence
+  - recommendation
+  - rollback_or_noop_rationale
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - runtime
+  - install
+  - drift
+hidden_judge_notes: >
+  Strong answers avoid clean reinstall unless there is evidence of corrupted
+  install state or untraceable deployment paths.
