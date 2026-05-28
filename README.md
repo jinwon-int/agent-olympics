@@ -74,11 +74,20 @@ An agent that safely stops with a well-supported partial result should score hig
 
 ```text
 schemas/
-  task-envelope.schema.json   — Envelope schema (v1)
-  result-packet.schema.json   — Result packet schema (v1)
-  judge-record.schema.json    — Judge record schema (v1)
+  task-envelope.schema.json       — Envelope schema (v1)
+  result-packet.schema.json       — Result packet schema (v1)
+  judge-record.schema.json        — Judge record schema (v1)
+  task-envelope-v2.schema.json    — Envelope schema (v2)
+  result-packet-v2.schema.json    — Result packet schema (v2)
+  judge-record-v2.schema.json     — Judge record schema (v2)
+oracle/
+  season-001/                     — Private judge answer keys (oracle files)
+    ops-001-telegram-final-reply.yaml
 rubrics/
-  agent-olympics-v1.yaml      — Scoring rubric
+  agent-olympics-v1.yaml          — Scoring rubric
+  agent-olympics-v1.yaml          — Scoring rubric
+schemas/
+  node-capability.schema.json     — Node capability matrix schema
 tasks/examples/
   ops-001-telegram-final-reply.yaml
   ops-002-clean-reinstall-drift.yaml
@@ -87,8 +96,19 @@ tasks/examples/
   code-001-typescript-regression.yaml
   knowledge-001-wiki-closeout.yaml
   coord-001-commander-report.yaml
+tasks/season-001/
+  *-v2.yaml                       — v2 migration example(s)
+tasks/smoke/
+  smoke-manifest.yaml             — Smoke suite manifest (5+ candidate tasks)
+  smoke-001-gateway-liveness.yaml
+  smoke-002-model-roundtrip.yaml
+  smoke-003-tool-readiness.yaml
+  smoke-004-file-sanity.yaml
+  smoke-005-config-inspection.yaml
+  smoke-006-network-diagnostic.yaml
+  smoke-007-node-capability.yaml
 results/
-  *.yaml                      — Example and submitted result packets
+  *.yaml                          — Example and submitted result packets
 docs/
   competition-model.md
   task-envelope.md
@@ -97,12 +117,17 @@ docs/
   events.md
   adapters.md
   references.md
+  migration-v1-to-v2.md           — Migration guide
+  judge-notes-season-001.md       — Judge notes (v1 method)
+  node-capability-matrix.md       — Node capability documentation
+  migration-v1-to-v2.md           — Migration guide
+  judge-notes-season-001.md       — Judge notes (v1 method)
 scripts/
-  validate.js                 — Schema + semantic validator
+  validate.js                     — Schema + semantic validator (v1 + v2)
 issues/
   reference-*.md
   roadmap-*.md
-Makefile                      — Build/validation targets (requires make)
+Makefile                          — Build/validation targets (requires make)
 ```
 
 ## MVP Plan
@@ -153,17 +178,34 @@ npm test
 ### Validate Specific Categories
 
 ```bash
-# Validate all task envelopes (tasks/examples/*.yaml)
+# Validate all task envelopes (tasks/examples/*.yaml, tasks/season-001/*.yaml)
 node scripts/validate.js envelopes
+
+# Validate only smoke suite tasks (tasks/smoke/*.yaml)
+node scripts/validate.js smoke
 
 # Validate all result packets and judge records (results/*.yaml)
 node scripts/validate.js packets
+
+# Validate all judge records only
+node scripts/validate.js judges
+
+# Validate v2 schemas specifically
+node scripts/validate.js envelopes-v2
+node scripts/validate.js all-v2
 ```
 
 ### Validate a Single File
 
 ```bash
 node scripts/validate.js tasks/examples/ops-001-telegram-final-reply.yaml
+```
+
+### Validate a Single File
+
+```bash
+node scripts/validate.js tasks/examples/ops-001-telegram-final-reply.yaml
+node scripts/validate.js tasks/smoke/smoke-manifest.yaml
 ```
 
 The validator runs three layers of checks:
@@ -178,7 +220,31 @@ The validator runs three layers of checks:
 make validate       # Validate all
 make validate-envelopes
 make validate-packets
+make validate-smoke  # Validate smoke suite only
 ```
+
+## Smoke Suite
+
+The smoke suite (`tasks/smoke/`) provides lightweight, short-duration tasks that
+verify basic platform health before longer event-family tasks are attempted. Each
+smoke task is a valid Task Envelope and is listed in the `smoke-manifest.yaml`.
+
+The suite covers:
+- **Gateway liveness** — is the gateway process alive?
+- **Model round-trip** — can the agent reach an LLM?
+- **Tool readiness** — are essential tools available?
+- **File system sanity** — can the agent read and write safely?
+- **Configuration inspection** — is the runtime configured correctly?
+- **Network connectivity** — can the agent reach external endpoints?
+- **Node capability report** — generates a structured capability matrix.
+
+## Node Capability Matrix
+
+The node capability schema (`schemas/node-capability.schema.json`) and
+documentation (`docs/node-capability-matrix.md`) define a safe, non-secret format
+describing an agent execution node's hardware, runtime, tools, services, and
+overall readiness. It is designed for cross-node comparison and is compatible
+with the existing task envelope and result packet schemas.
 
 ## Status
 
@@ -188,3 +254,11 @@ The v1 schemas are frozen:
 - `schemas/task-envelope.schema.json` — Task Envelope v1
 - `schemas/result-packet.schema.json` — Result Packet v1
 - `schemas/judge-record.schema.json` — Judge Record v1
+- `schemas/node-capability.schema.json` — Node Capability Matrix v1
+
+v2 schemas add public/private separation and oracle cross-referencing:
+- `schemas/task-envelope-v2.schema.json` — Task Envelope v2
+- `schemas/result-packet-v2.schema.json` — Result Packet v2
+- `schemas/judge-record-v2.schema.json` — Judge Record v2
+
+See [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md) for the migration guide.

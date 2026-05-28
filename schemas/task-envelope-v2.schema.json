@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/task-envelope.schema.json",
-  "title": "Agent Olympics Task Envelope",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/task-envelope-v2.schema.json",
+  "title": "Agent Olympics Task Envelope v2",
+  "description": "Task Envelope v2 with formal public/private separation. Judge notes and oracle answer keys are stored externally and referenced by path, never inlined in the participant-visible envelope.",
   "type": "object",
   "required": [
     "schema_version",
@@ -17,7 +18,15 @@
     "scoring_rubric"
   ],
   "properties": {
-    "schema_version": { "type": "integer", "const": 1 },
+    "schema_version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Envelope schema version. v2 adds formal public/private separation via judge_notes_ref and oracle_ref."
+    },
+    "schema_description": {
+      "type": "string",
+      "description": "Human-readable description of this schema version for documentation and tooling."
+    },
     "task_id": { "type": "string", "minLength": 1 },
     "title": { "type": "string", "minLength": 1 },
     "event_family": {
@@ -34,12 +43,15 @@
     },
     "category": { "type": "string", "minLength": 1 },
     "time_limit_minutes": { "type": "integer", "minimum": 1 },
+
     "participant_visibility": {
       "type": "string",
       "enum": ["visible", "blind", "internal"],
       "default": "visible"
     },
+
     "objective": { "type": "string", "minLength": 1 },
+
     "evaluation_focus": {
       "type": "array",
       "items": {
@@ -55,6 +67,7 @@
         ]
       }
     },
+
     "background": { "type": "string" },
     "environment": { "type": "object" },
     "hardware_profile": { "type": "object" },
@@ -63,6 +76,7 @@
       "type": "array",
       "items": { "type": "string" }
     },
+
     "allowed_actions": {
       "type": "array",
       "items": { "type": "string" },
@@ -78,12 +92,26 @@
       "items": { "type": "string" },
       "minItems": 1
     },
+
     "scoring_rubric": { "type": "string", "minLength": 1 },
+
     "labels": {
       "type": "array",
       "items": { "type": "string" }
     },
-    "hidden_judge_notes": { "type": "string" },
+
+    "v1_compat": {
+      "type": "object",
+      "description": "Metadata for v1→v2 migration tracking. Present only when migrated from a v1 envelope.",
+      "properties": {
+        "original_task_id": { "type": "string" },
+        "schema_version_1_path": { "type": "string" },
+        "migrated_at": { "type": "string", "format": "date-time" },
+        "migration_notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
     "expected_artifacts": {
       "type": "object",
       "description": "Expected artifacts and their required-or-optional status."
@@ -110,26 +138,28 @@
       "type": "string",
       "description": "Whether and how the participant transcript should be preserved for judging."
     },
-    "tier": {
+
+    "judge_notes_ref": {
       "type": "string",
-      "enum": ["draft", "smoke", "verified", "retired"],
-      "default": "draft",
-      "description": "Verification tier indicating readiness for competitive use. draft: exists but untested. smoke: runs through harness on at least one adapter. verified: human or trusted baseline agent completed it and the judge result matched the intended rubric. retired: withdrawn due to leakage, ambiguity, environment drift, or evaluator mismatch."
+      "description": "Path to the external judge notes file (replaces inline hidden_judge_notes from v1). The referenced file is private and not visible to participants."
     },
-    "baseline": {
-      "type": "object",
-      "description": "Human or trusted baseline record for this task. Populated when the task reaches smoke or verified tier.",
-      "properties": {
-        "baseline_actor": { "type": "string", "description": "Human name, adapter identifier, or reference runner who completed the baseline run." },
-        "baseline_time_sec": { "type": "integer", "minimum": 0, "description": "Baseline completion wall-clock time in seconds." },
-        "baseline_success": { "type": "boolean", "description": "Whether the baseline run was completed successfully." },
-        "baseline_block_reason": { "type": "string", "description": "Explanation of why the baseline was blocked, if not successful." },
-        "baseline_artifact_ref": { "type": "string", "description": "Path or URL to the baseline result packet, evidence bundle, or run identifier." },
-        "difficulty_notes": { "type": "string", "description": "Observations about what made the task easy or hard during baseline execution." },
-        "known_ambiguities": { "type": "string", "description": "Wording concerns, evaluator drift, or environment sensitivities discovered during baseline." },
-        "mismatch_issue_refs": { "type": "array", "items": { "type": "string" }, "description": "Links to GitHub or tracker issues recording mismatches discovered during baseline. Mismatches must be filed as issues rather than silently editing history." }
-      }
+    "oracle_ref": {
+      "type": "string",
+      "description": "Path to the oracle / answer key file containing expected answer categories, scoring guidance, and strong answer markers. The referenced file is private and not visible to participants."
     }
   },
-  "additionalProperties": true
+  "allOf": [
+    {
+      "description": "v1 field hidden_judge_notes must not appear in v2 envelopes; use judge_notes_ref instead.",
+      "if": {
+        "properties": { "hidden_judge_notes": { "not": {} } }
+      },
+      "then": {
+        "not": {
+          "required": ["hidden_judge_notes"]
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
 }

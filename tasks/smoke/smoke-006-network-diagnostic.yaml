@@ -1,0 +1,43 @@
+schema_version: 1
+task_id: smoke-006
+title: Network connectivity diagnostic
+event_family: ops-relay
+category: smoke-network
+time_limit_minutes: 5
+participant_visibility: visible
+evaluation_focus:
+  - mission_execution
+  - hardware_capacity
+objective: >
+  Verify outbound connectivity to a public endpoint (e.g., GitHub API or
+  a well-known HTTPS URL) and report latency, HTTP status, DNS resolution
+  time, and any TLS or proxy issues.
+background: >
+  Network access is required for fetching dependencies, accessing remote
+  APIs, and publishing results. This test verifies basic outbound HTTPS
+  connectivity and DNS resolution.
+allowed_actions:
+  - run_readonly_network_probe
+  - web_fetch_public_url
+  - dns_lookup
+forbidden_actions:
+  - send_credentials_to_remote
+  - scan_internal_networks
+  - initiate_long_running_transfers
+  - expose_secrets
+required_outputs:
+  - target_url
+  - http_status_code
+  - latency_ms
+  - dns_resolution_status
+  - evidence
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - smoke
+  - network
+  - connectivity
+hidden_judge_notes: >
+  The probe should target a safe public endpoint such as
+  https://github.com or https://api.github.com. The response content is
+  not important; connectivity and timing are what matter. TLS version
+  and proxy detection are bonus evidence.

@@ -1,0 +1,95 @@
+# Smoke Manifest — Agent Olympics
+#
+# A lightweight verification suite for basic platform health and node
+# readiness. Smoke tasks are short, safe, read-only probes that confirm
+# core capabilities work before longer event-family tasks are attempted.
+#
+# Each entry references a task envelope in this directory. The manifest
+# is compatible with the Agent Olympics task envelope and result packet
+# schemas (schema_version: 1).
+
+schema_version: 1
+manifest_id: smoke-001
+title: Agent Olympics Smoke Suite
+description: >
+  Candidate smoke tasks that verify gateway liveness, model round-trip,
+  tool availability, basic file operations, safe configuration inspection,
+  network connectivity, and node capability reporting.
+run_label: agent-olympics-team1-20260529T0716KST
+parent_issue: "https://github.com/jinwon-int/agent-olympics/issues/18"
+tasks:
+  - task_id: smoke-001
+    title: Gateway liveness probe
+    envelope: tasks/smoke/smoke-001-gateway-liveness.yaml
+    time_limit_minutes: 5
+    priority: critical
+    description: >
+      Verify that the gateway process is running, responsive, and accepting
+      connections. This is the most basic prerequisite for any agent work.
+
+  - task_id: smoke-002
+    title: Model round-trip verification
+    envelope: tasks/smoke/smoke-002-model-roundtrip.yaml
+    time_limit_minutes: 5
+    priority: critical
+    description: >
+      Send a minimal safe prompt and confirm a valid structured response.
+      Verifies that model/provider routing, authentication, and the LLM
+      backend are functional.
+
+  - task_id: smoke-003
+    title: Tool availability check
+    envelope: tasks/smoke/smoke-003-tool-readiness.yaml
+    time_limit_minutes: 5
+    priority: high
+    description: >
+      Verify that essential tools (read, write, exec, web_fetch, etc.) are
+      registered and functional. Reports any missing or misconfigured tools.
+
+  - task_id: smoke-004
+    title: File system sanity check
+    envelope: tasks/smoke/smoke-004-file-sanity.yaml
+    time_limit_minutes: 5
+    priority: high
+    description: >
+      Perform basic read-only file operations in a sandboxed workspace
+      directory. Confirms that file I/O, directory listing, and path
+      resolution work correctly.
+
+  - task_id: smoke-005
+    title: Safe configuration inspection
+    envelope: tasks/smoke/smoke-005-config-inspection.yaml
+    time_limit_minutes: 5
+    priority: medium
+    description: >
+      Inspect non-secret configuration fields (runtime version, workspace
+      path, enabled plugins) and report a safe summary. No credential or
+      token values are exposed.
+
+  - task_id: smoke-006
+    title: Network connectivity diagnostic
+    envelope: tasks/smoke/smoke-006-network-diagnostic.yaml
+    time_limit_minutes: 5
+    priority: medium
+    description: >
+      Verify outbound connectivity to a public endpoint (e.g., GitHub API
+      or a well-known HTTPS URL) and report latency and DNS resolution
+      status.
+
+  - task_id: smoke-007
+    title: Node capability report
+    envelope: tasks/smoke/smoke-007-node-capability.yaml
+    time_limit_minutes: 10
+    priority: medium
+    description: >
+      Generate a structured node capability matrix document that describes
+      hardware profile, runtime version, tool availability, service status,
+      and configuration health without exposing secrets.
+required_capabilities:
+  - gateway_access
+  - model_access
+  - tool_registration
+  - file_io
+  - network_outbound
+result_schema_ref: "https://github.com/jinwon-int/agent-olympics/schemas/result-packet.schema.json"
+node_capability_schema_ref: "https://github.com/jinwon-int/agent-olympics/schemas/node-capability.schema.json"

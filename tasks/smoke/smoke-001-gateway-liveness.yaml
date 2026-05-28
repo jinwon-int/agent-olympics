@@ -1,0 +1,41 @@
+schema_version: 1
+task_id: smoke-001
+title: Gateway liveness probe
+event_family: ops-relay
+category: smoke-liveness
+time_limit_minutes: 5
+participant_visibility: visible
+evaluation_focus:
+  - mission_execution
+  - configuration_fitness
+objective: >
+  Verify that the gateway process is running, responsive, and accepting
+  connections. Report process state, PID, uptime, and listening address
+  or socket path.
+background: >
+  The gateway is the central runtime process. No agent work can proceed
+  without it. This probe should complete in under one minute.
+allowed_actions:
+  - inspect_service_status
+  - run_readonly_probe
+  - read_non_secret_config
+forbidden_actions:
+  - expose_secrets
+  - restart_gateway
+  - modify_gateway_state
+  - destructive_reset
+required_outputs:
+  - gateway_process_state
+  - gateway_pid_or_socket
+  - gateway_uptime
+  - listening_endpoint
+  - evidence
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - smoke
+  - liveness
+  - gateway
+hidden_judge_notes: >
+  The probe should report whether the gateway is alive from the agent's
+  perspective, identify the listening endpoint type (Unix socket, TCP),
+  and note any recent restarts or known degradations.

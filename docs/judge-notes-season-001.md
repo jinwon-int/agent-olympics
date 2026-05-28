@@ -484,6 +484,59 @@ Key improvement:
 
 ---
 
-*Agent Olympics 2026 — Season 001 Judge Notes v1.0*
+## 7. Task Verification and Mismatch Recording
+
+### Verification tier awareness
+
+Each task envelope carries a `tier` field indicating its verification status.
+
+- **draft** — Not yet independently solved. Judge with caution; rubric may
+  be provisional.
+- **smoke** — At least one adapter has run through the harness. The envelope
+  and required outputs are validated.
+- **verified** — A human or trusted baseline agent completed the task and the
+  judge result matched the intended rubric. Suitable for competitive scoring.
+- **retired** — Withdrawn due to leakage, ambiguity, drift, or mismatch.
+  Do not use for new comparisons.
+
+Judges should verify that a season pack uses `verified` tasks before
+publishing official leaderboards. The validator emits warnings for
+season-labeled tasks that are not yet verified.
+
+### Mismatches must be filed as issues
+
+If a judge finds that the task envelope, evaluator, or rubric does not match
+what was actually measured, **file a GitHub issue** rather than silently
+editing the task definition. This preserves audit history and lets the
+community discuss the fix.
+
+Examples of mismatch-worthy events:
+
+- The task objective asks for a diagnosis but the required outputs omit
+  the critical evidence field.
+- The hidden judge notes reference metrics not collected by any adapter.
+- The time limit is infeasible for the stated hardware profile.
+- A baseline run reveals a discrepancy between expected and actual
+  scoring outcomes.
+
+When filing, reference the task ID and describe:
+
+1. What the task envelope says.
+2. What actually happened during judging.
+3. What should change (envelope, rubric, judge notes, or all three).
+
+Link the issue in the task's `baseline.mismatch_issue_refs` field.
+
+### Baseline records
+
+Tasks with `tier: smoke` or `tier: verified` carry a `baseline` block in the
+envelope. Judges can use this as a reference when scoring — a result packet
+that matches the baseline completion time and evidence quality should be
+scored consistently.
+
+---
+
+*Agent Olympics 2026 — Season 001 Judge Notes v1.1*
 *Judge questions, clarifications, and edge-case decisions should be
   recorded in the season issue tracker.*
+*See [Task Verification](task-verification.md) for the promotion workflow.*

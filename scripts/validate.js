@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 /**
- * Agent Olympics Schema Validator
+ * Agent Olympics Schema Validator (v1 + v2)
  *
- * Validates Task Envelope and Result Packet YAML files against
- * their JSON Schema definitions, plus cross-field semantic checks.
+ * Validates Task Envelope, Result Packet, and Judge Record YAML files
+ * against their JSON Schema definitions (v1 or v2), plus cross-field
+ * semantic checks.
  *
  * Usage:
- *   node scripts/validate.js envelopes        — validate all task envelopes
- *   node scripts/validate.js packets          — validate all result packets
- *   node scripts/validate.js all              — validate both (default)
- *   node scripts/validate.js <single-file>    — validate one file (auto-detect)
+ *   node scripts/validate.js envelopes          — validate all task envelopes (v1)
+ *   node scripts/validate.js envelopes-v2       — validate v2-only task envelopes
+ *   node scripts/validate.js packets            — validate all result packets
+ *   node scripts/validate.js packets-v2         — validate v2-only result packets
+ *   node scripts/validate.js judges             — validate all judge records
+ *   node scripts/validate.js judges-v2          — validate v2-only judge records
+ *   node scripts/validate.js all                — validate everything (v1 + v2)
+ *   node scripts/validate.js all-v2             — validate only v2 documents
+ *   node scripts/validate.js oracle             — validate oracle answer key files
+ *   node scripts/validate.js <single-file>      — validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
  */
@@ -23,25 +30,57 @@ const addFormats = require('ajv-formats');
 const ROOT = path.resolve(__dirname, '..');
 
 // ---------------------------------------------------------------------------
-// Load schemas
+// Load schemas (v1)
 // ---------------------------------------------------------------------------
-const schemas = {
+const v1Schemas = {
   'task-envelope': loadSchema('schemas/task-envelope.schema.json'),
   'result-packet': loadSchema('schemas/result-packet.schema.json'),
   'judge-record':  loadSchema('schemas/judge-record.schema.json'),
 };
 
+// ---------------------------------------------------------------------------
+// Load schemas (v2)
+// ---------------------------------------------------------------------------
+let v2Schemas = {};
+for (const [name, relPath] of Object.entries({
+  'task-envelope': 'schemas/task-envelope-v2.schema.json',
+  'result-packet': 'schemas/result-packet-v2.schema.json',
+  'judge-record':  'schemas/judge-record-v2.schema.json',
+})) {
+  try {
+    v2Schemas[name] = loadSchema(relPath);
+  } catch {
+    v2Schemas[name] = null;
+  }
+}
+
 const ajv = new Ajv({ allErrors: true, verbose: true });
-// Register all schemas so cross-$ref works
-for (const [name, schema] of Object.entries(schemas)) {
-  ajv.addSchema(schema, schema.$id || name);
+
+// Register v1 schemas
+for (const [name, schema] of Object.entries(v1Schemas)) {
+  ajv.addSchema(schema, schema.$id || `v1/${name}`);
+}
+
+// Register v2 schemas (different $id, no conflict)
+for (const [name, schema] of Object.entries(v2Schemas)) {
+  if (schema) {
+    ajv.addSchema(schema, schema.$id || `v2/${name}`);
+  }
 }
 
 addFormats(ajv);
 
-const validateEnvelope  = ajv.getSchema(schemas['task-envelope'].$id);
-const validatePacket    = ajv.getSchema(schemas['result-packet'].$id);
-const validateJudge     = ajv.getSchema(schemas['judge-record'].$id);
+const v1Validators = {
+  'task-envelope': ajv.getSchema(v1Schemas['task-envelope'].$id),
+  'result-packet': ajv.getSchema(v1Schemas['result-packet'].$id),
+  'judge-record':  ajv.getSchema(v1Schemas['judge-record'].$id),
+};
+
+const v2Validators = {};
+for (const name of Object.keys(v2Schemas)) {
+  const schema = v2Schemas[name];
+  v2Validators[name] = schema ? ajv.getSchema(schema.$id) : null;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -73,7 +112,7 @@ function formatErrors(errors) {
 // ---------------------------------------------------------------------------
 const SEVERITY = { error: 'ERROR', warn: 'WARN' };
 
-function semanticChecks(doc, kind, file) {
+function semanticChecks(doc, kind, file, schemaVersion) {
   const issues = [];
 
   if (kind === 'result-packet') {
@@ -119,10 +158,12 @@ function semanticChecks(doc, kind, file) {
       }
     }
 
-    // Required outputs check
-    if (doc.outputs) {
-      const keys = Object.keys(doc.outputs);
-      // No hard requirement here, just informational
+    // v2: oracle_ref should reference an existing file
+    if (schemaVersion === 2 && doc.oracle_ref) {
+      const oraclePath = path.join(ROOT, doc.oracle_ref);
+      if (!fs.existsSync(oraclePath)) {
+        issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+      }
     }
 
     // Check for forbidden patterns (potential secret leaks)
@@ -146,6 +187,64 @@ function semanticChecks(doc, kind, file) {
     // Task ID naming convention
     if (doc.task_id && !/^[a-z]+-\d{3}$/.test(doc.task_id)) {
       issues.push({ severity: SEVERITY.warn, msg: `task_id "${doc.task_id}" does not match convention 'family-XXX'` });
+    }
+
+    // v1: hidden_judge_notes should be present in well-formed envelopes
+    if (schemaVersion === 1 && !doc.hidden_judge_notes) {
+      issues.push({ severity: SEVERITY.warn, msg: 'v1 envelope missing hidden_judge_notes (participants should not see this, but it aids judging)' });
+    }
+
+    // v2: hidden_judge_notes must not appear
+    if (schemaVersion === 2 && doc.hidden_judge_notes) {
+      issues.push({ severity: SEVERITY.error, msg: 'v2 envelope must not contain hidden_judge_notes; use judge_notes_ref and oracle_ref instead' });
+    }
+
+    // v2: judge_notes_ref and oracle_ref should reference existing files
+    if (schemaVersion === 2) {
+      if (!doc.judge_notes_ref && !doc.oracle_ref) {
+        issues.push({ severity: SEVERITY.warn, msg: 'v2 envelope should have at least one of judge_notes_ref or oracle_ref' });
+      }
+      if (doc.judge_notes_ref) {
+        const refPath = path.join(ROOT, doc.judge_notes_ref);
+        if (!fs.existsSync(refPath)) {
+          issues.push({ severity: SEVERITY.warn, msg: `judge_notes_ref "${doc.judge_notes_ref}" does not exist on disk` });
+        }
+      }
+      if (doc.oracle_ref) {
+        const refPath = path.join(ROOT, doc.oracle_ref);
+        if (!fs.existsSync(refPath)) {
+          issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+        }
+      }
+    }
+
+    // Verification tier warning for season-pack tasks
+    const tier = doc.tier || 'draft';
+    const labels = Array.isArray(doc.labels) ? doc.labels : [];
+    const hasSeasonLabel = labels.some(l => /^season-\d{3}$/.test(l));
+    if (hasSeasonLabel && tier !== 'verified' && tier !== 'retired') {
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `season task "${doc.task_id}" has tier="${tier}" — not yet verified for competitive use. Set tier="verified" only after a human or trusted baseline agent completes it and the judge result matches the intended rubric.`
+      });
+    }
+
+    // Baseline presence recommendation for verified tasks
+    if (tier === 'verified' && !doc.baseline) {
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `task "${doc.task_id}" is tier="verified" but has no baseline record. Add a baseline entry documenting who completed it and which result packet serves as the reference.`
+      });
+    }
+  }
+
+  if (kind === 'judge-record') {
+    // v2: oracle_ref should reference an existing file
+    if (schemaVersion === 2 && doc.oracle_ref) {
+      const oraclePath = path.join(ROOT, doc.oracle_ref);
+      if (!fs.existsSync(oraclePath)) {
+        issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+      }
     }
   }
 
@@ -212,7 +311,26 @@ function detectKind(doc) {
   if (doc.task_id && doc.agent_id && doc.status && doc.evidence) return 'result-packet';
   if (doc.task_id && doc.judge_record_id && doc.score_dimensions) return 'judge-record';
   if (doc.task_id && doc.judge_type && doc.verdict) return 'judge-record';
+  if (doc.manifest_id && doc.tasks && Array.isArray(doc.tasks) && doc.tasks.length > 0) return 'smoke-manifest';
   return null;
+}
+
+/**
+ * Detect oracle answer key files (oracle_schema_version marker).
+ */
+function detectOracle(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.oracle_schema_version !== undefined && doc.oracle_id !== undefined;
+}
+
+/**
+ * Resolve schema version from document, defaulting to 1 if not present.
+ */
+function getSchemaVersion(doc) {
+  if (doc && typeof doc.schema_version === 'number') {
+    return doc.schema_version;
+  }
+  return 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -248,31 +366,81 @@ function validateFile(filePath) {
     return;
   }
 
+  const schemaVersion = getSchemaVersion(doc);
+
+  // Select validator based on schema version
   let validator, schemaName;
+  const validators = schemaVersion === 2 ? v2Validators : v1Validators;
+  const versionLabel = schemaVersion === 2 ? 'v2' : 'v1';
+
   if (kind === 'task-envelope') {
-    validator = validateEnvelope;
-    schemaName = 'task-envelope';
+    validator = validators['task-envelope'];
+    schemaName = `task-envelope-${versionLabel}`;
   } else if (kind === 'result-packet') {
-    validator = validatePacket;
-    schemaName = 'result-packet';
+    validator = validators['result-packet'];
+    schemaName = `result-packet-${versionLabel}`;
   } else if (kind === 'judge-record') {
-    validator = validateJudge;
-    schemaName = 'judge-record';
+    validator = validators['judge-record'];
+    schemaName = `judge-record-${versionLabel}`;
   }
 
   // Schema validation
-  const schemaValid = validator ? validator(doc) : false;
-  const schemaErrors = validator ? validator.errors : [];
+  let schemaValid = true;
+  let schemaErrors = null;
+  if (validator) {
+    schemaValid = validator(doc);
+    schemaErrors = validator.errors;
+  } else {
+    if (schemaVersion === 2) {
+      console.error(`FAIL  ${rel}  — v2 schema not loaded for ${kind}`);
+      totalErrors++;
+      fileCount++;
+      return;
+    }
+  }
+
+  // Manifest-specific validation
+  if (kind === 'smoke-manifest') {
+    // Validate manifest structure
+    const taskIds = doc.tasks.map(t => t.task_id);
+    const dups = taskIds.filter((id, i) => taskIds.indexOf(id) !== i);
+    if (dups.length) {
+      console.error(`FAIL  ${rel}  — manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
+      totalErrors++;
+    }
+
+    // Check minimum task count (5 required)
+    if (doc.tasks.length < 5) {
+      console.error(`FAIL  ${rel}  — manifest has ${doc.tasks.length} tasks, minimum is 5`);
+      totalErrors++;
+    }
+
+    // Check each task has required fields
+    for (const task of doc.tasks) {
+      const missing = [];
+      if (!task.task_id) missing.push('task_id');
+      if (!task.title) missing.push('title');
+      if (!task.envelope) missing.push('envelope');
+      if (missing.length) {
+        console.error(`FAIL  ${rel}  — task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
+        totalErrors++;
+      }
+    }
+
+    console.log(`OK    ${rel}  (smoke-manifest)`);
+    fileCount++;
+    return;
+  }
 
   // Semantic checks
-  const semantic = semanticChecks(doc, kind, rel);
+  const semantic = semanticChecks(doc, kind, rel, schemaVersion);
 
   // Report
   const hasSchemaIssues = !schemaValid;
   const hasSemanticIssues = semantic.length > 0;
 
   if (!hasSchemaIssues && !hasSemanticIssues) {
-    console.log(`OK    ${rel}  (${kind})`);
+    console.log(`OK    ${rel}  (${kind} ${versionLabel})`);
   } else {
     if (hasSchemaIssues) {
       console.error(`FAIL  ${rel}  — schema errors (${schemaName}):`);
@@ -288,11 +456,95 @@ function validateFile(filePath) {
     }
     if (!hasSchemaIssues && !semantic.some(s => s.severity === SEVERITY.error)) {
       // Only warnings — still count as pass
-      console.log(`OK    ${rel}  (${kind}) — see warnings above`);
+      console.log(`OK    ${rel}  (${kind} ${versionLabel}) — see warnings above`);
     }
   }
   fileCount++;
 }
+
+/**
+ * Validate an oracle answer key file.
+ */
+function validateOracle(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  — empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectOracle(doc)) {
+    console.warn(`SKIP  ${rel}  — not an oracle file (missing oracle_schema_version / oracle_id)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Required fields
+  if (!doc.task_id) {
+    issues.push({ severity: SEVERITY.error, msg: 'oracle missing task_id' });
+  }
+  if (!doc.oracle_id) {
+    issues.push({ severity: SEVERITY.error, msg: 'oracle missing oracle_id' });
+  }
+  if (!doc.expected_answer_categories || !Array.isArray(doc.expected_answer_categories)) {
+    issues.push({ severity: SEVERITY.error, msg: 'oracle missing expected_answer_categories array' });
+  }
+  if (!doc.scoring_guidance || typeof doc.scoring_guidance !== 'object') {
+    issues.push({ severity: SEVERITY.error, msg: 'oracle missing scoring_guidance object' });
+  }
+
+  // Check answer_key_checks
+  if (doc.answer_key_checks && Array.isArray(doc.answer_key_checks)) {
+    for (const check of doc.answer_key_checks) {
+      if (!check.question_id || !check.question || !check.expected) {
+        issues.push({ severity: SEVERITY.warn, msg: `oracle check "${check.question_id || '(unnamed)'}" missing required fields (question_id, question, expected)` });
+      }
+    }
+  }
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  — ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (oracle)`);
+  }
+  fileCount++;
+}
+
+// ---------------------------------------------------------------------------
+// Mode resolution
+// ---------------------------------------------------------------------------
+const MODES = {
+  'envelopes':     { kinds: ['task-envelope'], versions: [1] },
+  'envelopes-v2':  { kinds: ['task-envelope'], versions: [2] },
+  'packets':       { kinds: ['result-packet'], versions: [1] },
+  'packets-v2':    { kinds: ['result-packet'], versions: [2] },
+  'judges':        { kinds: ['judge-record'], versions: [1] },
+  'judges-v2':     { kinds: ['judge-record'], versions: [2] },
+  'all':           { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [1, 2] },
+  'all-v2':        { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [2] },
+  'smoke':         { kinds: ['task-envelope', 'smoke-manifest'], versions: [1] },
+};
 
 // ---------------------------------------------------------------------------
 // Main
@@ -301,32 +553,64 @@ function main() {
   const args = process.argv.slice(2);
   let mode = args[0] || 'all';
 
-  const validModes = ['envelopes', 'packets', 'judges', 'all'];
-  if (!validModes.includes(mode) && !fs.existsSync(mode)) {
-    console.error(`Usage: node scripts/validate.js <envelopes|packets|judges|all|file>`);
+  // Oracle mode
+  if (mode === 'oracle') {
+    const oracleDir = path.join(ROOT, 'oracle');
+    const files = fs.existsSync(oracleDir) ? findFiles(oracleDir, /\.ya?ml$/) : [];
+    if (files.length === 0) {
+      console.log('No oracle files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} oracle file(s)...\n`);
+    for (const f of files) {
+      validateOracle(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Single file mode
+  if (fs.existsSync(mode)) {
+    const files = [path.resolve(mode)];
+    console.log(`Validating 1 file...\n`);
+    validateFile(files[0]);
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Named mode
+  const modeConfig = MODES[mode];
+  if (!modeConfig) {
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|judges|judges-v2|smoke|all|all-v2|oracle|file>`);
     process.exit(1);
   }
 
   const tasksDir = path.join(ROOT, 'tasks');
   const resultsDir = path.join(ROOT, 'results');
-  const issuesDir = path.join(ROOT, 'issues');
 
   let files = [];
 
-  if (fs.existsSync(mode)) {
-    // Single file mode
-    files = [path.resolve(mode)];
-  } else if (mode === 'envelopes' || mode === 'all') {
+  const wantsEnvelopes = modeConfig.kinds.includes('task-envelope');
+  const wantsSmoke = modeConfig.kinds.includes('smoke-manifest');
+  const wantsPackets = modeConfig.kinds.includes('result-packet');
+  const wantsJudges = modeConfig.kinds.includes('judge-record');
+
+  if (wantsSmoke) {
+    const smokeDir = path.join(tasksDir, 'smoke');
+    if (fs.existsSync(smokeDir)) {
+      files = files.concat(findFiles(smokeDir, /\.ya?ml$/));
+    }
+  } else if (wantsEnvelopes) {
     files = files.concat(findFiles(tasksDir, /\.ya?ml$/));
   }
 
-  if (mode === 'packets' || mode === 'all') {
-    files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
-  }
-
-  if (mode === 'judges' || mode === 'all') {
-    // Judge records can live alongside result packets or in a dedicated dir
-    // For now scan results/ and issues/ for judge records
+  if (wantsPackets || wantsJudges) {
     files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
   }
 
@@ -341,13 +625,24 @@ function main() {
   console.log(`Validating ${files.length} file(s)...\n`);
 
   for (const f of files) {
-    validateFile(f);
+    const doc = loadYaml(f);
+    const sv = getSchemaVersion(doc);
+    if (modeConfig.versions.includes(sv)) {
+      validateFile(f);
+    } else {
+      // Skip files with non-matching schema version
+    }
   }
 
+  const skippedCount = files.length - fileCount;
   console.log(`\n--- Summary ---`);
-  console.log(`Files:     ${fileCount}`);
-  console.log(`Errors:    ${totalErrors}`);
-  console.log(`Warnings:  ${totalWarnings}`);
+  console.log(`Files scanned:  ${files.length}`);
+  console.log(`Validated:     ${fileCount}`);
+  if (skippedCount > 0) {
+    console.log(`Skipped (ver): ${skippedCount}`);
+  }
+  console.log(`Errors:        ${totalErrors}`);
+  console.log(`Warnings:      ${totalWarnings}`);
 
   process.exit(totalErrors > 0 ? 1 : 0);
 }
