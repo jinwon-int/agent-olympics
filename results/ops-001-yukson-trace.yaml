@@ -1,0 +1,106 @@
+# Trace Record — ops-001 / yukson
+#
+# Ordered journal of agent actions during the Telegram final reply diagnosis.
+# Redaction reasons describe rules, not secret values.
+
+schema_version: 1
+trace_id: tr-ops-001-yukson-001
+run_id: run-ops-001-yukson-20260529
+agent_id: yukson
+generated_at: "2026-05-29T00:24:00+09:00"
+entries:
+  - seq: 0
+    timestamp: "2026-05-29T00:00:00+09:00"
+    action: read
+    target: session_transcript
+    summary: >
+      Read the current session transcript to confirm the final assistant
+      answer was written.
+    duration_ms: 1200
+    redacted: false
+    evidence_ref: ev-002
+    result_summary: "Confirmed final answer exists at transcript position #47."
+
+  - seq: 1
+    timestamp: "2026-05-29T00:02:00+09:00"
+    action: command
+    target: local
+    summary: "Inspect gateway journal for recent delivery errors."
+    duration_ms: 3400
+    redacted: true
+    redaction_reason: "command_output_contained_api_token_in_delivery_log"
+    evidence_ref: ev-001
+    result_summary: "Found source reply delivery mode mismatch after stale embedded run recovery."
+
+  - seq: 2
+    timestamp: "2026-05-29T00:05:00+09:00"
+    action: command
+    target: local
+    summary: "Check gateway readiness status and message queue depth."
+    duration_ms: 2100
+    redacted: false
+    evidence_ref: ev-003
+    result_summary: "Gateway ready, message queue depth 0, no global errors."
+
+  - seq: 3
+    timestamp: "2026-05-29T00:07:00+09:00"
+    action: command
+    target: local
+    summary: "Inspect session metadata for reply-to and thread context."
+    duration_ms: 1800
+    redacted: false
+    evidence_ref: ev-004
+    result_summary: "Session thread_id present but delivery target was null after session replay."
+
+  - seq: 4
+    timestamp: "2026-05-29T00:09:00+09:00"
+    action: command
+    target: local
+    summary: "Verify Telegram channel outbound probe."
+    duration_ms: 4500
+    redacted: false
+    evidence_ref: ev-005
+    result_summary: "Probe message delivered successfully — channel path is healthy."
+
+  - seq: 5
+    timestamp: "2026-05-29T00:12:00+09:00"
+    action: think
+    target: null
+    summary: >
+      Synthesize findings: transcript has answer, gateway is healthy, channel
+      probe works, but delivery target was null. Conclusion: source-visible
+      reply release bug after session replay.
+    duration_ms: 8000
+    redacted: false
+    evidence_ref: null
+    result_summary: "Root cause identified: stale embedded-run recovery created reply without valid channel target."
+
+  - seq: 6
+    timestamp: "2026-05-29T00:14:00+09:00"
+    action: read
+    target: config
+    summary: "Inspect runtime delivery configuration for reply mode settings."
+    duration_ms: 2500
+    redacted: false
+    evidence_ref: ev-006
+    result_summary: "Source-visible reply mode documented but delivery target initialization missing during recovery path."
+
+  - seq: 7
+    timestamp: "2026-05-29T00:18:00+09:00"
+    action: message
+    target: user
+    summary: "Proposed diagnosis and next action to human."
+    duration_ms: 15000
+    redacted: false
+    evidence_ref: ev-007
+    result_summary: "Report delivered. Human approved targeted patch without clean reinstall."
+
+redaction_policy:
+  applied_rules:
+    - rule_id: rule-001
+      pattern_description: "API tokens in gateway journal delivery log entries"
+      reason: "Prevent credential exposure in shared evidence"
+    - rule_id: rule-002
+      pattern_description: "Session cookie values in session metadata"
+      reason: "Prevent session hijacking from leaked cookies"
+  default_reason: "sensitive_value_redacted"

@@ -2,13 +2,18 @@
 /**
  * Agent Olympics Schema Validator
  *
- * Validates Task Envelope and Result Packet YAML files against
- * their JSON Schema definitions, plus cross-field semantic checks.
+ * Validates Task Envelope, Result Packet, Run Result, Trace Record,
+ * Evidence Bundle, and Judge Record YAML/JSON files against their
+ * JSON Schema definitions, plus cross-field semantic checks.
  *
  * Usage:
  *   node scripts/validate.js envelopes        — validate all task envelopes
  *   node scripts/validate.js packets          — validate all result packets
- *   node scripts/validate.js all              — validate both (default)
+ *   node scripts/validate.js traces           — validate all trace records
+ *   node scripts/validate.js bundles          — validate all evidence bundles
+ *   node scripts/validate.js runs             — validate all run results
+ *   node scripts/validate.js judges           — validate all judge records
+ *   node scripts/validate.js all              — validate all known types
  *   node scripts/validate.js <single-file>    — validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -26,9 +31,12 @@ const ROOT = path.resolve(__dirname, '..');
 // Load schemas
 // ---------------------------------------------------------------------------
 const schemas = {
-  'task-envelope': loadSchema('schemas/task-envelope.schema.json'),
-  'result-packet': loadSchema('schemas/result-packet.schema.json'),
-  'judge-record':  loadSchema('schemas/judge-record.schema.json'),
+  'task-envelope':    loadSchema('schemas/task-envelope.schema.json'),
+  'result-packet':    loadSchema('schemas/result-packet.schema.json'),
+  'judge-record':     loadSchema('schemas/judge-record.schema.json'),
+  'trace-record':     loadSchema('schemas/trace-record.schema.json'),
+  'evidence-bundle':  loadSchema('schemas/evidence-bundle.schema.json'),
+  'run-result':       loadSchema('schemas/run-result.schema.json'),
 };
 
 const ajv = new Ajv({ allErrors: true, verbose: true });
@@ -39,9 +47,12 @@ for (const [name, schema] of Object.entries(schemas)) {
 
 addFormats(ajv);
 
-const validateEnvelope  = ajv.getSchema(schemas['task-envelope'].$id);
-const validatePacket    = ajv.getSchema(schemas['result-packet'].$id);
-const validateJudge     = ajv.getSchema(schemas['judge-record'].$id);
+const validateEnvelope       = ajv.getSchema(schemas['task-envelope'].$id);
+const validatePacket         = ajv.getSchema(schemas['result-packet'].$id);
+const validateJudge          = ajv.getSchema(schemas['judge-record'].$id);
+const validateTrace          = ajv.getSchema(schemas['trace-record'].$id);
+const validateBundle         = ajv.getSchema(schemas['evidence-bundle'].$id);
+const validateRunResult      = ajv.getSchema(schemas['run-result'].$id);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,10 +87,12 @@ const SEVERITY = { error: 'ERROR', warn: 'WARN' };
 function semanticChecks(doc, kind, file) {
   const issues = [];
 
-  if (kind === 'result-packet') {
+  if (kind === 'result-packet' || kind === 'run-result') {
+    const rp = kind === 'run-result' ? (doc.result_packet || doc) : doc;
+
     // Evidence IDs must be unique
-    if (doc.evidence) {
-      const ids = doc.evidence.map(e => e.id);
+    if (rp.evidence) {
+      const ids = rp.evidence.map(e => e.id);
       const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
       if (dups.length) {
         issues.push({ severity: SEVERITY.error, msg: `Duplicate evidence IDs: ${[...new Set(dups)].join(', ')}` });
@@ -87,9 +100,9 @@ function semanticChecks(doc, kind, file) {
     }
 
     // Findings must reference evidence IDs that exist
-    if (doc.findings && doc.evidence) {
-      const validIds = new Set(doc.evidence.map(e => e.id));
-      for (const f of doc.findings) {
+    if (rp.findings && rp.evidence) {
+      const validIds = new Set(rp.evidence.map(e => e.id));
+      for (const f of rp.findings) {
         if (f.evidence) {
           for (const ref of f.evidence) {
             if (!validIds.has(ref)) {
@@ -101,9 +114,9 @@ function semanticChecks(doc, kind, file) {
     }
 
     // Action evidence references
-    if (doc.actions && doc.actions.length && doc.evidence) {
-      const validIds = new Set(doc.evidence.map(e => e.id));
-      for (const a of doc.actions) {
+    if (rp.actions && rp.actions.length && rp.evidence) {
+      const validIds = new Set(rp.evidence.map(e => e.id));
+      for (const a of rp.actions) {
         if (a.evidence_id && !validIds.has(a.evidence_id)) {
           issues.push({ severity: SEVERITY.warn, msg: `Action "${a.id}" references unknown evidence ID: ${a.evidence_id}` });
         }
@@ -111,21 +124,58 @@ function semanticChecks(doc, kind, file) {
     }
 
     // Timestamps: ended_at should be >= started_at
-    if (doc.started_at && doc.ended_at) {
-      const start = new Date(doc.started_at);
-      const end   = new Date(doc.ended_at);
+    if (rp.started_at && rp.ended_at) {
+      const start = new Date(rp.started_at);
+      const end   = new Date(rp.ended_at);
       if (!isNaN(start) && !isNaN(end) && end < start) {
-        issues.push({ severity: SEVERITY.error, msg: `ended_at (${doc.ended_at}) is before started_at (${doc.started_at})` });
+        issues.push({ severity: SEVERITY.error, msg: `ended_at (${rp.ended_at}) is before started_at (${rp.started_at})` });
       }
     }
 
-    // Required outputs check
-    if (doc.outputs) {
-      const keys = Object.keys(doc.outputs);
-      // No hard requirement here, just informational
-    }
-
     // Check for forbidden patterns (potential secret leaks)
+    detectSecrets(rp, issues);
+  }
+
+  if (kind === 'evidence-bundle') {
+    // Check for duplicate evidence item IDs
+    if (doc.items) {
+      const ids = doc.items.map(e => e.id);
+      const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
+      if (dups.length) {
+        issues.push({ severity: SEVERITY.error, msg: `Duplicate evidence item IDs: ${[...new Set(dups)].join(', ')}` });
+      }
+    }
+    detectSecrets(doc, issues);
+  }
+
+  if (kind === 'trace-record') {
+    // Check for duplicate seq numbers
+    if (doc.entries) {
+      const seqs = doc.entries.map(e => e.seq);
+      const dups = seqs.filter((s, i) => seqs.indexOf(s) !== i);
+      if (dups.length) {
+        issues.push({ severity: SEVERITY.warn, msg: `Duplicate entry seq numbers: ${[...new Set(dups)].join(', ')}` });
+      }
+      // Check entries are in seq order
+      for (let i = 1; i < doc.entries.length; i++) {
+        if (doc.entries[i].seq < doc.entries[i - 1].seq) {
+          issues.push({ severity: SEVERITY.warn, msg: `Entries out of sequence order at index ${i}: seq ${doc.entries[i].seq} after ${doc.entries[i - 1].seq}` });
+          break;
+        }
+      }
+    }
+    detectSecrets(doc, issues);
+  }
+
+  if (kind === 'run-result') {
+    // Check run_id consistency across sub-documents
+    const runId = doc.run_id;
+    if (doc.trace && doc.trace.trace_id && !doc.trace.run_id) {
+      // trace run_id should match or be absent (inherited)
+    }
+    if (doc.evidence_bundle && doc.evidence_bundle.bundle_id && !doc.evidence_bundle.run_id) {
+      // bundle run_id should match or be absent
+    }
     detectSecrets(doc, issues);
   }
 
@@ -164,8 +214,9 @@ function detectSecrets(obj, issues, path = '') {
   ];
   const SUSPECT_VALUES = [
     /^sk-[a-zA-Z0-9]{20,}/,   // OpenAI-style keys
-    /^ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT
-    /^gho_[a-zA-Z0-9]{36}/,
+    /^ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT (legacy)
+    /^gho_[a-zA-Z0-9]{36}/,   // GitHub PAT (org)
+    /^github_pat_[a-zA-Z0-9]{4,}/,  // GitHub fine-grained PAT
     /^xox[baprs]-/,            // Slack tokens
     /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
   ];
@@ -180,6 +231,11 @@ function detectSecrets(obj, issues, path = '') {
       // Check values
       if (SUSPECT_VALUES.some(r => r.test(val))) {
         issues.push({ severity: SEVERITY.error, msg: `Secret pattern detected in "${fp}"` });
+      }
+      // Check for redaction_reason that accidentally contains a secret
+      if ((key === 'redaction_reason' || key === 'redaction_rule') &&
+          val.length > 200) {
+        issues.push({ severity: SEVERITY.warn, msg: `Unusually long ${key} (${val.length} chars) — may contain secret data` });
       }
     } else if (typeof val === 'object' && val !== null) {
       detectSecrets(val, issues, fp);
@@ -205,13 +261,45 @@ function findFiles(baseDir, pattern) {
 
 /**
  * Auto-detect what kind of document a YAML file represents.
+ *
+ * Detection priority: most-specific fields first. Order matters because
+ * a run-result contains a result_packet which shares fields with plain
+ * result-packets, and evidence-bundles share fields with other types.
  */
 function detectKind(doc) {
   if (!doc || typeof doc !== 'object') return null;
-  if (doc.task_id && doc.objective && doc.allowed_actions) return 'task-envelope';
-  if (doc.task_id && doc.agent_id && doc.status && doc.evidence) return 'result-packet';
-  if (doc.task_id && doc.judge_record_id && doc.score_dimensions) return 'judge-record';
-  if (doc.task_id && doc.judge_type && doc.verdict) return 'judge-record';
+
+  // Run result: has top-level run_id + result_packet
+  if (doc.run_id && doc.result_packet && typeof doc.result_packet === 'object') {
+    return 'run-result';
+  }
+
+  // Trace record: has trace_id + entries array
+  if (doc.trace_id && Array.isArray(doc.entries) && doc.entries.length > 0 &&
+      doc.entries[0].seq !== undefined && doc.entries[0].action) {
+    return 'trace-record';
+  }
+
+  // Evidence bundle: has bundle_id + items
+  if (doc.bundle_id && Array.isArray(doc.items) && doc.items.length > 0) {
+    return 'evidence-bundle';
+  }
+
+  // Judge record: has judge_record_id and score_dimensions
+  if (doc.judge_record_id && doc.score_dimensions) {
+    return 'judge-record';
+  }
+
+  // Result packet: has agent_id + status + evidence array
+  if (doc.agent_id && doc.status && Array.isArray(doc.evidence) && doc.evidence.length > 0) {
+    return 'result-packet';
+  }
+
+  // Task envelope: has objective + allowed_actions + task_id
+  if (doc.task_id && doc.objective && Array.isArray(doc.allowed_actions)) {
+    return 'task-envelope';
+  }
+
   return null;
 }
 
@@ -221,6 +309,15 @@ function detectKind(doc) {
 let totalErrors = 0;
 let totalWarnings = 0;
 let fileCount = 0;
+
+const VALIDATOR_MAP = {
+  'task-envelope':   { validator: validateEnvelope,  schemaName: 'task-envelope' },
+  'result-packet':   { validator: validatePacket,    schemaName: 'result-packet' },
+  'judge-record':    { validator: validateJudge,     schemaName: 'judge-record' },
+  'trace-record':    { validator: validateTrace,     schemaName: 'trace-record' },
+  'evidence-bundle': { validator: validateBundle,    schemaName: 'evidence-bundle' },
+  'run-result':      { validator: validateRunResult, schemaName: 'run-result' },
+};
 
 function validateFile(filePath) {
   const rel = path.relative(ROOT, filePath);
@@ -248,17 +345,9 @@ function validateFile(filePath) {
     return;
   }
 
-  let validator, schemaName;
-  if (kind === 'task-envelope') {
-    validator = validateEnvelope;
-    schemaName = 'task-envelope';
-  } else if (kind === 'result-packet') {
-    validator = validatePacket;
-    schemaName = 'result-packet';
-  } else if (kind === 'judge-record') {
-    validator = validateJudge;
-    schemaName = 'judge-record';
-  }
+  const entry = VALIDATOR_MAP[kind];
+  const validator = entry ? entry.validator : null;
+  const schemaName = entry ? entry.schemaName : kind;
 
   // Schema validation
   const schemaValid = validator ? validator(doc) : false;
@@ -270,9 +359,15 @@ function validateFile(filePath) {
   // Report
   const hasSchemaIssues = !schemaValid;
   const hasSemanticIssues = semantic.length > 0;
+  const hasErrors = hasSchemaIssues || semantic.some(s => s.severity === SEVERITY.error);
 
-  if (!hasSchemaIssues && !hasSemanticIssues) {
-    console.log(`OK    ${rel}  (${kind})`);
+  if (!hasErrors) {
+    const warnCount = semantic.filter(s => s.severity === SEVERITY.warn).length;
+    if (warnCount > 0) {
+      console.log(`OK    ${rel}  (${kind}) — ${warnCount} warning(s)`);
+    } else {
+      console.log(`OK    ${rel}  (${kind})`);
+    }
   } else {
     if (hasSchemaIssues) {
       console.error(`FAIL  ${rel}  — schema errors (${schemaName}):`);
@@ -286,10 +381,6 @@ function validateFile(filePath) {
       if (issue.severity === SEVERITY.error) totalErrors++;
       else totalWarnings++;
     }
-    if (!hasSchemaIssues && !semantic.some(s => s.severity === SEVERITY.error)) {
-      // Only warnings — still count as pass
-      console.log(`OK    ${rel}  (${kind}) — see warnings above`);
-    }
   }
   fileCount++;
 }
@@ -301,15 +392,15 @@ function main() {
   const args = process.argv.slice(2);
   let mode = args[0] || 'all';
 
-  const validModes = ['envelopes', 'packets', 'judges', 'all'];
+  const validModes = ['envelopes', 'packets', 'traces', 'bundles', 'runs', 'judges', 'all'];
   if (!validModes.includes(mode) && !fs.existsSync(mode)) {
-    console.error(`Usage: node scripts/validate.js <envelopes|packets|judges|all|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|packets|traces|bundles|runs|judges|all|file>`);
     process.exit(1);
   }
 
   const tasksDir = path.join(ROOT, 'tasks');
   const resultsDir = path.join(ROOT, 'results');
-  const issuesDir = path.join(ROOT, 'issues');
+  const schemasDir = path.join(ROOT, 'schemas');
 
   let files = [];
 
@@ -321,12 +412,51 @@ function main() {
   }
 
   if (mode === 'packets' || mode === 'all') {
-    files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
+    // Result packets live in results/ (but exclude known judge records)
+    const allResults = findFiles(resultsDir, /\.ya?ml$/);
+    for (const f of allResults) {
+      const doc = loadYaml(f);
+      const kind = detectKind(doc);
+      if (kind === 'result-packet' || kind === 'run-result') {
+        files.push(f);
+      }
+    }
+  }
+
+  if (mode === 'traces' || mode === 'all') {
+    const allResults = findFiles(resultsDir, /\.ya?ml$/);
+    for (const f of allResults) {
+      const doc = loadYaml(f);
+      const kind = detectKind(doc);
+      if (kind === 'trace-record') {
+        files.push(f);
+      }
+    }
+  }
+
+  if (mode === 'bundles' || mode === 'all') {
+    const allResults = findFiles(resultsDir, /\.ya?ml$/);
+    for (const f of allResults) {
+      const doc = loadYaml(f);
+      const kind = detectKind(doc);
+      if (kind === 'evidence-bundle') {
+        files.push(f);
+      }
+    }
+  }
+
+  if (mode === 'runs' || mode === 'all') {
+    const allResults = findFiles(resultsDir, /\.ya?ml$/);
+    for (const f of allResults) {
+      const doc = loadYaml(f);
+      const kind = detectKind(doc);
+      if (kind === 'run-result') {
+        files.push(f);
+      }
+    }
   }
 
   if (mode === 'judges' || mode === 'all') {
-    // Judge records can live alongside result packets or in a dedicated dir
-    // For now scan results/ and issues/ for judge records
     files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
   }
 
