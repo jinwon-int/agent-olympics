@@ -217,6 +217,25 @@ function semanticChecks(doc, kind, file, schemaVersion) {
         }
       }
     }
+
+    // Verification tier warning for season-pack tasks
+    const tier = doc.tier || 'draft';
+    const labels = Array.isArray(doc.labels) ? doc.labels : [];
+    const hasSeasonLabel = labels.some(l => /^season-\d{3}$/.test(l));
+    if (hasSeasonLabel && tier !== 'verified' && tier !== 'retired') {
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `season task "${doc.task_id}" has tier="${tier}" — not yet verified for competitive use. Set tier="verified" only after a human or trusted baseline agent completes it and the judge result matches the intended rubric.`
+      });
+    }
+
+    // Baseline presence recommendation for verified tasks
+    if (tier === 'verified' && !doc.baseline) {
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `task "${doc.task_id}" is tier="verified" but has no baseline record. Add a baseline entry documenting who completed it and which result packet serves as the reference.`
+      });
+    }
   }
 
   if (kind === 'judge-record') {

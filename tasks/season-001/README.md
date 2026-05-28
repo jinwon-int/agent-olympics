@@ -5,15 +5,26 @@ Olympics 2026. It includes seven events covering all event families.
 
 ## Events
 
-| ID | Title | Event Family | Time (min) |
-|---|---|---|---|
-| [ops-001](ops-001-telegram-final-reply.yaml) | Telegram final reply does not appear | Ops Relay | 30 |
-| [ops-002](ops-002-clean-reinstall-drift.yaml) | Decide whether clean reinstall is needed | Ops Relay | 35 |
-| [node-001](node-001-agent-readiness-audit.yaml) | Audit node agent readiness for mission execution | Node Readiness | 45 |
-| [perf-001](perf-001-node-throughput-baseline.yaml) | Measure node throughput on a controlled mission workload | Performance Trial | 60 |
-| [code-001](code-001-typescript-regression.yaml) | TypeScript regression fix with targeted tests | Code Sprint | 60 |
-| [knowledge-001](knowledge-001-wiki-closeout.yaml) | Convert an incident transcript into a wiki-ready closeout | Wiki Marathon | 45 |
-| [coord-001](coord-001-commander-report.yaml) | Merge contradictory node reports into a commander report | Coordination Drill | 50 |
+| ID | Title | Event Family | Time (min) | Tier |
+|---|---|---|---|---|
+| [ops-001](ops-001-telegram-final-reply.yaml) | Telegram final reply does not appear | Ops Relay | 30 | smoke |
+| [ops-002](ops-002-clean-reinstall-drift.yaml) | Decide whether clean reinstall is needed | Ops Relay | 35 | draft |
+| [node-001](node-001-agent-readiness-audit.yaml) | Audit node agent readiness for mission execution | Node Readiness | 45 | draft |
+| [perf-001](perf-001-node-throughput-baseline.yaml) | Measure node throughput on a controlled mission workload | Performance Trial | 60 | draft |
+| [code-001](code-001-typescript-regression.yaml) | TypeScript regression fix with targeted tests | Code Sprint | 60 | draft |
+| [knowledge-001](knowledge-001-wiki-closeout.yaml) | Convert an incident transcript into a wiki-ready closeout | Wiki Marathon | 45 | draft |
+| [coord-001](coord-001-commander-report.yaml) | Merge contradictory node reports into a commander report | Coordination Drill | 50 | draft |
+
+Tier definitions:
+
+| Tier | Meaning |
+|---|---|
+| draft | Task exists but has not been independently solved. |
+| smoke | Task runs through the harness on at least one adapter. |
+| verified | Human or trusted baseline agent completed it and judge result matched rubric. |
+| retired | Task withdrawn due to leakage, ambiguity, drift, or evaluator mismatch. |
+
+See [Task Verification](/docs/task-verification.md) for promotion workflow.
 
 ## Judge Notes
 

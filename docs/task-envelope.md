@@ -79,6 +79,8 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 | cost_limit | ✅ | ✅ | Maximum allowed cost |
 | model_visibility_policy | ✅ | ✅ | Whether model identity must be reported |
 | transcript_policy | ✅ | ✅ | How participant transcript should be preserved |
+| tier | ✅ | ✅ | Task readiness level: `draft`, `smoke`, `verified`, `retired`. Default `draft`. |
+| baseline | ✅ | ✅ | Human or trusted baseline record. |
 | schema_description | ❌ | ✅ | Human-readable schema description |
 | judge_notes_ref | ❌ | ✅ | Path to external judge notes (private) |
 | oracle_ref | ❌ | ✅ | Path to external oracle/answer key (private) |
@@ -87,6 +89,18 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 > **v2 change:** `hidden_judge_notes` is removed. Use `judge_notes_ref` and
 > `oracle_ref` to reference external private files. See
 > [migration-v1-to-v2.md](migration-v1-to-v2.md) for details.
+
+### Verification Fields
+
+| Field | Meaning |
+|---|---|
+| tier | Task readiness level: `draft`, `smoke`, `verified`, `retired`. Default `draft`. |
+| baseline | Human or trusted baseline record. See [Task Verification](task-verification.md) for field details. |
+
+A `baseline` block records who completed a reference run, how long it took,
+whether it succeeded, what artifacts were produced, and any ambiguities or
+mismatches discovered. Tasks in a season pack should reach `verified` tier
+before being used for competitive scoring.
 
 ## Task Quality Checklist
 
@@ -99,3 +113,6 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 - Hardware and configuration metadata are requested explicitly when needed, so judges do not confuse a stronger machine with a better-tuned node.
 - The task has an expected answer key or judge notes, even if not shown to participants.
 - For v2 envelopes, oracle and judge notes are stored externally (see [oracle/](/oracle) directory).
+- The task tier is set appropriately — `draft` for new tasks, `smoke` after at least one adapter run, `verified` after a human or trusted baseline completes it with matching judge results.
+- Baseline records are populated for tasks used in competitive seasons.
+- Known ambiguities and mismatches are filed as issues rather than silently editing history.
