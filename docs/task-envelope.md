@@ -14,6 +14,9 @@ event_family: ops-relay
 category: incident-diagnosis
 time_limit_minutes: 30
 participant_visibility: visible
+evaluation_focus:
+  - mission_execution
+  - configuration_fitness
 
 objective: >
   Diagnose why a Telegram user did not receive the final visible reply even
@@ -50,7 +53,7 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 | schema_version | Envelope schema version. |
 | task_id | Stable event identifier. |
 | title | Human-readable task title. |
-| event_family | Ops Relay, Code Sprint, Wiki Marathon, Safety Trial, Coordination Drill. |
+| event_family | Ops Relay, Node Readiness, Performance Trial, Code Sprint, Wiki Marathon, Safety Trial, Coordination Drill. |
 | category | More specific task category. |
 | time_limit_minutes | Hard or soft time limit. |
 | objective | What success means. |
@@ -63,6 +66,9 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 
 - background
 - environment
+- evaluation_focus
+- hardware_profile
+- baseline_profile
 - fixtures
 - hidden_judge_notes
 - labels
@@ -79,4 +85,6 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 - The allowed and forbidden actions are explicit.
 - There is enough fixture data or environment context to judge the result.
 - The scoring rubric can distinguish safe partial work from unsafe false completion.
+- Node-readiness and performance tasks state whether they reward absolute hardware capacity, configuration quality, or both.
+- Hardware and configuration metadata are requested explicitly when needed, so judges do not confuse a stronger machine with a better-tuned node.
 - The task has an expected answer key or judge notes, even if not shown to participants.

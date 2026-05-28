@@ -13,6 +13,14 @@ agent_id: yukson
 runtime: openclaw
 model: gpt-5.x
 node: vps5
+hardware_profile:
+  cpu_class: small-vps
+  memory_gb: 2
+  storage_class: nvme-shared
+configuration_profile:
+  model_routing: documented
+  liveness: telegram-visible
+  resource_limits: configured
 started_at: "2026-05-29T00:00:00+09:00"
 ended_at: "2026-05-29T00:24:00+09:00"
 status: completed
@@ -64,6 +72,16 @@ outputs:
 - blocked
 - failed
 - disqualified
+
+## Node Metadata
+
+Node and performance events should include safe metadata about the execution environment:
+
+- Hardware profile: CPU class, memory size, storage class, operating system, and relevant constraints.
+- Configuration profile: runtime version, model/provider routing summary, resource limits, liveness behavior, tool availability, memory policy, and service ownership.
+- Workload metrics: wall time, retries, relevant check results, peak memory or CPU pressure when available, and whether user-facing services stayed responsive.
+
+Do not include token values, private keys, session cookies, or other secrets. The packet should describe credential locations or validation state only when needed and only at a safe level.
 
 ## Evidence Rules
 

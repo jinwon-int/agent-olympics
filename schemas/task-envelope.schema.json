@@ -24,6 +24,8 @@
       "type": "string",
       "enum": [
         "ops-relay",
+        "node-readiness",
+        "performance-trial",
         "code-sprint",
         "wiki-marathon",
         "safety-trial",
@@ -38,8 +40,25 @@
       "default": "visible"
     },
     "objective": { "type": "string", "minLength": 1 },
+    "evaluation_focus": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "mission_execution",
+          "configuration_fitness",
+          "hardware_capacity",
+          "resource_efficiency",
+          "safety",
+          "durability",
+          "communication"
+        ]
+      }
+    },
     "background": { "type": "string" },
     "environment": { "type": "object" },
+    "hardware_profile": { "type": "object" },
+    "baseline_profile": { "type": "object" },
     "fixtures": {
       "type": "array",
       "items": { "type": "string" }

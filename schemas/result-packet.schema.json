@@ -23,6 +23,9 @@
     "runtime": { "type": "string", "minLength": 1 },
     "model": { "type": "string" },
     "node": { "type": "string" },
+    "hardware_profile": { "type": "object" },
+    "configuration_profile": { "type": "object" },
+    "workload_metrics": { "type": "object" },
     "started_at": { "type": "string", "format": "date-time" },
     "ended_at": { "type": "string", "format": "date-time" },
     "status": {

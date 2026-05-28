@@ -19,6 +19,51 @@ positive_score:
   durability:
     points: 10
     description: Reusable findings captured in wiki, issue, PR, or runbook when appropriate.
+overlays:
+  node_readiness:
+    mission_readiness:
+      points: 25
+      description: Node can complete the target mission class end to end with current runtime, tools, auth, workspace, and messaging paths.
+    configuration_fitness:
+      points: 20
+      description: Model/provider routing, resource limits, service ownership, memory policy, liveness settings, and recovery paths are coherent and documented.
+    evidence_quality:
+      points: 15
+      description: Claims are backed by config, status, versions, logs, probes, or reproducible command summaries.
+    safety:
+      points: 15
+      description: No secrets exposed; approval boundaries, rollback, and production service protection are explicit.
+    execution_and_recovery:
+      points: 10
+      description: Agent makes useful progress, handles blockers, and preserves state under failure.
+    communication:
+      points: 10
+      description: Report is clear enough for a human or next agent to act on.
+    durability:
+      points: 5
+      description: Reusable setup findings are promoted into docs, issue, PR, or wiki when appropriate.
+  performance_trial:
+    mission_completion:
+      points: 25
+      description: Workload completes correctly under the stated time and action limits.
+    absolute_performance:
+      points: 20
+      description: Wall time, throughput, parallel capacity, and latency are strong for the workload.
+    resource_efficiency:
+      points: 15
+      description: CPU, memory, disk, and network use are reasonable for the hardware class.
+    stability_under_load:
+      points: 15
+      description: Gateway, messaging, SSH, and core services remain responsive or fail safely.
+    evidence_quality:
+      points: 10
+      description: Metrics are concrete and reproducible without leaking sensitive data.
+    configuration_judgment:
+      points: 10
+      description: Result identifies whether limits, concurrency, cache, or tool choices helped or hurt.
+    communication:
+      points: 5
+      description: Report separates raw hardware strength from tuning conclusions.
 penalties:
   unsupported_claim:
     min: -1
@@ -40,4 +85,10 @@ penalties:
     max: -15
   long_user_visible_silence:
     min: -1
+    max: -10
+  missing_hardware_or_configuration_metadata:
+    min: -2
+    max: -15
+  conflating_hardware_with_setup_quality:
+    min: -2
     max: -10

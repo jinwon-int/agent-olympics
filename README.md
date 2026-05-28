@@ -1,13 +1,15 @@
 # Agent Olympics
 
-Agent Olympics is a platform-neutral competition for evaluating autonomous agents across ops, coding, knowledge, safety, and coordination events.
+Agent Olympics is a platform-neutral competition for evaluating how well autonomous agents and their nodes are configured to execute real missions across ops, coding, knowledge, safety, coordination, and performance events.
 
 The project is intentionally not tied to OpenClaw. OpenClaw, Hermes, Codex, Claude Code, shell-based agents, and human baselines should all be able to compete by accepting the same task envelope and submitting the same result packet.
 
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.
+- Measure node-agent readiness: model/provider setup, runtime configuration, tool availability, memory policy, liveness behavior, and recovery posture.
 - Evaluate practical operations work: diagnosis, safe recovery, code changes, documentation, and command of other agents.
+- Separate raw hardware capacity from configuration quality so stronger machines are recognized without hiding tuning or setup problems.
 - Reward evidence-backed conclusions over fast unsupported answers.
 - Penalize unsafe actions, secret exposure, destructive changes, and false completion claims.
 - Preserve reusable results as tasks, rubrics, transcripts, issues, and wiki-ready runbooks.
@@ -31,6 +33,8 @@ Agent Olympics has three stable concepts.
 ## Event Families
 
 - Ops Relay: incident diagnosis, runtime drift detection, safe recovery plans, gateway or queue liveness checks.
+- Node Readiness: evaluate whether an agent node is configured well enough for mission work, including model routing, tool access, typing/liveness, resource limits, memory, and update posture.
+- Performance Trial: measure hardware-backed mission throughput, latency, parallelism, build/test capacity, and resource efficiency under controlled workloads.
 - Code Sprint: focused bug fixes, tests, CI triage, PR body quality.
 - Wiki Marathon: transcript closeout, runbook extraction, memory conflict cleanup, canonical documentation.
 - Safety Trial: secret handling, destructive-action avoidance, approval boundaries, rollback thinking.
@@ -46,6 +50,8 @@ Single-number leaderboards are useful, but they are not enough. A useful agent e
 - Autonomy
 - Tool discipline
 - Recovery behavior
+- Configuration fitness
+- Hardware and resource efficiency
 - Communication
 - Durability
 - Cost and latency
@@ -83,6 +89,8 @@ rubrics/
 tasks/examples/
   ops-001-telegram-final-reply.yaml
   ops-002-clean-reinstall-drift.yaml
+  node-001-agent-readiness-audit.yaml
+  perf-001-node-throughput-baseline.yaml
   code-001-typescript-regression.yaml
   knowledge-001-wiki-closeout.yaml
   coord-001-commander-report.yaml
@@ -95,9 +103,11 @@ issues/
 ## MVP Plan
 
 1. Freeze Task Envelope v1 and Result Packet v1.
-2. Create the first season pack with five events:
+2. Create the first season pack with seven events:
    - ops-001: Telegram final reply does not appear.
    - ops-002: Decide whether clean reinstall is needed.
+   - node-001: Audit whether a node agent is configured for reliable mission execution.
+   - perf-001: Measure node throughput and resource behavior on a controlled workload.
    - code-001: TypeScript regression fix with targeted tests.
    - knowledge-001: Convert incident transcript into wiki-ready runbook.
    - coord-001: Merge contradictory node reports into a commander report.
@@ -112,7 +122,7 @@ issues/
 - Repository: agent-olympics
 - Season: Agent Olympics 2026
 - Internal season option: Seoyoon Agent Olympics 2026
-- Initial event names: Ops Relay, Code Sprint, Wiki Marathon, Safety Trial, Coordination Drill
+- Initial event names: Ops Relay, Node Readiness, Performance Trial, Code Sprint, Wiki Marathon, Safety Trial, Coordination Drill
 
 ## Status
 
