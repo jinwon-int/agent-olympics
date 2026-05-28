@@ -1,0 +1,143 @@
+# Evidence Bundle — ops-001 / yukson
+#
+# Collection of evidence artifacts referenced by the result packet and trace.
+# Redaction rules describe the policy — never the secret value itself.
+
+schema_version: 1
+bundle_id: eb-ops-001-yukson-001
+run_id: run-ops-001-yukson-20260529
+agent_id: yukson
+generated_at: "2026-05-29T00:24:00+09:00"
+items:
+  - id: ev-001
+    kind: log
+    source: gateway journal
+    summary: >
+      Gateway delivery log entry showing source-visible reply mode mismatch
+      after stale embedded-run recovery. Redacted to remove API token
+      values.
+    content_ref: evidence/ops-001/gateway-delivery-log.txt
+    content_type: text/plain
+    size_bytes: 4280
+    checksum:
+      algorithm: sha256
+      value: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1"
+    redacted: true
+    redaction_rule: "api_token_values_in_log_entries"
+    metadata:
+      source_file: /var/log/openclaw/journal.log
+      log_level: warn
+      line_range: "142-143"
+
+  - id: ev-002
+    kind: transcript_excerpt
+    source: session transcript
+    summary: >
+      Session transcript excerpt showing the final assistant answer at
+      position #47. Transcript confirms the answer was written but
+      delivery metadata shows null target.
+    content_ref: evidence/ops-001/transcript-excerpt.txt
+    content_type: text/plain
+    size_bytes: 2150
+    checksum:
+      algorithm: sha256
+      value: "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+    redacted: false
+    metadata:
+      session_id: "sess-abc123"
+      message_position: 47
+      message_role: assistant
+
+  - id: ev-003
+    kind: command_output
+    source: gateway status check
+    summary: >
+      Gateway readiness check output showing healthy status and zero
+      message queue depth.
+    content_ref: evidence/ops-001/gateway-status.txt
+    content_type: text/plain
+    size_bytes: 890
+    checksum:
+      algorithm: sha256
+      value: "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3"
+    redacted: false
+    metadata:
+      command: "openclaw status"
+      exit_code: 0
+
+  - id: ev-004
+    kind: config_snippet
+    source: session metadata
+    summary: >
+      Session metadata showing thread_id present but delivery target
+      (channel target) set to null after embedded-run recovery.
+    content_ref: evidence/ops-001/session-metadata.txt
+    content_type: text/plain
+    size_bytes: 640
+    checksum:
+      algorithm: sha256
+      value: "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4"
+    redacted: false
+    metadata:
+      session_id: "sess-abc123"
+      inspected_field: "delivery_target"
+
+  - id: ev-005
+    kind: probe_result
+    source: Telegram channel probe
+    summary: >
+      Telegram outbound probe delivered successfully, confirming the
+      channel path and credentials are functional.
+    content_ref: evidence/ops-001/telegram-probe.txt
+    content_type: text/plain
+    size_bytes: 520
+    checksum:
+      algorithm: sha256
+      value: "e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5"
+    redacted: false
+    metadata:
+      probe_type: echo_message
+      channel: telegram
+      result: delivered
+
+  - id: ev-006
+    kind: config_snippet
+    source: runtime delivery configuration
+    summary: >
+      Runtime config showing source-visible reply mode is enabled but
+      delivery target initialization in the recovery code path is missing.
+    content_ref: evidence/ops-001/delivery-config.txt
+    content_type: text/plain
+    size_bytes: 980
+    checksum:
+      algorithm: sha256
+      value: "f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+    redacted: false
+    metadata:
+      config_file: "runtime.yaml"
+      section: "delivery.reply_mode"
+      relevant_key: "source_visible"
+
+  - id: ev-007
+    kind: url
+    source: session communication
+    summary: >
+      Link to the diagnosis report message delivered to the human user.
+    content_ref: "https://github.com/jinwon-int/agent-olympics/issues/29#issuecomment-xxx"
+    content_type: text/html
+    size_bytes: null
+    redacted: false
+    metadata:
+      channel: github_issue_comment
+      type: diagnosis_report
+
+redaction_policy:
+  applied_rules:
+    - rule_id: rule-001
+      pattern_description: "API token values in log output"
+      reason: "Prevent credential exposure in shared evidence"
+      scope: specific_kinds
+    - rule_id: rule-002
+      pattern_description: "Session identifiers in non-essential fields"
+      reason: "Limit session correlation scope"
+      scope: specific_ids
