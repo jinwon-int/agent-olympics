@@ -77,6 +77,20 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 - cost_limit
 - model_visibility_policy
 - transcript_policy
+- tier
+- baseline
+
+### Verification Fields
+
+| Field | Meaning |
+|---|---|
+| tier | Task readiness level: `draft`, `smoke`, `verified`, `retired`. Default `draft`. |
+| baseline | Human or trusted baseline record. See [Task Verification](task-verification.md) for field details. |
+
+A `baseline` block records who completed a reference run, how long it took,
+whether it succeeded, what artifacts were produced, and any ambiguities or
+mismatches discovered. Tasks in a season pack should reach `verified` tier
+before being used for competitive scoring.
 
 ## Task Quality Checklist
 
@@ -88,3 +102,6 @@ scoring_rubric: rubrics/agent-olympics-v1.yaml
 - Node-readiness and performance tasks state whether they reward absolute hardware capacity, configuration quality, or both.
 - Hardware and configuration metadata are requested explicitly when needed, so judges do not confuse a stronger machine with a better-tuned node.
 - The task has an expected answer key or judge notes, even if not shown to participants.
+- The task tier is set appropriately — `draft` for new tasks, `smoke` after at least one adapter run, `verified` after a human or trusted baseline completes it with matching judge results.
+- Baseline records are populated for tasks used in competitive seasons.
+- Known ambiguities and mismatches are filed as issues rather than silently editing history.

@@ -35,6 +35,21 @@ required_outputs:
   - next_action
   - durable_memory_decision
 scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: smoke
+baseline:
+  baseline_actor: yukson  # OpenClaw reference runner
+  baseline_time_sec: 1440
+  baseline_success: true
+  baseline_artifact_ref: results/ops-001-yukson.yaml
+  difficulty_notes: >
+    The task requires distinguishing transcript-level answer presence from
+    actual outbound delivery — a distinction first-time participants may miss.
+    The delivery-layer investigation (gateway logs, message metadata) is the
+    critical step.
+  known_ambiguities: >
+    "Delivery failure" could mean Telegram API rejection or runtime
+    source-visible reply bug. Both are valid interpretations but lead to
+    different scoring. The hidden judge notes accept any evidenced root cause.
 labels:
   - telegram
   - gateway
