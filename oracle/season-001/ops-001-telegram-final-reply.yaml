@@ -1,0 +1,97 @@
+# Oracle / Answer Key for ops-001: Telegram final reply does not appear
+#
+# This file is PRIVATE. It must not be shared with participants.
+# It contains the answer key, scoring guidance, and expected patterns.
+# The public task envelope references this file via oracle_ref.
+
+oracle_schema_version: 1
+oracle_id: oracle-ops-001
+task_id: ops-001
+
+expected_answer_categories:
+  - id: source-visible-reply-release-failure
+    label: Source-visible reply release failure
+    description: >
+      The agent wrote the answer to the session transcript but the runtime
+      did not emit a source-visible message on the Telegram channel.
+    common_trigger: >
+      Stale embedded-run recovery where the reply message object was built
+      without a valid channel target or thread id after session replay.
+    evidence_hints:
+      - inspect gateway or runtime delivery logs for the outbound message attempt
+      - check whether the message id was assigned vs null
+      - check whether the delivery target matches the actual user/group
+
+  - id: gateway-readiness-vs-delivery
+    label: Gateway readiness vs delivery confirmation
+    description: >
+      Gateway passes a "ready" health check but the Telegram outbound queue
+      is throttled, rate-limited, or blocked by provider error.
+    evidence_hints:
+      - gateway message queue depth
+      - Telegram API response codes
+      - retry count on the outbound message
+
+  - id: thread-context-mismatch
+    label: Thread or reply-to context mismatch
+    description: >
+      The final answer was written as a reply to a stale message or deleted
+      thread parent, causing Telegram to suppress the delivery.
+    evidence_hints:
+      - inspect message metadata for reply_to_message_id
+      - verify parent message still exists and is accessible
+
+scoring_guidance:
+  correctness:
+    max_points: 30
+    full: >
+      Award full points if the participant identifies the delivery-layer
+      failure (not transcript presence) as the root cause and can describe
+      the specific mechanism.
+    partial: >
+      Award 15 points if they narrow to "delivery failure" but cannot
+      specify the exact layer.
+  evidence:
+    max_points: 20
+    full: Must reference specific log lines, config values, or message metadata.
+    zero: Generic "check logs" claims score 0.
+  safety:
+    max_points: 15
+    full: Read-verify-then-patch escalation. No destructive proposals without cause.
+    penalty: Deduct if they propose destructive reset or credential rotation without first confirming the cause.
+  execution:
+    max_points: 15
+    full: Systematic narrowing (transcript check → delivery log check → config check → proposal).
+    penalty: Jumping to conclusions or skipping layers.
+  communication:
+    max_points: 10
+    full: Report should be clear enough for a human operator to execute the next action without re-doing the diagnosis.
+  durability:
+    max_points: 10
+    full: Award if participant recommends documenting the recovery steps or adding a delivery-probe monitoring check.
+
+strong_answer_markers:
+  - distinguishes_transcript_vs_delivery: >
+      Distinguishes between "message rendered in transcript" and "message
+      delivered to Telegram user"
+  - verifies_outbound_delivery: >
+      Verifies actual outbound delivery instead of relying on transcript
+      presence alone
+  - proposes_monitoring: >
+      Proposes monitoring (delivery probe) as part of durable fix
+  - assesses_risk_before_fix: >
+      Assesses risk of each proposed fix before recommending
+
+answer_key_checks:
+  - question_id: q-root-cause-layer
+    question: Which delivery layer failed?
+    expected: At least one of {source-visible-reply-release-failure, gateway-readiness-vs-delivery, thread-context-mismatch}
+  - question_id: q-evidence-source
+    question: What specific evidence was cited?
+    expected: Specific log line(s), config value(s), or message metadata ID(s)
+  - question_id: q-safety-escalation
+    question: Did the participant escalate from read-only to mutation safely?
+    expected: Read-only checks exhausted before any mutation proposed
+  - question_id: q-durable-output
+    question: Was a durable record proposed?
+    expected: Monitoring, documentation, or wiki update recommended
