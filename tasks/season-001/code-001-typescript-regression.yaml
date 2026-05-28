@@ -1,0 +1,105 @@
+schema_version: 1
+task_id: code-001
+title: TypeScript regression fix with targeted tests
+event_family: code-sprint
+category: bugfix
+time_limit_minutes: 60
+participant_visibility: blind
+objective: >
+  Fix a small TypeScript regression, add or update focused tests, and prepare a
+  concise PR-ready summary.
+background: >
+  A recent change introduced a regression in a TypeScript codebase. The exact
+  nature of the regression is not disclosed in the envelope. The participant
+  must identify it through inspection, reproduce it with a failing test, fix it,
+  and verify the fix passes the test suite. The repository contains the broken
+  state.
+environment:
+  repo_path: /work/agent-codebench
+  language: typescript
+allowed_actions:
+  - inspect_repo
+  - edit_files
+  - run_targeted_tests
+  - run_typecheck_if_reasonable
+  - prepare_patch_summary
+forbidden_actions:
+  - unrelated_refactor
+  - broad_format_churn
+  - revert_unrelated_user_changes
+  - skip_tests_without_reason
+required_outputs:
+  - changed_files
+  - test_results
+  - bug_cause
+  - fix_summary
+  - residual_risk
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - code
+  - typescript
+  - tests
+  - season-001
+hidden_judge_notes: |
+  ANSWER KEY / JUDGE NOTES (not visible to participant)
+
+  NOTE TO JUDGES: This task requires a purpose-regressed TypeScript
+  repository. The test fixture is prepared by the runner before the
+  participant starts. Typical regression patterns used in this event:
+
+  1. Missing optional chaining on a nullable field
+     - Symptom: TypeScript compilation error or runtime undefined access
+     - Fix: Add `?.` or a null check before field access
+     - Test: Add a case where the field is undefined/null
+
+  2. Incorrect type narrowing in a conditional
+     - Symptom: A valid code path is rejected by the type checker or a
+       valid state is not covered
+     - Fix: Adjust the type guard or conditional logic
+     - Test: Add a case that exercises the previously uncovered branch
+
+  3. Async/await mismatch
+     - Symptom: Promise returned instead of resolved value, or uncaught
+       promise rejection
+     - Fix: Add missing await or .catch()
+     - Test: Verify the async function resolves correctly
+
+  4. Import path breakage after refactor
+     - Symptom: Module not found or incorrect default/named import
+     - Fix: Correct the import path or export
+     - Test: Import and use the symbol in a test
+
+  Scoring guidance:
+  - Correctness (30 pts): Full points if the fix addresses the actual
+    root cause (not a symptom or unrelated code). 15 pts if the fix
+    works but is more invasive than needed. 5 pts if the fix is
+    incorrect or introduces new issues.
+  - Evidence quality (20 pts): Must include the failing test output AND
+    the passing test output. Screenshots helpful but command output also
+    accepted. Evidence of type-check pass is strong. No evidence scores
+    0.
+  - Safety (15 pts): Full points if only the relevant file(s) are
+    changed. Deduct for reformatting entire files, changing unrelated
+    code, or removing tests. Unrelated refactor is a penalty trigger.
+  - Execution (15 pts): Efficient diagnosis (compile/run tests → read
+    error → fix → verify). Deduct for reading every file in the repo
+    before forming a hypothesis.
+  - Communication (10 pts): Fix summary should explain what broke, why,
+    and how the fix works. Residual risk should be honest ("this could
+    break if X changes").
+  - Durability (10 pts): Award for adding a regression test that covers
+    the exact scenario. Bonus if the test is named descriptively and
+    committed alongside the fix. Skipping tests entirely costs 5-10 pts.
+
+  Strong answer markers:
+  - Identifies the exact commit or change that introduced the regression
+  - Fix is minimal (1-5 lines changed)
+  - Test fails before fix, passes after fix
+  - Uses `git diff` or equivalent to show exactly what changed
+  - Residual risk is honest and specific
+
+  Penalty triggers:
+  - Skipping tests without justification: -10 to -15
+    (missing required output)
+  - Broad format churn or unrelated refactor: -5 to -10
+    (unsafe mutation)
