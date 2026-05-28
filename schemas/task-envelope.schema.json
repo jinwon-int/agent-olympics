@@ -83,7 +83,33 @@
       "type": "array",
       "items": { "type": "string" }
     },
-    "hidden_judge_notes": { "type": "string" }
+    "hidden_judge_notes": { "type": "string" },
+    "expected_artifacts": {
+      "type": "object",
+      "description": "Expected artifacts and their required-or-optional status."
+    },
+    "approval_policy": {
+      "type": "string",
+      "description": "Describes which actions require explicit approval before execution."
+    },
+    "cost_limit": {
+      "type": "object",
+      "description": "Maximum allowed cost (e.g., USD, tokens, API calls).",
+      "properties": {
+        "max_cost_usd": { "type": "number", "minimum": 0 },
+        "max_tokens": { "type": "integer", "minimum": 0 },
+        "max_api_calls": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "model_visibility_policy": {
+      "type": "string",
+      "enum": ["required", "optional", "hidden"],
+      "description": "Whether the participant model identity must be reported."
+    },
+    "transcript_policy": {
+      "type": "string",
+      "description": "Whether and how the participant transcript should be preserved for judging."
+    }
   },
   "additionalProperties": true
 }
