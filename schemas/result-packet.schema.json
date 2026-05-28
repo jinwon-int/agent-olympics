@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jinwon-int/agent-olympics/schemas/result-packet.schema.json",
   "title": "Agent Olympics Result Packet",
+  "description": "Standard output format submitted by each participant. Contains status, summary, evidence, findings, and outputs. May reference an external trace record and evidence bundle via run_id. Redaction fields (redacted, redaction_reason) describe what was removed — never the secret value itself.",
   "type": "object",
   "required": [
     "schema_version",
@@ -19,6 +20,7 @@
   "properties": {
     "schema_version": { "type": "integer", "const": 1 },
     "packet_id": { "type": "string", "minLength": 1, "description": "Unique packet identifier for judge cross-referencing." },
+    "run_id": { "type": "string", "minLength": 1, "description": "Links to an external run result and evidence bundle." },
     "task_id": { "type": "string", "minLength": 1 },
     "agent_id": { "type": "string", "minLength": 1 },
     "agent_version": { "type": "string", "description": "Agent software version." },
@@ -45,11 +47,19 @@
           "type": { "type": "string" },
           "target": { "type": "string" },
           "command_summary": { "type": "string" },
-          "redacted": { "type": "boolean" },
+          "redacted": {
+            "type": "boolean",
+            "description": "True if action output or arguments contained sensitive data."
+          },
+          "redaction_reason": {
+            "type": "string",
+            "description": "Value-free reason for redaction, e.g. 'command_output_contained_api_token'. Must not include the actual secret value."
+          },
           "evidence_id": { "type": "string" },
           "duration_seconds": { "type": "number" },
           "result": { "type": "string" }
-        }
+        },
+        "additionalProperties": false
       }
     },
     "evidence": {
@@ -62,6 +72,14 @@
           "kind": { "type": "string" },
           "source": { "type": "string" },
           "summary": { "type": "string" },
+          "redacted": {
+            "type": "boolean",
+            "description": "True if the evidence summary or referenced content contains redacted material."
+          },
+          "redaction_reason": {
+            "type": "string",
+            "description": "Value-free reason for redaction. Must not include the actual secret value."
+          },
           "content_ref": { "type": "string", "description": "Path or URL to full evidence content." }
         },
         "additionalProperties": true
@@ -100,8 +118,17 @@
         "properties": {
           "timestamp": { "type": "string", "format": "date-time" },
           "channel": { "type": "string" },
-          "summary": { "type": "string" }
-        }
+          "summary": { "type": "string" },
+          "redacted": {
+            "type": "boolean",
+            "description": "True if the communication summary contains redacted material."
+          },
+          "redaction_reason": {
+            "type": "string",
+            "description": "Value-free reason for redaction."
+          }
+        },
+        "additionalProperties": false
       },
       "description": "Optional log of user-facing communication during the task."
     }

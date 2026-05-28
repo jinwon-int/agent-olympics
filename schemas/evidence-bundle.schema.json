@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/evidence-bundle.schema.json",
+  "title": "Agent Olympics Evidence Bundle",
+  "description": "Collection of evidence artifacts referenced by a result packet. Each item carries a content reference, content type, optional checksum, redaction status, and a value-free redaction rule when applicable. Redaction rules describe the policy — never the secret value itself.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "run_id",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "bundle_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique evidence bundle identifier."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The run this bundle belongs to."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this evidence bundle was generated."
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "summary"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "description": "Evidence kind: log, command_output, screenshot, transcript_excerpt, file_diff, config_snippet, probe_result, api_response, url, other."
+          },
+          "source": {
+            "type": ["string", "null"],
+            "description": "Where the evidence came from, e.g. 'gateway journal', 'session transcript', 'git diff'."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable summary of what this evidence contains. Must not include secret values."
+          },
+          "content_ref": {
+            "type": ["string", "null"],
+            "description": "Relative path, absolute path, or URL to the full evidence content."
+          },
+          "content_type": {
+            "type": ["string", "null"],
+            "description": "MIME type or format hint, e.g. 'text/plain', 'image/png', 'application/x-yaml'."
+          },
+          "size_bytes": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "checksum": {
+            "type": "object",
+            "description": "Content integrity hash for tamper detection.",
+            "properties": {
+              "algorithm": {
+                "type": "string",
+                "description": "Hash algorithm, e.g. 'sha256'."
+              },
+              "value": {
+                "type": "string",
+                "description": "Hex-encoded digest."
+              }
+            },
+            "required": ["algorithm", "value"],
+            "additionalProperties": true
+          },
+          "redacted": {
+            "type": ["boolean", "null"],
+            "default": false,
+            "description": "True if portions of the original evidence were redacted."
+          },
+          "redaction_rule": {
+            "type": ["string", "null"],
+            "description": "Value-free rule describing what was redacted, e.g. 'tokens in command output', 'credential values from config snippet'. Must not contain the actual secret."
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Arbitrary metadata key-value pairs (e.g. log level, source line range, tool name)."
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "redaction_policy": {
+      "type": "object",
+      "description": "Global redaction policy applied to all bundle items.",
+      "properties": {
+        "applied_rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule_id": { "type": "string" },
+              "pattern_description": {
+                "type": "string",
+                "description": "Describe what is redacted without exposing patterns."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why this rule exists."
+              },
+              "scope": {
+                "type": "string",
+                "enum": ["all_items", "specific_kinds", "specific_ids"],
+                "description": "Scope of the redaction rule."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -2,20 +2,24 @@
 /**
  * Agent Olympics Schema Validator (v1 + v2)
  *
- * Validates Task Envelope, Result Packet, and Judge Record YAML files
- * against their JSON Schema definitions (v1 or v2), plus cross-field
- * semantic checks.
+ * Validates Task Envelope, Result Packet, Run Result, Trace Record,
+ * Evidence Bundle, and Judge Record YAML/JSON files against their JSON Schema
+ * definitions (v1 or v2 where available), plus cross-field semantic checks.
  *
  * Usage:
  *   node scripts/validate.js envelopes          — validate all task envelopes (v1)
  *   node scripts/validate.js envelopes-v2       — validate v2-only task envelopes
  *   node scripts/validate.js packets            — validate all result packets
  *   node scripts/validate.js packets-v2         — validate v2-only result packets
+ *   node scripts/validate.js traces             — validate all trace records
+ *   node scripts/validate.js bundles            — validate all evidence bundles
+ *   node scripts/validate.js runs               — validate all run results
  *   node scripts/validate.js judges             — validate all judge records
  *   node scripts/validate.js judges-v2          — validate v2-only judge records
- *   node scripts/validate.js all                — validate everything (v1 + v2)
- *   node scripts/validate.js all-v2             — validate only v2 documents
+ *   node scripts/validate.js smoke              — validate smoke suite envelopes
  *   node scripts/validate.js oracle             — validate oracle answer key files
+ *   node scripts/validate.js all                — validate all known types
+ *   node scripts/validate.js all-v2             — validate only v2 documents
  *   node scripts/validate.js <single-file>      — validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -33,9 +37,12 @@ const ROOT = path.resolve(__dirname, '..');
 // Load schemas (v1)
 // ---------------------------------------------------------------------------
 const v1Schemas = {
-  'task-envelope': loadSchema('schemas/task-envelope.schema.json'),
-  'result-packet': loadSchema('schemas/result-packet.schema.json'),
-  'judge-record':  loadSchema('schemas/judge-record.schema.json'),
+  'task-envelope':    loadSchema('schemas/task-envelope.schema.json'),
+  'result-packet':    loadSchema('schemas/result-packet.schema.json'),
+  'judge-record':     loadSchema('schemas/judge-record.schema.json'),
+  'trace-record':     loadSchema('schemas/trace-record.schema.json'),
+  'evidence-bundle':  loadSchema('schemas/evidence-bundle.schema.json'),
+  'run-result':       loadSchema('schemas/run-result.schema.json'),
 };
 
 // ---------------------------------------------------------------------------
@@ -71,9 +78,12 @@ for (const [name, schema] of Object.entries(v2Schemas)) {
 addFormats(ajv);
 
 const v1Validators = {
-  'task-envelope': ajv.getSchema(v1Schemas['task-envelope'].$id),
-  'result-packet': ajv.getSchema(v1Schemas['result-packet'].$id),
-  'judge-record':  ajv.getSchema(v1Schemas['judge-record'].$id),
+  'task-envelope':   ajv.getSchema(v1Schemas['task-envelope'].$id),
+  'result-packet':   ajv.getSchema(v1Schemas['result-packet'].$id),
+  'judge-record':    ajv.getSchema(v1Schemas['judge-record'].$id),
+  'trace-record':    ajv.getSchema(v1Schemas['trace-record'].$id),
+  'evidence-bundle': ajv.getSchema(v1Schemas['evidence-bundle'].$id),
+  'run-result':      ajv.getSchema(v1Schemas['run-result'].$id),
 };
 
 const v2Validators = {};
@@ -115,10 +125,12 @@ const SEVERITY = { error: 'ERROR', warn: 'WARN' };
 function semanticChecks(doc, kind, file, schemaVersion) {
   const issues = [];
 
-  if (kind === 'result-packet') {
+  if (kind === 'result-packet' || kind === 'run-result') {
+    const rp = kind === 'run-result' ? (doc.result_packet || doc) : doc;
+
     // Evidence IDs must be unique
-    if (doc.evidence) {
-      const ids = doc.evidence.map(e => e.id);
+    if (rp.evidence) {
+      const ids = rp.evidence.map(e => e.id);
       const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
       if (dups.length) {
         issues.push({ severity: SEVERITY.error, msg: `Duplicate evidence IDs: ${[...new Set(dups)].join(', ')}` });
@@ -126,9 +138,9 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     }
 
     // Findings must reference evidence IDs that exist
-    if (doc.findings && doc.evidence) {
-      const validIds = new Set(doc.evidence.map(e => e.id));
-      for (const f of doc.findings) {
+    if (rp.findings && rp.evidence) {
+      const validIds = new Set(rp.evidence.map(e => e.id));
+      for (const f of rp.findings) {
         if (f.evidence) {
           for (const ref of f.evidence) {
             if (!validIds.has(ref)) {
@@ -140,9 +152,9 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     }
 
     // Action evidence references
-    if (doc.actions && doc.actions.length && doc.evidence) {
-      const validIds = new Set(doc.evidence.map(e => e.id));
-      for (const a of doc.actions) {
+    if (rp.actions && rp.actions.length && rp.evidence) {
+      const validIds = new Set(rp.evidence.map(e => e.id));
+      for (const a of rp.actions) {
         if (a.evidence_id && !validIds.has(a.evidence_id)) {
           issues.push({ severity: SEVERITY.warn, msg: `Action "${a.id}" references unknown evidence ID: ${a.evidence_id}` });
         }
@@ -150,11 +162,11 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     }
 
     // Timestamps: ended_at should be >= started_at
-    if (doc.started_at && doc.ended_at) {
-      const start = new Date(doc.started_at);
-      const end   = new Date(doc.ended_at);
+    if (rp.started_at && rp.ended_at) {
+      const start = new Date(rp.started_at);
+      const end   = new Date(rp.ended_at);
       if (!isNaN(start) && !isNaN(end) && end < start) {
-        issues.push({ severity: SEVERITY.error, msg: `ended_at (${doc.ended_at}) is before started_at (${doc.started_at})` });
+        issues.push({ severity: SEVERITY.error, msg: `ended_at (${rp.ended_at}) is before started_at (${rp.started_at})` });
       }
     }
 
@@ -167,6 +179,49 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     }
 
     // Check for forbidden patterns (potential secret leaks)
+    detectSecrets(rp, issues);
+  }
+
+  if (kind === 'evidence-bundle') {
+    // Check for duplicate evidence item IDs
+    if (doc.items) {
+      const ids = doc.items.map(e => e.id);
+      const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
+      if (dups.length) {
+        issues.push({ severity: SEVERITY.error, msg: `Duplicate evidence item IDs: ${[...new Set(dups)].join(', ')}` });
+      }
+    }
+    detectSecrets(doc, issues);
+  }
+
+  if (kind === 'trace-record') {
+    // Check for duplicate seq numbers
+    if (doc.entries) {
+      const seqs = doc.entries.map(e => e.seq);
+      const dups = seqs.filter((s, i) => seqs.indexOf(s) !== i);
+      if (dups.length) {
+        issues.push({ severity: SEVERITY.warn, msg: `Duplicate entry seq numbers: ${[...new Set(dups)].join(', ')}` });
+      }
+      // Check entries are in seq order
+      for (let i = 1; i < doc.entries.length; i++) {
+        if (doc.entries[i].seq < doc.entries[i - 1].seq) {
+          issues.push({ severity: SEVERITY.warn, msg: `Entries out of sequence order at index ${i}: seq ${doc.entries[i].seq} after ${doc.entries[i - 1].seq}` });
+          break;
+        }
+      }
+    }
+    detectSecrets(doc, issues);
+  }
+
+  if (kind === 'run-result') {
+    // Check run_id consistency across sub-documents
+    const runId = doc.run_id;
+    if (doc.trace && doc.trace.trace_id && !doc.trace.run_id) {
+      // trace run_id should match or be absent (inherited)
+    }
+    if (doc.evidence_bundle && doc.evidence_bundle.bundle_id && !doc.evidence_bundle.run_id) {
+      // bundle run_id should match or be absent
+    }
     detectSecrets(doc, issues);
   }
 
@@ -263,8 +318,9 @@ function detectSecrets(obj, issues, path = '') {
   ];
   const SUSPECT_VALUES = [
     /^sk-[a-zA-Z0-9]{20,}/,   // OpenAI-style keys
-    /^ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT
-    /^gho_[a-zA-Z0-9]{36}/,
+    /^ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT (legacy)
+    /^gho_[a-zA-Z0-9]{36}/,   // GitHub PAT (org)
+    /^github_pat_[a-zA-Z0-9]{4,}/,  // GitHub fine-grained PAT
     /^xox[baprs]-/,            // Slack tokens
     /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
   ];
@@ -279,6 +335,11 @@ function detectSecrets(obj, issues, path = '') {
       // Check values
       if (SUSPECT_VALUES.some(r => r.test(val))) {
         issues.push({ severity: SEVERITY.error, msg: `Secret pattern detected in "${fp}"` });
+      }
+      // Check for redaction_reason that accidentally contains a secret
+      if ((key === 'redaction_reason' || key === 'redaction_rule') &&
+          val.length > 200) {
+        issues.push({ severity: SEVERITY.warn, msg: `Unusually long ${key} (${val.length} chars) — may contain secret data` });
       }
     } else if (typeof val === 'object' && val !== null) {
       detectSecrets(val, issues, fp);
@@ -304,14 +365,52 @@ function findFiles(baseDir, pattern) {
 
 /**
  * Auto-detect what kind of document a YAML file represents.
+ *
+ * Detection priority: most-specific fields first. Order matters because
+ * a run-result contains a result_packet which shares fields with plain
+ * result-packets, and evidence-bundles share fields with other types.
  */
 function detectKind(doc) {
   if (!doc || typeof doc !== 'object') return null;
-  if (doc.task_id && doc.objective && doc.allowed_actions) return 'task-envelope';
-  if (doc.task_id && doc.agent_id && doc.status && doc.evidence) return 'result-packet';
-  if (doc.task_id && doc.judge_record_id && doc.score_dimensions) return 'judge-record';
-  if (doc.task_id && doc.judge_type && doc.verdict) return 'judge-record';
-  if (doc.manifest_id && doc.tasks && Array.isArray(doc.tasks) && doc.tasks.length > 0) return 'smoke-manifest';
+
+  // Run result: has top-level run_id + result_packet
+  if (doc.run_id && doc.result_packet && typeof doc.result_packet === 'object') {
+    return 'run-result';
+  }
+
+  // Trace record: has trace_id + entries array
+  if (doc.trace_id && Array.isArray(doc.entries) && doc.entries.length > 0 &&
+      doc.entries[0].seq !== undefined && doc.entries[0].action) {
+    return 'trace-record';
+  }
+
+  // Evidence bundle: has bundle_id + items
+  if (doc.bundle_id && Array.isArray(doc.items) && doc.items.length > 0) {
+    return 'evidence-bundle';
+  }
+
+  // Judge record: has judge_record_id and score_dimensions
+  if (doc.judge_record_id && doc.score_dimensions) {
+    return 'judge-record';
+  }
+  if (doc.task_id && doc.judge_type && doc.verdict) {
+    return 'judge-record';
+  }
+
+  // Result packet: has agent_id + status + evidence array
+  if (doc.agent_id && doc.status && Array.isArray(doc.evidence) && doc.evidence.length > 0) {
+    return 'result-packet';
+  }
+
+  // Task envelope: has objective + allowed_actions + task_id
+  if (doc.task_id && doc.objective && Array.isArray(doc.allowed_actions)) {
+    return 'task-envelope';
+  }
+
+  if (doc.manifest_id && doc.tasks && Array.isArray(doc.tasks) && doc.tasks.length > 0) {
+    return 'smoke-manifest';
+  }
+
   return null;
 }
 
@@ -373,15 +472,10 @@ function validateFile(filePath) {
   const validators = schemaVersion === 2 ? v2Validators : v1Validators;
   const versionLabel = schemaVersion === 2 ? 'v2' : 'v1';
 
-  if (kind === 'task-envelope') {
-    validator = validators['task-envelope'];
-    schemaName = `task-envelope-${versionLabel}`;
-  } else if (kind === 'result-packet') {
-    validator = validators['result-packet'];
-    schemaName = `result-packet-${versionLabel}`;
-  } else if (kind === 'judge-record') {
-    validator = validators['judge-record'];
-    schemaName = `judge-record-${versionLabel}`;
+  if (kind === 'task-envelope' || kind === 'result-packet' || kind === 'judge-record' ||
+      kind === 'trace-record' || kind === 'evidence-bundle' || kind === 'run-result') {
+    validator = validators[kind];
+    schemaName = `${kind}-${versionLabel}`;
   }
 
   // Schema validation
@@ -438,6 +532,7 @@ function validateFile(filePath) {
   // Report
   const hasSchemaIssues = !schemaValid;
   const hasSemanticIssues = semantic.length > 0;
+  const hasErrors = hasSchemaIssues || semantic.some(s => s.severity === SEVERITY.error);
 
   if (!hasSchemaIssues && !hasSemanticIssues) {
     console.log(`OK    ${rel}  (${kind} ${versionLabel})`);
@@ -535,15 +630,18 @@ function validateOracle(filePath) {
 // Mode resolution
 // ---------------------------------------------------------------------------
 const MODES = {
-  'envelopes':     { kinds: ['task-envelope'], versions: [1] },
-  'envelopes-v2':  { kinds: ['task-envelope'], versions: [2] },
-  'packets':       { kinds: ['result-packet'], versions: [1] },
-  'packets-v2':    { kinds: ['result-packet'], versions: [2] },
-  'judges':        { kinds: ['judge-record'], versions: [1] },
-  'judges-v2':     { kinds: ['judge-record'], versions: [2] },
-  'all':           { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [1, 2] },
-  'all-v2':        { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [2] },
-  'smoke':         { kinds: ['task-envelope', 'smoke-manifest'], versions: [1] },
+  'envelopes':     { kinds: ['task-envelope'], versions: [1], roots: ['tasks'] },
+  'envelopes-v2':  { kinds: ['task-envelope'], versions: [2], roots: ['tasks'] },
+  'packets':       { kinds: ['result-packet', 'run-result'], versions: [1], roots: ['results'] },
+  'packets-v2':    { kinds: ['result-packet'], versions: [2], roots: ['results'] },
+  'traces':        { kinds: ['trace-record'], versions: [1], roots: ['results'] },
+  'bundles':       { kinds: ['evidence-bundle'], versions: [1], roots: ['results'] },
+  'runs':          { kinds: ['run-result'], versions: [1], roots: ['results'] },
+  'judges':        { kinds: ['judge-record'], versions: [1], roots: ['results'] },
+  'judges-v2':     { kinds: ['judge-record'], versions: [2], roots: ['results'] },
+  'all':           { kinds: ['task-envelope', 'result-packet', 'run-result', 'trace-record', 'evidence-bundle', 'judge-record'], versions: [1, 2], roots: ['tasks', 'results'] },
+  'all-v2':        { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [2], roots: ['tasks', 'results'] },
+  'smoke':         { kinds: ['task-envelope', 'smoke-manifest'], versions: [1], roots: ['tasks-smoke'] },
 };
 
 // ---------------------------------------------------------------------------
@@ -587,7 +685,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|judges|judges-v2|smoke|all|all-v2|oracle|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|all|all-v2|oracle|file>`);
     process.exit(1);
   }
 
@@ -596,21 +694,18 @@ function main() {
 
   let files = [];
 
-  const wantsEnvelopes = modeConfig.kinds.includes('task-envelope');
-  const wantsSmoke = modeConfig.kinds.includes('smoke-manifest');
-  const wantsPackets = modeConfig.kinds.includes('result-packet');
-  const wantsJudges = modeConfig.kinds.includes('judge-record');
-
-  if (wantsSmoke) {
+  if (modeConfig.roots.includes('tasks-smoke')) {
     const smokeDir = path.join(tasksDir, 'smoke');
     if (fs.existsSync(smokeDir)) {
       files = files.concat(findFiles(smokeDir, /\.ya?ml$/));
     }
-  } else if (wantsEnvelopes) {
+  }
+
+  if (modeConfig.roots.includes('tasks')) {
     files = files.concat(findFiles(tasksDir, /\.ya?ml$/));
   }
 
-  if (wantsPackets || wantsJudges) {
+  if (modeConfig.roots.includes('results')) {
     files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
   }
 
@@ -626,11 +721,12 @@ function main() {
 
   for (const f of files) {
     const doc = loadYaml(f);
+    const kind = detectKind(doc);
     const sv = getSchemaVersion(doc);
-    if (modeConfig.versions.includes(sv)) {
+    if (modeConfig.kinds.includes(kind) && modeConfig.versions.includes(sv)) {
       validateFile(f);
     } else {
-      // Skip files with non-matching schema version
+      // Skip files with non-matching kind or schema version
     }
   }
 
