@@ -73,19 +73,12 @@ An agent that safely stops with a well-supported partial result should score hig
 ## Repository Layout
 
 ```text
-docs/
-  competition-model.md
-  task-envelope.md
-  result-packet.md
-  rubric.md
-  events.md
-  adapters.md
-  references.md
 schemas/
-  task-envelope.schema.json
-  result-packet.schema.json
+  task-envelope.schema.json   — Envelope schema (v1)
+  result-packet.schema.json   — Result packet schema (v1)
+  judge-record.schema.json    — Judge record schema (v1)
 rubrics/
-  agent-olympics-v1.yaml
+  agent-olympics-v1.yaml      — Scoring rubric
 tasks/examples/
   ops-001-telegram-final-reply.yaml
   ops-002-clean-reinstall-drift.yaml
@@ -95,9 +88,21 @@ tasks/examples/
   knowledge-001-wiki-closeout.yaml
   coord-001-commander-report.yaml
 results/
-  .gitkeep
+  *.yaml                      — Example and submitted result packets
+docs/
+  competition-model.md
+  task-envelope.md
+  result-packet.md
+  rubric.md
+  events.md
+  adapters.md
+  references.md
+scripts/
+  validate.js                 — Schema + semantic validator
 issues/
   reference-*.md
+  roadmap-*.md
+Makefile                      — Build/validation targets (requires make)
 ```
 
 ## MVP Plan
@@ -124,6 +129,62 @@ issues/
 - Internal season option: Seoyoon Agent Olympics 2026
 - Initial event names: Ops Relay, Node Readiness, Performance Trial, Code Sprint, Wiki Marathon, Safety Trial, Coordination Drill
 
+## Validation
+
+Task envelopes, result packets, and judge records can be validated against their JSON Schema definitions.
+
+### Prerequisites
+
+- Node.js >= 18
+
+### Setup
+
+```bash
+npm install
+```
+
+### Validate All Files
+
+```bash
+npm test
+# or: npx node scripts/validate.js all
+```
+
+### Validate Specific Categories
+
+```bash
+# Validate all task envelopes (tasks/examples/*.yaml)
+node scripts/validate.js envelopes
+
+# Validate all result packets and judge records (results/*.yaml)
+node scripts/validate.js packets
+```
+
+### Validate a Single File
+
+```bash
+node scripts/validate.js tasks/examples/ops-001-telegram-final-reply.yaml
+```
+
+The validator runs three layers of checks:
+
+1. **Schema conformance** — YAML documents must match the JSON Schema
+2. **Cross-field rules** — Evidence references must exist, timestamps must be consistent
+3. **Secret detection** — Known credential patterns (API keys, tokens, private keys) should not appear
+
+### Using Make (optional)
+
+```bash
+make validate       # Validate all
+make validate-envelopes
+make validate-packets
+```
+
 ## Status
 
 This repository starts as a planning and benchmark-design repo. It should become executable only after the schema, task fixtures, and adapter contracts are stable.
+
+The v1 schemas are frozen:
+- `schemas/task-envelope.schema.json` — Task Envelope v1
+- `schemas/result-packet.schema.json` — Result Packet v1
+- `schemas/judge-record.schema.json` — Judge Record v1

@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/judge-record.schema.json",
+  "title": "Agent Olympics Judge Record",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "judge_record_id",
+    "task_id",
+    "packet_id",
+    "judge_type",
+    "scoring_rubric",
+    "score_dimensions",
+    "total_score",
+    "verdict",
+    "judge_notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "judge_record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "packet_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "judge_type": {
+      "type": "string",
+      "enum": ["automated", "human", "llm-assisted", "hybrid"]
+    },
+    "judge_identity": {
+      "type": "string",
+      "description": "Optional judge name, role, or model identifier."
+    },
+    "scoring_rubric": {
+      "type": "string",
+      "minLength": 1
+    },
+    "score_dimensions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["score", "max"],
+        "properties": {
+          "score": { "type": "number" },
+          "max": { "type": "number" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "total_score": {
+      "type": "number"
+    },
+    "penalties_applied": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "amount", "reason"],
+        "properties": {
+          "kind": { "type": "string" },
+          "amount": { "type": "number" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "conditional_pass", "fail", "disqualification"]
+    },
+    "judge_notes": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimension_notes": {
+      "type": "object",
+      "description": "Optional per-dimension free-text notes beyond scores."
+    },
+    "evidence_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_id": { "type": "string" },
+          "verified": { "type": "boolean" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}
