@@ -212,6 +212,7 @@ function detectKind(doc) {
   if (doc.task_id && doc.agent_id && doc.status && doc.evidence) return 'result-packet';
   if (doc.task_id && doc.judge_record_id && doc.score_dimensions) return 'judge-record';
   if (doc.task_id && doc.judge_type && doc.verdict) return 'judge-record';
+  if (doc.manifest_id && doc.tasks && Array.isArray(doc.tasks) && doc.tasks.length > 0) return 'smoke-manifest';
   return null;
 }
 
@@ -264,6 +265,39 @@ function validateFile(filePath) {
   const schemaValid = validator ? validator(doc) : false;
   const schemaErrors = validator ? validator.errors : [];
 
+  // Manifest-specific validation
+  if (kind === 'smoke-manifest') {
+    // Validate manifest structure
+    const taskIds = doc.tasks.map(t => t.task_id);
+    const dups = taskIds.filter((id, i) => taskIds.indexOf(id) !== i);
+    if (dups.length) {
+      console.error(`FAIL  ${rel}  — manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
+      totalErrors++;
+    }
+
+    // Check minimum task count (5 required)
+    if (doc.tasks.length < 5) {
+      console.error(`FAIL  ${rel}  — manifest has ${doc.tasks.length} tasks, minimum is 5`);
+      totalErrors++;
+    }
+
+    // Check each task has required fields
+    for (const task of doc.tasks) {
+      const missing = [];
+      if (!task.task_id) missing.push('task_id');
+      if (!task.title) missing.push('title');
+      if (!task.envelope) missing.push('envelope');
+      if (missing.length) {
+        console.error(`FAIL  ${rel}  — task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
+        totalErrors++;
+      }
+    }
+
+    console.log(`OK    ${rel}  (smoke-manifest)`);
+    fileCount++;
+    return;
+  }
+
   // Semantic checks
   const semantic = semanticChecks(doc, kind, rel);
 
@@ -301,9 +335,9 @@ function main() {
   const args = process.argv.slice(2);
   let mode = args[0] || 'all';
 
-  const validModes = ['envelopes', 'packets', 'judges', 'all'];
+  const validModes = ['envelopes', 'packets', 'judges', 'smoke', 'all'];
   if (!validModes.includes(mode) && !fs.existsSync(mode)) {
-    console.error(`Usage: node scripts/validate.js <envelopes|packets|judges|all|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|packets|judges|smoke|all|file>`);
     process.exit(1);
   }
 
@@ -318,6 +352,14 @@ function main() {
     files = [path.resolve(mode)];
   } else if (mode === 'envelopes' || mode === 'all') {
     files = files.concat(findFiles(tasksDir, /\.ya?ml$/));
+  }
+
+  if (mode === 'smoke') {
+    // Validate only smoke suite YAML files
+    const smokeDir = path.join(tasksDir, 'smoke');
+    if (fs.existsSync(smokeDir)) {
+      files = files.concat(findFiles(smokeDir, /\.ya?ml$/));
+    }
   }
 
   if (mode === 'packets' || mode === 'all') {

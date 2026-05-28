@@ -1,0 +1,44 @@
+schema_version: 1
+task_id: smoke-004
+title: File system sanity check
+event_family: ops-relay
+category: smoke-file-io
+time_limit_minutes: 5
+participant_visibility: visible
+evaluation_focus:
+  - mission_execution
+  - hardware_capacity
+objective: >
+  Perform basic read-only file operations in a sandboxed workspace
+  directory. Confirm that file I/O, directory listing, path resolution,
+  and file metadata queries work correctly. Do not write to production
+  or repository paths.
+background: >
+  File system access is required for code changes, log inspection, and
+  evidence collection. This test verifies the agent can navigate and
+  inspect files safely.
+allowed_actions:
+  - read_files
+  - list_directories
+  - query_file_metadata
+  - run_readonly_commands
+forbidden_actions:
+  - write_to_production_paths
+  - modify_repository_files
+  - delete_files
+  - expose_secrets
+required_outputs:
+  - workspace_path
+  - directory_listing_sample
+  - file_read_sample
+  - metadata_sample
+  - evidence
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - smoke
+  - file-io
+  - workspace
+hidden_judge_notes: >
+  The agent should read a few non-sensitive files (e.g., README.md,
+  package.json) from the repository and report their sizes, types, and
+  a safe excerpt. Writing to the workspace is acceptable if sandboxed.

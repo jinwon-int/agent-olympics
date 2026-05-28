@@ -2,8 +2,8 @@
 #
 # Requires: Node.js >= 18, npm
 
-.PHONY: all validate validate-envelopes validate-packets validate-all \
-        setup clean
+.PHONY: all validate validate-envelopes validate-packets validate-all validate-smoke \
+        smoke-check smoke setup clean
 
 all: validate-all
 
@@ -23,8 +23,18 @@ validate-packets:
 validate-all:
 	node scripts/validate.js all
 
+# Validate all smoke task envelopes
+validate-smoke:
+	node scripts/validate.js smoke
+
+# Validate all smoke task envelopes
+smoke-check: validate-smoke
+
 # Default validation target
 validate: validate-all
+
+# Quick-run: validate smoke tasks
+smoke: validate-smoke
 
 # Remove generated artifacts and dependencies
 clean:

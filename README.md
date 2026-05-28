@@ -79,6 +79,8 @@ schemas/
   judge-record.schema.json    — Judge record schema (v1)
 rubrics/
   agent-olympics-v1.yaml      — Scoring rubric
+schemas/
+  node-capability.schema.json — Node capability matrix schema
 tasks/examples/
   ops-001-telegram-final-reply.yaml
   ops-002-clean-reinstall-drift.yaml
@@ -87,6 +89,15 @@ tasks/examples/
   code-001-typescript-regression.yaml
   knowledge-001-wiki-closeout.yaml
   coord-001-commander-report.yaml
+tasks/smoke/
+  smoke-manifest.yaml         — Smoke suite manifest (5+ candidate tasks)
+  smoke-001-gateway-liveness.yaml
+  smoke-002-model-roundtrip.yaml
+  smoke-003-tool-readiness.yaml
+  smoke-004-file-sanity.yaml
+  smoke-005-config-inspection.yaml
+  smoke-006-network-diagnostic.yaml
+  smoke-007-node-capability.yaml
 results/
   *.yaml                      — Example and submitted result packets
 docs/
@@ -97,6 +108,7 @@ docs/
   events.md
   adapters.md
   references.md
+  node-capability-matrix.md   — Node capability documentation
 scripts/
   validate.js                 — Schema + semantic validator
 issues/
@@ -156,6 +168,9 @@ npm test
 # Validate all task envelopes (tasks/examples/*.yaml)
 node scripts/validate.js envelopes
 
+# Validate only smoke suite tasks (tasks/smoke/*.yaml)
+node scripts/validate.js smoke
+
 # Validate all result packets and judge records (results/*.yaml)
 node scripts/validate.js packets
 ```
@@ -164,6 +179,7 @@ node scripts/validate.js packets
 
 ```bash
 node scripts/validate.js tasks/examples/ops-001-telegram-final-reply.yaml
+node scripts/validate.js tasks/smoke/smoke-manifest.yaml
 ```
 
 The validator runs three layers of checks:
@@ -178,7 +194,31 @@ The validator runs three layers of checks:
 make validate       # Validate all
 make validate-envelopes
 make validate-packets
+make validate-smoke  # Validate smoke suite only
 ```
+
+## Smoke Suite
+
+The smoke suite (`tasks/smoke/`) provides lightweight, short-duration tasks that
+verify basic platform health before longer event-family tasks are attempted. Each
+smoke task is a valid Task Envelope and is listed in the `smoke-manifest.yaml`.
+
+The suite covers:
+- **Gateway liveness** — is the gateway process alive?
+- **Model round-trip** — can the agent reach an LLM?
+- **Tool readiness** — are essential tools available?
+- **File system sanity** — can the agent read and write safely?
+- **Configuration inspection** — is the runtime configured correctly?
+- **Network connectivity** — can the agent reach external endpoints?
+- **Node capability report** — generates a structured capability matrix.
+
+## Node Capability Matrix
+
+The node capability schema (`schemas/node-capability.schema.json`) and
+documentation (`docs/node-capability-matrix.md`) define a safe, non-secret format
+describing an agent execution node's hardware, runtime, tools, services, and
+overall readiness. It is designed for cross-node comparison and is compatible
+with the existing task envelope and result packet schemas.
 
 ## Status
 
@@ -188,3 +228,4 @@ The v1 schemas are frozen:
 - `schemas/task-envelope.schema.json` — Task Envelope v1
 - `schemas/result-packet.schema.json` — Result Packet v1
 - `schemas/judge-record.schema.json` — Judge Record v1
+- `schemas/node-capability.schema.json` — Node Capability Matrix v1
