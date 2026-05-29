@@ -372,6 +372,113 @@ console.log(missing === 0 ? "All web-display fields present" : missing + " entri
 
 ---
 
+## 9. Web Result Consumer (Source-Only Slice)
+
+`scripts/web-result-consumer.js` is the first source-only consumer slice of the
+web-result data bridge. It reads a `scoreboard.json` file (produced by
+`scripts/score.js`) and produces static HTML pages for offline review,
+documentation, and CI validation — without deployment or live serving.
+
+### Output
+
+| Path | Content |
+|---|---|
+| `<output-dir>/index.html` | Leaderboard with rank, participant, task, score, dimension bars, status badges, and sort order per §2.1 |
+| `<output-dir>/detail/<entry_id>.html` | Per-entry detail page with scorecard (§3.1), participant metadata (§3.2), hardware profile, performance measurements, validation status, comparability notes, and evidence items (§3.3) |
+| `<output-dir>/compare/<task_id>.html` | Comparison view for entries sharing the same task_id (§3.6) — side-by-side scores, dimensions, hardware, wall time |
+
+### Usage
+
+```bash
+# Basic usage
+node scripts/web-result-consumer.js results/scoreboard.json
+
+# Custom output directory
+node scripts/web-result-consumer.js results/scoreboard.json --output-dir docs/sample-output
+
+# Blind mode with anonymized labels
+node scripts/web-result-consumer.js results/scoreboard.json --blind
+
+# Custom page title
+node scripts/web-result-consumer.js results/scoreboard.json --title "Season 001 — Official Leaderboard"
+```
+
+### Testing
+
+```bash
+bash scripts/test-web-consumer.sh
+```
+
+The test suite verifies:
+- Correct HTML output structure (DOCTYPE, closing tags, required sections)
+- Detail page render with scorecard, evidence, metadata cards
+- Comparison view generation for multi-entry task groups
+- Blind mode banner and structure
+- Graceful error handling (missing scoreboard, empty entries)
+- Custom title rendering
+
+### Sample Output
+
+Static sample output is maintained at `fixtures/web-sample/`:
+
+```
+fixtures/web-sample/
+├── index.html              # Sample leaderboard
+├── detail/                 # Per-entry detail pages
+│   ├── ops-001-yukson.html
+│   └── perf-001-baseline-*.html
+├── compare/                # Task comparison views
+│   └── perf-001.html
+└── blind/                  # Blind-mode output
+    ├── index.html
+    ├── detail/
+    └── compare/
+```
+
+Regenerate sample output with:
+
+```bash
+node scripts/score.js run
+node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample
+node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample/blind --blind
+```
+
+### Data Shaping Responsibility
+
+The consumer handles all data shaping required for web display:
+
+1. **Rank computation** — Filters blocked/disqualified entries, sorts by
+total_score descending, tie-breaks by wall_time asc, assigns rank 1..N.
+2. **Score formatting** — Normalizes dimension scores to fraction and
+percentage; applies color coding (green ≥80%, yellow ≥60%, red <60%).
+3. **Badge rendering** — Status badges for each result state; verdict
+badges with semantic colors (`pass` green, `conditional_pass` yellow,
+`fail` red, `disqualification` gray).
+4. **Evidence display** — Loads result packets by `packet_ref` to show
+human-readable evidence summaries, kind badges, and redaction status.
+5. **Hardware comparison** — Side-by-side hardware profile tables in
+comparison view.
+6. **Blind display rules** — Detects blind mode from `--blind` flag,
+renders blind banner, suppresses identifying metadata per §5.
+7. **Comparability caveats** — Displays caveat notes with warning icons
+on comparison views.
+
+### Design for Future Extension
+
+The consumer is structured so that a future dynamic web UI can re-use the
+same data shaping patterns:
+
+- Rank computation (`computeRanks`) is a standalone pure function — it can
+be called from a server-side route or client-side filter.
+- Dimension display logic (`dimColor`, `dimBarHtml`, `formatScore`) is
+isolated for reuse in React/Vue components.
+- The evidence loader reads packet files by reference — the same pattern
+would work with an API endpoint serving packet data.
+- Blind mode support is toggled by a single flag — integration with a
+runtime blind/anonymised endpoint is straightforward.
+
+---
+
 *This document is part of the Agent Olympics MVP Round Engine documentation.
 It is the authoritative data bridge specification for future web leaderboard
 and result-detail page implementations. See also:

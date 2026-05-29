@@ -317,8 +317,25 @@ Lane 6: Web Leaderboard  ◄── (needs baseline data from Lane 3)
 
 | File | Change |
 |---|---|
-| `docs/next-slice-proposal.md` | **NEW** — This document: ordered next-round lane proposal |
+| `docs/next-slice-proposal.md` | **PATCH** — Update Hermes adapter status to 🟡 Implemented, document Lane 2 progress, update this table |
 | `.gitignore` | PATCH — Add auto-generated scoreboard artifacts to ignores |
+| `adapters/hermes-adapter.js` | **NEW** — Hermes orchestrator adapter (v1.0.0, ~1300+ lines) |
+| `docs/hermes-adapter.md` | **NEW** — Hermes adapter full documentation |
+| `docs/adapters.md` | **PATCH** — Add Hermes adapter usage and validation sections |
+| `docs/adapter-compatibility-fixtures.md` | **PATCH** — Add Hermes validity fixtures section |
+| `fixtures/hermes-validity/positive/README.md` | **NEW** — Hermes validity fixture guide |
+| `fixtures/hermes-validity/positive/ops-completed-result-packet.yaml` | **NEW** |
+| `fixtures/hermes-validity/positive/ops-completed-trace.yaml` | **NEW** |
+| `fixtures/hermes-validity/positive/ops-completed-evidence-bundle.yaml` | **NEW** |
+| `fixtures/hermes-validity/positive/ops-completed-manifest.yaml` | **NEW** |
+| `fixtures/hermes-validity/positive/code-completed-result-packet.yaml` | **NEW** |
+| `fixtures/hermes-validity/positive/code-completed-trace.yaml` | **NEW** |
+| `fixtures/hermes-validity/positive/code-completed-evidence-bundle.yaml` | **NEW** |
+| `fixtures/hermes-validity/negative/missing-evidence-result-packet.yaml` | **NEW** |
+| `fixtures/hermes-validity/negative/redaction-reason-leak-result-packet.yaml` | **NEW** |
+| `fixtures/hermes-validity/negative/status-invalid-result-packet.yaml` | **NEW** |
+| `fixtures/hermes-validity/negative/mode-family-mismatch.yaml` | **NEW** |
+| `fixtures/adapters/README.md` | **PATCH** — Add Hermes validity fixtures table |
 
 ---
 

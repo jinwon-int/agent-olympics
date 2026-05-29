@@ -97,26 +97,86 @@ done
 
 See [`issues/roadmap-04-hermes-adapter.md`](../issues/roadmap-04-hermes-adapter.md) for the full design issue.
 
-Responsibilities:
+A reference implementation is available at [`adapters/hermes-adapter.js`](../adapters/hermes-adapter.js)
+with full documentation at [`docs/hermes-adapter.md`](hermes-adapter.md).
 
-- Invoke the Hermes agent or workflow with the Task Envelope.
-- Capture plans, delegated tasks, tool traces, memory usage, and final answer.
+### Responsibilities
+
+- Accept a Task Envelope, decompose it into a multi-step workflow plan.
+- Assign workers to subtasks and simulate Hermes orchestration.
+- Capture workflow plans, worker tool traces, memory retrieval summaries,
+  and the final commander report.
+- Merge child worker evidence into a single coherent evidence bundle.
+- Handle contradictory evidence across workers (contradiction log).
 - Normalize Hermes-specific orchestration evidence into common packet fields.
+- Apply value-free redaction rules to protect secrets at the orchestrator level.
 
-Useful evidence:
+### Useful Evidence
 
-- workflow id
-- worker assignment
-- memory retrieval summary
-- tool trace summary
-- final commander report
+- `workflow_plan` — Task decomposition plan with step dependencies and worker assignments
+- `worker_trace` — Individual worker trace with tool calls and results
+- `memory_summary` — Memory retrieval summary per worker (redacted, no private content)
+- `commander_report` — Synthesized findings after all workers complete
+- `contradiction_log` — Log of contradictory worker evidence and resolution status
+- `worker_assignment` — Worker identifier and assigned subtask
+- `workflow_state` — State transition timeline
 
-Contract addenda (see [§10](adapter-execution-contract.md#10-adapter-specific-contract-addenda)):
+### Adapter Metadata
 
-- Capture workflow state transitions.
-- Summarize memory retrieval (no secrets).
-- Merge child worker evidence.
-- Handle contradictory evidence.
+| Field | Value |
+|---|---|
+| `adapter` | `hermes` |
+| `adapter_version` | `1.0.0` |
+| `supported_envelope_versions` | 1, 2 |
+| `supported_event_families` | ops, code, smoke, node, wiki, general, coord |
+| `modes` | orchestrator, coordinator, simulation |
+| `evidence_kinds` | 10 kinds (see docs) |
+| `default_timeout` | 900s |
+
+### Contract Addenda (see [§10](adapter-execution-contract.md#10-adapter-specific-contract-addenda))
+
+- Decompose task into workflow steps with defined objectives.
+- Capture worker dispatch and result collection as trace entries.
+- Summarize memory retrieval without leaking private content.
+- Merge child worker evidence into coherent bundle.
+- Detect and log contradictory evidence across workers.
+
+### Usage Examples
+
+```bash
+# Basic ops task (orchestrator mode)
+node adapters/hermes-adapter.js tasks/season-001/ops-001.yaml \
+  --agent-id sogyo --mode orchestrator --event-family ops
+
+# Simulation mode with deterministic output
+node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+  --agent-id sogyo --mode simulation --event-family general --seed hermes-ci
+
+# Contradictory evidence simulation
+node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+  --agent-id sogyo --mode orchestrator --event-family ops --contradictory
+
+# Failure simulation
+node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+  --agent-id sogyo --mode orchestrator --event-family ops --exit 1
+
+# See also: docs/hermes-adapter.md for full reference
+```
+
+### Validation Fixtures
+
+Validation examples for the Hermes adapter are in [`fixtures/hermes-validity/`](../fixtures/hermes-validity/).
+Positive fixtures test valid outputs; negative fixtures test expected failure modes.
+
+```bash
+# Validate a positive fixture
+node scripts/validate.js fixtures/hermes-validity/positive/ops-completed-result-packet.yaml
+
+# Validate all hermes fixture files
+for f in fixtures/hermes-validity/positive/*.yaml; do
+  node scripts/validate.js "$f"
+done
+```
 
 ## CLI Adapter
 

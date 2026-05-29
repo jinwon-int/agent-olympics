@@ -122,7 +122,68 @@ and `ended_at`.  Adapter-specific fields (like `workflow_plan` for
 Hermes or `terminal_history` for CLI) sit alongside these common
 fields.
 
+## Local vs Live Hermes Coverage
+
+This section documents what can be validated **locally** (without a
+running Hermes orchestrator, CLI runtime, or human operator) and what
+still requires a **live runtime**.
+
+### ✅ Locally Validatable (via validate.js)
+
+| Validation | Tooling | Local? |
+|---|---|---|
+| Adapter capability declaration schema | `node scripts/validate.js adapter-capabilities` | ✅ Yes — validates `fixtures/adapters/capabilities/*.yaml` against `schemas/adapter-capability-declaration.schema.json` |
+| Hermes workflow plan structure | `node scripts/validate.js adapter-fixtures` | ✅ Yes — validates required fields (`workflow_id`, `steps`, `objective`) and YAML syntax |
+| Hermes worker trace structure | `node scripts/validate.js adapter-fixtures` | ✅ Yes — validates `trace_id`, `timeline`, `classification` |
+| Hermes memory summary structure | `node scripts/validate.js adapter-fixtures` | ✅ Yes — validates `memory_summary_id`, `worker_id`, `memory_sources_consulted` |
+| CLI result packet (schema) | `node scripts/validate.js packets` | ✅ Yes — validates against `result-packet.schema.json` |
+| CLI structured command record | `node scripts/validate.js adapter-fixtures` | ✅ Yes — validates `commands` array, `exit_code`, `output_summary` |
+| Human baseline evidence bundle | `node scripts/validate.js bundles` | ✅ Yes — validates against `evidence-bundle.schema.json` |
+| Human baseline timestamp log | `node scripts/validate.js adapter-fixtures` | ✅ Yes — validates `operator_log_id`, `entries`, basic action sequencing |
+| Human baseline action descriptions | `node scripts/validate.js adapter-fixtures` | ✅ Yes — validates `operator_actions`, `tool` references, `contributes_to_outputs` |
+| Forbidden pattern detection (secrets, hostnames) | All validate modes | ✅ Yes — `detectSecrets` scans all documents |
+
+### 🔄 Requires Live Hermes Runtime
+
+| Capability | What's Missing Locally | Hermes Runtime Needed For |
+|---|---|---|
+| Workflow orchestration | Sample fixture files provide deterministic plans but cannot test actual worker assignment, dependency resolution, or parallelism | Verifying that the Hermes commander correctly decomposes envelopes and assigns workers |
+| Child-worker evidence merging | Merge logic is an open design question — fixture files show independent traces only | Testing the actual synthesis of multiple worker outputs into a single coherent result packet |
+| Contradictory evidence resolution | No contradiction scenarios in current fixtures | Testing the Hermes resolver on real contradictory worker outputs |
+| Memory retrieval with live data | Memory summaries show the format but use no real data | Testing that memory retrieval actually works and summaries contain no private content |
+| Live trace event generation | Worker traces are hand-authored examples | Testing that the Hermes runtime produces valid trace records with correct timestamps and sequencing |
+| Redaction rule enforcement | Redaction rules are declared but never tested against live output | Testing that credential/secret patterns are actually redacted from produced evidence |
+
+**Bottom line:** Local fixture validation confirms that adapter output
+files are **well-formed, schema-compliant, and internally consistent.**
+It cannot confirm that a live Hermes runtime actually produces output
+that matches these fixtures.  That requires running the Hermes adapter
+against a real task envelope in a test environment.
+
 ## Validation
+
+### Validate Adapter Capability Declarations
+
+```bash
+# All three adapter capability declarations (hermes, cli, human-baseline)
+node scripts/validate.js adapter-capabilities
+```
+
+This validates against `schemas/adapter-capability-declaration.schema.json`
+— checks required fields, field types, safe slug conventions, and that
+no secrets or host-specific paths are present.
+
+### Validate All Adapter Fixture Files (Recommended)
+
+```bash
+# All adapter fixture files — standard schemas + custom adapter formats
+node scripts/validate.js adapter-fixtures
+```
+
+This validates:
+- **Hermes:** workflow plan, worker trace, memory summary (structural checks)
+- **CLI:** result packet (schema), command log (YAML + structure), commands.yaml (structure)
+- **Human-baseline:** evidence bundle (schema), timestamp log (structure), actions (structure)
 
 ### Validate Individual Files
 
@@ -132,32 +193,78 @@ node scripts/validate.js fixtures/adapters/cli/sample-result-packet-stub.yaml
 
 # Human baseline evidence bundle (validated against evidence-bundle.schema.json)
 node scripts/validate.js fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml
+
+# Hermes workflow plan (validated with adapter-specific structural checks)
+node scripts/validate.js fixtures/adapters/hermes/sample-workflow-plan.yaml
 ```
 
-### Validate All YAML Syntax
+### Validate All YAML Syntax (includes adapter files)
 
 ```bash
 node scripts/validate.js fixtures
 ```
 
-The fixture validation mode will discover all YAML files in the
+The fixture validation mode discovers all YAML files in the
 `fixtures/` tree, including the adapter compatibility files.  Files
 that do not match a known bundle schema will be reported as skipped
 (not as errors).
 
-### Validate All Adapter Fixtures
-
-To validate only adapter fixture files with strict schema checking,
-add a dedicated Make target or validate each schematized file
-individually:
+### Validate via Round Engine
 
 ```bash
-for f in \
-  fixtures/adapters/cli/sample-result-packet-stub.yaml \
-  fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml; do
-  node scripts/validate.js "$f"
-done
+# All adapters (hermes, cli, human-baseline)
+node scripts/round.js validate-adapter-outputs
+
+# Single adapter
+node scripts/round.js validate-adapter-outputs hermes
+node scripts/round.js validate-adapter-outputs cli
+node scripts/round.js validate-adapter-outputs human
 ```
+
+### Validate via Score Engine
+
+```bash
+# Validate result packets + adapter capability declarations
+node scripts/score.js validate
+```
+
+### Make Targets
+
+```bash
+# Validate adapter capability declarations only
+make validate-adapter-capabilities
+
+# Validate all adapter fixture sample files
+make validate-adapter-fixtures
+
+# Validate Hermes-specific fixtures only
+make validate-hermes-fixtures
+
+# Full validation (includes the above three)
+make validate
+make all
+```
+
+## Adapter Validity Fixtures
+
+Beyond the shared compatibility fixtures under `fixtures/adapters/`, each
+adapter ships its own validation fixture directories for regression testing
+and schema compliance:
+
+### OpenClaw Validity Fixtures
+
+Directory: `fixtures/openclaw-validity/`
+- Positive: ops-completed + code-completed result packets, traces, evidence bundles, manifests
+- Negative: missing evidence, redaction leak, invalid status, mode-family mismatch
+
+### Hermes Validity Fixtures
+
+Directory: `fixtures/hermes-validity/`
+- Positive: ops-completed + code-completed result packets, traces, evidence bundles, manifests
+- Negative: missing evidence, redaction leak, invalid status, mode-family mismatch
+
+These validity fixtures are validated by dedicated Makefile targets
+(`validate-openclaw`, `validate-hermes`) and CI pipelines.
 
 ## Adding a New Adapter
 
@@ -166,9 +273,11 @@ To add fixture data for a new adapter (e.g., `openclaw`):
 1. Create `fixtures/adapters/capabilities/<adapter>.yaml` following
    the structure in `adapter-capability-declaration.yaml`.
 2. Create `fixtures/adapters/<adapter>/` with sample data files.
-3. Document any new adapter-specific fields in
+3. Create `fixtures/<adapter>-validity/` with positive and negative validation fixtures.
+4. Document any new adapter-specific fields in
    [Platform-Neutral Adapter Fields](platform-neutral-adapter-fields.md).
-4. Update this document's Structure table.
+5. Update this document's Structure table.
+6. Add Makefile targets for adapter execution and validation.
 
 ## Related Documents
 

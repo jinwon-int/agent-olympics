@@ -1,0 +1,103 @@
+# Negative fixture: Hermes result packet with redaction_reason containing leaked secret
+# Expected to FAIL competition-validity checks (credential leak in redaction_reason).
+schema_version: 1
+packet_id: pkt-hermes-redaction-leak-20260529
+run_id: run-ops-001-sogyo-20260529T226000KST
+task_id: ops-001
+agent_id: sogyo
+runtime: hermes
+runtime_version: 1.0.0
+model: gpt-5.x
+model_provider: openai
+node: orchestrator-node
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  storage_class: nvme-shared
+  os_family: linux
+configuration_profile:
+  model_routing: documented
+  liveness: hermes-orchestrator
+  resource_limits: configured
+  adapter_mode: orchestrator
+  worker_count: 3
+  max_concurrent_workers: 3
+tool_use_profile:
+  allowed:
+    - read
+    - delegate
+  used:
+    - read
+    - delegate
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: worker_dispatched
+  timeout_handling: timeout_after_900s_status_partial
+  contradiction_resolution: automated_resolved
+started_at: "2026-05-29T22:50:00+09:00"
+ended_at: "2026-05-29T23:00:00+09:00"
+status: completed
+publishable: false
+summary: "Test fixture verifying detection of secret patterns in redaction_reason fields."
+comparable_metadata:
+  participant:
+    agent_id: sogyo
+    adapter: hermes
+  runtime:
+    name: hermes
+    version: 1.0.0
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    profile_ref: orchestrator-node
+  config:
+    profile_ref: orchestrator-default
+    adapter_mode: orchestrator
+    event_family: ops
+    max_concurrent_workers: 3
+  task:
+    task_id: ops-001
+    task_version: v1
+  workflow:
+    workflow_id: wf-ops-001-sogyo-20260529T226000KST
+    step_count: 4
+    worker_count: 3
+    worker_profiles:
+      - stub-small-vps
+raw_measurements:
+  wall_time_seconds: 600
+  workflow_step_count: 4
+  worker_count: 3
+  workers_completed: 3
+  workers_failed: 0
+  memory_retrievals: 8
+  memory_cache_hit_ratio: 0.5
+  tool_invocations_total: 12
+  retries: 0
+  errors: 0
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 0
+  delivery_probes_succeeded: 0
+actions:
+  - id: act-001
+    type: api_call
+    target: hermes_orchestrator
+    command_summary: Create orchestrator session
+    redacted: true
+    # LEAK: redaction_reason contains the actual credential value
+    redaction_reason: "worker_output_contained_sk-proj-ABCDEF1234567890abcdef"
+    evidence_id: ev-orchestrator-session
+evidence:
+  - id: ev-orchestrator-session
+    kind: log
+    source: hermes orchestrator journal
+    summary: Session created
+    redacted: true
+    redaction_reason: "session_token_was_sk-proj-TOKEN123456-wxyz"
+findings: []
+risks: []
+outputs: {}

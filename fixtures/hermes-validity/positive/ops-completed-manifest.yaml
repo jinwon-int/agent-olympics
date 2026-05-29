@@ -1,0 +1,109 @@
+# Positive fixture: Hermes ops task artifact manifest
+# Expected to PASS schema validation.
+schema_version: 1
+manifest_id: am-run-ops-001-sogyo-20260529T222800KST
+run_id: run-ops-001-sogyo-20260529T222800KST
+round_id: season-001-round-001
+task_id: ops-001
+agent_id: sogyo
+status: completed
+created_at: "2026-05-29T22:28:00+09:00"
+updated_at: "2026-05-29T22:45:00+09:00"
+status_history:
+  - status: pending
+    timestamp: "2026-05-29T22:28:00+09:00"
+    note: Run directory created
+  - status: running
+    timestamp: "2026-05-29T22:28:00+09:00"
+    note: "Hermes adapter execution started (mode: orchestrator, event: ops)"
+  - status: completed
+    timestamp: "2026-05-29T22:45:00+09:00"
+    note: "Hermes adapter completed: completed"
+artifacts:
+  - path: result-packet.yaml
+    kind: result_packet
+    content_type: text/yaml
+    size_bytes: 5120
+    checksum:
+      algorithm: sha256
+      value: rp1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    retention: season
+    redacted: false
+    generated_by: agent
+  - path: trace.yaml
+    kind: trace
+    content_type: text/yaml
+    size_bytes: 6144
+    checksum:
+      algorithm: sha256
+      value: tr1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    retention: season
+    redacted: false
+    generated_by: agent
+  - path: evidence-bundle.yaml
+    kind: evidence_bundle
+    content_type: text/yaml
+    size_bytes: 4096
+    checksum:
+      algorithm: sha256
+      value: eb1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    retention: permanent
+    redacted: false
+    generated_by: agent
+  - path: manifest.yaml
+    kind: run_manifest
+    content_type: text/yaml
+    size_bytes: 2400
+    checksum:
+      algorithm: sha256
+      value: mf1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    retention: season
+    redacted: false
+    generated_by: agent
+  - path: evidence/workflow-plan.yaml
+    kind: evidence_file
+    content_type: text/yaml
+    size_bytes: 2560
+    checksum:
+      algorithm: sha256
+      value: ev1abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+    retention: round
+    redacted: false
+    generated_by: agent
+  - path: evidence/worker-traces.yaml
+    kind: evidence_file
+    content_type: text/yaml
+    size_bytes: 4096
+    checksum:
+      algorithm: sha256
+      value: ev2abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+    retention: round
+    redacted: false
+    generated_by: agent
+  - path: evidence/memory-summary.yaml
+    kind: evidence_file
+    content_type: text/yaml
+    size_bytes: 2048
+    checksum:
+      algorithm: sha256
+      value: ev3abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+    retention: round
+    redacted: true
+    generated_by: agent
+references:
+  result_packet_path: result-packet.yaml
+  evidence_bundle_path: evidence-bundle.yaml
+  trace_path: trace.yaml
+  evidence_dir: evidence/
+retention_policy:
+  default_retention: season
+  cleanup_after_days: 90
+  scrubbing_required: true
+run_metadata:
+  runner: a2a-runner-v1
+  runner_version: 1.0.0
+  adapter: hermes
+  adapter_version: 1.0.0
+  adapter_mode: orchestrator
+  event_family: ops
+  duration_seconds: 1020

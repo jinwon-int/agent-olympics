@@ -11,11 +11,13 @@
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
         openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
+        hermes-adapter hermes-adapter-code hermes-adapter-fail validate-hermes smoke-hermes \
         score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
+        web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # Install dependencies
 setup:
@@ -63,12 +65,30 @@ validate-oracle:
 
 oracle: validate-oracle
 
-# Validate all adapter compatibility fixture files (capability declarations + sample data)
+# Validate all adapter capability declaration files (fixtures/adapters/capabilities/*.yaml)
+# against the adapter-capability-declaration.schema.json
+validate-adapter-capabilities:
+	@echo "=== Adapter Capability Declarations ==="
+	node scripts/validate.js adapter-capabilities
+	@echo "Adapter capability declaration validation passed."
+
+# Validate all adapter fixture sample data files (Hermes, CLI, human-baseline)
+# Checks standard-schema files (result packets, evidence bundles) and
+# adapter-specific format files (commands, timestamp logs, actions, etc.)
 validate-adapter-fixtures:
 	@echo "=== Adapter Compatibility Fixtures ==="
-	node scripts/validate.js fixtures/adapters/cli/sample-result-packet-stub.yaml
-	node scripts/validate.js fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml
-	@echo "Adapter fixture schema validation passed."
+	node scripts/validate.js adapter-fixtures
+	@echo ""
+	@echo "Adapter fixture validation passed."
+
+# Validate all Hermes-specific fixture files (workflow plan, worker trace,
+# memory summary) with both schema and structural checks
+validate-hermes-fixtures:
+	@echo "=== Hermes Adapter Fixtures ==="
+	node scripts/validate.js fixtures/adapters/hermes/sample-workflow-plan.yaml
+	node scripts/validate.js fixtures/adapters/hermes/sample-worker-trace.yaml
+	node scripts/validate.js fixtures/adapters/hermes/sample-memory-summary.yaml
+	@echo "Hermes adapter fixture validation passed."
 
 # Validate all smoke task envelopes
 validate-smoke:
@@ -104,7 +124,8 @@ round:
 
 # Default validation target
 validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
-        validate-adapter-fixtures validate-rounds validate-profiles \
+        validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
+        validate-rounds validate-profiles \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # --- Competition-Validity targets ---
@@ -172,6 +193,62 @@ validate-openclaw:
 	done
 	@echo ""
 	@echo "OpenClaw adapter fixture validation complete."
+
+# --- Hermes adapter targets ---
+
+# Run Hermes adapter against the stub test envelope (orchestrator mode, ops)
+hermes-adapter:
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes
+
+# Run Hermes adapter in simulation mode
+hermes-adapter-code:
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode simulation --event-family general --seed make-hermes-code
+
+# Run Hermes adapter in failure mode
+hermes-adapter-fail:
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes-fail --exit 1
+
+# Validate all Hermes adapter output fixtures
+validate-hermes:
+	@echo "=== Validating Hermes adapter positive fixtures ==="
+	@for f in fixtures/hermes-validity/positive/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f" || exit 1; \
+	done
+	@echo ""
+	@echo "=== Validating Hermes adapter negative fixtures ==="
+	@for f in fixtures/hermes-validity/negative/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f"; \
+		echo "(expected to produce errors for negative fixtures)"; \
+	done
+	@echo ""
+	@echo "Hermes adapter fixture validation complete."
+
+# Smoke-test Hermes adapter without writing generated artifacts to the repo
+smoke-hermes:
+	@set -eu; \
+	tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes --run-dir "$$tmp/ops"; \
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode simulation --event-family general --seed make-hermes-code --run-dir "$$tmp/sim"; \
+	if node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes-fail --exit 1 --run-dir "$$tmp/fail"; then \
+		echo "Expected Hermes failure-mode run to exit non-zero"; \
+		exit 1; \
+	fi; \
+	echo "Hermes adapter smoke tests passed."
 
 # Run OpenClaw adapter smoke checks without writing generated artifacts to the repo.
 test-openclaw:
@@ -251,20 +328,30 @@ score-all:
 
 # --- Web data bridge targets ---
 
+# Generate static HTML from scoreboard (web-result consumer)
+web-consumer:
+	node scripts/web-result-consumer.js results/scoreboard.json
+
+# Generate static HTML with blind display rules
+web-consumer-blind:
+	node scripts/web-result-consumer.js results/scoreboard.json --blind
+
+# Generate sample output to fixtures/web-sample
+web-consumer-sample:
+	node scripts/score.js run > /dev/null 2>&1; \
+	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample --title "Agent Olympics — Sample Leaderboard"; \
+	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample/blind --blind --title "Agent Olympics — Blind Sample"
+
+# Run web consumer test suite
+test-web-consumer:
+	bash scripts/test-web-consumer.sh
+
+# Full web pipeline: score + consume + test
+web: score test-web-consumer web-consumer-sample
+
 # Validate scoreboard has all required web-display fields
 validate-web-fields:
-	node -e '\
-	const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8"));\
-	let missing = 0;\
-	for (const e of sb.entries) {\
-	  if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); }\
-	  if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); }\
-	  if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); }\
-	  if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); }\
-	}\
-	console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields");\
-	process.exit(missing > 0 ? 1 : 0);\
-'
+	node -e 'const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8")); let missing = 0; for (const e of sb.entries) { if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); } if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); } if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); } if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); } } console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields"); process.exit(missing > 0 ? 1 : 0);'
 
 # Full web data bridge validation: scoreboard + blind + field check
 validate-web-bridge: score score-blind validate-web-fields
