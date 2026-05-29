@@ -185,16 +185,16 @@ function check(severity, label, pass, detail) {
   else if (!pass && severity === SEVERITY_WARN) warnings++;
 }
 
+function ok(label, detail) {
+  check('PASS', label, true, detail);
+}
+
 function error(label, detail) {
   check(SEVERITY_ERROR, label, false, detail);
 }
 
 function warn(label, detail) {
   check(SEVERITY_WARN, label, false, detail);
-}
-
-function ok(label) {
-  check(SEVERITY_WARN, label, true, '');
 }
 
 function printSummary() {
@@ -213,16 +213,27 @@ function printSummary() {
 
   for (const [scope, scopeChecks] of Object.entries(groups)) {
     const failed = scopeChecks.filter(c => !c.pass);
-    if (failed.length === 0) continue;
-    console.error(`\n--- ${scope} ---`);
-    for (const c of failed) {
-      const prefix = c.severity === SEVERITY_ERROR ? 'FAIL' : 'WARN';
-      console.error(`  ${prefix}  ${c.label}: ${c.detail}`);
+    const passed = scopeChecks.filter(c => c.pass);
+
+    if (passed.length > 0) {
+      console.log(`\n--- ${scope} (passed: ${passed.length}) ---`);
+      for (const c of passed) {
+        console.log(`  OK  ${c.label}: ${c.detail}`);
+      }
+    }
+
+    if (failed.length > 0) {
+      console.error(`\n--- ${scope} (failed: ${failed.length}) ---`);
+      for (const c of failed) {
+        const prefix = c.severity === SEVERITY_ERROR ? 'FAIL' : 'WARN';
+        console.error(`  ${prefix}  ${c.label}: ${c.detail}`);
+      }
     }
   }
 
   console.log(`\n--- Summary ---`);
   console.log(`Checks:    ${checks.length}`);
+  console.log(`Pass:      ${checks.filter(c => c.pass).length}`);
   console.log(`Errors:    ${errors}`);
   console.log(`Warnings:  ${warnings}`);
 }
@@ -938,6 +949,7 @@ function cmdAll(roundDir) {
 
     checkEngineOutputs(runDir, manifest);
     checkCrossDocumentConsistency(runDir, manifest);
+    checkRunArtifactIntegrity(runDir);
   }
 
   printSummary();
@@ -954,7 +966,8 @@ function cmdFixtures(fixturesDir) {
     process.exit(1);
   }
 
-  const yamlFiles = findYamlFiles(fixturesDir);
+  const yamlFiles = findYamlFiles(fixturesDir)
+    .filter(f => !/fixtures[\\/]competition-validity[\\/](run-artifacts|run-lifecycle)[\\/]/.test(f));
   if (yamlFiles.length === 0) {
     warn('fixtures', 'No YAML files found in fixtures directory');
   }
@@ -980,6 +993,9 @@ function cmdFixtures(fixturesDir) {
         checkHiddenJudgeMaterial(doc, f);
         if (doc.judge_record_id) {
           checkScoreConsistency(doc, f);
+        }
+        if (doc.manifest_id && Array.isArray(doc.artifacts)) {
+          checkArtifactManifestDocument(doc, f);
         }
       }
     } catch (e) {
@@ -1017,6 +1033,81 @@ function cmdFixtures(fixturesDir) {
     }
   }
 
+  const runArtifactRoot = path.resolve(ROOT, fixturesDir, 'run-artifacts');
+  if (fs.existsSync(runArtifactRoot)) {
+    const cases = [
+      { name: 'positive', negative: false },
+      { name: 'negative', negative: true },
+    ];
+    for (const c of cases) {
+      const runDir = path.join(runArtifactRoot, c.name);
+      if (!fs.existsSync(runDir)) continue;
+
+      const rel = path.relative(ROOT, runDir);
+      const fileErrors = errors;
+      const fileWarnings = warnings;
+      checkRunArtifactIntegrity(runDir);
+      const newErrors = errors - fileErrors;
+      const newWarnings = warnings - fileWarnings;
+
+      if (c.negative) {
+        if (newErrors > 0) {
+          console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+          expectedFailures++;
+        } else {
+          console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
+          failedFiles++;
+        }
+      } else if (newErrors > 0) {
+        console.log(`FAIL  ${rel}  - ${newErrors} error(s), ${newWarnings} warning(s)`);
+        failedFiles++;
+      } else {
+        console.log(`OK    ${rel}  (pass)`);
+        passedFiles++;
+      }
+    }
+  }
+
+  const lifecycleRoundDir = path.resolve(ROOT, fixturesDir, 'run-lifecycle/season-001-round-001');
+  if (fs.existsSync(lifecycleRoundDir)) {
+    const runDirs = fs.readdirSync(lifecycleRoundDir, { withFileTypes: true })
+      .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+      .map(e => e.name)
+      .sort();
+
+    for (const dirName of runDirs) {
+      const runDir = path.join(lifecycleRoundDir, dirName);
+      const rel = path.relative(ROOT, runDir);
+      const isNegative = !dirName.endsWith('-complete');
+      const fileErrors = errors;
+      const fileWarnings = warnings;
+      const manifestPath = path.join(runDir, 'manifest.yaml');
+      const manifest = fs.existsSync(manifestPath) ? checkRunManifest(manifestPath) : null;
+      if (!manifest) warn(`fixtures:${rel}`, 'Run manifest unavailable for fixture evaluation');
+      checkEngineOutputs(runDir, manifest);
+      checkCrossDocumentConsistency(runDir, manifest);
+      checkRunArtifactIntegrity(runDir);
+      const newErrors = errors - fileErrors;
+      const newWarnings = warnings - fileWarnings;
+
+      if (isNegative) {
+        if (newErrors > 0) {
+          console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+          expectedFailures++;
+        } else {
+          console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
+          failedFiles++;
+        }
+      } else if (newErrors > 0) {
+        console.log(`FAIL  ${rel}  - ${newErrors} error(s), ${newWarnings} warning(s)`);
+        failedFiles++;
+      } else {
+        console.log(`OK    ${rel}  (pass)`);
+        passedFiles++;
+      }
+    }
+  }
+
   // Clean up accumulated counts — fixtures mode reports separately
   errors = 0;
   warnings = 0;
@@ -1029,6 +1120,382 @@ function cmdFixtures(fixturesDir) {
   process.exit(failedFiles > 0 ? 1 : 0);
 }
 
+function checkArtifactManifestDocument(manifest, filePath) {
+  const rel = path.relative(ROOT, filePath);
+  const requiredFields = ['manifest_id', 'run_id', 'round_id', 'task_id', 'agent_id', 'status'];
+  for (const field of requiredFields) {
+    if (!manifest[field]) {
+      error(`artifact-manifest:${rel}`, `Missing required field "${field}"`);
+    }
+  }
+
+  const validStatuses = ['pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified'];
+  if (manifest.status && !validStatuses.includes(manifest.status)) {
+    error(`artifact-manifest:${rel}`, `Invalid status "${manifest.status}"`);
+  }
+
+  const validRetention = ['ephemeral', 'round', 'season', 'permanent'];
+  for (const artifact of manifest.artifacts || []) {
+    if (!artifact.path) {
+      error(`artifact-manifest:${rel}`, 'Artifact entry missing "path"');
+    }
+    if (artifact.checksum) {
+      const { algorithm, value } = artifact.checksum;
+      if (!algorithm) warn(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has checksum value but no algorithm`);
+      if (!value || typeof value !== 'string' || !/^[a-f0-9]+$/i.test(value)) {
+        error(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has invalid checksum value`);
+      }
+    }
+    if (artifact.retention && !validRetention.includes(artifact.retention)) {
+      error(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has invalid retention "${artifact.retention}"`);
+    }
+  }
+
+  if (manifest.retention_policy) {
+    const defaultRetention = manifest.retention_policy.default_retention;
+    if (defaultRetention && !validRetention.includes(defaultRetention)) {
+      error(`artifact-manifest:${rel}`, `Invalid retention_policy.default_retention "${defaultRetention}"`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6) RUN-DIRECTORY ARTIFACT INTEGRITY
+// ---------------------------------------------------------------------------
+
+/**
+ * Check artifact integrity within a run directory.
+ * Validates that the manifest matches actual disk state.
+ */
+function checkRunArtifactIntegrity(runDir) {
+  const rel = path.relative(ROOT, runDir);
+  let pass = true;
+
+  // manifest.yaml must exist
+  const manifestPath = path.join(runDir, 'manifest.yaml');
+  if (!fs.existsSync(manifestPath)) {
+    error(`run-artifacts:${rel}`, 'Run directory has no manifest.yaml');
+    return false;
+  }
+  ok(`run-artifacts:${rel}`, 'Manifest exists: manifest.yaml');
+
+  let manifest;
+  try {
+    manifest = loadYaml(manifestPath);
+  } catch (e) {
+    error(`run-artifacts:${rel}/manifest.yaml`, `Parse error: ${e.message}`);
+    return false;
+  }
+
+  if (!manifest || typeof manifest !== 'object') {
+    error(`run-artifacts:${rel}/manifest.yaml`, 'Empty or non-object document');
+    return false;
+  }
+  ok(`run-artifacts:${rel}/manifest.yaml`, 'Manifest parsed successfully');
+
+  if (!Array.isArray(manifest.artifacts) && manifest.lifecycle) {
+    warn(`run-artifacts:${rel}/manifest.yaml`, 'Lifecycle run manifest has no artifact manifest entries; artifact integrity skipped');
+    return true;
+  }
+
+  // Required fields
+  const requiredFields = ['manifest_id', 'run_id', 'round_id', 'task_id', 'agent_id', 'status'];
+  for (const field of requiredFields) {
+    if (!manifest[field]) {
+      error(`run-artifacts:${rel}/manifest.yaml`, `Missing required field "${field}"`);
+      pass = false;
+    }
+  }
+
+  // run_id matches directory name
+  const dirName = path.basename(runDir);
+  if (manifest.run_id && dirName !== manifest.run_id) {
+    warn(`run-artifacts:${rel}/manifest.yaml`, `run_id "${manifest.run_id}" does not match directory "${dirName}"`);
+  }
+
+  // Validate artifacts array
+  if (!manifest.artifacts || !Array.isArray(manifest.artifacts) || manifest.artifacts.length === 0) {
+    error(`run-artifacts:${rel}/manifest.yaml`, 'Missing or empty artifacts array');
+    pass = false;
+  } else {
+    const manifestPaths = new Set();
+
+    for (const artifact of manifest.artifacts) {
+      if (!artifact.path) {
+        error(`run-artifacts:${rel}/manifest.yaml`, 'Artifact entry missing "path"');
+        pass = false;
+        continue;
+      }
+      if (!artifact.kind) {
+        warn(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" missing "kind"`);
+      }
+
+      const artifactPath = path.resolve(runDir, artifact.path);
+      manifestPaths.add(artifact.path);
+
+      // Check file exists
+      if (!fs.existsSync(artifactPath)) {
+        error(`run-artifacts:${rel}`, `Artifact "${artifact.path}" listed in manifest but not on disk`);
+        pass = false;
+      }
+
+      // Check checksum format
+      if (artifact.checksum) {
+        const { algorithm, value } = artifact.checksum;
+        if (!value || typeof value !== 'string' || !/^[a-f0-9]+$/i.test(value)) {
+          error(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has invalid checksum value`);
+          pass = false;
+        }
+        if (!algorithm) {
+          warn(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has checksum value but no algorithm`);
+        }
+      }
+
+      // Validate retention class
+      const validRetention = ['ephemeral', 'round', 'season', 'permanent'];
+      if (artifact.retention && !validRetention.includes(artifact.retention)) {
+        error(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has invalid retention "${artifact.retention}"`);
+        pass = false;
+      }
+
+      // Check kind validity
+      const validKinds = ['manifest', 'result_packet', 'trace', 'judge_record',
+        'evidence_bundle', 'evidence_file', 'log', 'transcript',
+        'config_snapshot', 'fixture_copy', 'report', 'scoreboard', 'other'];
+      if (artifact.kind && !validKinds.includes(artifact.kind)) {
+        warn(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has unknown kind "${artifact.kind}"`);
+      }
+    }
+
+    // Check for files on disk not in manifest (non-recursive — evidence/ subdirectory is expected)
+    const diskEntries = fs.readdirSync(runDir).filter(f => f !== 'manifest.yaml' && !fs.statSync(path.join(runDir, f)).isDirectory());
+    for (const entry of diskEntries) {
+      if (![...manifestPaths].some(p => p === entry || entry.startsWith(p + '/') || p.startsWith(entry + '/'))) {
+        warn(`run-artifacts:${rel}`, `File "${entry}" on disk but not listed in manifest`);
+      }
+    }
+  }
+
+  // Validate status field
+  if (manifest.status) {
+    const validStatuses = ['pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified'];
+    if (!validStatuses.includes(manifest.status)) {
+      error(`run-artifacts:${rel}/manifest.yaml`, `Invalid status "${manifest.status}"`);
+      pass = false;
+    }
+  }
+
+  // Validate references — required artifacts should exist
+  if (manifest.references) {
+    const refPaths = [
+      'result_packet_path', 'evidence_bundle_path',
+      'trace_path', 'judge_record_path', 'scoreboard_path',
+    ];
+    for (const refKey of refPaths) {
+      const refValue = manifest.references[refKey];
+      if (refValue) {
+        const resolved = path.resolve(runDir, refValue);
+        if (!fs.existsSync(resolved)) {
+          warn(`run-artifacts:${rel}/manifest.yaml`, `Reference "${refKey}" points to "${refValue}" but file not found`);
+        }
+      }
+    }
+
+    // Check evidence_dir if referenced
+    if (manifest.references.evidence_dir) {
+      const evidenceDir = path.resolve(runDir, manifest.references.evidence_dir);
+      if (!fs.existsSync(evidenceDir)) {
+        warn(`run-artifacts:${rel}/manifest.yaml`, `Evidence dir "${manifest.references.evidence_dir}" referenced but not found`);
+      }
+    }
+  }
+
+  // Validate retention_policy
+  if (manifest.retention_policy) {
+    const defaultRetention = manifest.retention_policy.default_retention;
+    const validRetention = ['ephemeral', 'round', 'season', 'permanent'];
+    if (defaultRetention && !validRetention.includes(defaultRetention)) {
+      error(`run-artifacts:${rel}/manifest.yaml`, `Invalid retention_policy.default_retention "${defaultRetention}"`);
+      pass = false;
+    }
+  }
+
+  return pass;
+}
+
+function cmdRunArtifacts(roundDir) {
+  errors = 0;
+  warnings = 0;
+  checks = [];
+
+  const resolved = path.resolve(ROOT, roundDir || '.');
+
+  if (!fs.existsSync(resolved)) {
+    error('input', `Round directory not found: ${roundDir}`);
+    printSummary();
+    process.exit(1);
+  }
+
+  // Check if this is a single run directory (has manifest.yaml) or a round dir
+  const directManifest = path.join(resolved, 'manifest.yaml');
+  if (fs.existsSync(directManifest)) {
+    checkRunArtifactIntegrity(resolved);
+  } else {
+    // Round directory — check each subdirectory
+    const entries = fs.readdirSync(resolved, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name)
+      .sort();
+
+    if (entries.length === 0) {
+      warn('run-artifacts', `No run directories found in ${roundDir}`);
+    }
+
+    for (const entry of entries) {
+      const runDir = path.join(resolved, entry);
+      const manifestPath = path.join(runDir, 'manifest.yaml');
+      if (!fs.existsSync(manifestPath)) {
+        warn(`run-artifacts:${entry}`, 'Directory has no manifest.yaml — skipped');
+        continue;
+      }
+      checkRunArtifactIntegrity(runDir);
+    }
+  }
+
+  printSummary();
+  process.exit(errors > 0 ? 1 : 0);
+}
+
+// ---------------------------------------------------------------------------
+// 7) LIFECYCLE SUMMARY
+// ---------------------------------------------------------------------------
+
+function safeLoadYaml(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return { ok: false, doc: null };
+    return { ok: true, doc: loadYaml(filePath) };
+  } catch {
+    return { ok: false, doc: { parse_error: 'unparseable' } };
+  }
+}
+
+function cmdLifecycleSummary(roundDir) {
+  const resolved = path.resolve(ROOT, roundDir || '.');
+
+  if (!fs.existsSync(resolved)) {
+    console.log(JSON.stringify({ error: 'Directory not found', path: roundDir }, null, 2));
+    process.exit(1);
+  }
+
+  const runDirs = fs.readdirSync(resolved, { withFileTypes: true })
+    .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+    .map(e => e.name)
+    .sort();
+
+  const summary = {
+    source_dir: roundDir,
+    generated_at: new Date().toISOString(),
+    runner: process.env.A2A_RUNNER || 'manual',
+    run_count: runDirs.length,
+    runs: [],
+  };
+
+  for (const dirName of runDirs) {
+    const runDir = path.join(resolved, dirName);
+    const manifest = safeLoadYaml(path.join(runDir, 'manifest.yaml'));
+    const packet = safeLoadYaml(path.join(runDir, 'result-packet.yaml'));
+    const trace = safeLoadYaml(path.join(runDir, 'trace.yaml'));
+    const judge = safeLoadYaml(path.join(runDir, 'judge-record.yaml'));
+    const bundle = safeLoadYaml(path.join(runDir, 'evidence-bundle.yaml'));
+    const evidenceDir = path.join(runDir, 'evidence');
+
+    const issues = [];
+    if (!manifest.ok) issues.push('missing_manifest');
+    if (!packet.ok) issues.push('missing_result_packet');
+    if (!trace.ok) issues.push('missing_trace');
+    if (!judge.ok) issues.push('missing_judge_record');
+    if (!bundle.ok) issues.push('missing_evidence_bundle');
+
+    const manifestDoc = manifest.doc || {};
+    const packetDoc = packet.doc || {};
+    const judgeDoc = judge.doc || {};
+
+    const lifecycle = manifestDoc.lifecycle || manifestDoc.status;
+    if (lifecycle && !VALID_RUN_STATUSES.has(lifecycle) && lifecycle !== 'disqualified') {
+      issues.push('invalid_lifecycle_status');
+    }
+
+    const taskIds = [manifestDoc.task_id, packetDoc.task_id].filter(Boolean);
+    if (taskIds.length >= 2 && new Set(taskIds).size > 1) issues.push('task_id_mismatch');
+
+    const agentIds = [manifestDoc.agent_id, packetDoc.agent_id].filter(Boolean);
+    if (agentIds.length >= 2 && new Set(agentIds).size > 1) issues.push('agent_id_mismatch');
+
+    if (packetDoc.started_at && packetDoc.ended_at) {
+      const startedAt = new Date(packetDoc.started_at);
+      const endedAt = new Date(packetDoc.ended_at);
+      if (!Number.isNaN(startedAt.valueOf()) && !Number.isNaN(endedAt.valueOf()) && endedAt < startedAt) {
+        issues.push('ended_before_started');
+      }
+    }
+
+    let evidenceFileCount = 0;
+    if (fs.existsSync(evidenceDir)) {
+      evidenceFileCount = fs.readdirSync(evidenceDir).filter(f => f !== '.gitkeep').length;
+    }
+
+    const runEntry = {
+      run_dir: dirName,
+      run_id: manifestDoc.run_id || null,
+      task_id: manifestDoc.task_id || packetDoc.task_id || null,
+      agent_id: manifestDoc.agent_id || packetDoc.agent_id || null,
+      lifecycle: lifecycle || null,
+      status: packetDoc.status || null,
+      has_manifest: manifest.ok,
+      has_result_packet: packet.ok,
+      has_trace: trace.ok,
+      has_judge_record: judge.ok,
+      has_evidence_bundle: bundle.ok,
+      evidence_files: evidenceFileCount,
+      issues,
+      valid: issues.length === 0,
+    };
+
+    if (packetDoc.raw_measurements) runEntry.raw_measurements = packetDoc.raw_measurements;
+    if (packetDoc.scored_values) runEntry.scored_values = packetDoc.scored_values;
+    if (packetDoc.comparable_metadata) runEntry.comparable_metadata = packetDoc.comparable_metadata;
+    if (judgeDoc.total_score !== undefined) runEntry.total_score = judgeDoc.total_score;
+    if (judgeDoc.verdict) runEntry.verdict = judgeDoc.verdict;
+
+    summary.runs.push(runEntry);
+  }
+
+  const validRuns = summary.runs.filter(r => r.valid);
+  const invalidRuns = summary.runs.filter(r => !r.valid);
+  summary.valid_run_count = validRuns.length;
+  summary.invalid_run_count = invalidRuns.length;
+
+  const aggregateBy = (field) => {
+    const aggregate = {};
+    for (const run of summary.runs) {
+      const id = run[field] || 'unknown';
+      if (!aggregate[id]) aggregate[id] = { [field]: id, total: 0, valid: 0, invalid: 0, statuses: {} };
+      aggregate[id].total++;
+      if (run.valid) aggregate[id].valid++;
+      else aggregate[id].invalid++;
+      const status = run.status || 'unknown';
+      aggregate[id].statuses[status] = (aggregate[id].statuses[status] || 0) + 1;
+    }
+    return Object.values(aggregate).sort((a, b) => String(a[field]).localeCompare(String(b[field])));
+  };
+
+  summary.task_summary = aggregateBy('task_id');
+  summary.agent_summary = aggregateBy('agent_id');
+
+  console.log(JSON.stringify(summary, null, 2));
+  process.exit(invalidRuns.length > 0 ? 1 : 0);
+}
+
 function cmdHelp() {
   console.log(`
 Agent Olympics Competition-Validity Validator
@@ -1037,11 +1504,13 @@ Usage:
   node scripts/competition-validity.js <command> [path]
 
 Commands:
-  run-manifests <round-dir>   Validate run manifests in a round dir
-  engine-outputs <round-dir>  Validate engine outputs per run
-  consistency <round-dir>     Cross-document consistency checks
-  all <round-dir>             All competition-validity checks
-  fixtures <fixtures-dir>     Validate competition-validity fixtures
+  run-manifests <round-dir>    Validate run manifests in a round dir
+  engine-outputs <round-dir>   Validate engine outputs per run
+  consistency <round-dir>      Cross-document consistency checks
+  run-artifacts <round-dir>    Validate run-directory artifact manifest integrity
+  lifecycle-summary <round-dir> Compact completion summary JSON for leaderboard/import
+  all <round-dir>              All competition-validity checks
+  fixtures <fixtures-dir>      Validate competition-validity fixtures
 
 Path defaults:
   <round-dir>    runs/<season>/<round> (e.g., runs/season-001/round-001)
@@ -1069,6 +1538,12 @@ function main() {
       break;
     case 'consistency':
       cmdConsistency(cmdArg || '.');
+      break;
+    case 'run-artifacts':
+      cmdRunArtifacts(cmdArg || '.');
+      break;
+    case 'lifecycle-summary':
+      cmdLifecycleSummary(cmdArg || '.');
       break;
     case 'all':
       cmdAll(cmdArg || '.');

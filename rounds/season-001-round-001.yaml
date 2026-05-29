@@ -13,6 +13,9 @@ lifecycle:
     - status: pending
       timestamp: '2026-05-29T17:27:00+09:00'
       note: Round created by A2A runner lane 1/3 for sogyo
+    - status: pending
+      timestamp: '2026-05-29T18:54:00+09:00'
+      note: Run-directory artifact lifecycle (lane 2/3 for nosuk)
 tasks:
   - task_id: ops-001
     title: Telegram final reply does not appear
@@ -87,6 +90,11 @@ participants:
     runtime_version: broker
     label: seoseo (OpenClaw / Team1 Broker)
     enabled: true
+  - agent_id: nosuk
+    runtime: openclaw
+    label: nosuk (OpenClaw A2A)
+    enabled: true
+    node: default
 run_directory: runs/season-001/round-001/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}
 parent_issue: https://github.com/jinwon-int/agent-olympics/issues/61

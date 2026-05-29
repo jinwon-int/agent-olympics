@@ -11,15 +11,20 @@
  *   node scripts/round.js <command> [options]
  *
  * Commands:
- *   init <manifest>    Validate and initialize a round manifest
- *   plan <manifest>    Dry-run: show what would happen
- *   list [season]      List available rounds
- *   status <round_id>  Show lifecycle status for a round
- *   validate <manifest>  Validate a round manifest against schema
+ *   init <manifest>     Validate and initialize a round manifest
+ *   plan <manifest>     Dry-run: show what would happen
+ *   list [season]       List available rounds
+ *   status <round_id>   Show lifecycle status for a round
+ *   validate <manifest> Validate a round manifest against schema
+ *   execute <manifest>  Execute pending runs via stub adapter (source-only)
+ *   resume <manifest>   Resume interrupted runs (those in 'running' state)
  *
  * Options:
  *   --verbose, -v      Verbose output
  *   --strict           Fail on warnings
+ *   --run-id <id>      Execute/resume only a specific run (by run_id)
+ *   --exit <code>      Override stub adapter exit code (for testing)
+ *   --seed <string>    Deterministic seed for stable output
  *   --help, -h         Show usage
  *
  * Exit code: 0 = success, 1 = validation or runtime error
@@ -78,6 +83,67 @@ function generateTimestamp() {
     .toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul', timeZoneName: 'short' })
     .match(/[A-Z]{3,4}$/)?.[0] || 'UTC';
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${tz}`;
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Run lifecycle state utilities
+// ---------------------------------------------------------------------------
+
+const VALID_RUN_LIFECYCLE_STATES = [
+  'pending',
+  'running',
+  'completed',
+  'partial',
+  'failed',
+  'blocked',
+  'disqualified'
+];
+
+const VALID_ROUND_LIFECYCLE_STATES = [
+  'pending',
+  'fixture_preparation',
+  'running',
+  'completed',
+  'scored',
+  'archived'
+];
+
+/**
+ * Deterministic stable status from exit code (matching stub-adapter).
+ */
+function exitCodeToStatus(exitCode) {
+  switch (exitCode) {
+    case 0: return 'completed';
+    case 1: return 'failed';
+    case 2: return 'partial';
+    default: return 'blocked';
+  }
+}
+
+/**
+ * Map a run result status to a terminal (non-running) state label.
+ * These are the run-level outcome states.
+ */
+function isTerminalRunState(state) {
+  return ['completed', 'partial', 'failed', 'blocked', 'disqualified'].includes(state);
+}
+
+/**
+ * Map a round lifecycle status to terminal.
+ */
+function isTerminalRoundState(status) {
+  return ['completed', 'scored', 'archived'].includes(status);
+}
+
+/**
+ * Generate a deterministic run ID matching the pattern used by init.
+ */
+function generateRunId(taskId, agentId, timestamp) {
+  return `run-${taskId}-${agentId}-${timestamp}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,15 +323,26 @@ Commands:
   list [season]        List available rounds, optionally filtered by season
   status <round_id>    Show lifecycle status for a round
   validate <manifest>  Validate a round manifest against the schema
+  execute <manifest>   Execute pending runs via stub adapter (source-only)
+  resume <manifest>    Resume interrupted runs (those in 'running' state)
 
 Options:
   --verbose, -v        Verbose output
   --strict             Fail on warnings
+  --run-id <id>        Execute/resume only a specific run (by run_id)
+  --exit <code>        Override stub adapter exit code (for testing)
+  --seed <string>      Deterministic seed for stable output
   --help, -h           Show this help
 
 Exit codes:
   0  Success
   1  Validation or runtime error
+
+Run Lifecycle States:
+  pending     → running → completed | partial | failed | blocked | disqualified
+
+Round Lifecycle States:
+  pending → fixture_preparation → running → completed → scored → archived
 `;
   console.log(HELP);
 }
@@ -525,6 +602,495 @@ function cmdStatus(roundIdArg, options) {
 }
 
 // ---------------------------------------------------------------------------
+// Execute — run pending runs via stub adapter (source-only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Load a run manifest from disk.
+ */
+function loadRunManifest(runDirPath) {
+  const manifestPath = path.resolve(ROOT, runDirPath, 'manifest.yaml');
+  try {
+    const raw = fs.readFileSync(manifestPath, 'utf8');
+    return yaml.load(raw);
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Save a run manifest back to disk.
+ */
+function saveRunManifest(runDirPath, manifest) {
+  const manifestPath = path.resolve(ROOT, runDirPath, 'manifest.yaml');
+  fs.writeFileSync(manifestPath, yaml.dump(manifest, { indent: 2, lineWidth: 120 }));
+}
+
+/**
+ * Invoke the stub adapter for a single run.
+ * Returns { status, exitCode, error } or throws.
+ */
+function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOverride) {
+  const resolve = (p) => path.resolve(ROOT, p);
+
+  const args = [
+    resolve('scripts/stub-adapter.js'),
+    resolve(envelopePath),
+    '--run-dir', resolve(runDir),
+    '--agent-id', agentId,
+    '--runtime', runtime,
+  ];
+
+  if (seed) {
+    args.push('--seed', seed);
+  }
+  if (exitOverride !== undefined && exitOverride !== null) {
+    args.push('--exit', String(exitOverride));
+  }
+
+  const cp = require('child_process').spawnSync(
+    process.execPath,
+    args,
+    {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      encoding: 'utf8',
+      timeout: 120000, // 2-minute safety timeout
+    }
+  );
+
+  const stdout = (cp.stdout || '').trim();
+  const stderr = (cp.stderr || '').trim();
+
+  // Write adapter log
+  const logPath = path.resolve(ROOT, runDir, 'adapter.log');
+  fs.writeFileSync(logPath, `STDOUT:\n${stdout}\n\nSTDERR:\n${stderr}\n`, 'utf8');
+
+  if (cp.error) {
+    if (cp.error.code === 'ETIMEDOUT') {
+      return { status: 'partial', exitCode: 2, error: 'Adapter timed out' };
+    }
+    return { status: 'blocked', exitCode: 3, error: cp.error.message };
+  }
+
+  const exitCode = cp.status;
+  const status = exitCodeToStatus(exitCode);
+
+  // If exit was non-zero but we have no error string, describe it
+  const error = exitCode !== 0 ? `Adapter exited with code ${exitCode}` : null;
+
+  return { status, exitCode, error, stdout, stderr };
+}
+
+/**
+ * Validate run output artifacts. Returns { valid, errors }.
+ */
+function validateRunOutput(runDir) {
+  const errors = [];
+  const requiredArtifacts = ['result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml'];
+
+  for (const artifact of requiredArtifacts) {
+    const artifactPath = path.resolve(ROOT, runDir, artifact);
+    if (!fs.existsSync(artifactPath)) {
+      errors.push(`Missing artifact: ${artifact}`);
+      continue;
+    }
+
+    // Validate with the schema validator
+    try {
+      const cp = require('child_process').spawnSync(
+        process.execPath,
+        [path.resolve(ROOT, 'scripts/validate.js'), artifactPath],
+        { cwd: ROOT, stdio: 'pipe', encoding: 'utf8' }
+      );
+      if (cp.status !== 0) {
+        errors.push(`${artifact} failed schema validation`);
+      }
+    } catch (err) {
+      errors.push(`Could not validate ${artifact}: ${err.message}`);
+    }
+  }
+
+  // Check that the result-packet.yaml is parseable and has a valid status
+  const resultPacketPath = path.resolve(ROOT, runDir, 'result-packet.yaml');
+  if (fs.existsSync(resultPacketPath)) {
+    try {
+      const raw = fs.readFileSync(resultPacketPath, 'utf8');
+      const packet = yaml.load(raw);
+      if (!packet || !packet.status) {
+        errors.push('result-packet.yaml missing required field: status');
+      } else if (!['completed', 'partial', 'blocked', 'failed', 'disqualified'].includes(packet.status)) {
+        errors.push(`result-packet.yaml has invalid status: "${packet.status}"`);
+      }
+      if (packet && packet.summary === undefined) {
+        errors.push('result-packet.yaml missing required field: summary');
+      }
+    } catch (err) {
+      errors.push(`result-packet.yaml is not valid YAML: ${err.message}`);
+    }
+
+    // Check for secret patterns in output (safety scan)
+    try {
+      const content = fs.readFileSync(resultPacketPath, 'utf8');
+      const secretPatterns = [
+        /sk-[a-zA-Z0-9]{20,}/g,     // OpenAI-like keys
+        /ghp_[a-zA-Z0-9]{36}/g,     // GitHub PATs
+        /xox[baprs]-[a-zA-Z0-9-]+/g, // Slack tokens
+        /-----BEGIN\s+(RSA|EC|Ed25519)\s+PRIVATE\s+KEY-----/g, // Private keys
+      ];
+      for (const pattern of secretPatterns) {
+        if (pattern.test(content)) {
+          errors.push('SECRET DETECTED in result-packet.yaml — potential credential exposure');
+          break;
+        }
+      }
+    } catch { /* skip scan errors */ }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Transition a run's lifecycle state.
+ */
+function transitionRunState(runManifest, runDir, newStatus, note) {
+  const oldStatus = runManifest.lifecycle || 'unknown';
+  runManifest.lifecycle = newStatus;
+
+  if (!Array.isArray(runManifest.status_history)) {
+    runManifest.status_history = [];
+  }
+  runManifest.status_history.push({
+    status: newStatus,
+    timestamp: new Date().toISOString(),
+    note: note || `Transitioned from ${oldStatus} to ${newStatus}`,
+  });
+
+  runManifest.updated_at = new Date().toISOString();
+
+  saveRunManifest(runDir, runManifest);
+  return runManifest;
+}
+
+/**
+ * Execute a single run: validate, invoke stub adapter, collect results.
+ */
+function executeSingleRun(runDir, runManifest, roundManifest, options) {
+  const runId = runManifest.run_id;
+  const taskId = runManifest.task_id;
+  const agentId = runManifest.agent_id;
+  const runtime = runManifest.runtime || 'cli';
+  const envelopeRef = runManifest.envelope_ref;
+
+  console.log(`\n  Executing run: ${runId}`);
+
+  // --- Resolve envelope path ---
+  const envelopePath = path.resolve(ROOT, envelopeRef);
+  if (!fs.existsSync(envelopePath)) {
+    const errMsg = `Envelope not found: ${envelopeRef}`;
+    console.error(`  ✘ ${errMsg}`);
+    transitionRunState(runManifest, runDir, 'failed', errMsg);
+    return { runId, success: false, status: 'failed', error: errMsg };
+  }
+
+  // --- Resolve fixture path (warn if missing, not blocking) ---
+  if (runManifest.fixture_ref) {
+    const fixturePath = path.resolve(ROOT, runManifest.fixture_ref);
+    if (!fs.existsSync(fixturePath)) {
+      console.warn(`  ⚠ Fixture bundle not found: ${runManifest.fixture_ref} (continuing anyway)`);
+    }
+  }
+
+  // --- Ensure fixture and evidence subdirs exist ---
+  mkdirp(path.join(runDir, 'fixtures'));
+  mkdirp(path.join(runDir, 'evidence'));
+
+  // --- Copy envelope to run directory ---
+  try {
+    const envelopeCopyPath = path.resolve(ROOT, runDir, 'envelope.yaml');
+    fs.copyFileSync(envelopePath, envelopeCopyPath);
+  } catch (err) {
+    console.warn(`  ⚠ Could not copy envelope: ${err.message}`);
+  }
+
+  // --- Transition to running ---
+  transitionRunState(runManifest, runDir, 'running', 'Execution started via round CLI');
+
+  // --- Determine seed ---
+  const seed = options.seed || `${runId}-execute`;
+
+  // --- Invoke stub adapter ---
+  console.log(`  Calling stub adapter (agent=${agentId}, runtime=${runtime})...`);
+  let result;
+  try {
+    result = invokeStubAdapter(
+      envelopeRef,
+      runDir,
+      agentId,
+      runtime,
+      seed,
+      options.exitOverride
+    );
+  } catch (err) {
+    console.error(`  ✘ Adapter invocation failed: ${err.message}`);
+    transitionRunState(runManifest, runDir, 'blocked', `Adapter invocation error: ${err.message}`);
+    return { runId, success: false, status: 'blocked', error: err.message };
+  }
+
+  console.log(`  Adapter exited with code ${result.exitCode} (→ ${result.status})`);
+
+  // --- Determine run outcome ---
+  let runStatus = result.status;
+  let statusNote = `Adapter exit code ${result.exitCode} mapped to ${runStatus}`;
+
+  // --- Validate output artifacts ---
+  const validation = validateRunOutput(runDir);
+  if (!validation.valid) {
+    console.warn(`  ⚠ Output validation issues:`);
+    for (const err of validation.errors) {
+      console.warn(`    • ${err}`);
+    }
+
+    // If validation found secrets, escalate to disqualified
+    const hasSecretExposure = validation.errors.some(e =>
+      e.includes('SECRET DETECTED') || e.includes('secret')
+    );
+    if (hasSecretExposure) {
+      runStatus = 'disqualified';
+      statusNote = 'Output validation failed: secret or credential exposure detected';
+    } else if (runStatus === 'completed') {
+      // If adapter reported success but artifacts are invalid, downgrade to failed
+      runStatus = 'failed';
+      statusNote = 'Adapter reported completed but output artifacts failed validation';
+    }
+    // For non-completed statuses, keep the original status but note validation issues
+  }
+
+  // --- Check for disqualifying conditions ---
+  // If exit code 0 but artifacts are missing entirely, that's suspicious
+  if (result.exitCode === 0) {
+    const rpExists = fs.existsSync(path.resolve(ROOT, runDir, 'result-packet.yaml'));
+    if (!rpExists) {
+      runStatus = 'disqualified';
+      statusNote = 'Exit code 0 but result-packet.yaml missing — possible fabrications';
+    }
+  }
+
+  // --- Transition to final state ---
+  transitionRunState(runManifest, runDir, runStatus, statusNote);
+
+  if (runStatus === 'completed') {
+    console.log(`  ✓ Run completed successfully`);
+  } else {
+    console.log(`  ✘ Run finished with status: ${runStatus}`);
+  }
+
+  return {
+    runId,
+    success: runStatus === 'completed',
+    status: runStatus,
+    exitCode: result.exitCode,
+    error: result.error || null,
+    validationErrors: validation.valid ? [] : validation.errors,
+  };
+}
+
+/**
+ * Collect all pending or interrupted runs from a round manifest.
+ */
+function collectRuns(roundManifest, options) {
+  const runDirBase = roundManifest.run_directory;
+  if (!runDirBase || !dirExists(runDirBase)) {
+    return [];
+  }
+
+  const absRunDir = path.resolve(ROOT, runDirBase);
+  let entries;
+  try {
+    entries = fs.readdirSync(absRunDir);
+  } catch {
+    return [];
+  }
+
+  const runs = [];
+  for (const entry of entries) {
+    const entryPath = path.join(runDirBase, entry);
+    if (!entry.startsWith('run-')) continue;
+    if (!fs.statSync(path.resolve(ROOT, entryPath)).isDirectory()) continue;
+
+    const manifest = loadRunManifest(entryPath);
+    if (!manifest) {
+      console.warn(`  ⚠ No manifest.yaml in ${entryPath}/ — skipping`);
+      continue;
+    }
+
+    // Filter by run-id if specified
+    if (options.runId && manifest.run_id !== options.runId) continue;
+
+    runs.push({ dir: entryPath, manifest });
+  }
+
+  return runs;
+}
+
+/**
+ * Execute all pending runs in a round.
+ */
+function cmdExecute(manifestArg, options) {
+  const manifestPath = manifestArg;
+  if (!manifestPath) {
+    console.error('Usage: node scripts/round.js execute <manifest> [options]');
+    process.exit(1);
+  }
+
+  CHECKS.length = 0;
+  checkPassed = 0;
+  checkFailed = 0;
+  checkWarnings = 0;
+
+  // Validate manifest first
+  const manifest = validateRoundManifest(manifestPath, options.strict);
+  if (checkFailed > 0) {
+    printCheckResult(true);
+    console.error('\nCannot execute — manifest is invalid');
+    process.exit(1);
+  }
+
+  // Check round lifecycle is in an executable state
+  const roundLifecycle = manifest.lifecycle.status;
+  if (isTerminalRoundState(roundLifecycle)) {
+    console.error(`\n✘ Round lifecycle is "${roundLifecycle}" — cannot execute a completed round`);
+    process.exit(1);
+  }
+
+  // Collect runs
+  const allRuns = collectRuns(manifest, options);
+  if (allRuns.length === 0) {
+    console.log('\nNo runs found for this round.');
+    return manifest;
+  }
+
+  // Separate pending vs interrupted
+  const pending = allRuns.filter(r => r.manifest.lifecycle === 'pending');
+  const interrupted = allRuns.filter(r => r.manifest.lifecycle === 'running');
+  const alreadyDone = allRuns.filter(r => isTerminalRunState(r.manifest.lifecycle));
+
+  console.log(`\n=== Execute Round: ${manifest.round_id} ===`);
+  console.log(`  Round lifecycle: ${roundLifecycle}`);
+  console.log(`  Total runs:      ${allRuns.length}`);
+  console.log(`  Pending:         ${pending.length}`);
+  console.log(`  Interrupted:     ${interrupted.length}`);
+  console.log(`  Already done:    ${alreadyDone.length}`);
+
+  if (interrupted.length > 0 && !options.resume) {
+    console.warn(`\n  ⚠ ${interrupted.length} run(s) are in "running" state (possibly interrupted).`);
+    console.warn('  Use --resume to resume them, or reinitialize the round.');
+  }
+
+  if (pending.length === 0 && (interrupted.length === 0 || !options.resume)) {
+    console.log('\n✓ Nothing to execute.');
+    return manifest;
+  }
+
+  // Determine which runs to process
+  const toProcess = options.resume
+    ? [...pending, ...interrupted]
+    : pending;
+
+  if (toProcess.length === 0) {
+    console.log('\n✓ Nothing to execute.');
+    return manifest;
+  }
+
+  // Update round lifecycle to running
+  const origRoundStatus = manifest.lifecycle.status;
+  manifest.lifecycle.status = 'running';
+  if (!Array.isArray(manifest.lifecycle.status_history)) {
+    manifest.lifecycle.status_history = [];
+  }
+  manifest.lifecycle.status_history.push({
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    note: `Round execution started (${toProcess.length} runs)`,
+  });
+  fs.writeFileSync(path.resolve(ROOT, manifestPath), yaml.dump(manifest, { indent: 2, lineWidth: 120 }));
+
+  // Execute each run
+  let completed = 0;
+  let failed = 0;
+  const results = [];
+
+  for (const run of toProcess) {
+    const result = executeSingleRun(
+      run.dir,
+      run.manifest,
+      manifest,
+      options
+    );
+    results.push(result);
+    if (result.success) {
+      completed++;
+    } else {
+      failed++;
+    }
+  }
+
+  // Reload manifest to get latest state
+  const updatedManifest = loadYaml(manifestPath);
+
+  // Determine if all runs are now in terminal states
+  const allRunsUpdated = collectRuns(updatedManifest, options);
+  const allTerminal = allRunsUpdated.every(r => isTerminalRunState(r.manifest.lifecycle));
+
+  if (allTerminal) {
+    updatedManifest.lifecycle.status = 'completed';
+    if (!Array.isArray(updatedManifest.lifecycle.status_history)) {
+      updatedManifest.lifecycle.status_history = [];
+    }
+    updatedManifest.lifecycle.status_history.push({
+      status: 'completed',
+      timestamp: new Date().toISOString(),
+      note: `All ${allRunsUpdated.length} runs completed`,
+    });
+    fs.writeFileSync(path.resolve(ROOT, manifestPath), yaml.dump(updatedManifest, { indent: 2, lineWidth: 120 }));
+    console.log(`\n✓ Round lifecycle → completed (all runs in terminal states)`);
+  } else {
+    // Some runs may still be pending if we filtered by --run-id
+    console.log(`\n  Round lifecycle remains "running" (${allRunsUpdated.filter(r => !isTerminalRunState(r.manifest.lifecycle)).length} runs still non-terminal)`);
+  }
+
+  // Print summary
+  console.log(`\n=== Execution Summary ===`);
+  for (const r of results) {
+    const icon = r.success ? '✓' : '✘';
+    console.log(`  ${icon} ${r.runId} → ${r.status}${r.error ? ` (${r.error})` : ''}`);
+    if (r.validationErrors && r.validationErrors.length > 0) {
+      for (const ve of r.validationErrors) {
+        console.log(`      ∟ ${ve}`);
+      }
+    }
+  }
+  console.log(`\n  Completed: ${completed}, Failed: ${failed}, Total: ${results.length}`);
+
+  return updatedManifest;
+}
+
+/**
+ * Resume interrupted runs (alias for execute --resume).
+ */
+function cmdResume(manifestArg, options) {
+  if (!manifestArg) {
+    console.error('Usage: node scripts/round.js resume <manifest> [options]');
+    process.exit(1);
+  }
+  console.log('Resuming interrupted runs...');
+  return cmdExecute(manifestArg, { ...options, resume: true });
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -537,7 +1103,12 @@ function main() {
 
   // Parse global options
   const filtered = [];
-  for (const a of args) {
+  let runId = null;
+  let exitOverride = null;
+  let seed = null;
+
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
     switch (a) {
       case '--verbose':
       case '-v':
@@ -545,6 +1116,15 @@ function main() {
         break;
       case '--strict':
         options.strict = true;
+        break;
+      case '--run-id':
+        runId = args[++i];
+        break;
+      case '--exit':
+        exitOverride = parseInt(args[++i], 10);
+        break;
+      case '--seed':
+        seed = args[++i];
         break;
       case '--help':
       case '-h':
@@ -558,6 +1138,16 @@ function main() {
   const cmd = filtered[0];
   const cmdArg = filtered[1];
   const cmdArg2 = filtered[2];
+
+  // Execution options (shared by execute and resume)
+  const execOptions = {
+    verbose: options.verbose,
+    strict: options.strict,
+    runId,
+    exitOverride,
+    seed,
+    resume: false,
+  };
 
   switch (cmd) {
     case 'validate':
@@ -578,6 +1168,12 @@ function main() {
       break;
     case 'status':
       cmdStatus(cmdArg, options);
+      break;
+    case 'execute':
+      cmdExecute(cmdArg, execOptions);
+      break;
+    case 'resume':
+      cmdResume(cmdArg, execOptions);
       break;
     default:
       if (cmd) {
