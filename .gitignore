@@ -8,6 +8,9 @@ runs/
 results/*-auto-judge.yaml
 results/scoreboard.json
 
+# Web result consumer — generated output directories
+web-output/
+
 # OS files
 *.DS_Store
 Thumbs.db

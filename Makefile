@@ -14,6 +14,7 @@
         hermes-adapter hermes-adapter-code hermes-adapter-fail validate-hermes smoke-hermes \
         score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
+        web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
@@ -326,6 +327,27 @@ score-all:
 	node scripts/score.js run --blind
 
 # --- Web data bridge targets ---
+
+# Generate static HTML from scoreboard (web-result consumer)
+web-consumer:
+	node scripts/web-result-consumer.js results/scoreboard.json
+
+# Generate static HTML with blind display rules
+web-consumer-blind:
+	node scripts/web-result-consumer.js results/scoreboard.json --blind
+
+# Generate sample output to fixtures/web-sample
+web-consumer-sample:
+	node scripts/score.js run > /dev/null 2>&1; \
+	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample --title "Agent Olympics — Sample Leaderboard"; \
+	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample/blind --blind --title "Agent Olympics — Blind Sample"
+
+# Run web consumer test suite
+test-web-consumer:
+	bash scripts/test-web-consumer.sh
+
+# Full web pipeline: score + consume + test
+web: score run test-web-consumer web-consumer-sample
 
 # Validate scoreboard has all required web-display fields
 validate-web-fields:
