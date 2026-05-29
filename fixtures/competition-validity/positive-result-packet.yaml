@@ -1,0 +1,58 @@
+# Schema-valid AND competition-valid result packet
+# This should pass all competition-validity checks.
+schema_version: 1
+packet_id: pkt-ops-001-sogyo-20260529
+task_id: ops-001
+agent_id: sogyo
+runtime: openclaw
+model: gpt-5.x
+node: vps5
+started_at: "2026-05-29T17:00:00+09:00"
+ended_at: "2026-05-29T17:22:00+09:00"
+status: completed
+summary: >
+  Diagnosed Telegram delivery failure: source-visible reply was written to
+  transcript but not emitted as outbound message due to stale session recovery.
+
+actions:
+  - id: act-001
+    type: command
+    target: local
+    command_summary: Inspect gateway delivery log for outbound message attempt
+    redacted: false
+    evidence_id: ev-001
+  - id: act-002
+    type: read
+    target: local
+    command_summary: Check session transcript for final assistant answer
+    redacted: false
+    evidence_id: ev-002
+
+evidence:
+  - id: ev-001
+    kind: log
+    source: gateway journal
+    summary: Delivery log showing source-visible reply mode mismatch
+    redacted: false
+  - id: ev-002
+    kind: transcript_excerpt
+    source: session transcript
+    summary: Final assistant answer present at message position 47
+    redacted: false
+
+findings:
+  - claim: Gateway readiness was not the root cause.
+    evidence: [ev-001, ev-002]
+    confidence: high
+
+risks:
+  - Clean reinstall would erase debugging context without confirming the cause.
+
+outputs:
+  diagnosis: >
+    The failure is consistent with a runtime source-reply release bug after
+    stale embedded-run recovery.
+  recommendation: Patch the recovery code path to reinitialize delivery target.
+  risk_assessment: Low risk. Read-only investigation completed.
+  next_action: Propose targeted patch after approval.
+  durable_memory_decision: wiki_update_needed

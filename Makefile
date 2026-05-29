@@ -11,7 +11,7 @@
         stub-adapter stub-adapter-fail test-stub \
         score score-validate score-run score-aggregate validate-scoreboard
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
 
 # Install dependencies
 setup:
@@ -92,7 +92,33 @@ round:
 	node scripts/round.js
 
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds validate-scoreboard
+validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds validate-profiles validate-scoreboard validate-competition-fixtures
+
+# --- Competition-Validity targets ---
+
+# Run competition-validity checks (scans repo-wide if no run dir)
+validate-competition:
+	node scripts/competition-validity.js all
+
+# Validate competition-validity fixtures (positive + negative examples)
+validate-competition-fixtures:
+	node scripts/competition-validity.js fixtures fixtures/competition-validity
+
+# Validate run manifest integrity only
+validate-run-manifests:
+	node scripts/competition-validity.js run-manifests runs/season-001/round-001
+
+# Validate engine output presence
+validate-engine-outputs:
+	node scripts/competition-validity.js engine-outputs runs/season-001/round-001
+
+# Validate cross-document consistency
+validate-consistency:
+	node scripts/competition-validity.js consistency runs/season-001/round-001
+
+# Validate all competition-validity checks (via validate.js wrapper)
+validate-cv:
+	node scripts/validate.js competition-validity
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke

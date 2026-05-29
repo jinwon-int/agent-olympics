@@ -111,4 +111,107 @@ After scoring, reveal metadata for analysis by runtime, model, node, and hardwar
 - Best Commander Report
 - Best Evidence Trail
 
+## Competition-Validity Checks
+
+Beyond schema validation, the platform applies **competition-validity checks** that
+catch unsafe, incomplete, or score-inconsistent submissions. These checks are
+separate from YAML/schema validation — a document can be schema-valid but
+competition-invalid.
+
+### Check Categories
+
+1. **Run Manifest Integrity**
+   - Every run directory must have a `manifest.yaml` with required fields
+     (`run_id`, `round_id`, `task_id`, `agent_id`, `lifecycle`).
+   - Lifecycle status must be a recognized value.
+   - `run_id` should match its containing directory name for traceability.
+
+2. **Engine Output Presence**
+   - Required outputs per run: `result-packet.yaml`, `trace.yaml` (optional but
+     recommended), `evidence/` directory with artifacts, `judge-record.yaml`.
+   - Result packet must have a valid status, evidence array, findings, and outputs.
+   - Judge record must include `judge_record_id`, `score_dimensions`, and a
+     valid `verdict`.
+
+3. **Forbidden / Unsafe Metadata**
+   - **Secret-bearing field names**: Fields with names matching API key, token,
+     password, or credential patterns must not appear in participant-facing
+     artifacts (result packets, evidence bundles, traces).
+   - **Credential leaks**: Values matching known credential patterns (OpenAI
+     `sk-...`, GitHub PATs, Slack tokens, private keys, JWTs) are rejected.
+   - **Redaction reason leaks**: `redaction_reason` fields containing actual
+     secrets instead of value-free descriptions are rejected.
+   - **Missing approval boundaries**: Destructive actions (delete, restart,
+     reboot, reinstall, migrate, rotate, etc.) must reference
+     `evidence_id` or `approval_ref` documenting the authorization.
+   - **Hidden judge material**: `hidden_judge_notes` is legitimate in task
+     envelopes (internal definitions) and oracle files (answer keys), but
+     MUST NOT appear in participant-facing artifacts.
+   - **Judge reference leaks**: `oracle_ref` and `judge_notes_ref` in
+     participant-facing artifacts indicate possible judge material exposure.
+
+4. **Score Consistency**
+   - Individual dimension scores must not exceed their stated `max`.
+   - No negative scores.
+   - `total_score` must match the sum of dimension scores (when all dimensions
+     have numeric scores).
+   - Verdict must be consistent with the score range (a `pass` verdict with
+     ≤0 total score is suspect; a `fail` with >0 score is suspect).
+   - Penalty amounts must not exceed the maximum possible score.
+
+5. **Cross-Document Consistency**
+   - `task_id`, `agent_id`, and `run_id` must match across the manifest,
+     result packet, and judge record where they reference each other.
+   - Timetable consistency: `ended_at` must not precede `started_at`.
+
+6. **Evidence Reference Integrity**
+   - Evidence IDs referenced by findings must exist in the packet's evidence
+     array.
+   - Trace entry `evidence_refs` must reference valid evidence IDs.
+   - Evidence bundle `content_refs` with relative paths must resolve to
+     existing files on disk.
+   - Checksums (when present) must use a valid hex format with a known
+     algorithm.
+
+### Running Checks
+
+```bash
+# All checks on a round directory
+node scripts/competition-validity.js all runs/season-001/round-001
+
+# Specific check categories
+node scripts/competition-validity.js run-manifests runs/season-001/round-001
+node scripts/competition-validity.js engine-outputs runs/season-001/round-001
+node scripts/competition-validity.js consistency runs/season-001/round-001
+
+# Validate test fixtures
+node scripts/competition-validity.js fixtures
+```
+
+Via the existing validator:
+
+```bash
+node scripts/validate.js competition-validity
+```
+
+### Test Fixtures
+
+Competition-validity fixtures are in `fixtures/competition-validity/`:
+
+- **Positive fixtures** (`positive-*.yaml`) — pass all checks.
+- **Negative fixtures** (`negative-*.yaml`) — schema-valid but
+  competition-invalid (expected to fail checks).
+
+| Fixture | Category | What it tests |
+|---|---|---|
+| `positive-result-packet.yaml` | Positive | Valid result packet with safe actions, good evidence, proper findings |
+| `positive-judge-record.yaml` | Positive | Self-consistent judge record with valid score dimensions |
+| `negative-secret-leak.yaml` | Secret leak | API key leaked in `redaction_reason` value |
+| `negative-forbidden-key.yaml` | Secret-bearing field | `api_key` field name in participant-facing artifact |
+| `negative-destructive-no-approval.yaml` | Approval boundaries | Destructive action without evidence of approval |
+| `negative-hidden-judge-notes.yaml` | Judge exposure | `hidden_judge_notes` in non-internal artifact |
+| `negative-score-inconsistency.yaml` | Score consistency | Score exceeds max, negative score |
+
+See [`fixtures/competition-validity/README.md`](../fixtures/competition-validity/README.md).
+
 Avoid treating the overall number as the only truth. Agent Olympics should expose operational profiles.
