@@ -1,0 +1,66 @@
+# Positive fixture: Hermes node readiness smoke — trace record
+# Expected to PASS schema validation.
+schema_version: 1
+trace_id: tr-hermes-node-readiness-smoke-20260530T071500KST
+run_id: run-node-readiness-smoke-hermes-20260530T071500KST
+agent_id: smoke-agent
+runtime: hermes
+generated_at: "2026-05-30T07:30:00+09:00"
+adapter_mode: orchestrator
+event_family: node
+entries:
+  - seq: 0
+    timestamp: "2026-05-30T07:15:00+09:00"
+    action: read
+    target: task_envelope
+    summary: "Read node-001 task envelope"
+    duration_ms: 45
+    result_summary: "Loaded envelope for node readiness audit"
+    evidence_ref: ev-session-input
+  - seq: 1
+    timestamp: "2026-05-30T07:15:01+09:00"
+    action: plan
+    target: workflow
+    summary: "Decompose node readiness audit into 3-step workflow"
+    duration_ms: 1500
+    result_summary: "Workflow plan: (1) probe node, (2) audit config, (3) synthesize report"
+    evidence_ref: ev-workflow-plan
+  - seq: 2
+    timestamp: "2026-05-30T07:15:03+09:00"
+    action: delegate
+    target: worker_pool
+    summary: "Dispatch probe worker and audit worker"
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    duration_ms: 750
+    result_summary: "Workers dispatched: probe-worker, audit-worker"
+    evidence_ref: ev-worker-assignments
+  - seq: 3
+    timestamp: "2026-05-30T07:29:00+09:00"
+    action: collect
+    target: worker_results
+    summary: "Collect probe results and audit findings from both workers"
+    duration_ms: 1000
+    result_summary: "Worker results collected, redaction applied to probe paths"
+    evidence_ref: ev-worker-traces
+  - seq: 4
+    timestamp: "2026-05-30T07:29:02+09:00"
+    action: synthesize
+    target: commander_report
+    summary: "Synthesize final commander report from worker outputs"
+    duration_ms: 1200
+    result_summary: "Commander report synthesized with readiness verdict"
+    evidence_ref: ev-commander-report
+  - seq: 5
+    timestamp: "2026-05-30T07:30:00+09:00"
+    action: write
+    target: result_packet
+    summary: "Write all output artifacts to run directory"
+    duration_ms: 60
+    result_summary: "All output artifacts written"
+redaction_policy:
+  applied_rules:
+    - rule_id: rr-hermes-001
+      pattern_description: "Sensitive parameter values in workflow invocation arguments"
+      reason: hermes_workflow_arguments
+  default_reason: sensitive_value_redacted

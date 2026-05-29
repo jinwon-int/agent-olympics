@@ -1,0 +1,30 @@
+# Config snapshot evidence — shared fixture
+#
+# Safe non-secret configuration fields only.
+
+schema_version: 1
+evidence_id: ev-config-snapshot
+generated_at: "2026-05-30T07:14:00+09:00"
+source: gateway-config
+fields:
+  - key: runtime.version
+    value: 2026.5.27
+    source: package.json
+  - key: gateway.host
+    value: localhost
+    source: gateway.yaml
+  - key: gateway.port
+    value: 3080
+    source: gateway.yaml
+  - key: model.default
+    value: gpt-4o
+    source: gateway.yaml
+  - key: model.fallback
+    value: gpt-4o-mini
+    source: gateway.yaml
+  - key: tools.enabled
+    value: "read, write, exec, web_search, web_fetch, sessions_spawn, cron, image_generate"
+    source: gateway.yaml
+  - key: session.timeout_seconds
+    value: 900
+    source: gateway.yaml

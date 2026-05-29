@@ -1,0 +1,137 @@
+# Positive fixture: Hermes node readiness smoke — completed
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-hermes-node-readiness-smoke-20260530
+run_id: run-node-readiness-smoke-hermes-20260530T071500KST
+task_id: node-001
+agent_id: smoke-agent
+runtime: hermes
+runtime_version: 1.0.0
+model: gpt-5.x
+model_provider: openai
+node: orchestrator-node
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 8
+  storage_class: hybrid-ssd-hdd
+  os_family: linux
+configuration_profile:
+  model_routing: documented
+  liveness: hermes-orchestrator
+  resource_limits: configured
+  adapter_mode: orchestrator
+  worker_count: 2
+  max_concurrent_workers: 2
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  used:
+    - read
+    - write
+    - exec
+    - delegate
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: worker_dispatched
+  timeout_handling: timeout_after_900s_status_partial
+started_at: "2026-05-30T07:15:00+09:00"
+ended_at: "2026-05-30T07:30:00+09:00"
+status: completed
+publishable: true
+summary: "Hermes adapter completed node readiness smoke pack. Workflow plan with 3 steps, 2 workers dispatched (probe worker, audit worker). Commander report synthesized with readiness verdict and 2 risks identified."
+
+actions:
+  - id: act-001
+    type: read
+    target: task_envelope
+    command_summary: Parse node-001 task envelope
+    redacted: false
+    evidence_id: ev-session-input
+  - id: act-002
+    type: plan
+    target: workflow
+    command_summary: Decompose node readiness audit into 3-step workflow plan
+    redacted: false
+    evidence_id: ev-workflow-plan
+  - id: act-003
+    type: delegate
+    target: worker_pool
+    command_summary: Dispatch 2 workers — probe worker and audit worker
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    evidence_id: ev-worker-assignments
+  - id: act-004
+    type: collect
+    target: worker_results
+    command_summary: Collect probe results and audit findings from workers
+    redacted: false
+    evidence_id: ev-worker-traces
+  - id: act-005
+    type: synthesize
+    target: commander_report
+    command_summary: Synthesize final readiness verdict from both worker outputs
+    redacted: false
+    evidence_id: ev-commander-report
+
+evidence:
+  - id: ev-session-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input task envelope for node readiness audit
+    redacted: false
+  - id: ev-workflow-plan
+    kind: workflow_plan
+    source: hermes workflow engine
+    summary: Workflow plan with 3 steps for node readiness audit
+    redacted: false
+    content_ref: ../../evidence/node-capability-report.yaml
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    source: hermes worker pool
+    summary: Probe worker dispatched for node scan, audit worker for analysis
+    redacted: false
+  - id: ev-worker-traces
+    kind: worker_trace
+    source: worker execution traces
+    summary: Consolidated tool traces from 2 workers (node probe + readiness analysis)
+    redacted: false
+  - id: ev-commander-report
+    kind: commander_report
+    source: hermes commander
+    summary: Synthesized commander report with readiness verdict
+    redacted: false
+    content_ref: ../../evidence/node-capability-report.yaml
+
+findings:
+  - claim: Hermes orchestrator completed workflow for node-001 with status completed.
+    evidence:
+      - ev-session-input
+      - ev-workflow-plan
+    confidence: high
+  - claim: Workflow created with 3 steps, 2 workers dispatched and completed successfully.
+    evidence:
+      - ev-worker-assignments
+      - ev-worker-traces
+    confidence: high
+  - claim: Commander report synthesized with readiness verdict and 2 risks identified.
+    evidence:
+      - ev-commander-report
+    confidence: high
+
+risks:
+  - Worker evidence merging may fail when workers return contradictory results
+  - Node probe worker may produce large output that requires truncation
+  - Memory pressure risk (no swap) may affect worker execution timeouts
+
+outputs:
+  commander_report: Synthesized Hermes commander report for node readiness audit.
+  readiness_verdict: "NOT READY — low workspace storage and missing swap require remediation."

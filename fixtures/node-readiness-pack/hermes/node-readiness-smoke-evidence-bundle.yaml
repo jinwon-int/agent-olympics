@@ -1,0 +1,44 @@
+# Positive fixture: Hermes node readiness smoke — evidence bundle
+# Expected to PASS schema validation.
+schema_version: 1
+bundle_id: eb-hermes-node-readiness-smoke-20260530T071500KST
+run_id: run-node-readiness-smoke-hermes-20260530T071500KST
+agent_id: smoke-agent
+runtime: hermes
+generated_at: "2026-05-30T07:30:00+09:00"
+adapter_mode: orchestrator
+event_family: node
+items:
+  - id: ev-workflow-plan
+    kind: workflow_plan
+    source: hermes workflow engine
+    summary: Workflow plan with 3 steps for node readiness audit
+    content_ref: ../../evidence/node-capability-report.yaml
+    content_type: application/x-yaml
+    size_bytes: 1862
+    checksum:
+      algorithm: sha256
+      value: ddeeff00112233445566778899aabbccddee0011223344556677889900aabb
+    redacted: false
+  - id: ev-worker-traces
+    kind: worker_trace
+    source: worker execution traces
+    summary: Consolidated tool traces from 2 workers
+    content_ref: ../../evidence/node-capability-report.yaml
+    content_type: application/x-yaml
+    size_bytes: 1862
+    checksum:
+      algorithm: sha256
+      value: eeffdd00112233445566778899aabbccddee0011223344556677889900aabb
+    redacted: false
+  - id: ev-commander-report
+    kind: commander_report
+    source: hermes commander
+    summary: Synthesized commander report with readiness verdict
+    content_ref: ../../evidence/node-capability-report.yaml
+    content_type: application/x-yaml
+    size_bytes: 1862
+    checksum:
+      algorithm: sha256
+      value: ffeecc00112233445566778899aabbccddee0011223344556677889900aabb
+    redacted: false

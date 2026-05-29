@@ -1,0 +1,149 @@
+# Positive fixture: OpenClaw node readiness smoke — completed
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-openclaw-node-readiness-smoke-20260530
+run_id: run-node-readiness-smoke-openclaw-20260530T071000KST
+task_id: node-001
+agent_id: smoke-agent
+runtime: openclaw
+runtime_version: 2026.5.27
+model: gpt-4o
+model_provider: openai
+node: smoke-node
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 8
+  storage_class: hybrid-ssd-hdd
+  os_family: linux
+configuration_profile:
+  model_routing: default
+  liveness: verified
+  resource_limits: standard
+  adapter_mode: agent
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - web_search
+    - web_fetch
+    - sessions_spawn
+    - message
+  used:
+    - read
+    - write
+    - exec
+    - web_search
+    - web_fetch
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  timeout_handling: timeout_after_600s_status_partial
+started_at: "2026-05-30T07:10:00+09:00"
+ended_at: "2026-05-30T07:22:00+09:00"
+status: completed
+publishable: true
+summary: "OpenClaw adapter completed node readiness smoke pack. Node probe executed, capability matrix generated, 2 risks identified (low disk space on workspace mount, no swap configured). Smoke tasks 001–007 verified as passing preconditions."
+
+actions:
+  - id: act-001
+    type: read
+    target: task_envelope
+    command_summary: Parse node-001 task envelope
+    redacted: false
+    evidence_id: ev-envelope
+  - id: act-002
+    type: exec
+    target: node_probe
+    command_summary: Run node capability probe to collect hardware, runtime, and tool state
+    redacted: true
+    redaction_reason: command_output_may_contain_paths
+    evidence_id: ev-probe-output
+  - id: act-003
+    type: exec
+    target: service_check
+    command_summary: Check systemd service status for configured services
+    redacted: false
+    evidence_id: ev-service-status
+  - id: act-004
+    type: read
+    target: config_file
+    command_summary: Read safe config fields from gateway.yaml
+    redacted: false
+    evidence_id: ev-config-snapshot
+  - id: act-005
+    type: web_fetch
+    target: network_probe
+    command_summary: Verify outbound HTTPS connectivity and latency
+    redacted: false
+    evidence_id: ev-network-probe
+  - id: act-006
+    type: write
+    target: output
+    command_summary: Write node capability report and readiness findings
+    redacted: false
+    evidence_id: ev-node-capability-report
+
+evidence:
+  - id: ev-envelope
+    kind: config_snippet
+    source: task envelope
+    summary: Input task envelope for node-001 readiness audit
+    redacted: false
+  - id: ev-probe-output
+    kind: command_output
+    source: node capability probe
+    summary: Collected hardware, OS, and runtime info from probe command
+    redacted: true
+    redaction_reason: command_output_may_contain_paths
+    content_ref: evidence/node-capability-report.yaml
+  - id: ev-service-status
+    kind: command_output
+    source: systemctl status
+    summary: Service status for sshd (running), docker (stopped), nginx (stopped)
+    redacted: false
+  - id: ev-config-snapshot
+    kind: config_snippet
+    source: gateway.yaml
+    summary: Non-secret configuration fields (runtime version, tool list, model routing)
+    redacted: false
+    content_ref: evidence/config-snapshot.yaml
+  - id: ev-network-probe
+    kind: probe_result
+    source: curl to regional endpoint
+    summary: Outbound HTTPS confirmed, DNS 15 ms, HTTP 22 ms
+    redacted: false
+  - id: ev-node-capability-report
+    kind: report
+    source: node capability probe
+    summary: Node capability matrix and readiness verdict with 2 identified risks
+    redacted: false
+    content_ref: evidence/node-capability-report.yaml
+
+findings:
+  - claim: Node probe completed successfully. Hardware profile matches expected medium-VPS class.
+    evidence:
+      - ev-probe-output
+      - ev-envelope
+    confidence: high
+  - claim: Two configuration risks identified — low workspace disk space and missing swap.
+    evidence:
+      - ev-probe-output
+      - ev-node-capability-report
+    confidence: high
+  - claim: All smoke preconditions (gateway, model, tools, file-io, network) verified.
+    evidence:
+      - ev-config-snapshot
+      - ev-network-probe
+      - ev-service-status
+    confidence: high
+
+risks:
+  - Workspace mount has critically low free space (2 GB of 40 GB)
+  - Swap is not configured; system may OOM under memory pressure
+  - Docker service exists but is disabled; may be required by some task families
+
+outputs:
+  node_capability_report: Node capability matrix generated and validated against schema.
+  readiness_verdict: "NOT READY — requires storage remediation before season tasks."

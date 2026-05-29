@@ -1,0 +1,93 @@
+# Node Readiness Smoke Execution Pack
+#
+# An official source-only smoke execution pack that groups node-readiness
+# task envelopes, fixture references, and adapter-specific sample outputs
+# for cross-adapter execution by OpenClaw, Hermes, and CLI adapters.
+#
+# This pack does not modify production services. All sample data uses
+# safe band-based metadata; no hostnames, IPs, tokens, or secrets.
+#
+# Compatible with the Agent Olympics task envelope (v1/v2), result packet,
+# trace record, and evidence bundle schemas.
+
+schema_version: 1
+pack_id: smoke-node-readiness-pack-v1
+pack_kind: execution_pack
+title: Node Readiness Smoke Execution Pack
+description: >
+  A focused smoke execution pack combining the node-001 readiness audit
+  envelope (v1 and v2), fixture profiles, and adapter-specific sample
+  outputs. Designed to validate that a target node meets competition
+  readiness requirements across hardware, runtime, tools, services,
+  and configuration health — without exposing credentials or host
+  infrastructure details. Runnable by OpenClaw, Hermes, and CLI adapters
+  in isolated/dry-run mode.
+run_label: agent-olympics-node-readiness-smoke-20260530
+parent_issue: "https://github.com/jinwon-int/agent-olympics/issues/139"
+envelopes:
+  - task_id: smoke-007
+    title: Node capability report
+    path: tasks/smoke/smoke-007-node-capability.yaml
+    time_limit_minutes: 10
+    priority: high
+    description: >
+      Generate a structured node capability matrix document. This smoke task
+      is the lightweight companion to the full node-001 audit. It probes the
+      node and reports hardware, runtime, and tool status without evaluating
+      readiness verdicts or risks.
+
+  - task_id: node-001
+    title: Node agent readiness audit
+    path: tasks/season-001/node-001-agent-readiness-audit.yaml
+    time_limit_minutes: 45
+    priority: critical
+    description: >
+      Full node readiness audit requiring the participant to inspect a
+      target node, identify configuration issues, and produce a readiness
+      verdict with risks and recommended changes.
+
+  - task_id: node-001-v2
+    title: Node agent readiness audit (v2)
+    path: tasks/season-001/node-001-agent-readiness-audit-v2.yaml
+    time_limit_minutes: 45
+    priority: critical
+    description: >
+      v2 version of the node readiness audit with enhanced evidence
+      tracking, oracle cross-referencing, and migration metadata
+      from the v1 result packet schema.
+required_capabilities:
+  - node_access
+  - tool_registration
+  - file_io
+  - network_outbound
+adapter_samples:
+  openclaw:
+    path: fixtures/node-readiness-pack/openclaw/
+    description: >
+      Sample result packet, trace, and evidence bundle for OpenClaw
+      adapter completing the node readiness smoke pack. Demonstrates
+      gateway liveness, model roundtrip, tool readiness, file sanity,
+      config inspection, network diagnostic, and node capability report.
+  hermes:
+    path: fixtures/node-readiness-pack/hermes/
+    description: >
+      Sample result packet, trace, and evidence bundle for Hermes
+      adapter completing the node readiness smoke pack. Demonstrates
+      orchestrator workflow decomposition for node readiness audit,
+      worker dispatch, and commander report synthesis.
+  cli:
+    path: fixtures/node-readiness-pack/cli/
+    description: >
+      Sample result packet, trace, and evidence bundle for CLI adapter
+      completing the node readiness smoke pack. Demonstrates sequential
+      command execution for node probe, capability matrix generation,
+      and evidence capture.
+fixtures:
+  - fixture_id: season-001-node-001-v1
+    path: fixtures/season-001/node-001/
+    description: "Node-001 fixture bundle with node profile and setup instructions"
+  - profile_group: stub-profiles
+    path: fixtures/node-profiles/
+    description: "Stub node profiles for dry-run execution"
+node_capability_schema_ref: "https://github.com/jinwon-int/agent-olympics/schemas/node-capability.schema.json"
+result_schema_ref: "https://github.com/jinwon-int/agent-olympics/schemas/result-packet.schema.json"

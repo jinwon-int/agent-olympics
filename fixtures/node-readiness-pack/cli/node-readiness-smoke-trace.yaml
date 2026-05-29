@@ -1,0 +1,73 @@
+# Positive fixture: CLI node readiness smoke — trace record
+# Expected to PASS schema validation.
+schema_version: 1
+trace_id: tr-cli-node-readiness-smoke-20260530T071800KST
+run_id: run-node-readiness-smoke-cli-20260530T071800KST
+agent_id: smoke-agent
+runtime: cli
+generated_at: "2026-05-30T07:25:00+09:00"
+event_family: node
+entries:
+  - seq: 0
+    timestamp: "2026-05-30T07:18:00+09:00"
+    action: exec
+    target: read_envelope
+    summary: "Parse node-001 task envelope from disk"
+    duration_ms: 120
+    result_summary: "Envelope loaded, required fields identified"
+    evidence_ref: ev-command-log
+  - seq: 1
+    timestamp: "2026-05-30T07:18:01+09:00"
+    action: exec
+    target: node_probe
+    summary: "Run node capability probe script"
+    redacted: true
+    redaction_reason: command_output_may_contain_paths
+    duration_ms: 4500
+    result_summary: "Probe completed, exit code 0"
+    evidence_ref: ev-probe-output
+  - seq: 2
+    timestamp: "2026-05-30T07:18:06+09:00"
+    action: exec
+    target: service_check
+    summary: "Check systemd service status and enable state"
+    duration_ms: 800
+    result_summary: "sshd active, docker inactive, nginx inactive"
+    evidence_ref: ev-command-log
+  - seq: 3
+    timestamp: "2026-05-30T07:18:07+09:00"
+    action: exec
+    target: config_inspection
+    summary: "Read safe config fields from gateway.yaml"
+    duration_ms: 60
+    result_summary: "Config fields extracted, no secrets exposed"
+    evidence_ref: ev-command-log
+  - seq: 4
+    timestamp: "2026-05-30T07:18:08+09:00"
+    action: web_fetch
+    target: network_probe
+    summary: "Probe outbound HTTPS connectivity"
+    duration_ms: 2200
+    result_summary: "HTTP 200, total time 22ms"
+    evidence_ref: ev-command-log
+  - seq: 5
+    timestamp: "2026-05-30T07:18:11+09:00"
+    action: exec
+    target: write_report
+    summary: "Generate node capability report from probe data"
+    duration_ms: 600
+    result_summary: "Report written to outputs/capability-report.yaml"
+    evidence_ref: ev-node-capability-report
+  - seq: 6
+    timestamp: "2026-05-30T07:25:00+09:00"
+    action: write
+    target: output
+    summary: "Write result packet, trace, and evidence bundle"
+    duration_ms: 70
+    result_summary: "All artifacts written to run directory"
+redaction_policy:
+  applied_rules:
+    - rule_id: rr-cli-001
+      pattern_description: "Local filesystem paths in probe script output"
+      reason: command_output_may_contain_paths
+  default_reason: sensitive_value_redacted
