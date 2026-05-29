@@ -278,6 +278,12 @@ function shortId(seed) {
   return Math.random().toString(16).slice(2, 8);
 }
 
+function generateRunId(taskId, agentId, seed, timestamp) {
+  const ts = (timestamp || isoNow()).replace(/[:.]/g, '-').slice(0, 19);
+  const id = seed ? shortId(seed) : shortId(`${taskId}-${agentId}-${ts}`);
+  return `run-${taskId}-${agentId}-${ts}-${id}`;
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -508,65 +514,59 @@ function buildActions(mode, eventFamily, status) {
   const actions = [
     {
       id: 'act-001',
-      seq: 1,
       type: 'read',
       target: 'task_envelope',
       command_summary: 'Parse task envelope from file',
       redacted: false,
-      duration_ms: 45,
+      duration_seconds: 0.045,
       evidence_id: 'ev-session-input',
     },
     {
       id: 'act-002',
-      seq: 2,
       type: 'api_call',
       target: 'gateway',
       command_summary: 'Create OpenClaw session via gateway API',
       redacted: true,
       redaction_reason: 'gateway_auth_header_redacted',
-      duration_ms: 320,
+      duration_seconds: 0.32,
       evidence_id: 'ev-gateway-readiness',
     },
     {
       id: 'act-003',
-      seq: 3,
       type: 'message',
       target: 'session',
       command_summary: 'Send task envelope as session message',
       redacted: false,
-      duration_ms: 150,
+      duration_seconds: 0.15,
       evidence_id: 'ev-message-delivery',
     },
     {
       id: 'act-004',
-      seq: 4,
       type: 'api_call',
       target: 'gateway',
       command_summary: 'Poll gateway readiness journal',
       redacted: true,
       redaction_reason: 'gateway_delivery_log_contained_api_token',
-      duration_ms: 200,
+      duration_seconds: 0.2,
       evidence_id: 'ev-gateway-readiness',
     },
     {
       id: 'act-005',
-      seq: 5,
       type: 'message',
       target: 'telegram',
       command_summary: 'Deliver progress update to Telegram channel',
       redacted: false,
-      duration_ms: 480,
+      duration_seconds: 0.48,
       evidence_id: 'ev-telegram-delivery',
     },
     {
       id: 'act-006',
-      seq: 6,
       type: 'exec',
       target: 'local',
       command_summary: 'Execute diagnostic commands for ops task',
       redacted: true,
       redaction_reason: 'command_output_contained_sensitive_data',
-      duration_ms: 1200,
+      duration_seconds: 1.2,
       evidence_id: 'ev-tool-calls',
     },
   ];
@@ -575,12 +575,11 @@ function buildActions(mode, eventFamily, status) {
   if (status === 'completed') {
     actions.push({
       id: 'act-007',
-      seq: 7,
       type: 'message',
       target: 'session',
       command_summary: 'Compose and post final diagnosis message',
       redacted: false,
-      duration_ms: 890,
+      duration_seconds: 0.89,
       evidence_id: 'ev-final-report',
     });
   }

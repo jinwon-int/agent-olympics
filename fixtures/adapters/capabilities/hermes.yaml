@@ -36,7 +36,7 @@ status:
     workflow_blocked_missing_plugin: "blocked"
     workflow_produced_wrong_result: "failed"
     workflow_contradictory_unresolved: "failed"
-    credential_leak_detected: "disqualified"
+    value_exposure_detected: "disqualified"
 
 evidence_kinds:
   - log

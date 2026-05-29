@@ -10,11 +10,12 @@
         validate-rounds rounds-check round \
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
+        openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
         score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
         validate-web-fields validate-web-bridge
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # Install dependencies
 setup:
@@ -104,7 +105,7 @@ round:
 # Default validation target
 validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
         validate-adapter-fixtures validate-rounds validate-profiles \
-        validate-scoreboard validate-competition-fixtures
+        validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # --- Competition-Validity targets ---
 
@@ -171,6 +172,25 @@ validate-openclaw:
 	done
 	@echo ""
 	@echo "OpenClaw adapter fixture validation complete."
+
+# Run OpenClaw adapter smoke checks without writing generated artifacts to the repo.
+test-openclaw:
+	@set -eu; \
+	tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw --run-dir "$$tmp/ops"; \
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode closedstack --event-family code --seed make-openclaw-code --run-dir "$$tmp/code"; \
+	if node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw-fail --exit 1 --run-dir "$$tmp/fail"; then \
+		echo "Expected OpenClaw failure-mode run to exit non-zero"; \
+		exit 1; \
+	fi; \
+	echo "OpenClaw adapter smoke tests passed."
 
 # --- Stub adapter targets ---
 
