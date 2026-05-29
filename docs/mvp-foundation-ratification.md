@@ -28,7 +28,7 @@ Ratify the MVP foundation roadmap state after the completed public-readiness, MV
 
 **Provisional note:** v2 schemas exist alongside v1. A formal schema migration and hardening pass (narrow follow-up) is the next logical step. The v1→v2 migration is documented in `docs/migration-v1-to-v2.md`. Roadmap issue `issues/roadmap-01-freeze-v1-schemas.md` fully describes the completed scope.
 
-**Remaining:** Schema hardening (narrow follow-up issue needed). Tracked as implicit work via the adopted `agent-olympics-v1.yaml` rubric and v2 migration guide. PR #55 extends the result-packet schema with `tool_use_profile`, `operating_policy`, and `publishable` fields — a concrete hardening follow-up.
+**Remaining:** Schema hardening (narrow follow-up issue needed). Tracked as implicit work via the adopted `agent-olympics-v1.yaml` rubric and v2 migration guide. Finalizer PR #97 integrated the operating-agent-stack fields first introduced by PR #55, including `tool_use_profile`, `operating_policy`, and `publishable`; the remaining work is to harden those fields as stable schema requirements.
 
 ---
 
@@ -46,7 +46,7 @@ Ratify the MVP foundation roadmap state after the completed public-readiness, MV
 
 **Condition:** The season pack is complete for the smoke round (Round 001), but future rounds may add or modify task variants. The round manifest at `rounds/season-001-round-001.yaml` references all 7 tasks. Fixture bundles at `fixtures/season-001/` provide data. The public/private split (envelope vs oracle) is clear.
 
-**Remaining:** New task event families added by PR #55 (Tool Decathlon, Harness Reliability) would expand the season pack in a future round. No season-pack closure needed now.
+**Remaining:** New task event families landed through finalizer PR #97 (Tool Decathlon, Harness Reliability) would expand the season pack in a future round. No season-pack closure needed now.
 
 ---
 
@@ -121,15 +121,15 @@ Acceptance criteria mapping:
 
 ---
 
-### 🔄 PR #55 — docs: define operating agent stack competition rules
+### ✅ PR #55 / finalizer PR #97 — operating agent stack rules baseline
 
-**Status:** OPEN — not blocked by this ratification
+**Status:** MERGED through finalizer PR #97; PR #55 is closed as superseded
 
-PR #55 implements the first documentation pass for issues #50, #51, #52, #53, and #54. It represents the "operating agent stack" conceptual expansion that repositions Agent Olympics from a model benchmark to a whole-stack competition.
+PR #55 implemented the first documentation pass for issues #50, #51, #52, #53, and #54. It was later closed as superseded after Seoseo finalizer PR #97 integrated PR #55, worker PRs #94/#95, and safe rules material from #96. The merged baseline represents the "operating agent stack" conceptual expansion that repositions Agent Olympics from a model benchmark to a whole-stack competition.
 
 **Relationship with foundation trackers:**
 
-| PR #55 Change | Foundation Link | Impact |
+| #55/#97 Change | Foundation Link | Impact |
 |---|---|---|
 | Motto ("Measure the whole operating agent stack") | New — #50 | Expands competition philosophy |
 | Competition rules (`docs/rules.md`) | New — #52 | Needs foundation ratification context |
@@ -137,7 +137,7 @@ PR #55 implements the first documentation pass for issues #50, #51, #52, #53, an
 | Agent stack rubric overlay | New — #54 | Expands scoring beyond v1 |
 | Event family expansion (Tool Decathlon, Harness Reliability) | Extends #2 season pack | Future round planning |
 
-**Verdict:** PR #55 is additive and non-conflicting with this ratification. It should merge before or alongside any schema hardening follow-up.
+**Verdict:** PR #55 is no longer open; its safe baseline is merged through finalizer PR #97. Schema hardening follow-up should build on #97 rather than the superseded PR branch.
 
 ---
 
@@ -145,16 +145,16 @@ PR #55 implements the first documentation pass for issues #50, #51, #52, #53, an
 
 ### Trackers #50–#55 (Operating Agent Stack Documentation)
 
-These 6 issues form the post-foundation conceptual expansion. They are mapped into PR #55 and related follow-ups:
+These 6 issues form the post-foundation conceptual expansion. They were mapped into PR #55 and landed through the finalizer #97 baseline plus related follow-ups:
 
 | Issue | Title | Vehicle | Status |
 |---|---|---|---|
-| #50 | Docs: adopt the agent-stack performance motto | PR #55 (merged in `README.md`, `docs/competition-model.md`) | Addressed by PR #55 |
-| #51 | Docs: write Agent Olympics constitution | PR #55 (`docs/competition-model.md` — Constitution section) | Addressed by PR #55 |
-| #52 | Rules: define competition rules and divisions | PR #55 (`docs/rules.md`) | Addressed by PR #55 |
-| #53 | Events: redesign event families | PR #55 (`docs/events.md`) | Addressed by PR #55 |
-| #54 | Rubric: configuration/operating principles scoring | PR #55 (`docs/rubric.md`, `rubrics/agent-olympics-v1.yaml`) | Addressed by PR #55 |
-| #55 | The PR itself | — | OPEN, awaiting merge |
+| #50 | Docs: adopt the agent-stack performance motto | #55/#97 (`README.md`, `docs/competition-model.md`) | Addressed by #97 |
+| #51 | Docs: write Agent Olympics constitution | #55/#97 (`docs/constitution.md`, `docs/competition-model.md`) | Addressed by #97 |
+| #52 | Rules: define competition rules and divisions | #55/#97 (`docs/rules.md`) | Addressed by #97 |
+| #53 | Events: redesign event families | #55/#95/#97 (`docs/events.md`) | Addressed by #97 |
+| #54 | Rubric: configuration/operating principles scoring | #55/#95/#97 (`docs/rubric.md`, `rubrics/agent-olympics-v1.yaml`) | Addressed by #97 |
+| #55 | Baseline PR | — | Closed as superseded by #97 |
 
 ### Performance Trackers (#16, #26, #83, #84)
 
@@ -189,7 +189,7 @@ Per the round safety rules, no issue is closed by this ratification document. Th
 - **#18** is already CLOSED; this document confirms the closeout and flags the Soonwook gap as needing a new issue.
 - **#26** stays OPEN; this round provides the first implementation pass.
 - **#27** stays OPEN; this document is the ratification deliverable.
-- **#49–#54** stay OPEN; PR #55 addresses the first doc pass.
+- **#49–#54** stay OPEN until the roadmap ratification round posts finalizer decisions; #97 has landed the first hardened operating-agent-stack baseline.
 
 ---
 
@@ -275,16 +275,16 @@ Based on the current roadmap state, the recommended implementation priority afte
 ### Primary axis: Schema Hardening and Validation
 
 1. **Create a narrow schema-hardening follow-up issue** replacing #1's `provisional` status.
-   - Incorporate PR #55's new fields (`tool_use_profile`, `operating_policy`, `publishable`) into hardened schema versions.
+   - Incorporate the #97 baseline fields (`tool_use_profile`, `operating_policy`, `publishable`, and related division/validity/appeal metadata) into hardened schema versions.
    - Add required-field enforcement for configuration and operating-policy metadata.
    - Add validation rules for tool-use/operating-policy cross-references.
 
-2. **Merge PR #55** to land the operating agent stack documentation.
+2. **Use the merged #97 operating-agent-stack baseline** as the input to schema hardening.
 
 ### Secondary axis: Season 002 Planning
 
 3. **Create a retry issue for Soonwook's safe node profile validation** (parent: #17), or reassign to an available Team1 agent with a working node environment.
-4. **Plan the next season pack** incorporating the new event families (Tool Decathlon, Harness Reliability) defined in PR #55.
+4. **Plan the next season pack** incorporating the new event families (Tool Decathlon, Harness Reliability) landed by #97.
 
 ### Deferred
 
@@ -296,7 +296,7 @@ Based on the current roadmap state, the recommended implementation priority afte
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| PR #55 adds fields to result-packet schema without hardened validation rules | Schema drift | Merge PR #55, then follow with schema-hardening issue |
+| #97 adds operating-agent-stack fields before all are hardened as required schema rules | Schema drift | Create a narrow schema-hardening issue against the #97 baseline |
 | No retry issue exists for Soonwook profile validation | Gap in node profile coverage | Create issue after this round, referencing #17 and #18 closeout |
 | #1/#2 left open with no closure plan | Stale tracker noise | This document provides the ratification context; narrow follow-up issues reduce ambiguity |
 | Performance baseline data may mix raw vs normalized without clear separation | Unfair comparison | Lanes 1/3 and 2/3 are designed to keep raw capture and normalized scoring in separate PRs |
@@ -320,6 +320,6 @@ Based on the current roadmap state, the recommended implementation priority afte
 
 ## 9. Approval-Sensitive Blockers
 
-1. **PR #55 must merge** before or alongside any schema hardening that touches `result-packet.schema.json` to avoid merge conflicts with the new `tool_use_profile`, `operating_policy`, and `publishable` fields.
+1. **PR #55 is closed as superseded by #97.** Any schema hardening that touches `result-packet.schema.json` should build on the merged #97 baseline fields instead of reviving the superseded branch.
 2. **Soonwook retry issue** requires an operational node with proper Gateway credentials before the profile validation lane can be reassigned.
 3. **Schema hardening** should be a narrow follow-up issue, not reopened #1, to avoid scope creep.

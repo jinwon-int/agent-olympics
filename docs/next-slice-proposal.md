@@ -36,7 +36,7 @@ Team1 agent-stack rules hardening round ([commit 416203f](../../commit/416203f))
 
 | Area | Status | Issue | Notes |
 |---|---|---|---|
-| **Schema hardening** | ⚠️ Provisional | #1 (open) | v2 schemas coexist with v1; PR #55's `tool_use_profile`/`operating_policy`/`publishable` fields need formal hardening |
+| **Schema hardening** | ⚠️ Provisional | #1 (open) | v2 schemas coexist with v1; finalizer PR #97 integrated the operating-policy fields first introduced by PR #55, and those fields now need formal schema-hardening follow-up |
 | **Soonwook profile validation** | ❌ Blocked | #17 (closed, gap) | Gateway-token setup failure; retry issue needed |
 | **Web leaderboard** | 🔴 Deferred | #49 (open) | No baseline data yet; premature without working adapters |
 | **OpenClaw adapter** | 🔴 Not implemented | #3/roadmap-03 | Contract defined; no adapter code |
@@ -210,7 +210,7 @@ be machine-parseable. The current rubric file is mostly documentation.
 
 ### 🥉 Lane 5: Schema Hardening (Narrow Follow-Up)
 
-**Issues:** #1 (provisional), PR #55 (open)
+**Issues:** #1 (provisional), #97 (merged baseline)
 
 **Why not now:** The mvp-foundation-ratification document recommended this as
 the primary axis, but the assignment prioritizes adapter contracts (#3/#4),
@@ -220,13 +220,14 @@ gaps better than a desk review.
 
 **Scope (deferred):**
 
-1. Merge PR #55's new fields (`tool_use_profile`, `operating_policy`,
-   `publishable`) into hardened v2+ schema versions.
+1. Promote the operating-policy fields integrated by finalizer PR #97
+   (`tool_use_profile`, `operating_policy`, `publishable`, and related
+   division/validity/appeal metadata) into hardened v2+ schema versions.
 2. Add required-field enforcement for configuration and operating-policy
    metadata.
 3. Add validation rules for tool-use/operating-policy cross-references.
 
-**Dependencies:** PR #55 merge; adapter implementation experience.
+**Dependencies:** finalizer PR #97 is merged; adapter implementation experience.
 
 ---
 
@@ -303,8 +304,9 @@ Lane 6: Web Leaderboard  ◄── (needs baseline data from Lane 3)
 3. **No issue should be closed** without explicit operator approval per the
    round safety rules. This document does not close #1, #2, #3, #4, #5, #49,
    #50, #51, #52, #53, #54, #55, #98, or #101.
-4. **PR #55 must merge** before Lane 5 (schema hardening) to avoid merge
-   conflicts, but does not block Lanes 1–4.
+4. **PR #55 is already closed as superseded by #97.** Lane 5 should build
+   on the finalizer-integrated #97 schema/rules baseline rather than reviving
+   the superseded branch.
 5. **No production gateway restart, broker restart, DB mutation, credential
    movement, or force-push** is authorized by this proposal. Any of these
    requires separate explicit operator approval.

@@ -135,7 +135,7 @@ should be posted on each issue to make the assessment explicit:
 
 | Issue | Proposed Comment |
 |---|---|
-| #50 | **KEEP — COMPLETE.** All ACs verified in current repo (README motto, competition-model philosophy, rubric overlay, example result with separated model/stack metadata). No remaining work for this issue's scope. | 
+| #50 | **KEEP — COMPLETE.** All ACs verified in current repo (README motto, competition-model philosophy, rubric overlay, example result with separated model/stack metadata). No remaining work for this issue's scope. |
 | #51 | **KEEP — COMPLETE.** Constitution document exists (`docs/constitution.md`) with 5 constitutional principles, platform-neutrality commitment, bilingual motto, and cross-references to all related docs. No remaining work. |
 | #52 | **KEEP — COMPLETE.** Rules document exists (`docs/rules.md`) with participant identity, 4 divisions, 3-level tool disclosure, prohibited conduct, 5 result validity states, full appeals lifecycle, and publication rules. Matching schema fields (`division`, `validity`, `appeal`, `division_verification`, `appeal_record`). |
 | #53 | **KEEP — COMPLETE.** Events.md updated with stack-layer-stressed per family; tool-decathlon and harness-reliability established as event families; task candidates tool-001 (tool optimization) and ops-003 (operating discipline) exist. |
