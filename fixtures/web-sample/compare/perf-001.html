@@ -119,10 +119,18 @@ pre.evidence-json {
 <div class="container">
 
 <h1>Comparison: perf-001</h1>
-<div class="subtitle">2 entries</div><h2>Score Comparison</h2>
+<div class="subtitle">4 entries</div><div class="pending-note">⚠ Comparability notes:<ul><li>Hardware class &quot;small-vps&quot; present but no scored_values found — raw measurements are only directly comparable with entries using the same cpu_class and memory tier</li><li>Raw/scored separation issue: raw_measurements sourced from legacy workload_metrics — only raw_-prefixed fields included</li><li>Hardware class &quot;medium-vps&quot; present but no scored_values found — raw measurements are only directly comparable with entries using the same cpu_class and memory tier</li></ul></div><h2>Score Comparison</h2>
 <table class="compare-table">
 <thead><tr><th>Participant</th><th>Total</th><th>evidence_quality</th><th>safety</th><th>execution</th><th>correctness</th><th>communication</th><th>durability</th><th>Wall Time</th><th>Verdict</th></tr></thead><tbody><tr>
+<td><a href="../detail/perf-001-nosuk.html">nosuk</a></td>
+<td><strong>46</strong></td><td>18/20 (90%)</td><td>13/15 (87%)</td><td>15/15 (100%)</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td>2:18</td>
+<td><span class="badge badge-pass">pass</span></td>
+</tr><tr>
 <td><a href="../detail/perf-001-baseline-agent-small.html">baseline-agent-small</a></td>
+<td><strong>46</strong></td><td>18/20 (90%)</td><td>13/15 (87%)</td><td>15/15 (100%)</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td>—</td>
+<td><span class="badge badge-pass">pass</span></td>
+</tr><tr>
+<td><a href="../detail/perf-001-sogyo.html">sogyo</a></td>
 <td><strong>46</strong></td><td>18/20 (90%)</td><td>13/15 (87%)</td><td>15/15 (100%)</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td>—</td>
 <td><span class="badge badge-pass">pass</span></td>
 </tr><tr>
@@ -132,10 +140,24 @@ pre.evidence-json {
 </tr></tbody></table><h2>Hardware Comparison</h2>
 <table class="compare-table">
 <thead><tr><th>Participant</th><th>CPU Class</th><th>Memory</th><th>Storage</th><th>OS</th><th>GPU</th></tr></thead><tbody><tr>
+<td>nosuk</td>
+<td>a2a-runner</td>
+<td>12 GB</td>
+<td>nvme-dedicated</td>
+<td>linux</td>
+<td>—</td>
+</tr><tr>
 <td>baseline-agent-small</td>
 <td>small-vps</td>
 <td>2 GB</td>
 <td>ssd</td>
+<td>linux</td>
+<td>—</td>
+</tr><tr>
+<td>sogyo</td>
+<td>medium-vps</td>
+<td>8 GB</td>
+<td>nvme-dedicated</td>
 <td>linux</td>
 <td>—</td>
 </tr><tr>

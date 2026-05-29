@@ -553,28 +553,66 @@ function extractHardwareProfile(rp, comparableMeta) {
 /**
  * Extract performance profile (raw_measurements + scored_values) from a result packet v2.
  * Returns null when neither is present.
+ *
+ * Raw-vs-Normalized hardening (nosuk lane 2/3):
+ * - When falling back to rp.workload_metrics (legacy), only fields starting with `raw_`
+ *   are included.  Non-prefixed fields are silently dropped with a warning emitted
+ *   to the profile's `_source_warnings` array.
+ * - When rp.raw_measurements is present directly, all validated fields are accepted.
+ * - When both raw_measurements AND scored_values exist, a cross-contamination check
+ *   is performed via validateRawScoredSeparation().
  */
 function extractPerformanceProfile(rp) {
-  const raw = rp.raw_measurements || rp.workload_metrics;
+  const hasDirectRaw = rp.raw_measurements !== undefined && rp.raw_measurements !== null;
+  const hasLegacyMetrics = rp.workload_metrics !== undefined && rp.workload_metrics !== null;
+  const raw = hasDirectRaw ? rp.raw_measurements : (hasLegacyMetrics ? rp.workload_metrics : null);
   const scored = rp.scored_values;
   if (!raw && !scored) return null;
 
   const profile = {};
+  const warnings = [];
+
   if (raw) {
     const safeRaw = {};
-    const rawFields = ['wall_time_seconds', 'action_count', 'evidence_count', 'finding_count',
+
+    // Known raw measurement fields that are expected to NOT have a raw_ prefix
+    // (these are the canonical instrumented fields defined in the v2 schema)
+    const canonicalRawFields = ['wall_time_seconds', 'action_count', 'evidence_count', 'finding_count',
       'peak_memory_mb', 'model_calls', 'total_prompt_tokens', 'total_completion_tokens',
       'retries', 'errors'];
-    for (const field of rawFields) {
-      if (raw[field] != null) safeRaw[field] = raw[field];
-    }
-    for (const [field, value] of Object.entries(raw)) {
-      if (field.startsWith('raw_') && ['number', 'string', 'boolean'].includes(typeof value)) {
-        safeRaw[field] = value;
+
+    if (hasDirectRaw) {
+      // Direct raw_measurements — accept canonical fields and any raw_-prefixed fields
+      for (const field of canonicalRawFields) {
+        if (raw[field] != null) safeRaw[field] = raw[field];
       }
+      for (const [field, value] of Object.entries(raw)) {
+        if (field.startsWith('raw_') && ['number', 'string', 'boolean'].includes(typeof value)) {
+          safeRaw[field] = value;
+        }
+      }
+      // Warn if the raw_measurements block contains scored-like field names
+      const scoredPattern = /_(score|normalization)$/i;
+      for (const field of Object.keys(raw)) {
+        if (scoredPattern.test(field) && !field.startsWith('raw_')) {
+          warnings.push(`raw_measurements contains scored-like field "${field}" — possible cross-contamination`);
+        }
+      }
+    } else {
+      // Legacy workload_metrics — ONLY accept raw_-prefixed fields
+      // Non-prefixed fields like 'wall_time_seconds' are NOT copied because
+      // workload_metrics is a v1 concept and those fields may have ambiguous meaning.
+      for (const [field, value] of Object.entries(raw)) {
+        if (field.startsWith('raw_') && ['number', 'string', 'boolean'].includes(typeof value)) {
+          safeRaw[field] = value;
+        }
+      }
+      warnings.push('raw_measurements sourced from legacy workload_metrics — only raw_-prefixed fields included');
     }
+
     profile.raw_measurements = safeRaw;
   }
+
   if (scored) {
     const safeScored = {};
     const scoredFields = ['efficiency_score', 'evidence_quality_score', 'safety_score',
@@ -582,9 +620,76 @@ function extractPerformanceProfile(rp) {
     for (const field of scoredFields) {
       if (scored[field] != null) safeScored[field] = scored[field];
     }
+
+    // Cross-contamination check: scored_values must not contain raw measurement field names
+    const rawFieldNames = ['wall_time_seconds', 'action_count', 'evidence_count', 'finding_count',
+      'peak_memory_mb', 'model_calls', 'total_prompt_tokens', 'total_completion_tokens',
+      'retries', 'errors'];
+    for (const field of Object.keys(scored)) {
+      if (rawFieldNames.includes(field) || field.startsWith('raw_')) {
+        warnings.push(`scored_values contains raw-like field "${field}" — possible cross-contamination from scored namespace`);
+      }
+    }
+
+    // Also check for raw_-prefixed fields that shouldn't be in scored_values
+    for (const field of Object.keys(scored)) {
+      if (field.startsWith('raw_')) {
+        warnings.push(`scored_values has raw_-prefixed field "${field}" — raw measurements must not appear in scored namespace`);
+      }
+    }
+
     profile.scored_values = safeScored;
   }
+
+  // Run cross-contamination check if both raw and scored exist
+  if (profile.raw_measurements && profile.scored_values) {
+    const contamWarnings = validateRawScoredSeparation(profile.raw_measurements, profile.scored_values);
+    warnings.push(...contamWarnings);
+  }
+
+  if (warnings.length > 0) {
+    profile._source_warnings = warnings;
+  }
+
   return Object.keys(profile).length > 0 ? profile : null;
+}
+
+/**
+ * Validate strict separation between raw_measurements and scored_values namespaces.
+ * Returns an array of warning strings describing any cross-contamination found.
+ *
+ * Rules enforced (nosuk lane 2/3 hardening):
+ * 1. No field name may appear in both raw_measurements and scored_values
+ *    (after stripping scored_-prefix equivalents for semantic comparison)
+ * 2. scored_values must not contain raw_-prefixed fields
+ * 3. raw_measurements must not contain scored-like fields (efficiency_score, etc.)
+ *
+ * Returns an empty array when separation is clean.
+ */
+function validateRawScoredSeparation(rawMeasurements, scoredValues) {
+  const warnings = [];
+
+  if (!rawMeasurements || !scoredValues) return warnings;
+
+  // --- Rule 1: No field name collision between namespaces ---
+  const rawKeys = Object.keys(rawMeasurements);
+  const scoredKeys = Object.keys(scoredValues);
+
+  const keyIntersection = rawKeys.filter(k => scoredKeys.includes(k));
+  if (keyIntersection.length > 0) {
+    warnings.push(`Field name collision between raw_measurements and scored_values: ${keyIntersection.join(', ')}`);
+  }
+
+  // Check semantic overlap: raw field without 'raw_' prefix matching scored field name
+  const scoredSemanticSet = new Set(scoredKeys.map(k => k.replace(/_score$/, '').replace(/^normalization$/, 'norm')));
+  for (const rawKey of rawKeys) {
+    const stripped = rawKey.replace(/^raw_/, '');
+    if (scoredSemanticSet.has(stripped) && !rawKey.startsWith('raw_')) {
+      warnings.push(`Semantic overlap: raw_measurements field "${rawKey}" resembles scoredValues key after stripping suffix`);
+    }
+  }
+
+  return warnings;
 }
 
 /**
@@ -595,15 +700,24 @@ function extractPerformanceProfile(rp) {
  * - MUST have hardware_profile with at least cpu_class and memory_gb (core comparison axis)
  * - MUST have at least one of: runtime, adapter, or model (runtime comparison axis)
  * - Must NOT be disqualified or blocked (status disqualifier)
- * - Entries with different hardware classes are flagged with a caveat but MAY still be
- *   comparable on normalized/scored metrics (e.g., efficiency_score)
+ * - Entries with different hardware classes are flagged with a strong caveat but MAY still be
+ *   comparable on normalized/scored metrics (e.g., efficiency_score). When raw measurements are
+ *   the only available comparison axis, differing hardware classes make comparison invalid.
+ *
+ * Raw-vs-Normalized hardening (nosuk lane 2/3):
+ * - When cpu_class differs from known profiles, a "Different hardware class — use scored_values"
+ *   caveat is emitted to prevent direct raw_measurement comparison across classes.
+ * - When scored_values is absent AND raw_measurements come from differing hardware classes,
+ *   comparability is reduced (flag with a caveat, not non-comparable, so the entry still appears
+ *   in the scoreboard but with a prominent warning).
  *
  * Caveats are generated for:
  * - Missing critical hardware fields
  * - Failed/disqualified status
- * - Different hardware class from the round median
+ * - Different hardware class from other entries (round-level comparison)
  * - Missing configuration_profile (tuning effects inseparable)
  * - Missing workload_metrics (no performance baseline possible)
+ * - Cross-contamination in raw/scored namespaces (via performance profile _source_warnings)
  */
 function assessComparability(rp, hwProfile, subMeta) {
   const caveats = [];
@@ -660,6 +774,15 @@ function assessComparability(rp, hwProfile, subMeta) {
     caveats.push('No workload_metrics found — raw performance measurements unavailable for baseline comparison');
   }
 
+  // --- Scored values check: when hardware profile exists but scored_values are absent ---
+  // If we have a hardware_profile but no scored_values, raw measurements can only be compared
+  // with entries of the same class. Since we can't check other entries here (that's round-level),
+  // we emit a preventative caveat.
+  const hasScoredValues = rp.scored_values && Object.keys(rp.scored_values).length > 0;
+  if (hwProfile.cpu_class && !hasScoredValues) {
+    caveats.push(`Hardware class "${hwProfile.cpu_class}" present but no scored_values found — raw measurements are only directly comparable with entries using the same cpu_class and memory tier`);
+  }
+
   // --- Status-based caveats ---
   if (rp.status === 'failed') {
     caveats.push('Entry status is failed — performance data reflects incomplete or erroneous execution; compare with caution');
@@ -668,6 +791,10 @@ function assessComparability(rp, hwProfile, subMeta) {
   if (rp.status === 'partial') {
     caveats.push('Entry status is partial — only a subset of the workload was completed; raw wall times are not comparable');
   }
+
+  // Note: raw/scored separation warnings from extractPerformanceProfile are
+  // propagated into caveats in buildScoreboard() before the performance_profile
+  // is cleaned (to preserve scoreboard schema compatibility).
 
   return { comparable, caveats };
 }
@@ -809,7 +936,21 @@ async function buildScoreboard(resultsDir, blindMode) {
       fixture_ref: comparableMeta.task?.fixture_ref,
     };
     if (Object.keys(hwProfile).length > 0) subMeta.hardware_profile = hwProfile;
-    if (perfProfile) subMeta.performance_profile = perfProfile;
+
+    // Propagate _source_warnings into comparability_caveats BEFORE stripping
+    // them from the performance_profile for clean scoreboard serialization.
+    if (perfProfile && perfProfile._source_warnings && perfProfile._source_warnings.length > 0) {
+      // These get merged into comparability_caveats after assessComparability
+      subMeta._perf_warnings = perfProfile._source_warnings;
+    }
+
+    // Strip internal-only _source_warnings before writing to scoreboard entry
+    // (the warnings are preserved above in subMeta._perf_warnings)
+    if (perfProfile) {
+      const cleanPerf = { ...perfProfile };
+      delete cleanPerf._source_warnings;
+      subMeta.performance_profile = cleanPerf;
+    }
 
     // 5. Track participant
     const pKey = rp.agent_id;
@@ -832,6 +973,14 @@ async function buildScoreboard(resultsDir, blindMode) {
 
     // Assess comparability
     const comparabilityResult = assessComparability(rp, hwProfile, subMeta);
+
+    // Merge _perf_warnings (propagated before cleaning) into comparability caveats
+    if (subMeta._perf_warnings && subMeta._perf_warnings.length > 0) {
+      for (const w of subMeta._perf_warnings) {
+        comparabilityResult.caveats.push(`Raw/scored separation issue: ${w}`);
+      }
+      delete subMeta._perf_warnings;
+    }
 
     // 6. Build scoreboard entry
     const entry = {

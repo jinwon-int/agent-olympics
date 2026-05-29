@@ -511,6 +511,7 @@ function checkHiddenJudgeMaterial(doc, filePath) {
   // other file containing hidden_judge_notes is exposing judge material.
   const isTaskEnvelope = /\btasks\b/.test(filePath);
   const isOracleFile = /\boracle\b/.test(filePath);
+  const isParticipantArtifact = /\b(results|runs)\b/.test(filePath);
 
   if (doc.hidden_judge_notes && !isTaskEnvelope && !isOracleFile) {
     error(`judge-exposure:${rel}`, 'participant-facing artifact contains hidden_judge_notes — must not be shared with participants');
@@ -519,7 +520,7 @@ function checkHiddenJudgeMaterial(doc, filePath) {
   // oracle_ref and judge_notes_ref are fine in envelopes (as external refs) but
   // if they appear in participant-facing artifacts, that's a leak
   if ((doc.oracle_ref || doc.judge_notes_ref) && !isTaskEnvelope && !isOracleFile) {
-    if (isParticipantArtifact || /\bresults\b/.test(filePath) || /\bruns\b/.test(filePath)) {
+    if (isParticipantArtifact) {
       warn(`judge-exposure:${rel}`, 'Participant submission references oracle_ref or judge_notes_ref — possible judge material exposure');
     }
   }
