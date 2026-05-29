@@ -184,15 +184,12 @@ comparable_metadata:
     task_id: perf-001
     task_version: v1
     fixture_ref: fixtures/season-001/perf-001/
-    oracle_ref: oracle/season-001/perf-001-node-throughput-baseline.yaml
   artifact_hashes:
     result_packet: "sha256-placeholder-a2a-runner-baseline"
 
 started_at: "2026-05-29T14:00:00+09:00"
 ended_at: "2026-05-29T14:32:00+09:00"
 status: completed
-
-oracle_ref: oracle/season-001/perf-001-node-throughput-baseline.yaml
 
 summary: >
   Executed the full Performance Trial workload against the nosuk a2a-runner
@@ -356,4 +353,3 @@ outputs:
        diminishing returns — 3.28x vs theoretical 4x).
     3. Parallelise Phase B validation for additional CPU-bound improvement.
     4. This profile is the recommended reference for A2A coordination tasks.
-
