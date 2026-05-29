@@ -519,8 +519,10 @@ function detectKind(doc) {
     return 'judge-record';
   }
 
-  // Result packet: has agent_id + status + evidence array
-  if (doc.agent_id && doc.status && Array.isArray(doc.evidence) && doc.evidence.length > 0) {
+  // Result packet: has agent_id + status + evidence array. Negative
+  // fixtures may intentionally leave evidence empty, so array presence is
+  // enough for type detection.
+  if (doc.agent_id && doc.status && Array.isArray(doc.evidence)) {
     return 'result-packet';
   }
 

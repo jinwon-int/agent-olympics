@@ -347,22 +347,11 @@ test-web-consumer:
 	bash scripts/test-web-consumer.sh
 
 # Full web pipeline: score + consume + test
-web: score run test-web-consumer web-consumer-sample
+web: score test-web-consumer web-consumer-sample
 
 # Validate scoreboard has all required web-display fields
 validate-web-fields:
-	node -e '\
-	const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8"));\
-	let missing = 0;\
-	for (const e of sb.entries) {\
-	  if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); }\
-	  if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); }\
-	  if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); }\
-	  if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); }\
-	}\
-	console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields");\
-	process.exit(missing > 0 ? 1 : 0);\
-'
+	node -e 'const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8")); let missing = 0; for (const e of sb.entries) { if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); } if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); } if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); } if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); } } console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields"); process.exit(missing > 0 ? 1 : 0);'
 
 # Full web data bridge validation: scoreboard + blind + field check
 validate-web-bridge: score score-blind validate-web-fields
