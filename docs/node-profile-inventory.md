@@ -137,6 +137,7 @@ Sample profiles for local/stub use are available at:
 fixtures/node-profiles/profile-stub-small.yaml
 fixtures/node-profiles/profile-stub-medium.yaml
 fixtures/node-profiles/profile-stub-large.yaml
+fixtures/node-profiles/profile-nosuk.yaml    (a2a-runner — added lane 2/3, #124)
 ```
 
 These profiles use safe, generic values and are suitable for:
@@ -144,6 +145,13 @@ These profiles use safe, generic values and are suitable for:
 - Stub/dry-run round testing
 - Documenting what capacity a profile band represents
 - Linking to result metadata for hardware fairness
+
+The `profile-nosuk.yaml` profile (a2a-runner class) was added as part of the
+Performance Trial baseline collection (lane 2/3). It represents an A2A OpenClaw
+runner node with 4–6 vCPU, 8–16 GB RAM, and dedicated NVMe storage — positioned
+between the medium-vps and large-vps capacity bands. See the [triple-baseline
+comparison document](perf-001-triple-baseline-comparison.md) for how this
+profile is used in cross-class performance scoring.
 
 Result packets from node-readiness and performance events should reference
 a matching node profile via a `node_profile_ref` field, so judges can

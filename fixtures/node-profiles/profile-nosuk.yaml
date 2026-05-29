@@ -1,0 +1,55 @@
+# Node profile: nosuk (A2A runner)
+#
+# Use for: Performance Trial baselines, A2A coordination, openclaw runner
+# Comparable to: mid-range A2A runner host (4 vCPU, 8 GB RAM), dedicated
+#                inference-node class for agent-to-agent workloads
+#
+# This profile uses only safe, band-based values. No hostnames, IPs,
+# tokens, paths, or secrets appear here.
+
+schema_version: 1
+profile_id: stub-a2a-runner
+profile_class: a2a-runner
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 4
+  cores_max: 6
+  description: "dedicated vCPU with AVX2 support; consistent single-thread performance"
+memory_gb:
+  min: 8.0
+  max: 16.0
+  description: "dedicated RAM with swap disabled; sufficient for concurrent LLM inference"
+runner_limits:
+  max_concurrent: 3
+  max_task_duration_minutes: 90
+  max_total_daily_tasks: 30
+  description: "three concurrent runners or A2A exchanges; extended task window"
+storage_class:
+  type: nvme-dedicated
+  min_free_gb: 40
+  max_total_gb: 200
+  description: "dedicated NVMe; low latency for workspace and cache"
+network_class:
+  class: high
+  public_egress: true
+  description: "dedicated outbound with high bandwidth for model inference and A2A relay"
+capability_labels:
+  - ops
+  - code
+  - knowledge
+  - node-readiness
+  - coordination
+  - performance-trial
+  - a2a
+allowed_runner_types:
+  - openclaw
+notes: >
+  Primary A2A runner profile for nosuk. Designed for the Performance Trial
+  baseline collection across the full season pack. Supports up to three
+  concurrent runners for coordination and parallel workload phases.
+  This profile sits between medium-vps (4 vCPU/8 GB) and a theoretical
+  large profile — it adds memory headroom and NVMe storage for
+  inference-heavy A2A tasks while staying within a single-runner cost
+  envelope.
+last_updated: "2026-05-29T00:00:00+09:00"

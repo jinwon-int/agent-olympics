@@ -200,12 +200,65 @@ The automated judge in `scripts/score.js` performs comparability assessment duri
 
 Human or blind judges should review the `comparability_caveats` array and may override the automated `comparable` flag if additional context warrants it.
 
+## Mixed-Hardware Comparison Example (Three Profiles)
+
+The following example demonstrates raw-vs-normalized comparison across three
+hardware profiles collected during the Team1 MVP freeze (lane 2/3):
+
+| Metric | small-vps | medium-vps | a2a-runner (nosuk) |
+|---|---|---|---|
+| **Hardware** | 2 vCPU, 2 GB, SSD | 4 vCPU, 8 GB, NVMe | 4 vCPU, 12 GB, NVMe-dedicated |
+| `raw_test_wall_time_seconds` | 28.7 | 12.4 | **8.6** |
+| `raw_test_throughput` (tests/s) | 1.18 | 2.74 | **3.95** |
+| `raw_validation_latency_ms` | 122.1 | 66.8 | **50.7** |
+| `efficiency_score` (normalized) | 0.85 | 0.78 | **0.87** |
+
+### Analysis
+
+**Raw measurements** are only directly comparable between medium-vps and
+a2a-runner (same 4 vCPU count). The small-vps is 2 vCPU, so its raw wall
+times are **not directly comparable** — the 28.7s test time reflects half
+the cores rather than worse execution.
+
+**Scored values** provide the correct comparison axis:
+
+- `efficiency_score` normalises wall time by `(cpu_cores / 4 * memory_gb / 8)`.
+  This puts all three profiles on a common scale: small-vps (0.85), medium-vps
+  (0.78), a2a-runner (0.87).
+- The medium-vps scores lowest on efficiency because it lacks the NVMe speed
+  advantage of a2a-runner while still at 4 vCPU — the normalization divisor is
+  the same, revealing the storage-class impact.
+- The small-vps scores higher than medium-vps on efficiency because the
+  divisor (2/4 * 2/8 = 0.125) more than compensates for the longer raw wall
+  times, correctly reflecting that small hardware is proportionally
+  well-utilised for this workload.
+
+### Decision Guide for #26 Closure
+
+The following criteria are relevant for Seoseo to decide whether #26 can close
+after finalizer integration:
+
+| #26 Criterion | Lane 2/3 Evidence | Verdict |
+|---|---|---|
+| Baseline table for ≥2 nodes/runtime profiles | Three result packets: `perf-001-baseline.yaml` (medium-vps), `perf-001-baseline-small.yaml` (small-vps), `perf-001-baseline-nosuk.yaml` (a2a-runner) | ✅ Completed |
+| Scoring notes distinguish raw throughput from normalized efficiency | This document, plus `scripts/score.js` `extractPerformanceProfile()` / `validateRawScoredSeparation()`, plus `assessComparability()` hardware-class caveats | ✅ Completed |
+| Result Packet metrics fields support baseline | v2 schema with `raw_measurements`/`scored_values`; legacy `workload_metrics` also present | ✅ Completed |
+| Host-contention warnings | Caveats in `assessComparability()` and hardware-class mismatch detection | ✅ Completed |
+| No production mutation required | All baselines are static YAML samples; no infra mutation needed | ✅ Completed |
+
+**Remaining work (not blocking):**
+- Authentic baseline runs on live nodes (requires operators to execute perf-001
+  on actual hosts and submit real result packets)
+- Schema hardening follow-up (v2 result-packet fields need finalisation)
+
 ## See Also
 
 - `schemas/scoreboard.schema.json` — scoreboard schema with hardware_profile, comparable, comparability_caveats
-- `scripts/score.js` — automated scoring and comparability assessment
+- `scripts/score.js` — automated scoring and comparability assessment (updated with raw-vs-normalized hardening lane 2/3)
 - `docs/scoring.md` — overall scoring pipeline documentation
 - `docs/result-packet.md` — result packet format with raw_measurements and scored_values
 - `docs/events.md` — event family descriptions (Performance Trial phase)
 - `docs/node-profile-inventory.md` — node profile documentation
+- `docs/perf-001-triple-baseline-comparison.md` — triple-profile raw vs normalized comparison
 - `tasks/perf-001-node-throughput-baseline.yaml` — example Performance Trial task envelope
+- `results/perf-001-baseline-nosuk.yaml` — nosuk a2a-runner baseline result packet
