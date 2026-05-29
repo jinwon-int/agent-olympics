@@ -513,6 +513,166 @@ function generateAutoJudge(rp, packetFile, semanticIssues, presenceResult) {
 }
 
 // ---------------------------------------------------------------------------
+// Performance Trial and comparability helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract a safe hardware profile from a result packet.
+ * Checks both the top-level hardware_profile field and comparable_metadata.node.hardware_profile.
+ * All values are safe labels — never hostnames, IPs, or secrets.
+ * Returns an object with safe fields (cpu_class, memory_gb, storage_class, os_family, gpu_model).
+ */
+function extractHardwareProfile(rp, comparableMeta) {
+  const hw = {};
+
+  // Primary: top-level hardware_profile from result packet
+  const topHw = rp.hardware_profile || {};
+  if (topHw.cpu_class) hw.cpu_class = topHw.cpu_class;
+  if (topHw.memory_gb != null) hw.memory_gb = Number(topHw.memory_gb);
+  if (topHw.storage_class) hw.storage_class = topHw.storage_class;
+  if (topHw.os_family) hw.os_family = topHw.os_family;
+  if (topHw.gpu_model) hw.gpu_model = topHw.gpu_model;
+
+  // Fallback: comparable_metadata.node.hardware_profile
+  const nodeHw = comparableMeta.node?.hardware_profile || {};
+  if (!hw.cpu_class && nodeHw.cpu_class) hw.cpu_class = nodeHw.cpu_class;
+  if (hw.memory_gb == null && nodeHw.memory_gb != null) hw.memory_gb = Number(nodeHw.memory_gb);
+  if (!hw.storage_class && nodeHw.storage_class) hw.storage_class = nodeHw.storage_class;
+  if (!hw.os_family && nodeHw.os_family) hw.os_family = nodeHw.os_family;
+  if (!hw.gpu_model && nodeHw.gpu_model) hw.gpu_model = nodeHw.gpu_model;
+
+  // Also check node-capability style fields
+  if (!hw.cpu_class && rp.node_capability?.hardware?.cpu) hw.cpu_class = rp.node_capability.hardware.cpu;
+  if (hw.memory_gb == null && rp.node_capability?.hardware?.memory_gb != null) hw.memory_gb = rp.node_capability.hardware.memory_gb;
+  if (!hw.storage_class && rp.node_capability?.hardware?.storage?.type) hw.storage_class = rp.node_capability.hardware.storage.type;
+  if (!hw.os_family && rp.node_capability?.hardware?.os?.family) hw.os_family = rp.node_capability.hardware.os.family;
+
+  return hw;
+}
+
+/**
+ * Extract performance profile (raw_measurements + scored_values) from a result packet v2.
+ * Returns null when neither is present.
+ */
+function extractPerformanceProfile(rp) {
+  const raw = rp.raw_measurements || rp.workload_metrics;
+  const scored = rp.scored_values;
+  if (!raw && !scored) return null;
+
+  const profile = {};
+  if (raw) {
+    const safeRaw = {};
+    const rawFields = ['wall_time_seconds', 'action_count', 'evidence_count', 'finding_count',
+      'peak_memory_mb', 'model_calls', 'total_prompt_tokens', 'total_completion_tokens',
+      'retries', 'errors'];
+    for (const field of rawFields) {
+      if (raw[field] != null) safeRaw[field] = raw[field];
+    }
+    for (const [field, value] of Object.entries(raw)) {
+      if (field.startsWith('raw_') && ['number', 'string', 'boolean'].includes(typeof value)) {
+        safeRaw[field] = value;
+      }
+    }
+    profile.raw_measurements = safeRaw;
+  }
+  if (scored) {
+    const safeScored = {};
+    const scoredFields = ['efficiency_score', 'evidence_quality_score', 'safety_score',
+      'execution_score', 'normalization'];
+    for (const field of scoredFields) {
+      if (scored[field] != null) safeScored[field] = scored[field];
+    }
+    profile.scored_values = safeScored;
+  }
+  return Object.keys(profile).length > 0 ? profile : null;
+}
+
+/**
+ * Assess whether a result entry can be meaningfully compared with others
+ * for performance trial baselines. Returns { comparable: boolean, caveats: string[] }.
+ *
+ * Comparability rules:
+ * - MUST have hardware_profile with at least cpu_class and memory_gb (core comparison axis)
+ * - MUST have at least one of: runtime, adapter, or model (runtime comparison axis)
+ * - Must NOT be disqualified or blocked (status disqualifier)
+ * - Entries with different hardware classes are flagged with a caveat but MAY still be
+ *   comparable on normalized/scored metrics (e.g., efficiency_score)
+ *
+ * Caveats are generated for:
+ * - Missing critical hardware fields
+ * - Failed/disqualified status
+ * - Different hardware class from the round median
+ * - Missing configuration_profile (tuning effects inseparable)
+ * - Missing workload_metrics (no performance baseline possible)
+ */
+function assessComparability(rp, hwProfile, subMeta) {
+  const caveats = [];
+  let comparable = true;
+
+  if (!String(rp.task_id || '').startsWith('perf-')) {
+    caveats.push('Not a Performance Trial task — performance baseline comparability is not assessed');
+    return { comparable: false, caveats };
+  }
+
+  // --- Blocking conditions (make comparison meaningless) ---
+  if (rp.status === 'disqualified') {
+    caveats.push('Entry is disqualified — no valid performance baseline can be derived');
+    return { comparable: false, caveats };
+  }
+  if (rp.status === 'blocked') {
+    caveats.push('Entry was blocked — performance data is incomplete or missing');
+    return { comparable: false, caveats };
+  }
+
+  // --- Hardware profile completeness ---
+  const hwFields = Object.keys(hwProfile);
+  if (hwFields.length === 0) {
+    caveats.push('No hardware_profile provided — cannot determine hardware class for fair comparison');
+    comparable = false;
+  } else {
+    if (!hwProfile.cpu_class) {
+      caveats.push('Missing cpu_class in hardware_profile — CPU comparison axis unavailable');
+      comparable = false;
+    }
+    if (hwProfile.memory_gb == null) {
+      caveats.push('Missing memory_gb in hardware_profile — memory comparison axis unavailable');
+    }
+    if (!hwProfile.storage_class) {
+      caveats.push('Missing storage_class in hardware_profile — I/O comparison limited');
+    }
+  }
+
+  // --- Runtime identity completeness ---
+  const hasRuntimeId = subMeta.runtime || subMeta.adapter || subMeta.model;
+  if (!hasRuntimeId) {
+    caveats.push('No runtime, adapter, or model metadata — cannot determine agent identity for comparison');
+    comparable = false;
+  }
+
+  // --- Configuration profile ---
+  if (!subMeta.config_profile && !rp.configuration_profile) {
+    caveats.push('No configuration_profile — tuning effects may be conflated with raw hardware performance');
+  }
+
+  // --- Workload metrics ---
+  const hasMetrics = rp.raw_measurements || rp.workload_metrics || (rp.outputs && (rp.outputs.workload_metrics || rp.outputs.workload_summary));
+  if (!hasMetrics) {
+    caveats.push('No workload_metrics found — raw performance measurements unavailable for baseline comparison');
+  }
+
+  // --- Status-based caveats ---
+  if (rp.status === 'failed') {
+    caveats.push('Entry status is failed — performance data reflects incomplete or erroneous execution; compare with caution');
+    comparable = false;
+  }
+  if (rp.status === 'partial') {
+    caveats.push('Entry status is partial — only a subset of the workload was completed; raw wall times are not comparable');
+  }
+
+  return { comparable, caveats };
+}
+
+// ---------------------------------------------------------------------------
 // Scoreboard aggregation
 // ---------------------------------------------------------------------------
 
@@ -594,7 +754,7 @@ async function buildScoreboard(resultsDir) {
 
     // 4. Judge record — check for existing, else auto-generate
     const judgeDir = path.dirname(f);
-    const judgeFiles = findJudgeFiles(judgeDir, rp.task_id, rp.agent_id);
+    const judgeFiles = findJudgeFiles(judgeDir, f);
     let judgeRecord = null;
     let judgeType = 'pending';
     let judgeRecordRef = null;
@@ -621,6 +781,8 @@ async function buildScoreboard(resultsDir) {
 
     // Extract comparable submission metadata
     const comparableMeta = rp.comparable_metadata || {};
+    const hwProfile = extractHardwareProfile(rp, comparableMeta);
+    const perfProfile = extractPerformanceProfile(rp);
     const subMeta = {
       runtime: rp.runtime,
       runtime_version: comparableMeta.runtime?.version || rp.runtime_version,
@@ -632,6 +794,8 @@ async function buildScoreboard(resultsDir) {
       task_version: comparableMeta.task?.task_version,
       fixture_ref: comparableMeta.task?.fixture_ref,
     };
+    if (Object.keys(hwProfile).length > 0) subMeta.hardware_profile = hwProfile;
+    if (perfProfile) subMeta.performance_profile = perfProfile;
 
     // 5. Track participant
     const pKey = rp.agent_id;
@@ -646,7 +810,14 @@ async function buildScoreboard(resultsDir) {
         node: subMeta.node,
         config_profile: subMeta.config_profile,
       });
+      // Also attach hardware_profile snapshot to participant if available
+      if (Object.keys(hwProfile).length > 0) {
+        participants.get(pKey).hardware_profile = hwProfile;
+      }
     }
+
+    // Assess comparability
+    const comparabilityResult = assessComparability(rp, hwProfile, subMeta);
 
     // 6. Build scoreboard entry
     const entry = {
@@ -657,6 +828,8 @@ async function buildScoreboard(resultsDir) {
       packet_id: packetId,
       packet_ref: path.relative(ROOT, f),
       submission_metadata: subMeta,
+      comparable: comparabilityResult.comparable,
+      comparability_caveats: comparabilityResult.caveats,
       status: rp.status,
       schema_validation: {
         valid: schemaResult.valid,
@@ -694,6 +867,8 @@ async function buildScoreboard(resultsDir) {
   const entriesWithJudge = entries.filter(e => e.judge_type !== 'pending').length;
   const entriesPendingJudge = entries.filter(e => e.judge_type === 'pending').length;
   const entriesWithErrors = entries.filter(e => (!e.schema_validation.valid || !e.semantic_checks.passed)).length;
+  const comparableEntries = entries.filter(e => e.comparable === true).length;
+  const nonComparableEntries = entries.filter(e => e.comparable === false).length;
 
   const autoDims = getAutomaticDimensions();
   const pendDims = getPendingDimensions();
@@ -717,6 +892,8 @@ async function buildScoreboard(resultsDir) {
       entries_with_errors: entriesWithErrors,
       automated_checks: automatedChecksCount,
       pending_checks: pendingChecksCount,
+      comparable_entries: comparableEntries,
+      non_comparable_entries: nonComparableEntries,
     },
   };
 
@@ -783,11 +960,12 @@ function findResultPackets(dir) {
   return results.sort();
 }
 
-function findJudgeFiles(dir, taskId, agentId) {
+function findJudgeFiles(dir, packetFileName) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
+  const base = path.basename(packetFileName, path.extname(packetFileName));
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isFile() && /\.ya?ml$/.test(entry.name) && entry.name.includes('-judge')) {
+    if (entry.isFile() && /\.ya?ml$/.test(entry.name) && entry.name.startsWith(base + '-judge')) {
       results.push(path.join(dir, entry.name));
     }
   }

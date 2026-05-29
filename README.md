@@ -122,6 +122,7 @@ docs/
   judge-notes-season-001.md       — Judge notes (v1 method)
   node-capability-matrix.md       — Node capability documentation
   node-profile-inventory.md       — Node profile inventory documentation
+  mvp-foundation-ratification.md  — MVP foundation issue status and follow-up map
 scripts/
   validate.js                     — Schema + semantic validator (v1 + v2)
 issues/

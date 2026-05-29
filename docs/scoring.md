@@ -188,7 +188,50 @@ This scoring engine expects:
 
 ---
 
-## 8. Oracle Material and Participant Isolation
+## 8. Raw Metric Field Convention (Performance Trial)
+
+Performance Trial result packets use a `raw_` field prefix convention to
+keep measured values separate from computed scores.  This is defined in
+`fixtures/season-001/perf-001/workload-definition.yaml` and enforced by
+scoring convention, not schema constraints.
+
+| Convention | Rule |
+|---|---|
+| **Prefix** | All measured timing/throughput/latency/resource fields are named `raw_<field>` in the `workload_metrics` object. |
+| **Separation** | Raw metric values carry measured data only.  Scores are computed by the judge engine and stored in `score_dimensions` — never mixed into `workload_metrics`. |
+| **Schema** | `workload_metrics` is a free-form object in both v1 and v2 result-packet schemas.  The `raw_` prefix is a documentation convention, not a schema constraint. |
+| **Coverage** | The score.js engine validates that result packets are schema-compliant and semantically valid — it does not validate individual `raw_*` field names or types. |
+
+Example raw metric fields carried in a perf-001 packet:
+
+```yaml
+workload_metrics:
+  raw_git_commit_count: 847
+  raw_file_count: 1423
+  raw_scan_wall_time_seconds: 3.24
+  raw_validation_latency_ms: 66.8
+  raw_test_throughput: 2.74
+  raw_probe_count: 5
+  raw_speedup_factor: 2.46
+  raw_service_stability: stable
+```
+
+These values feed into the Performance Trial overlay scoring rubric
+(`rubrics/agent-olympics-v1.yaml`) but the overlay scores themselves
+(misssion_completion, absolute_performance, resource_efficiency, etc.)
+are computed by the human or blind judge, not by score.js.
+
+### v1 Comparable Metadata
+
+For v1 result packets (which lack a `comparable_metadata` block), the
+score.js engine extracts metadata directly from top-level fields on the
+result packet (`runtime`, `model`, `node`, etc.) and carries them into
+the scoreboard `submission_metadata`.  The scoreboard reports what the
+participant submitted without re-validating.
+
+---
+
+## 9. Oracle Material and Participant Isolation
 
 The MVP engine **does not** pass oracle files, answer keys, or judge notes
 to participants. The separation is enforced by:
