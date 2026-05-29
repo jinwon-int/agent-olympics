@@ -1029,6 +1029,217 @@ function cmdFixtures(fixturesDir) {
   process.exit(failedFiles > 0 ? 1 : 0);
 }
 
+// ---------------------------------------------------------------------------
+// 6) LIFECYCLE SUMMARY — compact completion summary for leaderboard/import
+// ---------------------------------------------------------------------------
+
+function cmdLifecycleSummary(roundDir) {
+  console.log(`=== Lifecycle Summary: ${roundDir} ===`);
+  const fullPath = path.resolve(ROOT, roundDir);
+
+  if (!fs.existsSync(fullPath)) {
+    console.log(JSON.stringify({ error: 'Directory not found', path: roundDir }, null, 2));
+    process.exit(1);
+  }
+
+  const runDirs = fs.readdirSync(fullPath)
+    .filter(e => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'))
+    .sort();
+
+  const summary = {
+    source_dir: roundDir,
+    generated_at: new Date().toISOString(),
+    runner: process.env.A2A_RUNNER || 'manual',
+    run_count: runDirs.length,
+    runs: []
+  };
+
+  for (const dirName of runDirs) {
+    const runDir = path.join(fullPath, dirName);
+    const manifestPath = path.join(runDir, 'manifest.yaml');
+    const packetPath = path.join(runDir, 'result-packet.yaml');
+    const tracePath = path.join(runDir, 'trace.yaml');
+    const judgePath = path.join(runDir, 'judge-record.yaml');
+    const bundlePath = path.join(runDir, 'evidence-bundle.yaml');
+    const evidenceDir = path.join(runDir, 'evidence');
+
+    // Load manifest
+    let manifest = null;
+    let manifestOk = false;
+    try {
+      if (fs.existsSync(manifestPath)) {
+        manifest = loadYaml(manifestPath);
+        manifestOk = true;
+      }
+    } catch { manifest = { parse_error: 'unparseable' }; }
+
+    // Load result packet
+    let packet = null;
+    let packetOk = false;
+    try {
+      if (fs.existsSync(packetPath)) {
+        packet = loadYaml(packetPath);
+        packetOk = true;
+      }
+    } catch { packet = { parse_error: 'unparseable' }; }
+
+    // Load trace
+    let trace = null;
+    let traceOk = false;
+    try {
+      if (fs.existsSync(tracePath)) {
+        trace = loadYaml(tracePath);
+        traceOk = true;
+      }
+    } catch { trace = { parse_error: 'unparseable' }; }
+
+    // Load judge record
+    let judge = null;
+    let judgeOk = false;
+    try {
+      if (fs.existsSync(judgePath)) {
+        judge = loadYaml(judgePath);
+        judgeOk = true;
+      }
+    } catch { judge = { parse_error: 'unparseable' }; }
+
+    // Load evidence bundle
+    let bundle = null;
+    let bundleOk = false;
+    try {
+      if (fs.existsSync(bundlePath)) {
+        bundle = loadYaml(bundlePath);
+        bundleOk = true;
+      }
+    } catch { bundle = { parse_error: 'unparseable' }; }
+
+    // Check evidence directory
+    let evidenceFileCount = 0;
+    try {
+      if (fs.existsSync(evidenceDir)) {
+        evidenceFileCount = fs.readdirSync(evidenceDir).filter(f => f !== '.gitkeep').length;
+      }
+    } catch { evidenceFileCount = -1; }
+
+    // Detect issues
+    const issues = [];
+    if (!manifestOk) issues.push('missing_manifest');
+    if (!packetOk) issues.push('missing_result_packet');
+    if (!traceOk) issues.push('missing_trace');
+    if (!judgeOk) issues.push('missing_judge_record');
+    if (!bundleOk) issues.push('missing_evidence_bundle');
+
+    // Manifest field checks
+    if (manifest && manifest.lifecycle) {
+      if (!VALID_RUN_STATUSES.has(manifest.lifecycle)) {
+        issues.push('invalid_lifecycle_status');
+      }
+    }
+
+    // Cross-document field consistency
+    const taskIds = [];
+    if (manifest && manifest.task_id) taskIds.push(manifest.task_id);
+    if (packet && packet.task_id) taskIds.push(packet.task_id);
+    if (taskIds.length >= 2 && new Set(taskIds).size > 1) issues.push('task_id_mismatch');
+
+    const agentIds = [];
+    if (manifest && manifest.agent_id) agentIds.push(manifest.agent_id);
+    if (packet && packet.agent_id) agentIds.push(packet.agent_id);
+    if (agentIds.length >= 2 && new Set(agentIds).size > 1) issues.push('agent_id_mismatch');
+
+    // Timetable check
+    if (packet && packet.started_at && packet.ended_at) {
+      const s = new Date(packet.started_at);
+      const e = new Date(packet.ended_at);
+      if (!isNaN(s) && !isNaN(e) && e < s) issues.push('ended_before_started');
+    }
+
+    // Build run entry
+    const runEntry = {
+      run_dir: dirName,
+      run_id: manifest ? manifest.run_id : null,
+      task_id: manifest ? manifest.task_id : (packet ? packet.task_id : null),
+      agent_id: manifest ? manifest.agent_id : (packet ? packet.agent_id : null),
+      lifecycle: manifest ? manifest.lifecycle : null,
+      status: packet ? packet.status : null,
+      has_manifest: manifestOk,
+      has_result_packet: packetOk,
+      has_trace: traceOk,
+      has_judge_record: judgeOk,
+      has_evidence_bundle: bundleOk,
+      evidence_files: evidenceFileCount,
+      issues: issues,
+      valid: issues.length === 0
+    };
+
+    // Extract raw measurements and scored values for leaderboard
+    if (packet && packet.raw_measurements) {
+      runEntry.raw_measurements = packet.raw_measurements;
+    }
+    if (packet && packet.scored_values) {
+      runEntry.scored_values = packet.scored_values;
+    }
+
+    // Extract judge score for leaderboard
+    if (judge) {
+      if (judge.total_score !== undefined) runEntry.total_score = judge.total_score;
+      if (judge.verdict) runEntry.verdict = judge.verdict;
+      if (judge.score_dimensions) {
+        runEntry.score_dimensions = {};
+        for (const [dimName, dim] of Object.entries(judge.score_dimensions)) {
+          if (dim && typeof dim === 'object' && typeof dim.score === 'number') {
+            runEntry.score_dimensions[dimName] = dim.score;
+          }
+        }
+      }
+    }
+
+    // Extract comparable metadata for leaderboard
+    if (packet && packet.comparable_metadata) {
+      runEntry.comparable_metadata = packet.comparable_metadata;
+    }
+
+    summary.runs.push(runEntry);
+  }
+
+  // Top-level aggregates
+  const validRuns = summary.runs.filter(r => r.valid);
+  const invalidRuns = summary.runs.filter(r => !r.valid);
+  summary.valid_run_count = validRuns.length;
+  summary.invalid_run_count = invalidRuns.length;
+
+  // Per-task aggregation
+  const taskAgg = {};
+  for (const r of summary.runs) {
+    const tid = r.task_id || 'unknown';
+    if (!taskAgg[tid]) taskAgg[tid] = { task_id: tid, total: 0, valid: 0, invalid: 0, statuses: {} };
+    taskAgg[tid].total++;
+    if (r.valid) taskAgg[tid].valid++;
+    else taskAgg[tid].invalid++;
+    const st = r.status || 'unknown';
+    taskAgg[tid].statuses[st] = (taskAgg[tid].statuses[st] || 0) + 1;
+  }
+  summary.task_summary = Object.values(taskAgg).sort((a, b) => a.task_id.localeCompare(b.task_id));
+
+  // Per-agent aggregation
+  const agentAgg = {};
+  for (const r of summary.runs) {
+    const aid = r.agent_id || 'unknown';
+    if (!agentAgg[aid]) agentAgg[aid] = { agent_id: aid, total: 0, valid: 0, invalid: 0, statuses: {} };
+    agentAgg[aid].total++;
+    if (r.valid) agentAgg[aid].valid++;
+    else agentAgg[aid].invalid++;
+    const st = r.status || 'unknown';
+    agentAgg[aid].statuses[st] = (agentAgg[aid].statuses[st] || 0) + 1;
+  }
+  summary.agent_summary = Object.values(agentAgg).sort((a, b) => a.agent_id.localeCompare(b.agent_id));
+
+  // Output as compact JSON suitable for leaderboard/import tooling
+  console.log(JSON.stringify(summary, null, 2));
+
+  process.exit(invalidRuns.length > 0 ? 1 : 0);
+}
+
 function cmdHelp() {
   console.log(`
 Agent Olympics Competition-Validity Validator
@@ -1041,13 +1252,14 @@ Commands:
   engine-outputs <round-dir>  Validate engine outputs per run
   consistency <round-dir>     Cross-document consistency checks
   all <round-dir>             All competition-validity checks
+  lifecycle-summary <round-dir> Compact completion summary (JSON) for leaderboard/import
   fixtures <fixtures-dir>     Validate competition-validity fixtures
 
 Path defaults:
   <round-dir>    runs/<season>/<round> (e.g., runs/season-001/round-001)
   <fixtures-dir> fixtures/competition-validity/
 
-Exit code: 0 = all checks pass, 1 = any check failed
+Exit code: 0 = all checks pass (or summary: all runs valid), 1 = any check failed
 `);
 }
 
@@ -1075,6 +1287,9 @@ function main() {
       break;
     case 'fixtures':
       cmdFixtures(cmdArg || 'fixtures/competition-validity');
+      break;
+    case 'lifecycle-summary':
+      cmdLifecycleSummary(cmdArg || '.');
       break;
     case 'help':
     case '--help':
