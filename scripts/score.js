@@ -555,7 +555,7 @@ function extractHardwareProfile(rp, comparableMeta) {
  * Returns null when neither is present.
  */
 function extractPerformanceProfile(rp) {
-  const raw = rp.raw_measurements;
+  const raw = rp.raw_measurements || rp.workload_metrics;
   const scored = rp.scored_values;
   if (!raw && !scored) return null;
 
@@ -567,6 +567,11 @@ function extractPerformanceProfile(rp) {
       'retries', 'errors'];
     for (const field of rawFields) {
       if (raw[field] != null) safeRaw[field] = raw[field];
+    }
+    for (const [field, value] of Object.entries(raw)) {
+      if (field.startsWith('raw_') && ['number', 'string', 'boolean'].includes(typeof value)) {
+        safeRaw[field] = value;
+      }
     }
     profile.raw_measurements = safeRaw;
   }
@@ -603,6 +608,11 @@ function extractPerformanceProfile(rp) {
 function assessComparability(rp, hwProfile, subMeta) {
   const caveats = [];
   let comparable = true;
+
+  if (!String(rp.task_id || '').startsWith('perf-')) {
+    caveats.push('Not a Performance Trial task — performance baseline comparability is not assessed');
+    return { comparable: false, caveats };
+  }
 
   // --- Blocking conditions (make comparison meaningless) ---
   if (rp.status === 'disqualified') {
@@ -645,7 +655,7 @@ function assessComparability(rp, hwProfile, subMeta) {
   }
 
   // --- Workload metrics ---
-  const hasMetrics = rp.raw_measurements || (rp.outputs && (rp.outputs.workload_metrics || rp.outputs.workload_summary));
+  const hasMetrics = rp.raw_measurements || rp.workload_metrics || (rp.outputs && (rp.outputs.workload_metrics || rp.outputs.workload_summary));
   if (!hasMetrics) {
     caveats.push('No workload_metrics found — raw performance measurements unavailable for baseline comparison');
   }
