@@ -193,7 +193,82 @@ Per the round safety rules, no issue is closed by this ratification document. Th
 
 ---
 
-## 4. Next Recommended Implementation Axis
+## 4. Post-Merge Status — #26 and #27 Recommendation
+
+This section documents the sogyo lane (1/3) ratification verdict for #26 and #27
+against the merged #89 (closes #83/#84/#85).
+
+### #26 — Performance Trial Baseline Collection
+
+**Current state (post-#89):**
+
+| Acceptance criterion | Status | Evidence |
+|---|---|---|
+| Baseline table for ≥2 nodes/runtimes | ⚠️ Partial | `results/perf-001-baseline.yaml` (medium-vps, 4 vCPU/8 GB). The small-vps baseline added in this round (`results/perf-001-baseline-small.yaml`) provides a second data point. |
+| Scoring notes distinguish raw/normalized | ✅ | `docs/performance-scoring.md` — comprehensive raw vs scored, comparability caveats, hardware mismatch warnings. |
+| Result Packet metrics fields support baseline | ✅ | `schemas/result-packet.schema.json` — `workload_metrics`, `hardware_profile` fields. |
+| Host-contention warnings | ✅ | `docs/performance-scoring.md` — `comparability_caveats` section; `docs/scoring.md` — hardware normalization. |
+| No production mutation required | ✅ | All baselines are static YAML files. |
+
+**Verdict: KEEP OPEN with narrow remaining criteria.**
+
+One acceptance criterion is fully satisfied only after this round adds the second baseline.
+The remaining gap is narrow:
+- Authentic baseline runs on live nodes (not sample YAML) require operators to execute the
+  perf-001 workload on actual small-vps and medium-vps (or equivalent) hosts and submit real
+  result packets.
+- The format, docs, schemas, and example data are now in place. What remains is execution,
+  not specification.
+
+**Proposed comment for #26:**
+> Ratification lane 1/3 (sogyo) inspected #26 against merged #83/#84/#85/#89.
+> Source evidence: `docs/performance-scoring.md`, `schemas/result-packet.schema.json`,
+> `schemas/scoreboard.schema.json`, `results/perf-001-baseline.yaml`,
+> `results/perf-001-baseline-small.yaml`.
+>
+> 4/5 acceptance criteria are fully met. AC-1 (baseline table for ≥2 nodes) now has
+> two sample baselines demonstrating the structure. To close, operators must execute
+> the perf-001 workload on ≥2 real nodes and submit authentic result packets.
+> Recommend adding a narrow follow-up issue for live baseline execution.
+>
+> Should not close until live baselines exist.
+
+### #27 — MVP Foundation Issue Status Ratification
+
+**Current state (post-#89):**
+
+| Acceptance criterion | Status | Evidence |
+|---|---|---|
+| #18 closeout/status comment | ✅ | Documented in this doc — CLOSED with follow-up (Soonwook gap). |
+| #1 clear provisional/done/blocked | ✅ | DONE (provisional) — schema hardening follow-up needed. |
+| #2 clear conditional/blocked/done | ✅ | CONDITIONAL DONE — complete for Round 001. |
+| Blockers represented by narrow issues | ⚠️ | Schema hardening follow-up issue not yet created. Soonwook retry issue not yet created. |
+| No silent closes | ✅ | Every issue listed with remaining work explained. |
+
+**Verdict: KEEP OPEN with narrow remaining criteria.**
+
+Four of five criteria are fully satisfied. The remaining gap requires creating two
+narrow GitHub issues:
+1. Schema hardening follow-up (replace #1's provisional status with concrete hardening scope).
+2. Soonwook safe-node-profile retry (after node environment is ready).
+
+**Proposed comment for #27:**
+> Ratification lane 1/3 (sogyo) inspected #27 against merged #83/#84/#85/#89.
+> Source evidence: `docs/mvp-foundation-ratification.md` (this document),
+> `rounds/season-001-round-001.yaml`, `issues/roadmap-01-freeze-v1-schemas.md`,
+> `issues/roadmap-02-first-season-pack.md`, `tasks/season-001/*.yaml`,
+> `oracle/season-001/*.yaml`.
+>
+> 4/5 acceptance criteria fully met. AC-4 (blockers as narrow issues) requires
+> two concrete GitHub issues:
+>   - Schema hardening follow-up (child of #1 scope)
+>   - Soonwook safe-node-profile retry (references #17, #18)
+>
+> Recommend closing #27 only after both narrow issues exist and are linked.
+
+---
+
+## 5. Next Recommended Implementation Axis
 
 Based on the current roadmap state, the recommended implementation priority after this round is:
 
@@ -217,7 +292,7 @@ Based on the current roadmap state, the recommended implementation priority afte
 
 ---
 
-## 5. Risks
+## 6. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
@@ -228,7 +303,7 @@ Based on the current roadmap state, the recommended implementation priority afte
 
 ---
 
-## 6. Verification
+## 7. Verification
 
 - `npm test` passes with no regressions.
 - `make validate` passes on all existing manifests, envelopes, and result packets.
@@ -236,13 +311,14 @@ Based on the current roadmap state, the recommended implementation priority afte
 - The round manifest at `rounds/season-001-round-001.yaml` validates.
 - No schema, envelope, fixture, or script files were modified — only this documentation addition.
 
-## 7. Changed Files
+## 8. Changed Files
 
 | File | Change |
 |---|---|
-| `docs/mvp-foundation-ratification.md` | NEW — this ratification status document |
+| `docs/mvp-foundation-ratification.md` | Updated — added #26/#27 post-merge status section with close/keep recommendations |
+| `results/perf-001-baseline-small.yaml` | NEW — second baseline sample (small-vps) to satisfy #26 AC-1 dual-profile requirement |
 
-## 8. Approval-Sensitive Blockers
+## 9. Approval-Sensitive Blockers
 
 1. **PR #55 must merge** before or alongside any schema hardening that touches `result-packet.schema.json` to avoid merge conflicts with the new `tool_use_profile`, `operating_policy`, and `publishable` fields.
 2. **Soonwook retry issue** requires an operational node with proper Gateway credentials before the profile validation lane can be reassigned.

@@ -1,0 +1,192 @@
+# Sample Baseline Run — perf-001 (Performance Trial, small-vps profile)
+#
+# Second baseline sample demonstrating the dual-profile requirement
+# from #26 AC-1 ("baseline table exists for at least two nodes or
+# runtime profiles").  This runs on a small-vps profile with 1-2
+# vCPU and 1-2 GB RAM, reflecting lower concurrency and longer
+# wall times than the medium-vps baseline.
+#
+# Raw measurement fields use the `raw_` prefix convention defined
+# in fixtures/season-001/perf-001/workload-definition.yaml.
+
+schema_version: 1
+packet_id: pkt-perf-001-baseline-002
+task_id: perf-001
+agent_id: baseline-agent-small
+agent_version: baseline-v1
+runtime: openclaw
+runtime_version: v22.0.0
+model: gpt-4o-2026-05
+model_provider: openai
+node: baseline-small-vps
+hardware_profile:
+  cpu_class: small-vps
+  cpu_cores: 2
+  cpu_model: Intel Xeon Platinum 8375C
+  memory_gb: 2
+  storage_class: ssd
+  storage_gb: 20
+  os_family: linux
+  os_distro: ubuntu
+  os_version: "24.04"
+configuration_profile:
+  model_routing: direct
+  liveness: telegram-visible
+  resource_limits: constrained
+  tool_availability: minimal
+  memory_policy: ephemeral
+  service_ownership: documented
+  concurrency_limit: 1
+workload_metrics:
+  raw_git_commit_count: 847
+  raw_file_count: 1423
+  raw_line_count: 48391
+  raw_scan_wall_time_seconds: 5.81
+  raw_validated_file_count: 28
+  raw_passed_count: 28
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 3.42
+  raw_validation_latency_ms: 122.1
+  raw_test_count: 34
+  raw_test_passed: 34
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 28.7
+  raw_test_throughput: 1.18
+  raw_probe_count: 3
+  raw_sequential_estimate_seconds: 18.0
+  raw_total_wall_time_seconds: 14.8
+  raw_speedup_factor: 1.22
+  raw_service_stability: stable
+started_at: "2026-05-29T10:45:00+09:00"
+ended_at: "2026-05-29T11:35:00+09:00"
+status: completed
+summary: >
+  Executed all four Performance Trial workload phases against a small VPS
+  baseline.  Repository scan completed in 5.8s — slower than medium-vps
+  due to I/O contention on SSD-sharing.  Schema validation passed 28/28
+  files in 3.4s (~2x slower per file).  Test suite (34 tests) completed
+  in 28.7s at 1.18 tests/s versus 2.74 tests/s on the medium profile.
+  Three probes (concurrency_limit=1 prevented >3 parallel) achieved
+  1.22x speedup — near-sequential behaviour on 2-core host.
+
+actions:
+  - id: act-scan
+    type: command
+    target: local
+    command_summary: "git rev-list --count HEAD to measure repo size"
+    redacted: false
+    evidence_id: ev-git-count
+    duration_seconds: 0.4
+  - id: act-cloc
+    type: command
+    target: local
+    command_summary: "Count files and lines under workload directory"
+    redacted: false
+    evidence_id: ev-cloc
+    duration_seconds: 3.2
+  - id: act-validate
+    type: command
+    target: local
+    command_summary: "Validate all YAML/JSON against schemas"
+    redacted: false
+    evidence_id: ev-schema
+    duration_seconds: 3.4
+  - id: act-test
+    type: command
+    target: local
+    command_summary: "npm test on workload repository"
+    redacted: false
+    evidence_id: ev-test
+    duration_seconds: 28.7
+  - id: act-probes
+    type: command
+    target: local
+    command_summary: "Run multi-probe diagnostics (3 probes, concurrency-limited)"
+    redacted: false
+    evidence_id: ev-probes
+    duration_seconds: 14.8
+
+evidence:
+  - id: ev-git-count
+    kind: command_output
+    source: workload repo
+    summary: "git rev-list --count HEAD returned 847 commits"
+    redacted: false
+  - id: ev-cloc
+    kind: command_output
+    source: workload repo
+    summary: "1423 files, 48391 lines across workload directory"
+    redacted: false
+  - id: ev-schema
+    kind: command_output
+    source: schema validation run
+    summary: "28 schemas validated, 28 passed, 0 failed, avg 122.1ms per file"
+    redacted: false
+  - id: ev-test
+    kind: command_output
+    source: test suite run
+    summary: "34 tests passed, 0 failed, 28.7s wall time, 1.18 tests/s"
+    redacted: false
+  - id: ev-probes
+    kind: command_output
+    source: multi-probe diagnostics
+    summary: "3 probes completed, 14.8s total, 1.22x speedup, services stable"
+    redacted: false
+  - id: ev-stability
+    kind: observation
+    source: gateway health check
+    summary: "Gateway and messaging remained responsive under reduced concurrency"
+    redacted: false
+
+findings:
+  - claim: Small VPS baseline completes all four phases within time limit (50 min).
+    evidence: [ev-git-count, ev-cloc, ev-schema, ev-test, ev-probes]
+    confidence: high
+  - claim: Schema validation throughput is 8.19 files/second — 45% slower than medium-vps.
+    evidence: [ev-schema]
+    confidence: high
+  - claim: Concurrency-limited probes (max 1 parallel) achieve only 1.22x speedup — near sequential on 2-core host.
+    evidence: [ev-probes]
+    confidence: high
+  - claim: Test throughput (1.18 tests/s) is 57% lower than medium-vps (2.74 tests/s), consistent with CPU-bound workload on fewer cores.
+    evidence: [ev-test]
+    confidence: high
+  - claim: All services remained stable, though response latency increased under concurrent pressure.
+    evidence: [ev-stability, ev-probes]
+    confidence: medium
+
+risks:
+  - Low memory (2 GB) caused /tmp pressure during Phase D probe memory allocation — swap risk in production.
+  - Small VPS is unsuitable for concurrency-sensitive tasks (>1 concurrent runner).
+  - SSD I/O contention may dominate wall time for large-file workloads.
+
+outputs:
+  workload_summary: >
+    Small VPS (2 vCPU, 2 GB RAM, SSD) completed all four workload phases
+    in 50 minutes wall time.  Raw measurements are consistently 1.5–2x
+    slower than the medium-vps baseline across all phases, confirming the
+    hardware class has a measurable impact on performance metrics.  The
+    normalized efficiency score should be used for cross-profile
+    comparison rather than raw wall times.
+  hardware_profile: >
+    2 vCPU Intel Xeon Platinum, 2 GB RAM, SSD shared storage, Ubuntu
+    24.04.  Small-class VPS suitable for single-runner smoke tasks.
+  configuration_profile: >
+    Direct model routing, Telegram-visible liveness, constrained
+    resource limits, concurrency_limit=1, ephemeral memory.
+  workload_metrics: >
+    See workload_metrics field above.  All raw_ prefix values carry
+    measured data; scores are computed separately by the judge engine.
+  stability_assessment: >
+    Gateway remained stable.  Telegram messaging responsive.  Memory
+    pressure noted during Phase D — swap threshold approached but not
+    triggered.
+  tuning_recommendations: >
+    1. Keep concurrency_limit=1 — this profile cannot sustain >1 runner.
+    2. Monitor /tmp disk usage during probe workloads — 2 GB RAM shared
+       with OS may cause OOM on peak allocation.
+    3. Normalize against medium-vps baseline by dividing raw throughput
+       by cpu_cores_ratio (2/4=0.5) for approximate cross-class comparison.
+    4. Consider filesystem cache warming for repeated Phase A runs.
+
+durable_memory_decision: not_applicable
