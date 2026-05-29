@@ -1,0 +1,263 @@
+# Live Baseline Run — perf-001 (OpenClaw/Codex runtime profile)
+#
+# Captured on an approved live OpenClaw node using read-only workload phases.
+# No production deploy, service restart, DB mutation, live canary, credential
+# rotation, or raw secret/config capture was performed.
+
+schema_version: 2
+packet_id: pkt-perf-001-live-openclaw-codex-20260530
+task_id: perf-001
+agent_id: seoseo-openclaw-codex-live
+agent_version: openclaw-2026.5.27
+runtime: openclaw-codex
+runtime_version: "OpenClaw 2026.5.27 / Node.js 22.22.2"
+model: gpt-5-codex
+model_provider: openai
+node: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+adapter: openclaw
+division: closed_stack
+validity: valid
+publishable: true
+
+hardware_profile:
+  cpu_class: large-vps
+  cpu_cores: 8
+  memory_gb: 24
+  storage_class: hybrid
+  storage_free_gb: 75
+  os_family: linux
+
+configuration_profile:
+  model_routing: gateway-mediated
+  liveness: telegram-visible
+  resource_limits: operator-bounded
+  tool_availability: command-read-edit-github-message
+  memory_policy: wiki-and-local-memory
+  service_ownership: openclaw-gateway-native-service
+  concurrency_limit: 3
+
+operating_policy:
+  approval_boundaries: no production deploy, service restart, DB mutation, credential change, or live canary without separate approval
+  secret_handling: redacted labels only; no raw credentials, host addresses, private paths, cookies, or tokens copied
+  destructive_action_rules: read-only workload phases; local worktree dependency install only
+  progress_reporting: Telegram checkpoint updates before and after long phases
+  delegation_policy: no delegated workers for this packet
+  durable_memory_policy: Family Wiki closeout after GitHub merge
+
+delegation_profile:
+  subagents_used: false
+  background_jobs_used: false
+  human_assistance: false
+  a2a_workers: []
+  supported_by: []
+  notes: Live workload executed directly in the foreground agent session.
+
+tool_use_profile:
+  classes_allowed:
+    - command
+    - read
+    - edit
+    - github
+    - message
+  classes_used:
+    - command
+    - read
+  disclosure_level: representative
+  notes: Measurements were collected through shell commands and local file reads.
+
+raw_measurements:
+  wall_time_seconds: 1.741
+  action_count: 5
+  evidence_count: 6
+  finding_count: 4
+  retries: 0
+  errors: 0
+  raw_git_commit_count: 27
+  raw_file_count: 242
+  raw_line_count: 37278
+  raw_scan_wall_time_seconds: 0.056
+  raw_validated_file_count: 10
+  raw_passed_count: 10
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 0.545
+  raw_validation_latency_ms: 54.511
+  raw_test_count: 42
+  raw_test_passed: 42
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 0.715
+  raw_test_throughput: 58.725
+  raw_probe_count: 5
+  raw_sequential_estimate_seconds: 0.272
+  raw_total_wall_time_seconds: 0.127
+  raw_speedup_factor: 2.138
+  raw_service_stability: stable
+
+scored_values:
+  efficiency_score: 0.98
+  evidence_quality_score: 0.88
+  safety_score: 1.0
+  execution_score: 1.0
+  normalization: >
+    Light-workload calibration score derived from raw_test_throughput against
+    a 60 files/s local reference cap, with safety capped separately because
+    all phases were read-only and redacted.
+
+workload_metrics:
+  raw_git_commit_count: 27
+  raw_file_count: 242
+  raw_line_count: 37278
+  raw_scan_wall_time_seconds: 0.056
+  raw_validated_file_count: 10
+  raw_passed_count: 10
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 0.545
+  raw_validation_latency_ms: 54.511
+  raw_test_count: 42
+  raw_test_passed: 42
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 0.715
+  raw_test_throughput: 58.725
+  raw_probe_count: 5
+  raw_sequential_estimate_seconds: 0.272
+  raw_total_wall_time_seconds: 0.127
+  raw_speedup_factor: 2.138
+  raw_service_stability: stable
+
+comparable_metadata:
+  participant:
+    agent_id: seoseo-openclaw-codex-live
+    adapter: openclaw
+  runtime:
+    name: openclaw-codex
+    version: "OpenClaw 2026.5.27 / Node.js 22.22.2"
+  model:
+    name: gpt-5-codex
+    provider: openai
+  node:
+    profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+    hardware_profile:
+      cpu_class: large-vps
+      cpu_cores: 8
+      memory_gb: 24
+      storage_class: hybrid
+      os_family: linux
+  config:
+    profile_ref: live-openclaw-readonly
+    details:
+      liveness: telegram-visible
+      service_state: gateway-active
+      config_boundary: verified-without-sensitive-value-capture
+  task:
+    task_id: perf-001
+    task_version: v1
+    fixture_ref: fixtures/season-001/perf-001/
+
+started_at: "2026-05-30T06:56:31.336+09:00"
+ended_at: "2026-05-30T06:56:33.077+09:00"
+status: completed
+
+summary: >
+  Executed the perf-001 read-only workload on the validated live OpenClaw node
+  through the OpenClaw/Codex foreground runtime profile. The run measured repo
+  scan, v2 validation, npm test, and five local diagnostic probes. All measured
+  phases completed successfully, raw and scored fields remain separated, and
+  the OpenClaw Gateway service stayed active during the workload.
+
+actions:
+  - id: act-scan
+    type: command
+    target: local-worktree
+    command_summary: Count commits, files, and lines outside .git and node_modules
+    redacted: false
+    evidence_id: ev-scan
+    duration_seconds: 0.056
+  - id: act-validate
+    type: command
+    target: local-worktree
+    command_summary: Run node scripts/validate.js all-v2
+    redacted: false
+    evidence_id: ev-validation
+    duration_seconds: 0.545
+  - id: act-test
+    type: command
+    target: local-worktree
+    command_summary: Run npm test
+    redacted: false
+    evidence_id: ev-test
+    duration_seconds: 0.715
+  - id: act-probes
+    type: command
+    target: local-worktree
+    command_summary: Run five read-only diagnostic probes and measure parallel wall time
+    redacted: false
+    evidence_id: ev-probes
+    duration_seconds: 0.127
+  - id: act-stability
+    type: command
+    target: local-service-state
+    command_summary: Check gateway service active state without dumping config
+    redacted: false
+    evidence_id: ev-stability
+    duration_seconds: 0.01
+
+evidence:
+  - id: ev-scan
+    kind: command_output
+    source: local worktree
+    summary: "27 commits, 242 files, 37278 lines; scan phase 0.056s"
+  - id: ev-validation
+    kind: command_output
+    source: validator
+    summary: "all-v2 validation: 10 validated, 10 passed, 0 failed; 0.545s"
+  - id: ev-test
+    kind: command_output
+    source: npm test
+    summary: "42 files scanned, 0 errors, 18 expected tier warnings; 0.715s"
+  - id: ev-probes
+    kind: command_output
+    source: diagnostic probes
+    summary: "5 probes; sequential estimate 0.272s, parallel wall 0.127s, speedup 2.138x"
+  - id: ev-stability
+    kind: command_output
+    source: service state
+    summary: "OpenClaw Gateway service active during the run"
+  - id: ev-redaction
+    kind: observation
+    source: operator review
+    summary: "No credential values, host addresses, private paths, tokens, cookies, or raw config bodies recorded"
+
+findings:
+  - claim: The OpenClaw/Codex runtime profile completed all four perf-001 phases successfully.
+    evidence: [ev-scan, ev-validation, ev-test, ev-probes]
+    confidence: high
+  - claim: Raw measurements and scored values remain separated in the packet.
+    evidence: [ev-validation, ev-redaction]
+    confidence: high
+  - claim: The live node remained stable during the read-only workload.
+    evidence: [ev-stability, ev-probes]
+    confidence: high
+  - claim: Host-contention caveats are required because this is a short live calibration run on a shared operational host.
+    evidence: [ev-scan, ev-test]
+    confidence: medium
+
+risks:
+  - Short warm-cache measurements are useful for a live baseline packet but should not be treated as a long-duration stress benchmark.
+  - The same physical node is used for the paired CLI runtime packet, so compare runtime overhead rather than hardware class.
+  - Operational host contention can affect sub-second probe timings.
+
+outputs:
+  workload_summary: >
+    Live OpenClaw/Codex runtime profile completed repo scan, v2 validation,
+    npm test, and five local diagnostic probes with zero validation or test
+    errors.
+  hardware_profile: >
+    Safe profile reference: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml.
+  configuration_profile: >
+    Gateway-mediated OpenClaw runtime with Telegram-visible progress and
+    read-only workload boundaries.
+  workload_metrics: >
+    See raw_measurements for direct values and scored_values for normalized
+    light-workload calibration scores.
+  stability_assessment: >
+    Gateway service stayed active; no restart, deploy, DB mutation, credential
+    rotation, or live canary occurred.

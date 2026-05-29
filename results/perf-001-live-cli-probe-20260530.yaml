@@ -1,0 +1,259 @@
+# Live Baseline Run — perf-001 (plain CLI runtime profile)
+#
+# Captured on the same approved live OpenClaw node as the paired
+# OpenClaw/Codex packet, but with the participant runtime declared as a direct
+# CLI probe. This provides the second runtime-profile baseline requested by
+# #133 while keeping the hardware class constant.
+
+schema_version: 2
+packet_id: pkt-perf-001-live-cli-probe-20260530
+task_id: perf-001
+agent_id: seoseo-cli-probe-live
+agent_version: cli-probe-20260530
+runtime: cli
+runtime_version: "bash / Node.js 22.22.2"
+model: none
+model_provider: none
+node: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+adapter: cli
+division: node_class
+validity: valid
+publishable: true
+
+hardware_profile:
+  cpu_class: large-vps
+  cpu_cores: 8
+  memory_gb: 24
+  storage_class: hybrid
+  storage_free_gb: 75
+  os_family: linux
+
+configuration_profile:
+  model_routing: none
+  liveness: local-shell
+  resource_limits: operator-bounded
+  tool_availability: command-read
+  memory_policy: none
+  service_ownership: none-for-cli-probe
+  concurrency_limit: 3
+
+operating_policy:
+  approval_boundaries: no production deploy, service restart, DB mutation, credential change, or live canary without separate approval
+  secret_handling: redacted labels only; no raw credentials, host addresses, private paths, cookies, or tokens copied
+  destructive_action_rules: read-only workload phases; local worktree dependency install only
+  progress_reporting: paired with OpenClaw operator updates, not CLI-internal messaging
+  delegation_policy: no delegated workers for this packet
+  durable_memory_policy: none for direct CLI probe; closeout handled by operator
+
+delegation_profile:
+  subagents_used: false
+  background_jobs_used: false
+  human_assistance: false
+  a2a_workers: []
+  supported_by: []
+  notes: Live workload executed directly as shell commands.
+
+tool_use_profile:
+  classes_allowed:
+    - command
+    - read
+  classes_used:
+    - command
+    - read
+  disclosure_level: representative
+  notes: Direct CLI probe used shell commands and local file reads only.
+
+raw_measurements:
+  wall_time_seconds: 1.830
+  action_count: 5
+  evidence_count: 6
+  finding_count: 4
+  retries: 0
+  errors: 0
+  raw_git_commit_count: 27
+  raw_file_count: 242
+  raw_line_count: 37278
+  raw_scan_wall_time_seconds: 0.057
+  raw_validated_file_count: 10
+  raw_passed_count: 10
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 0.551
+  raw_validation_latency_ms: 55.092
+  raw_test_count: 42
+  raw_test_passed: 42
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 0.794
+  raw_test_throughput: 52.922
+  raw_probe_count: 5
+  raw_sequential_estimate_seconds: 0.281
+  raw_total_wall_time_seconds: 0.127
+  raw_speedup_factor: 2.206
+  raw_service_stability: stable
+
+scored_values:
+  efficiency_score: 0.88
+  evidence_quality_score: 0.86
+  safety_score: 1.0
+  execution_score: 1.0
+  normalization: >
+    Light-workload calibration score derived from raw_test_throughput against
+    a 60 files/s local reference cap, with safety capped separately because
+    all phases were read-only and redacted.
+
+workload_metrics:
+  raw_git_commit_count: 27
+  raw_file_count: 242
+  raw_line_count: 37278
+  raw_scan_wall_time_seconds: 0.057
+  raw_validated_file_count: 10
+  raw_passed_count: 10
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 0.551
+  raw_validation_latency_ms: 55.092
+  raw_test_count: 42
+  raw_test_passed: 42
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 0.794
+  raw_test_throughput: 52.922
+  raw_probe_count: 5
+  raw_sequential_estimate_seconds: 0.281
+  raw_total_wall_time_seconds: 0.127
+  raw_speedup_factor: 2.206
+  raw_service_stability: stable
+
+comparable_metadata:
+  participant:
+    agent_id: seoseo-cli-probe-live
+    adapter: cli
+  runtime:
+    name: cli
+    version: "bash / Node.js 22.22.2"
+  model:
+    name: none
+    provider: none
+  node:
+    profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+    hardware_profile:
+      cpu_class: large-vps
+      cpu_cores: 8
+      memory_gb: 24
+      storage_class: hybrid
+      os_family: linux
+  config:
+    profile_ref: live-cli-readonly
+    details:
+      liveness: local-shell
+      service_state: gateway-active-observed
+      config_boundary: no-sensitive-config-read-required
+  task:
+    task_id: perf-001
+    task_version: v1
+    fixture_ref: fixtures/season-001/perf-001/
+
+started_at: "2026-05-30T06:57:06.688+09:00"
+ended_at: "2026-05-30T06:57:08.518+09:00"
+status: completed
+
+summary: >
+  Executed the same perf-001 read-only workload as a direct CLI runtime probe
+  on the validated live OpenClaw node. Keeping the hardware class constant
+  makes this packet a runtime-profile comparison point against the paired
+  OpenClaw/Codex run. All measured phases completed successfully and the
+  Gateway service stayed active.
+
+actions:
+  - id: act-scan
+    type: command
+    target: local-worktree
+    command_summary: Count commits, files, and lines outside .git and node_modules
+    redacted: false
+    evidence_id: ev-scan
+    duration_seconds: 0.057
+  - id: act-validate
+    type: command
+    target: local-worktree
+    command_summary: Run node scripts/validate.js all-v2
+    redacted: false
+    evidence_id: ev-validation
+    duration_seconds: 0.551
+  - id: act-test
+    type: command
+    target: local-worktree
+    command_summary: Run npm test
+    redacted: false
+    evidence_id: ev-test
+    duration_seconds: 0.794
+  - id: act-probes
+    type: command
+    target: local-worktree
+    command_summary: Run five read-only diagnostic probes and measure parallel wall time
+    redacted: false
+    evidence_id: ev-probes
+    duration_seconds: 0.127
+  - id: act-stability
+    type: command
+    target: local-service-state
+    command_summary: Check gateway service active state without dumping config
+    redacted: false
+    evidence_id: ev-stability
+    duration_seconds: 0.01
+
+evidence:
+  - id: ev-scan
+    kind: command_output
+    source: local worktree
+    summary: "27 commits, 242 files, 37278 lines; scan phase 0.057s"
+  - id: ev-validation
+    kind: command_output
+    source: validator
+    summary: "all-v2 validation: 10 validated, 10 passed, 0 failed; 0.551s"
+  - id: ev-test
+    kind: command_output
+    source: npm test
+    summary: "42 files scanned, 0 errors, 18 expected tier warnings; 0.794s"
+  - id: ev-probes
+    kind: command_output
+    source: diagnostic probes
+    summary: "5 probes; sequential estimate 0.281s, parallel wall 0.127s, speedup 2.206x"
+  - id: ev-stability
+    kind: command_output
+    source: service state
+    summary: "OpenClaw Gateway service active during the run"
+  - id: ev-redaction
+    kind: observation
+    source: operator review
+    summary: "No credential values, host addresses, private paths, tokens, cookies, or raw config bodies recorded"
+
+findings:
+  - claim: The direct CLI runtime profile completed all four perf-001 phases successfully.
+    evidence: [ev-scan, ev-validation, ev-test, ev-probes]
+    confidence: high
+  - claim: Raw measurements and scored values remain separated in the packet.
+    evidence: [ev-validation, ev-redaction]
+    confidence: high
+  - claim: The paired runtime comparison should focus on runtime overhead because both packets used the same live hardware profile.
+    evidence: [ev-scan, ev-test]
+    confidence: high
+  - claim: The live node remained stable during the read-only workload.
+    evidence: [ev-stability, ev-probes]
+    confidence: high
+
+risks:
+  - Same-node paired packets isolate runtime profile more than hardware class.
+  - Warm-cache effects and operational host contention can affect sub-second timings.
+  - A longer dedicated performance window should be used before treating these as official ranking baselines.
+
+outputs:
+  workload_summary: >
+    Direct CLI runtime profile completed repo scan, v2 validation, npm test,
+    and five local diagnostic probes with zero validation or test errors.
+  hardware_profile: >
+    Safe profile reference: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml.
+  configuration_profile: >
+    Local shell runtime with no model routing and read-only workload boundaries.
+  workload_metrics: >
+    See raw_measurements for direct values and scored_values for normalized
+    light-workload calibration scores.
+  stability_assessment: >
+    Gateway service stayed active; no restart, deploy, DB mutation, credential
+    rotation, or live canary occurred.
