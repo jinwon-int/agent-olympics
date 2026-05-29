@@ -1,0 +1,39 @@
+# Fixture bundle: tool-001 — Precision triage with bounded tool budget
+#
+# Participant-facing fixture data only. Judge notes and answer keys live in
+# oracle/season-001/tool-001-precision-triage.yaml.
+
+schema_version: 1
+bundle_id: season-001-tool-001-v1
+season: season-001
+task_id: tool-001
+version: 1
+description: >
+  Synthetic operational triage materials for a bounded-tool Tool Decathlon
+  event. The bundle gives the runner a scenario brief and redacted artifacts
+  that support either config-drift or transient-noise variants.
+dry_run_compatible: true
+required: true
+files:
+  - path: scenario-brief.md
+    description: >
+      Participant-facing incident brief with available tool list, tool-call
+      budget, and redacted artifact descriptions.
+    content_type: text/markdown
+  - path: primary-log.log
+    description: >
+      Synthetic service log with both signal and false-positive noise.
+    content_type: text/plain
+  - path: config-snapshot.yaml
+    description: >
+      Redacted configuration snapshot for the affected dependency.
+    content_type: text/yaml
+preparation:
+  method: bundled
+  description: >
+    Use the bundled synthetic files directly. Runner may select the drift or
+    transient variant by editing only participant-facing values; answer-key
+    material remains in the private oracle.
+  expected_duration_minutes: 3
+environment_requirements: []
+depends_on: []

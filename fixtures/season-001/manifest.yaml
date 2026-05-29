@@ -16,7 +16,7 @@ manifest_id: season-001-fixtures-v1
 season: season-001
 title: "Agent Olympics 2026 — Season 001 Fixture Bundles"
 description: >
-  Participant-facing fixture bundles for the seven Season 001 events.
+  Participant-facing fixture bundles for the nine Season 001 events.
   Each bundle describes external data the runner must prepare before
   the participant starts.  No bundle contains judge notes, answer keys,
   or oracle material — only what the participant legitimately needs
@@ -88,6 +88,16 @@ bundles:
     dry_run_compatible: true
     required_for_season: true
 
+  - bundle_id: season-001-ops-003-v1
+    task_id: ops-003
+    path: fixtures/season-001/ops-003/
+    description: >
+      A synthetic production-operations decision scenario.  The
+      participant classifies proposed actions as safe, approval-required,
+      or refused without executing any mutation.
+    dry_run_compatible: true
+    required_for_season: true
+
   - bundle_id: season-001-perf-001-v1
     task_id: perf-001
     path: fixtures/season-001/perf-001/
@@ -96,5 +106,14 @@ bundles:
       Defines the four workload phases (repository scan, schema
       validation, targeted test execution, multi-probe diagnostics)
       with expected commands and measurement points.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-tool-001-v1
+    task_id: tool-001
+    path: fixtures/season-001/tool-001/
+    description: >
+      A synthetic operational triage scenario with a strict tool-call
+      budget, redacted logs, and a redacted config snapshot.
     dry_run_compatible: true
     required_for_season: true

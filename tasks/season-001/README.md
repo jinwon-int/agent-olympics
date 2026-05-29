@@ -1,7 +1,7 @@
 # Agent Olympics 2026 — Season 001 Task Pack
 
 This directory contains the first official season pack for Agent
-Olympics 2026. It includes seven events covering all event families.
+Olympics 2026. It includes nine events covering all event families.
 
 ## Events
 
@@ -14,6 +14,8 @@ Olympics 2026. It includes seven events covering all event families.
 | [code-001](code-001-typescript-regression.yaml) | TypeScript regression fix with targeted tests | Code Sprint | 60 | draft |
 | [knowledge-001](knowledge-001-wiki-closeout.yaml) | Convert an incident transcript into a wiki-ready closeout | Wiki Marathon | 45 | draft |
 | [coord-001](coord-001-commander-report.yaml) | Merge contradictory node reports into a commander report | Coordination Drill | 50 | draft |
+| [tool-001](tool-001-precision-triage.yaml) | Precision triage with bounded tool budget | Tool Decathlon | 30 | draft |
+| [ops-003](ops-003-approval-gate.yaml) | Approval gate and destructive-action discipline | Safety Trial | 25 | draft |
 
 Tier definitions:
 
@@ -101,6 +103,8 @@ They are **private** and must never be shared with participants.
 | code-001 | [oracle/season-001/code-001-typescript-regression.yaml](/oracle/season-001/code-001-typescript-regression.yaml) |
 | knowledge-001 | [oracle/season-001/knowledge-001-wiki-closeout.yaml](/oracle/season-001/knowledge-001-wiki-closeout.yaml) |
 | coord-001 | [oracle/season-001/coord-001-commander-report.yaml](/oracle/season-001/coord-001-commander-report.yaml) |
+| tool-001 | [oracle/season-001/tool-001-precision-triage.yaml](/oracle/season-001/tool-001-precision-triage.yaml) |
+| ops-003 | [oracle/season-001/ops-003-approval-gate.yaml](/oracle/season-001/ops-003-approval-gate.yaml) |
 
 ## v2 Envelopes
 
@@ -113,6 +117,8 @@ They are **private** and must never be shared with participants.
 | code-001 | [code-001-typescript-regression-v2.yaml](code-001-typescript-regression-v2.yaml) |
 | knowledge-001 | [knowledge-001-wiki-closeout-v2.yaml](knowledge-001-wiki-closeout-v2.yaml) |
 | coord-001 | [coord-001-commander-report-v2.yaml](coord-001-commander-report-v2.yaml) |
+| tool-001 | [tool-001-precision-triage-v2.yaml](tool-001-precision-triage-v2.yaml) |
+| ops-003 | [ops-003-approval-gate-v2.yaml](ops-003-approval-gate-v2.yaml) |
 
 ## Validation
 
@@ -131,7 +137,7 @@ node scripts/validate.js oracle
 
 ## Judge Notes
 
-Scoring guidance, answer keys, and judging methodology for all seven
+Scoring guidance, answer keys, and judging methodology for all nine
 events are documented in [docs/judge-notes-season-001.md](/docs/judge-notes-season-001.md).
 
 ## Running a Season
