@@ -594,7 +594,7 @@ async function buildScoreboard(resultsDir) {
 
     // 4. Judge record — check for existing, else auto-generate
     const judgeDir = path.dirname(f);
-    const judgeFiles = findJudgeFiles(judgeDir, rp.task_id, rp.agent_id);
+    const judgeFiles = findJudgeFiles(judgeDir, f);
     let judgeRecord = null;
     let judgeType = 'pending';
     let judgeRecordRef = null;
@@ -783,11 +783,12 @@ function findResultPackets(dir) {
   return results.sort();
 }
 
-function findJudgeFiles(dir, taskId, agentId) {
+function findJudgeFiles(dir, packetFileName) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
+  const base = path.basename(packetFileName, path.extname(packetFileName));
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isFile() && /\.ya?ml$/.test(entry.name) && entry.name.includes('-judge')) {
+    if (entry.isFile() && /\.ya?ml$/.test(entry.name) && entry.name.startsWith(base + '-judge')) {
       results.push(path.join(dir, entry.name));
     }
   }

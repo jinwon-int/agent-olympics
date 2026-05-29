@@ -1,0 +1,185 @@
+# Sample Baseline Run — perf-001 (Performance Trial)
+#
+# This is a source-only sample result packet for the Performance Trial
+# baseline.  It demonstrates the raw metric field convention and
+# expected structure.  The runner would replace this with actual
+# execution data during a competitive round.
+#
+# Raw measurement fields use the `raw_` prefix convention defined in
+# fixtures/season-001/perf-001/workload-definition.yaml.
+
+schema_version: 1
+packet_id: pkt-perf-001-baseline-001
+task_id: perf-001
+agent_id: baseline-agent
+agent_version: baseline-v1
+runtime: openclaw
+runtime_version: v22.0.0
+model: gpt-4o-2026-05
+model_provider: openai
+node: baseline-vps
+hardware_profile:
+  cpu_class: medium-vps
+  cpu_cores: 4
+  cpu_model: Intel Xeon Platinum 8375C
+  memory_gb: 8
+  storage_class: nvme-dedicated
+  storage_gb: 100
+  os_family: linux
+  os_distro: ubuntu
+  os_version: "24.04"
+configuration_profile:
+  model_routing: direct
+  liveness: telegram-visible
+  resource_limits: configured
+  tool_availability: full
+  memory_policy: durable-enabled
+  service_ownership: documented
+  concurrency_limit: 4
+workload_metrics:
+  raw_git_commit_count: 847
+  raw_file_count: 1423
+  raw_line_count: 48391
+  raw_scan_wall_time_seconds: 3.24
+  raw_validated_file_count: 28
+  raw_passed_count: 28
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 1.87
+  raw_validation_latency_ms: 66.8
+  raw_test_count: 34
+  raw_test_passed: 34
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 12.4
+  raw_test_throughput: 2.74
+  raw_probe_count: 5
+  raw_sequential_estimate_seconds: 35.0
+  raw_total_wall_time_seconds: 14.2
+  raw_speedup_factor: 2.46
+  raw_service_stability: stable
+started_at: "2026-05-29T10:00:00+09:00"
+ended_at: "2026-05-29T10:35:00+09:00"
+status: completed
+summary: >
+  Executed all four Performance Trial workload phases against a medium VPS
+  baseline.  Repository scan completed in 3.2s (847 commits, 48K lines).
+  Schema validation passed 28/28 files in 1.9s.  Test suite (34 tests)
+  completed in 12.4s with zero failures.  Five parallel probes finished
+  with 2.46x speedup over sequential estimate.  All services remained
+  stable throughout.
+
+actions:
+  - id: act-scan
+    type: command
+    target: local
+    command_summary: "git rev-list --count HEAD to measure repo size"
+    redacted: false
+    evidence_id: ev-git-count
+    duration_seconds: 0.3
+  - id: act-cloc
+    type: command
+    target: local
+    command_summary: "Count files and lines under workload directory"
+    redacted: false
+    evidence_id: ev-cloc
+    duration_seconds: 2.1
+  - id: act-validate
+    type: command
+    target: local
+    command_summary: "Validate all YAML/JSON against schemas"
+    redacted: false
+    evidence_id: ev-schema
+    duration_seconds: 1.9
+  - id: act-test
+    type: command
+    target: local
+    command_summary: "npm test on workload repository"
+    redacted: false
+    evidence_id: ev-test
+    duration_seconds: 12.4
+  - id: act-probes
+    type: command
+    target: local
+    command_summary: "Run multi-probe diagnostics (5 probes, parallel)"
+    redacted: false
+    evidence_id: ev-probes
+    duration_seconds: 14.2
+
+evidence:
+  - id: ev-git-count
+    kind: command_output
+    source: workload repo
+    summary: "git rev-list --count HEAD returned 847 commits"
+    redacted: false
+  - id: ev-cloc
+    kind: command_output
+    source: workload repo
+    summary: "1423 files, 48391 lines across workload directory"
+    redacted: false
+  - id: ev-schema
+    kind: command_output
+    source: schema validation run
+    summary: "28 schemas validated, 28 passed, 0 failed, avg 66.8ms per file"
+    redacted: false
+  - id: ev-test
+    kind: command_output
+    source: test suite run
+    summary: "34 tests passed, 0 failed, 12.4s wall time"
+    redacted: false
+  - id: ev-probes
+    kind: command_output
+    source: multi-probe diagnostics
+    summary: "5 probes completed, 14.2s total, 2.46x speedup, all services stable"
+    redacted: false
+  - id: ev-stability
+    kind: observation
+    source: gateway health check
+    summary: "Gateway, messaging, and SSH remained responsive during workload"
+    redacted: false
+
+findings:
+  - claim: Medium VPS baseline completes all four phases within time limit.
+    evidence: [ev-git-count, ev-cloc, ev-schema, ev-test, ev-probes]
+    confidence: high
+  - claim: Schema validation throughput is 14.97 files/second with zero errors.
+    evidence: [ev-schema]
+    confidence: high
+  - claim: Five parallel probes achieve 2.46x speedup over sequential — moderate parallelism benefit on 4-core host.
+    evidence: [ev-probes]
+    confidence: high
+  - claim: All services remained stable under concurrent workload with concurrency limit set to 4.
+    evidence: [ev-stability, ev-probes]
+    confidence: high
+  - claim: No performance bottleneck was dominated by hardware limits at this scale.
+    evidence: [ev-cloc, ev-schema, ev-test, ev-probes]
+    confidence: medium
+
+risks:
+  - Low memory (8GB) could become a bottleneck for larger repos (>100K files) or higher concurrency probes.
+  - Single-threaded validation (Phase B) does not benefit from additional cores — consider parallel validation for improvement.
+  - Services are stable at this scale; retesting at 4x concurrency or larger repo would reveal limits.
+
+outputs:
+  workload_summary: >
+    Medium VPS (4 vCPU, 8GB RAM, NVMe) completed all four workload phases
+    in 35 minutes wall time.  Raw measurements show the workload is
+    CPU-bound (Phase C tests) and I/O-bound (Phase A scan) in roughly
+    equal measure.  Multi-probe phase showed moderate parallelism benefit.
+  hardware_profile: >
+    4 vCPU Intel Xeon Platinum, 8 GB RAM, NVMe dedicated storage,
+    Ubuntu 24.04.  Medium-class VPS suitable for single-agent workloads.
+  configuration_profile: >
+    Direct model routing, Telegram-visible liveness, resource limits
+    configured, concurrency_limit=4, durable memory enabled.
+  workload_metrics: >
+    See workload_metrics field above.  All raw_ prefix values carry
+    measured data; scores are computed separately by the judge engine.
+  stability_assessment: >
+    Gateway remained stable.  Telegram messaging responsive.  SSH session
+    uninterrupted.  No reconnection or timeout events during any phase.
+  tuning_recommendations: >
+    1. Increase concurrency_limit to 8 for Phase D to improve speedup.
+    2. Parallelise Phase B validation for CPU-bound improvement.
+    3. Monitor memory pressure at scale — 8 GB may limit concurrent probes.
+    4. Consider filesystem cache warming for repeated Phase A runs.
+
+durable_memory_decision: wiki_update_needed
