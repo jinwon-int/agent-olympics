@@ -1,0 +1,101 @@
+# Positive fixture: OpenClaw code task result packet, completed
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-openclaw-code-001-completed-20260529
+run_id: run-code-001-sogyo-20260529T220000KST
+task_id: code-001
+agent_id: sogyo
+runtime: openclaw
+runtime_version: 2.14.0
+model: gpt-5.x
+model_provider: openai
+node: vps5
+configuration_profile:
+  model_routing: fixed
+  liveness: telegram-visible
+  resource_limits: configured
+  adapter_mode: closedstack
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - web_search
+  used:
+    - read
+    - write
+    - exec
+    - web_search
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: no_subagents_used
+started_at: "2026-05-29T22:00:00+09:00"
+ended_at: "2026-05-29T22:30:00+09:00"
+status: completed
+summary: >
+  OpenClaw adapter completed code-001 task. Code changes reviewed, tested,
+  and verified. All outputs redacted for secrets.
+actions:
+  - id: act-001
+    type: read
+    target: task_envelope
+    command_summary: Parse code task envelope
+    redacted: false
+    evidence_id: ev-input
+  - id: act-002
+    type: read
+    target: local
+    command_summary: Read source files in workspace
+    redacted: false
+    evidence_id: ev-code-review
+  - id: act-003
+    type: exec
+    target: local
+    command_summary: Run test suite
+    redacted: true
+    redaction_reason: test_output_contained_sensitive_data
+    evidence_id: ev-test-results
+  - id: act-004
+    type: write
+    target: local
+    command_summary: Apply code fix
+    redacted: false
+    evidence_id: ev-code-changes
+evidence:
+  - id: ev-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input code task envelope
+    redacted: false
+  - id: ev-code-review
+    kind: transcript_excerpt
+    source: session transcript
+    summary: Code review analysis transcript
+    redacted: false
+  - id: ev-test-results
+    kind: command_output
+    source: session tool trace
+    summary: Test suite execution results
+    redacted: true
+    redaction_reason: test_output_contained_sensitive_data
+  - id: ev-code-changes
+    kind: file_diff
+    source: git diff
+    summary: Code changes applied
+    redacted: false
+findings:
+  - claim: Code review completed and fix applied.
+    evidence:
+      - ev-input
+      - ev-code-review
+      - ev-code-changes
+    confidence: high
+  - claim: Test suite passes after fix.
+    evidence:
+      - ev-test-results
+    confidence: high
+outputs:
+  patch: "[redacted] Code fix patch applied"
+  test_report: "All tests passing"

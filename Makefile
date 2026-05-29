@@ -135,6 +135,43 @@ validate-cv:
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
 
+# --- OpenClaw adapter targets ---
+
+# Run OpenClaw adapter against the stub test envelope (success mode, ops)
+openclaw-adapter:
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw
+
+# Run OpenClaw adapter in closed stack code mode
+openclaw-adapter-code:
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode closedstack --event-family code --seed make-openclaw-code
+
+# Run OpenClaw adapter in failure mode
+openclaw-adapter-fail:
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw-fail --exit 1
+
+# Validate all OpenClaw adapter output fixtures
+validate-openclaw:
+	@echo "=== Validating OpenClaw adapter positive fixtures ==="
+	@for f in fixtures/openclaw-validity/positive/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f" || exit 1; \
+	done
+	@echo ""
+	@echo "=== Validating OpenClaw adapter negative fixtures ==="
+	@for f in fixtures/openclaw-validity/negative/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f"; \
+		echo "(expected to produce errors for negative fixtures)"; \
+	done
+	@echo ""
+	@echo "OpenClaw adapter fixture validation complete."
+
 # --- Stub adapter targets ---
 
 # Run stub adapter against the stub test envelope (success mode)

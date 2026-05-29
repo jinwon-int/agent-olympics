@@ -1,0 +1,99 @@
+# Positive fixture: OpenClaw ops task trace record
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+trace_id: tr-run-ops-001-sogyo-20260529T212600KST
+run_id: run-ops-001-sogyo-20260529T212600KST
+agent_id: sogyo
+generated_at: "2026-05-29T21:50:00+09:00"
+entries:
+  - seq: 0
+    timestamp: "2026-05-29T21:26:00+09:00"
+    action: read
+    target: task_envelope
+    summary: Read task envelope ops-001 from disk
+    duration_ms: 45
+    result_summary: Loaded envelope for event family ops
+    evidence_ref: ev-session-input
+  - seq: 1
+    timestamp: "2026-05-29T21:26:01+09:00"
+    action: api_call
+    target: gateway
+    summary: Create OpenClaw session via gateway API
+    redacted: true
+    redaction_reason: gateway_auth_header_redacted
+    duration_ms: 320
+    result_summary: Session created successfully
+    evidence_ref: ev-gateway-readiness
+  - seq: 2
+    timestamp: "2026-05-29T21:26:02+09:00"
+    action: message
+    target: session
+    summary: Send task envelope as first session message
+    duration_ms: 150
+    result_summary: Task envelope posted to session
+    evidence_ref: ev-message-delivery
+  - seq: 3
+    timestamp: "2026-05-29T21:26:03+09:00"
+    action: think
+    target: null
+    summary: Process task in openstack mode for event family ops
+    duration_ms: 210
+    result_summary: Task objective parsed, execution plan formed
+  - seq: 4
+    timestamp: "2026-05-29T21:26:04+09:00"
+    action: api_call
+    target: gateway
+    summary: Poll gateway readiness journal for delivery status
+    redacted: true
+    redaction_reason: gateway_delivery_log_contained_api_token
+    duration_ms: 200
+    result_summary: Gateway ready, message accepted
+    evidence_ref: ev-gateway-readiness
+  - seq: 5
+    timestamp: "2026-05-29T21:26:05+09:00"
+    action: message
+    target: telegram
+    summary: Deliver progress update to Telegram channel
+    duration_ms: 480
+    result_summary: Progress update delivered to Telegram
+    evidence_ref: ev-telegram-delivery
+  - seq: 6
+    timestamp: "2026-05-29T21:28:00+09:00"
+    action: command
+    target: local
+    summary: Execute diagnostic command for ops task
+    redacted: true
+    redaction_reason: command_output_contained_sensitive_data
+    duration_ms: 1200
+    result_summary: Command completed, output redacted for secrets
+    evidence_ref: ev-tool-calls
+  - seq: 7
+    timestamp: "2026-05-29T21:50:00+09:00"
+    action: message
+    target: session
+    summary: Compose and post final diagnosis message
+    duration_ms: 890
+    result_summary: Final report posted to session transcript
+    evidence_ref: ev-final-report
+  - seq: 8
+    timestamp: "2026-05-29T21:50:01+09:00"
+    action: write
+    target: result_packet
+    summary: Write all output artifacts to run directory
+    duration_ms: 50
+    result_summary: All output artifacts written
+redaction_policy:
+  applied_rules:
+    - rule_id: rr-openclaw-001
+      pattern_description: API keys and bearer tokens in gateway journal entries
+      reason: prevent_credential_exposure_in_gateway_logs
+    - rule_id: rr-openclaw-002
+      pattern_description: Session cookies and auth tokens in delivery probe responses
+      reason: prevent_auth_material_exposure_in_delivery_evidence
+    - rule_id: rr-openclaw-003
+      pattern_description: Secret values in command output summaries
+      reason: command_output_contained_sensitive_data
+    - rule_id: rr-openclaw-004
+      pattern_description: Database connection strings and hostnames in session metadata
+      reason: prevent_infrastructure_exposure_in_session_metadata
+  default_reason: sensitive_value_redacted
