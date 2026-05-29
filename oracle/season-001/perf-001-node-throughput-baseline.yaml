@@ -1,0 +1,97 @@
+# Oracle / Answer Key for perf-001: Measure node throughput on a controlled mission workload
+#
+# This file is PRIVATE. It must not be shared with participants.
+# It contains the answer key, scoring guidance, and expected patterns.
+# The public task envelope references this file via oracle_ref.
+
+oracle_schema_version: 1
+oracle_id: oracle-perf-001
+task_id: perf-001
+
+expected_answer_categories:
+  - id: phase-a-repo-scan
+    label: Phase A — Repository scan
+    description: >
+      Run `git rev-list --count HEAD` or similar, count files and lines of code,
+      report time for completion.
+    evidence_hints:
+      - execute git commands for commit count
+      - count files and lines of code
+      - capture wall time
+
+  - id: phase-b-schema-validation
+    label: Phase B — Schema validation
+    description: >
+      Validate all YAML/JSON files under schemas/ against their schemas.
+      Report pass/fail and count of validated files.
+    evidence_hints:
+      - validate YAML/JSON files against schemas
+      - report pass/fail per file
+
+  - id: phase-c-targeted-tests
+    label: Phase C — Targeted test execution
+    description: >
+      Run any available test suite. Record pass/fail count and wall time.
+    evidence_hints:
+      - execute test suite
+      - record pass/fail count and wall time
+
+  - id: phase-d-multi-probe
+    label: Phase D — Multi-probe parallel diagnostics
+    description: >
+      Run 3-5 independent read-only probes concurrently or sequentially.
+      Measure total time vs sequential estimate.
+    evidence_hints:
+      - run 3-5 independent probes
+      - measure total time vs sequential estimate
+
+scoring_guidance:
+  mission_completion:
+    max_points: 25
+    full: Full points if all four phases complete within time limit.
+    partial_3of4: 15 pts if 3 of 4 complete.
+    partial_2orless: 5 pts if 2 or fewer.
+    zero: Zero if workload is fabricated without actual execution.
+  absolute_performance:
+    max_points: 20
+    full: Compare wall time, throughput, and parallel capacity.
+  resource_efficiency:
+    max_points: 15
+    full: CPU and memory usage relative to workload. A node using 80% of 16GB for light work is inefficient.
+  stability_under_load:
+    max_points: 15
+    full: Gateway, messaging, or SSH stayed responsive during workload.
+    penalty: Deduct if participant needed to reconnect or services became unresponsive.
+  evidence_quality:
+    max_points: 10
+    full: Specific timestamps, command outputs with timing.
+    zero: '"Task completed quickly" scores 0.'
+  configuration_judgment:
+    max_points: 10
+    full: Does participant identify whether resource limits, concurrency, or tools affected performance?
+  communication:
+    max_points: 5
+    full: Clearly separate raw hardware performance from configuration/tuning conclusions.
+
+strong_answer_markers:
+  - reports_separate_dimensions: >
+      Reports absolute throughput AND resource efficiency AND service stability
+      as separate dimensions
+  - specific_tuning: Provides specific tuning recommendations tied to observed bottlenecks
+  - identifies_bottleneck_source: Identifies whether bottleneck was CPU, memory, I/O, or configuration
+  - no_hardware_config_conflation: Does NOT conflate hardware strength with setup quality
+  - small_node_can_score: A small node can score well on tuning, responsiveness, and safe limits
+
+answer_key_checks:
+  - question_id: q-phases-completed
+    question: How many workload phases completed?
+    expected: 4 of 4 within time limit
+  - question_id: q-bottleneck-identified
+    question: Was the bottleneck identified?
+    expected: CPU, memory, I/O, or configuration named with evidence
+  - question_id: q-hardware-vs-tuning
+    question: Were hardware and tuning conclusions separated?
+    expected: Raw performance vs configuration judgment clearly distinguished
+  - question_id: q-stability-reported
+    question: Was service stability during workload reported?
+    expected: Concrete responsiveness evidence provided

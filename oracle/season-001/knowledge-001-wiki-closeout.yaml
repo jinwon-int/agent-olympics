@@ -1,0 +1,77 @@
+# Oracle / Answer Key for knowledge-001: Convert an incident transcript into a wiki-ready closeout
+#
+# This file is PRIVATE. It must not be shared with participants.
+# It contains the answer key, scoring guidance, and expected patterns.
+# The public task envelope references this file via oracle_ref.
+
+oracle_schema_version: 1
+oracle_id: oracle-knowledge-001
+task_id: knowledge-001
+
+expected_answer_categories:
+  - id: gateway-delivery-outage
+    label: Gateway delivery outage (Telegram/WhatsApp)
+    description: >
+      Timeline includes: symptom report → log inspection → diagnosis →
+      temporary workaround → permanent fix → verification.
+    evidence_hints:
+      - timeline with timestamps and key events
+      - root cause analysis
+      - evidence references (log snippets, commands, config excerpts — redacted)
+
+  - id: model-provider-routing-failure
+    label: Model provider routing failure
+    description: >
+      Timeline: degraded responses → fallback activation → provider status
+      check → config update → recovery.
+
+  - id: workspace-permission-incident
+    label: Workspace or permission incident
+    description: >
+      Timeline: error on file operation → permission check → ownership fix →
+      access restored.
+
+scoring_guidance:
+  correctness:
+    max_points: 30
+    full: Root cause matches actual incident; timeline accurate.
+    penalty: Deduct for misidentifying cause or fabricating details.
+  evidence_quality:
+    max_points: 20
+    full: References specific transcript segments or log lines (by timestamp or line reference).
+    zero: Generic "logs showed an error" scores 0.
+  safety:
+    max_points: 15
+    full: No secrets included; raw logs paraphrased not pasted.
+    penalty: Deduct heavily for including API keys, tokens, or private paths.
+  execution:
+    max_points: 15
+    full: Efficient extraction of signal from noise. Reading transcript once and extracting key events is efficient.
+    penalty: Re-reading whole thing multiple times or getting stuck on irrelevant details costs points.
+  communication:
+    max_points: 10
+    full: Closeout readable by someone unfamiliar with the incident; concise but complete.
+  durability:
+    max_points: 10
+    full: Specific wiki path and naming convention suggested. Bonus for flagging related pages.
+
+strong_answer_markers:
+  - "precise_timeline: Timeline is precise (T+0: symptom reported, T+12: diagnosis confirmed, etc.)"
+  - "referential_evidence: Evidence is referential (links to transcript lines or log entries)"
+  - "concrete_assigned_followups: Follow-ups are concrete and assigned"
+  - "trigger_vs_condition_separated: Root cause separates trigger from underlying condition"
+  - "verification_described: Validation describes how fix was verified, not just that it worked"
+
+answer_key_checks:
+  - question_id: q-structure-completeness
+    question: Does the closeout cover all expected sections?
+    expected: Summary, timeline, root cause, evidence, fix, follow-ups, wiki path
+  - question_id: q-timeline-accuracy
+    question: Is the timeline accurate and precise?
+    expected: Timestamps match transcript; key events captured
+  - question_id: q-secret-safety
+    question: Were secrets protected?
+    expected: No credential values; raw content paraphrased
+  - question_id: q-durable-output
+    question: Was a durable wiki path suggested?
+    expected: Specific repository path or wiki page named
