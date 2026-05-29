@@ -1,0 +1,51 @@
+# Node profile for fixture bundle season-001-node-001-v1
+#
+# Structured node profile in Node Capability Matrix format.
+# Describes a test node's hardware, runtime, tools, services,
+# and intentional misconfigurations for participant audit.
+#
+# Band-based values only — no hostnames, IPs, tokens, or secrets.
+
+schema_version: 1
+profile_id: stub-node-001-audit-v1
+profile_class: medium-vps
+os_family: linux
+cpu:
+  class: x86-64
+  cores_min: 4
+  cores_max: 4
+  description: "entry-level cloud vCPU, no hyperthreading"
+memory_gb:
+  min: 8
+  max: 8
+  description: "dedicated RAM, no swap configured"
+runner_limits:
+  max_concurrent: 2
+  max_task_duration_minutes: 30
+  max_total_daily_tasks: 10
+  description: "standard per-node runner limits"
+storage_class:
+  type: hybrid
+  min_free_gb: 20
+  max_total_gb: 80
+  description: "OS on SSD, workspace on HDD; intentional low-free-space warning at 20 GB"
+network_class:
+  class: medium
+  public_egress: true
+  description: "outbound HTTPS enabled, inbound ports firewalled; latency ~20ms to regional endpoint"
+capability_labels:
+  - smoke
+  - node
+  - audit
+  - readonly
+allowed_runner_types:
+  - openclaw
+  - hermes
+  - cli
+notes: >
+  Test node profile for node-readiness audit (node-001). Contains
+  two intentional misconfigurations participants should discover:
+  (1) insufficient free disk space (20 GB free of 80 GB total),
+  (2) swap not configured despite 8 GB RAM. These are documented
+  in the oracle for scoring.
+last_updated: "2026-05-29T23:00:00+09:00"

@@ -8,16 +8,18 @@
         validate-oracle validate-smoke \
         oracle smoke-check smoke fixtures-check setup clean \
         validate-rounds rounds-check round \
+        dry-run-readiness dry-run-publication dry-run-redaction dry-run-metadata \
+        dry-run-finalizer dry-run-list validate-gates validate-dry-run-evidence \
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
         openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
         hermes-adapter hermes-adapter-code hermes-adapter-fail validate-hermes smoke-hermes \
-        score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
+        score score-validate score-run score-aggregate perf-harness perf-harness-validate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
 # Install dependencies
 setup:
@@ -303,6 +305,16 @@ score-run:
 score-aggregate:
 	node scripts/score.js aggregate
 
+# --- perf-harness targets ---
+
+# Run the repeatable baseline harness (default 3 iterations)
+perf-harness:
+	node scripts/perf-harness.js --iterations $${PERF_ITERATIONS:-3}
+
+# Run harness with validation after generation
+perf-harness-validate:
+	node scripts/perf-harness.js --iterations $${PERF_ITERATIONS:-3} --validate
+
 # Validate the scoreboard schema
 validate-scoreboard:
 	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
@@ -356,6 +368,44 @@ validate-web-fields:
 # Full web data bridge validation: scoreboard + blind + field check
 validate-web-bridge: score score-blind validate-web-fields
 	@echo "Web data bridge validation complete."
+
+# --- Dry-Run Go/No-Go Gates targets ---
+
+# Run all qualification/readiness gates
+dry-run-readiness:
+	node scripts/dry-run-gates.js readiness --manifest rounds/season-001-round-001.yaml --output evidence/dry-run/readiness-evidence.json
+
+# Run all publication readiness gates
+dry-run-publication:
+	node scripts/dry-run-gates.js publication --results-dir results/ --runs-dir runs/season-001/round-001/ --output evidence/dry-run/publication-evidence.json
+
+# Check redaction hygiene on result packets
+dry-run-redaction:
+	node scripts/dry-run-gates.js redaction-check --results-dir results/ --output evidence/dry-run/redaction-check.json
+
+# Check safe metadata on result packets
+dry-run-metadata:
+	node scripts/dry-run-gates.js safe-metadata --results-dir results/ --output evidence/dry-run/safe-metadata.json
+
+# Run all gates for broker finalization
+dry-run-finalizer:
+	node scripts/dry-run-gates.js finalizer-ready \
+		--manifest rounds/season-001-round-001.yaml \
+		--results-dir results/ \
+		--runs-dir runs/season-001/round-001/ \
+		--output evidence/dry-run/finalizer-evidence.json
+
+# List all available gates
+dry-run-list:
+	node scripts/dry-run-gates.js list
+
+# Quick-run: validate the gates script itself (no-op check)
+validate-gates:
+	node -e 'const fs=require("fs"); fs.accessSync("scripts/dry-run-gates.js", fs.constants.R_OK); console.log("dry-run-gates.js exists and is readable.");'
+
+# Validate all dry-run evidence output format (after generation)
+validate-dry-run-evidence:
+	node -e 'const fs=require("fs"); const d="evidence/dry-run"; if(!fs.existsSync(d)){console.log("No dry-run evidence yet. Run a gate first.");process.exit(0);} const files=fs.readdirSync(d).filter(f=>f.endsWith(".json")); let ok=0;let bad=0; for(const f of files){try{const j=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(j.allPassed!==undefined)ok++;else bad++;console.log(f+": "+(j.allPassed!==undefined?"valid":"missing allPassed"));}catch(e){bad++;console.log(f+": parse error - "+e.message);}} console.log(ok+" valid, "+bad+" invalid"); process.exit(bad>0?1:0);'
 
 # Remove generated artifacts and dependencies
 clean:

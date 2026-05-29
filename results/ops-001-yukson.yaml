@@ -38,6 +38,7 @@ actions:
     target: local
     command_summary: inspect recent gateway warnings
     redacted: true
+    redaction_reason: command_output_contained_sensitive_delivery_log_context
     evidence_id: ev-001
 evidence:
   - id: ev-001

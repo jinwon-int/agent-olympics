@@ -93,3 +93,16 @@ required_capabilities:
   - network_outbound
 result_schema_ref: "https://github.com/jinwon-int/agent-olympics/schemas/result-packet.schema.json"
 node_capability_schema_ref: "https://github.com/jinwon-int/agent-olympics/schemas/node-capability.schema.json"
+
+execution_packs:
+  - pack_id: node-readiness-pack-v1
+    title: Node Readiness Smoke Execution Pack
+    manifest: tasks/smoke/node-readiness-pack/pack-manifest.yaml
+    description: >
+      Aggregated node readiness execution pack grouping the node-001
+      readiness audit envelope (v1 and v2), smoke-007 node capability
+      report, node fixture profiles, and adapter-specific sample outputs
+      for OpenClaw, Hermes, and CLI adapters. All sample data uses safe
+      band-based metadata — no hostnames, IPs, tokens, or secrets.
+      Runnable in isolated/dry-run mode without production service
+      modifications.
