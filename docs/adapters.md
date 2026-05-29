@@ -2,7 +2,21 @@
 
 Adapters translate Agent Olympics Task Envelopes into runtime-specific invocations and translate runtime outputs into Result Packets.
 
+Every adapter must satisfy the [**Adapter Execution Contract**](adapter-execution-contract.md), which defines:
+
+- Required inputs, outputs, and artifacts.
+- Timeout behavior and status mapping.
+- Evidence capture rules.
+- Redaction and approval boundaries.
+- Concrete CLI invocation example.
+- Validation commands.
+
+This document provides a high-level overview of each adapter's responsibilities
+and useful evidence kinds. For the full contract, see the link above.
+
 ## OpenClaw Adapter
+
+See [`issues/roadmap-03-openclaw-adapter.md`](../issues/roadmap-03-openclaw-adapter.md) for the full design issue.
 
 Responsibilities:
 
@@ -20,7 +34,16 @@ Useful evidence:
 - wiki PR or issue link
 - command summaries with redaction status
 
+Contract addenda (see [§10](adapter-execution-contract.md#10-adapter-specific-contract-addenda)):
+
+- Capture session metadata.
+- Preserve Telegram progress behavior.
+- Normalize and redact tool call output.
+- Use the Gateway readiness journal for evidence.
+
 ## Hermes Adapter
+
+See [`issues/roadmap-04-hermes-adapter.md`](../issues/roadmap-04-hermes-adapter.md) for the full design issue.
 
 Responsibilities:
 
@@ -35,6 +58,13 @@ Useful evidence:
 - memory retrieval summary
 - tool trace summary
 - final commander report
+
+Contract addenda (see [§10](adapter-execution-contract.md#10-adapter-specific-contract-addenda)):
+
+- Capture workflow state transitions.
+- Summarize memory retrieval (no secrets).
+- Merge child worker evidence.
+- Handle contradictory evidence.
 
 ## CLI Adapter
 
@@ -51,6 +81,8 @@ Useful evidence:
 - test command and result
 - PR or branch URL
 - terminal transcript path
+
+See the [CLI invocation example](adapter-execution-contract.md#8-cli-invocation-example) in the contract for a concrete walkthrough.
 
 ## Human Baseline Adapter
 
