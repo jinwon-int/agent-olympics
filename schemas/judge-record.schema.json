@@ -92,6 +92,33 @@
       "type": "object",
       "description": "Optional checks for approval discipline, secret handling, delegation, and liveness."
     },
+    "division_verification": {
+      "type": "object",
+      "description": "Optional judge verification of the participant's declared division.",
+      "properties": {
+        "declared_division": {
+          "type": "string",
+          "enum": ["closed_stack", "open_stack", "human_baseline", "node_class"]
+        },
+        "verified": { "type": "boolean" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "appeal_record": {
+      "type": "object",
+      "description": "Optional appeal review details linked to this judge record.",
+      "properties": {
+        "appeal_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["filed", "under_review", "upheld", "denied", "remanded", "dismissed"] },
+        "filed_at": { "type": "string", "format": "date-time" },
+        "reviewed_by": { "type": "string" },
+        "reviewed_at": { "type": "string", "format": "date-time" },
+        "outcome": { "type": "string" },
+        "outcome_notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "evidence_checks": {
       "type": "array",
       "items": {

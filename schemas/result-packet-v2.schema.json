@@ -42,6 +42,31 @@
     "tool_use_profile": { "type": "object", "description": "Tool classes allowed and actually used during the run. Operator-supplied safe labels only." },
     "operating_policy": { "type": "object", "description": "Operating principles followed: approval_boundaries, secret_handling, destructive_action_rules, progress_reporting, escalation_policy, delegation_policy, durable_memory_policy. Operator-supplied safe labels only." },
     "delegation_profile": { "type": "object", "description": "Delegation and support: subagents_used, background_jobs_used, human_assistance, a2a_workers, supported_by, notes. Operator-supplied." },
+    "division": {
+      "type": "string",
+      "enum": ["closed_stack", "open_stack", "human_baseline", "node_class"],
+      "description": "Competition division declared for this result packet."
+    },
+    "validity": {
+      "type": "string",
+      "enum": ["valid", "partial_valid", "invalid", "appealed", "disqualified"],
+      "description": "Result validity state used by rules, appeals, and public reporting."
+    },
+    "appeal": {
+      "type": "object",
+      "description": "Appeal metadata when this result is contested or reviewed.",
+      "properties": {
+        "status": { "type": "string", "enum": ["filed", "under_review", "upheld", "denied", "remanded", "dismissed"] },
+        "filed_at": { "type": "string", "format": "date-time" },
+        "filed_by": { "type": "string" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "reviewed_by": { "type": "string" },
+        "reviewed_at": { "type": "string", "format": "date-time" },
+        "outcome": { "type": "string" },
+        "outcome_notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "publishable": { "type": "boolean", "description": "Whether this packet is safe to expose in public leaderboard/detail output after redaction review." },
     "workload_metrics": { "type": "object", "description": "Raw measured values captured during run (wall_time_seconds, retries, peak_memory_mb). Engine-generated." },
     "started_at": { "type": "string", "format": "date-time" },

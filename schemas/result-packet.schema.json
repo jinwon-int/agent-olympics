@@ -34,6 +34,31 @@
     "operating_policy": { "type": "object" },
     "delegation_profile": { "type": "object" },
     "workload_metrics": { "type": "object" },
+    "division": {
+      "type": "string",
+      "enum": ["closed_stack", "open_stack", "human_baseline", "node_class"],
+      "description": "Competition division declared for this result packet."
+    },
+    "validity": {
+      "type": "string",
+      "enum": ["valid", "partial_valid", "invalid", "appealed", "disqualified"],
+      "description": "Result validity state used by rules, appeals, and public reporting."
+    },
+    "appeal": {
+      "type": "object",
+      "description": "Appeal metadata when this result is contested or reviewed.",
+      "properties": {
+        "status": { "type": "string", "enum": ["filed", "under_review", "upheld", "denied", "remanded", "dismissed"] },
+        "filed_at": { "type": "string", "format": "date-time" },
+        "filed_by": { "type": "string" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "reviewed_by": { "type": "string" },
+        "reviewed_at": { "type": "string", "format": "date-time" },
+        "outcome": { "type": "string" },
+        "outcome_notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "publishable": {
       "type": "boolean",
       "description": "Whether this packet is safe to expose in public leaderboard/detail output."
