@@ -1,0 +1,188 @@
+# Positive fixture: OpenClaw ops task, completed, all required evidence present
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-openclaw-ops-001-completed-20260529
+run_id: run-ops-001-sogyo-20260529T212600KST
+task_id: ops-001
+agent_id: sogyo
+runtime: openclaw
+runtime_version: 2.14.0
+model: gpt-5.x
+model_provider: openai
+node: vps5
+hardware_profile:
+  cpu_class: small-vps
+  memory_gb: 2
+  storage_class: nvme-shared
+  os_family: linux
+configuration_profile:
+  model_routing: documented
+  liveness: telegram-visible
+  resource_limits: configured
+  adapter_mode: openstack
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+  used:
+    - read
+    - write
+    - exec
+    - message
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: no_subagents_used
+  timeout_handling: timeout_after_600s_status_partial
+started_at: "2026-05-29T21:26:00+09:00"
+ended_at: "2026-05-29T21:50:00+09:00"
+status: completed
+publishable: true
+summary: "OpenClaw adapter completed ops-001 task. Gateway readiness confirmed, session created, tool calls executed, diagnosis delivered to Telegram. All evidence captured with redaction applied to sensitive outputs."
+comparable_metadata:
+  participant:
+    agent_id: sogyo
+    adapter: openclaw
+  runtime:
+    name: openclaw
+    version: 2.14.0
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    profile_ref: vps5
+  config:
+    profile_ref: open-stack-default
+    adapter_mode: openstack
+    event_family: ops
+  task:
+    task_id: ops-001
+    task_version: v1
+raw_measurements:
+  wall_time_seconds: 1440
+  action_count: 9
+  evidence_count: 4
+  finding_count: 3
+  gateway_ready_seconds: 1.2
+  session_message_count: 7
+  model_calls: 4
+  total_prompt_tokens: 9850
+  total_completion_tokens: 2740
+  tool_invocations: 5
+  retries: 0
+  errors: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+
+actions:
+  - id: act-001
+    type: read
+    target: task_envelope
+    command_summary: Parse task envelope from file
+    redacted: false
+    evidence_id: ev-session-input
+  - id: act-002
+    type: api_call
+    target: gateway
+    command_summary: Create OpenClaw session via gateway API
+    redacted: true
+    redaction_reason: gateway_auth_header_redacted
+    evidence_id: ev-gateway-readiness
+  - id: act-003
+    type: message
+    target: session
+    command_summary: Send task envelope as session message
+    redacted: false
+    evidence_id: ev-message-delivery
+  - id: act-004
+    type: api_call
+    target: gateway
+    command_summary: Poll gateway readiness journal
+    redacted: true
+    redaction_reason: gateway_delivery_log_contained_api_token
+    evidence_id: ev-gateway-readiness
+  - id: act-005
+    type: message
+    target: telegram
+    command_summary: Deliver progress update to Telegram channel
+    redacted: false
+    evidence_id: ev-telegram-delivery
+  - id: act-006
+    type: exec
+    target: local
+    command_summary: Execute diagnostic commands for ops task
+    redacted: true
+    redaction_reason: command_output_contained_sensitive_data
+    evidence_id: ev-tool-calls
+  - id: act-007
+    type: message
+    target: session
+    command_summary: Compose and post final diagnosis message
+    redacted: false
+    evidence_id: ev-final-report
+
+evidence:
+  - id: ev-session-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input task envelope for ops event family
+    redacted: false
+    content_ref: envelope-copy.yaml
+  - id: ev-gateway-readiness
+    kind: log
+    source: gateway journal
+    summary: Gateway readiness poll result
+    redacted: true
+    redaction_reason: gateway_response_contained_session_token_in_headers
+  - id: ev-message-delivery
+    kind: probe_result
+    source: gateway delivery probe
+    summary: Message delivery probe for session completed successfully
+    redacted: false
+  - id: ev-tool-calls
+    kind: command_output
+    source: session tool trace
+    summary: Tool call trace with reads, writes, execs, and API calls
+    redacted: false
+  - id: ev-telegram-delivery
+    kind: probe_result
+    source: telegram delivery probe
+    summary: Telegram channel delivery probe message visible in channel
+    redacted: false
+  - id: ev-final-report
+    kind: transcript_excerpt
+    source: session transcript
+    summary: Final diagnosis message from session transcript
+    redacted: false
+
+findings:
+  - claim: Gateway readiness confirmed session created and delivery probe succeeded
+    evidence:
+      - ev-session-input
+      - ev-gateway-readiness
+      - ev-message-delivery
+    confidence: high
+  - claim: Tool call trace captured with redaction applied to sensitive outputs
+    evidence:
+      - ev-tool-calls
+    confidence: high
+  - claim: Final diagnosis report composed and delivered to Telegram channel
+    evidence:
+      - ev-telegram-delivery
+      - ev-final-report
+    confidence: high
+
+risks:
+  - Gateway readiness probe may fail during gateway restart windows
+  - Session transcript may contain unredacted tool output
+
+outputs:
+  diagnosis: Gateway delivery confirmed. No delivery failure detected.
+  recommendation: Continue monitoring Telegram delivery for regressions.
+  risk_assessment: Low risk. Read-only investigation completed.
+  next_action: No action required.
+  durable_memory_decision: no_update_needed

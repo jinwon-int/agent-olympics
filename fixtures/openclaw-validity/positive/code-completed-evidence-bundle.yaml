@@ -1,0 +1,43 @@
+# Positive fixture: OpenClaw code task evidence bundle, completed
+schema_version: 1
+bundle_id: eb-run-code-001-sogyo-20260529T220000KST
+run_id: run-code-001-sogyo-20260529T220000KST
+agent_id: sogyo
+generated_at: "2026-05-29T22:30:00+09:00"
+items:
+  - id: ev-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input code task envelope
+    content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    size_bytes: 1800
+    redacted: false
+  - id: ev-code-review
+    kind: transcript_excerpt
+    source: session transcript
+    summary: Code review analysis and fix plan
+    content_ref: evidence/code-review.txt
+    content_type: text/plain
+    size_bytes: 3200
+    redacted: false
+  - id: ev-test-results
+    kind: command_output
+    source: session tool trace
+    summary: Test suite execution results
+    content_ref: evidence/test-output.txt
+    content_type: text/plain
+    size_bytes: 1200
+    redacted: true
+    redaction_rule: test_output_contained_sensitive_data
+  - id: ev-code-changes
+    kind: file_diff
+    source: git diff
+    summary: Code changes applied by the adapter
+    content_ref: evidence/fix.patch
+    content_type: text/plain
+    size_bytes: 890
+    checksum:
+      algorithm: sha256
+      value: 555abc123def456abc123def456abc123def456abc123def456abc123def456
+    redacted: false

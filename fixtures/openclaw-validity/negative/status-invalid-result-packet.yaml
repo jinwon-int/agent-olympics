@@ -1,0 +1,36 @@
+# Negative fixture: Status value is invalid
+# Schema-INVALID because 'unknown_value' is not in the status enum.
+# Should fail schema validation.
+schema_version: 1
+packet_id: pkt-openclaw-badstatus-20260529
+run_id: run-ops-001-badstatus-20260529
+task_id: ops-001
+agent_id: sogyo
+runtime: openclaw
+runtime_version: 2.14.0
+model: gpt-5.x
+model_provider: openai
+node: vps5
+started_at: "2026-05-29T17:00:00+09:00"
+ended_at: "2026-05-29T17:22:00+09:00"
+status: unknown_value  # ❌ BUG: not in enum ["completed", "partial", "blocked", "failed", "disqualified"]
+summary: Status is not a recognized value.
+actions:
+  - id: act-001
+    type: read
+    target: envelope
+    command_summary: Read envelope
+    redacted: false
+evidence:
+  - id: ev-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input envelope
+    redacted: false
+findings:
+  - claim: Invalid status.
+    evidence:
+      - ev-input
+    confidence: low
+outputs:
+  result: ""

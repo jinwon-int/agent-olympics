@@ -1,0 +1,40 @@
+# Negative fixture: Redaction reason contains actual secret
+# Schema-valid but COMPETITION-INVALID.
+# The redaction_reason value includes an OpenAI-style API key instead
+# of a value-free description. This should be caught by detectSecrets.
+schema_version: 1
+packet_id: pkt-openclaw-leaky-20260529
+run_id: run-ops-001-leaky-20260529
+task_id: ops-001
+agent_id: sogyo
+runtime: openclaw
+runtime_version: 2.14.0
+model: gpt-5.x
+model_provider: openai
+node: vps5
+started_at: "2026-05-29T17:00:00+09:00"
+ended_at: "2026-05-29T17:22:00+09:00"
+status: completed
+summary: Redaction_reason accidentally contains the API key value.
+actions:
+  - id: act-001
+    type: api_call
+    target: gateway
+    command_summary: Create session
+    redacted: true
+    redaction_reason: "sk-abc123def456ghi789jkl012mno345pqr678stu901"  # ❌ BUG: actual API key leaked
+    evidence_id: ev-session
+evidence:
+  - id: ev-session
+    kind: log
+    source: gateway journal
+    summary: Session created
+    redacted: false
+findings:
+  - claim: Session created.
+    evidence:
+      - ev-session
+    confidence: high
+outputs:
+  diagnosis: Task completed
+  next_action: None
