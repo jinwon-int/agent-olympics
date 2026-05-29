@@ -21,6 +21,7 @@
  *   node scripts/validate.js fixtures           - validate fixture bundle manifests and season fixture manifests
  *   node scripts/validate.js all                - validate all known types
  *   node scripts/validate.js all-v2             - validate only v2 documents
+ *   node scripts/validate.js rounds            - validate all round manifests
  *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -56,6 +57,14 @@ try {
 } catch { /* ignore */ }
 try {
   seasonFixtureManifestSchema = loadSchema('schemas/season-fixture-manifest.schema.json');
+} catch { /* ignore */ }
+
+// ---------------------------------------------------------------------------
+// Load round manifest schema
+// ---------------------------------------------------------------------------
+let roundManifestSchema = null;
+try {
+  roundManifestSchema = loadSchema('schemas/round-manifest.schema.json');
 } catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
@@ -426,6 +435,11 @@ function detectKind(doc) {
     return 'smoke-manifest';
   }
 
+  // Round manifest: round_id + season + lifecycle + tasks + participants
+  if (doc.round_id && doc.season && doc.lifecycle && Array.isArray(doc.tasks) && Array.isArray(doc.participants)) {
+    return 'round-manifest';
+  }
+
   return null;
 }
 
@@ -465,6 +479,16 @@ function detectSeasonFixtureManifest(doc) {
   return doc.schema_version !== undefined && doc.manifest_id !== undefined
     && doc.season !== undefined && doc.bundles !== undefined
     && Array.isArray(doc.bundles);
+}
+
+/**
+ * Detect round manifest files.
+ */
+function detectRoundManifest(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined && doc.round_id !== undefined
+    && doc.season !== undefined && doc.lifecycle !== undefined
+    && Array.isArray(doc.tasks) && Array.isArray(doc.participants);
 }
 
 // ---------------------------------------------------------------------------
@@ -769,6 +793,104 @@ function validateFixtureBundle(filePath) {
   fileCount++;
 }
 
+/**
+ * Validate a round manifest file.
+ */
+function validateRoundManifest(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  — empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectRoundManifest(doc)) {
+    console.warn(`SKIP  ${rel}  — not a round manifest (missing round_id, season, lifecycle, tasks, participants)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Schema validation
+  if (roundManifestSchema) {
+    const ajv = new Ajv({ allErrors: true, verbose: true });
+    const addFormats = require('ajv-formats');
+    addFormats(ajv);
+    const validate = ajv.compile(roundManifestSchema);
+    const valid = validate(doc);
+    if (!valid) {
+      for (const err of validate.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg}` });
+      }
+    }
+  }
+
+  // round_id format check
+  if (doc.round_id && !/^season-\d{3}-round-\d{3}$/.test(doc.round_id)) {
+    issues.push({ severity: SEVERITY.warn, msg: `round_id "${doc.round_id}" does not match convention 'season-XXX-round-XXX'` });
+  }
+
+  // Lifecycle status
+  const validStatuses = ['pending', 'fixture_preparation', 'running', 'completed', 'scored', 'archived'];
+  if (doc.lifecycle && !validStatuses.includes(doc.lifecycle.status)) {
+    issues.push({ severity: SEVERITY.error, msg: `lifecycle.status "${doc.lifecycle.status}" is not valid; expected one of: ${validStatuses.join(', ')}` });
+  }
+
+  // Check referenced envelope paths exist
+  for (let i = 0; i < (doc.tasks || []).length; i++) {
+    const t = doc.tasks[i];
+    if (t.envelope_path) {
+      const full = path.resolve(ROOT, t.envelope_path);
+      if (!fs.existsSync(full)) {
+        issues.push({ severity: SEVERITY.warn, msg: `task #${i + 1} envelope_path "${t.envelope_path}" not found` });
+      }
+    }
+    if (t.fixture_bundle_ref) {
+      const full = path.resolve(ROOT, t.fixture_bundle_ref);
+      if (!fs.existsSync(full)) {
+        issues.push({ severity: SEVERITY.warn, msg: `task #${i + 1} fixture_bundle_ref "${t.fixture_bundle_ref}" not found` });
+      }
+    }
+  }
+
+  // Participant uniqueness
+  const agentIds = (doc.participants || []).map(p => p.agent_id);
+  const uniqueIds = new Set(agentIds);
+  if (uniqueIds.size !== agentIds.length) {
+    const dups = agentIds.filter((id, i) => agentIds.indexOf(id) !== i);
+    issues.push({ severity: SEVERITY.error, msg: `duplicate participant agent_ids: ${[...new Set(dups)].join(', ')}` });
+  }
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  — ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (round-manifest)`);
+  }
+  fileCount++;
+}
+
 // ---------------------------------------------------------------------------
 // Mode resolution
 // ---------------------------------------------------------------------------
@@ -805,6 +927,29 @@ function main() {
     console.log(`Validating ${files.length} oracle file(s)...\n`);
     for (const f of files) {
       validateOracle(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Rounds mode
+  if (mode === 'rounds') {
+    const roundsDir = path.join(ROOT, 'rounds');
+    if (!fs.existsSync(roundsDir)) {
+      console.log('No rounds directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(roundsDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No round manifest files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} round manifest file(s)...\n`);
+    for (const f of files) {
+      validateRoundManifest(f);
     }
     console.log(`\n--- Summary ---`);
     console.log(`Files:     ${fileCount}`);
@@ -851,7 +996,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|fixtures|oracle|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|oracle|all|all-v2|file>`);
     process.exit(1);
   }
 
