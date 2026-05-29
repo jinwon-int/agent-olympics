@@ -1,0 +1,39 @@
+# Schema-valid but COMPETITION-INVALID: participant-facing artifact contains
+# a secret-bearing field name (api_key in evidence metadata).
+schema_version: 1
+packet_id: pkt-ops-001-leaky2-20260529
+task_id: ops-001
+agent_id: leaky-agent2
+runtime: openclaw
+model: gpt-5.x
+node: vps5
+started_at: "2026-05-29T17:00:00+09:00"
+ended_at: "2026-05-29T17:22:00+09:00"
+status: completed
+summary: Diagnosed Telegram delivery failure.
+
+actions:
+  - id: act-001
+    type: command
+    target: local
+    command_summary: Inspect gateway journal
+    redacted: false
+    evidence_id: ev-001
+
+evidence:
+  - id: ev-001
+    kind: config_snippet
+    source: runtime config
+    summary: Configuration dump
+    metadata:
+      api_key: "abc123"  # ❌ BUG: secret-bearing field name in participant-facing artifact
+
+findings:
+  - claim: Found the issue.
+    evidence: [ev-001]
+    confidence: high
+
+outputs:
+  diagnosis: Gateway delivery mismatch.
+  risk_assessment: Low.
+  next_action: Patch.

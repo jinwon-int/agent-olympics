@@ -35,6 +35,8 @@ const addFormats = require('ajv-formats');
 
 const ROOT = path.resolve(__dirname, '..');
 
+
+
 // ---------------------------------------------------------------------------
 // Load schemas (v1)
 // ---------------------------------------------------------------------------
@@ -958,6 +960,31 @@ function main() {
     process.exit(totalErrors > 0 ? 1 : 0);
   }
 
+  // Competition-validity mode
+  if (mode === 'competition-validity') {
+    const { spawnSync } = require('child_process');
+    const cvPath = path.join(__dirname, 'competition-validity.js');
+    const cvArgs = process.argv.slice(3);
+
+    console.log('Delegating to competition-validity.js...\n');
+    const result = spawnSync(process.execPath, [cvPath, ...(cvArgs.length > 0 ? cvArgs : ['all', 'runs/season-001/round-001'])], {
+      stdio: 'inherit',
+      cwd: ROOT,
+    });
+
+    const exitCode = result.status !== null ? result.status : 1;
+    if (exitCode !== 0) {
+      totalErrors++;
+    }
+    fileCount++;
+
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
   // Fixtures mode
   if (mode === 'fixtures') {
     const fixturesDir = path.join(ROOT, 'fixtures');
@@ -996,7 +1023,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|oracle|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|oracle|competition-validity|all|all-v2|file>`);
     process.exit(1);
   }
 
