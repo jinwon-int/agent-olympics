@@ -1,0 +1,55 @@
+# Live validated node profile: OpenClaw medium/large boundary
+#
+# Source: approved live OpenClaw node inventory captured on 2026-05-30.
+# This file deliberately uses safe, band-based values only. It does not
+# include hostnames, IP addresses, usernames, mount paths, tokens, cookies,
+# private keys, credential refs, session IDs, or raw config values.
+
+schema_version: 1
+profile_id: live-openclaw-medium-20260530
+profile_class: large-vps
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 8
+  cores_max: 8
+  description: "cloud vCPU class suitable for concurrent agent and validation workloads"
+memory_gb:
+  min: 16.0
+  max: 24.0
+  description: "shared host RAM with no swap observed during inventory"
+runner_limits:
+  max_concurrent: 3
+  max_task_duration_minutes: 90
+  max_total_daily_tasks: 24
+  description: "bounded foreground command work plus background validation jobs; production service mutation requires separate approval"
+storage_class:
+  type: hybrid
+  min_free_gb: 70
+  max_total_gb: 200
+  description: "single local block storage pool; free-space value rounded down from live read-only inventory"
+network_class:
+  class: high
+  public_egress: true
+  description: "public egress available; inbound and routing details intentionally excluded"
+capability_labels:
+  - ops
+  - code
+  - knowledge
+  - node-readiness
+  - coordination
+  - performance
+  - safety
+  - smoke
+allowed_runner_types:
+  - openclaw
+  - codex
+  - cli
+notes: >
+  Validated from read-only live inventory: operating system family and
+  architecture, logical CPU count, memory band, disk-free band, OpenClaw CLI
+  version, gateway service active state, and config schema validation. Gateway
+  credentials and tool policy were verified only as present/working boundaries;
+  no credential value, raw config body, host address, or private runtime detail
+  was copied into this fixture.
+last_updated: "2026-05-30T06:52:00+09:00"
