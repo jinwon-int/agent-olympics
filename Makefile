@@ -5,7 +5,8 @@
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
         validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
-        oracle smoke-check smoke fixtures-check setup clean
+        oracle smoke-check smoke fixtures-check setup clean \
+        stub-adapter stub-adapter-fail test-stub
 
 all: validate-all validate-v2 validate-oracle validate-fixtures
 
@@ -85,6 +86,22 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
+
+# --- Stub adapter targets ---
+
+# Run stub adapter against the stub test envelope (success mode)
+stub-adapter:
+	node scripts/stub-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--seed make-stub --agent-id make-adapter --runtime cli
+
+# Run stub adapter in failure mode
+stub-adapter-fail:
+	node scripts/stub-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--seed make-stub-fail --agent-id make-adapter --runtime cli --exit 1
+
+# Run the full stub adapter test suite
+test-stub:
+	bash scripts/test-stub-adapter.sh
 
 # Remove generated artifacts and dependencies
 clean:
