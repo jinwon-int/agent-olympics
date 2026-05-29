@@ -1,0 +1,9 @@
+schema_version: 1
+bundle_id: eb-fixture-positive-001
+run_id: positive
+agent_id: fixture-agent
+items:
+  - evidence_id: ev-001
+    description: "Fixture test evidence file"
+    content_ref: evidence/repo-inspection.txt
+    content_type: text/plain

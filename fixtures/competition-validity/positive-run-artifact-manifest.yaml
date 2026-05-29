@@ -1,0 +1,87 @@
+# Positive fixture: Valid run directory artifact manifest
+# Expected to PASS all artifact integrity checks.
+
+schema_version: 1
+manifest_id: am-run-ops-001-nosuk-20260529-001
+run_id: run-ops-001-nosuk-20260529T185400KST
+round_id: season-001-round-001
+task_id: ops-001
+agent_id: nosuk
+status: completed
+created_at: "2026-05-29T18:54:00+09:00"
+updated_at: "2026-05-29T19:24:00+09:00"
+status_history:
+  - status: pending
+    timestamp: "2026-05-29T18:54:00+09:00"
+    note: Run directory created
+  - status: running
+    timestamp: "2026-05-29T18:55:00+09:00"
+    note: Agent execution started
+  - status: completed
+    timestamp: "2026-05-29T19:24:00+09:00"
+    note: Agent submitted result packet
+artifacts:
+  - path: result-packet.yaml
+    kind: result_packet
+    content_type: text/yaml
+    size_bytes: 2840
+    checksum:
+      algorithm: sha256
+      value: "abc123def456abc123def456abc123def456abc123def456abc123def4567890"
+    retention: season
+    redacted: false
+    generated_by: agent
+  - path: trace.yaml
+    kind: trace
+    content_type: text/yaml
+    size_bytes: 5120
+    checksum:
+      algorithm: sha256
+      value: "def456abc123def456abc123def456abc123def456abc123def456abc1237890"
+    retention: season
+    redacted: false
+    generated_by: agent
+  - path: evidence-bundle.yaml
+    kind: evidence_bundle
+    content_type: text/yaml
+    size_bytes: 3200
+    checksum:
+      algorithm: sha256
+      value: "7890abc123def456abc123def456abc123def456abc123def456abc123def456"
+    retention: permanent
+    redacted: false
+    generated_by: agent
+  - path: judge-record.yaml
+    kind: judge_record
+    content_type: text/yaml
+    size_bytes: 1800
+    checksum:
+      algorithm: sha256
+      value: "1111abc123def456abc123def456abc123def456abc123def456abc123def456"
+    retention: season
+    redacted: false
+    generated_by: judge
+  - path: evidence/gateway-log.txt
+    kind: evidence_file
+    content_type: text/plain
+    size_bytes: 4280
+    checksum:
+      algorithm: sha256
+      value: "2222abc123def456abc123def456abc123def456abc123def456abc123def456"
+    retention: round
+    redacted: true
+    generated_by: agent
+references:
+  result_packet_path: result-packet.yaml
+  evidence_bundle_path: evidence-bundle.yaml
+  trace_path: trace.yaml
+  judge_record_path: judge-record.yaml
+  evidence_dir: evidence/
+retention_policy:
+  default_retention: season
+  cleanup_after_days: 90
+  scrubbing_required: true
+run_metadata:
+  runner: a2a-runner-v1
+  runner_version: 1.0.0
+  duration_seconds: 1800

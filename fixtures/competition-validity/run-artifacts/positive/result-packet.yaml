@@ -1,0 +1,9 @@
+schema_version: 1
+agent_id: fixture-agent
+task_id: ops-001
+run_id: positive
+status: completed
+generated_at: "2026-06-01T00:00:00Z"
+result_summary:
+  verdict: pass
+  reason: "Fixture positive test case"

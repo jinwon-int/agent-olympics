@@ -1,0 +1,3 @@
+Fixture positive test evidence file.
+This file exists to verify that the artifact manifest integrity check
+correctly resolves content_ref paths from the evidence bundle.
