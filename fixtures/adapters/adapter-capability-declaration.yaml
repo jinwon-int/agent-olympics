@@ -1,0 +1,147 @@
+# Adapter Capability Declaration — Field Reference
+#
+# Each adapter in fixtures/adapters/capabilities/<adapter>.yaml follows
+# this structure. Fields marked REQUIRED must appear in every declaration;
+# fields marked OPTIONAL may be omitted if the adapter does not support
+# the feature.
+#
+# This is a documentation reference, not a JSON Schema file. The schema
+# proper lives at schemas/adapter-capability-declaration.schema.json
+# (created alongside this reference).
+
+# ---- REQUIRED TOP-LEVEL FIELDS ----
+
+# schema_version: integer, must be 1
+#   Version of this declaration format.
+schema_version: 1
+
+# adapter_id: string
+#   Stable identifier for the adapter runtime, e.g. "hermes", "cli",
+#   "human-baseline", "openclaw".
+adapter_id: ""
+
+# adapter_type: "agent" | "orchestrator" | "automation" | "manual"
+#   Broad category: agent-runtime (OpenClaw), orchestrator (Hermes),
+#   automation (CLI scripts), manual (human operator).
+adapter_type: ""
+
+# display_name: string
+#   Human-readable name for dashboards and reports.
+display_name: ""
+
+# description: string
+#   Short paragraph describing what this adapter does and when to use it.
+description: ""
+
+# status: object
+#   Status mapping: internal adapter states mapped to standard result
+#   packet statuses.
+#
+# Fields:
+#   standard_statuses: string[]
+#     Which of the five standard statuses this adapter can produce.
+#     Possible values: "completed", "partial", "blocked", "failed",
+#     "disqualified".
+#
+#   internal_mapping: object (key → string)
+#     Maps internal state names to standard statuses.
+status:
+  standard_statuses:
+    - completed
+    - partial
+    - blocked
+    - failed
+    - disqualified
+  internal_mapping:
+    some_state: "completed"
+
+# evidence_kinds: string[]
+#   Which evidence kinds (from the evidence-bundle schema) this adapter
+#   commonly produces.  Reference values: log, command_output,
+#   transcript_excerpt, file_diff, config_snippet, probe_result,
+#   api_response, url, screenshot, other.
+evidence_kinds:
+  - log
+
+# runtime_fields: object (key → string)
+#   Adapter-specific optional fields the adapter may add to result
+#   packets.  Keys are field names, values are one-sentence descriptions.
+#   These fields are not required by the common schema.
+runtime_fields:
+  some_field: "Description of what this field contains."
+
+# redaction_rules: array of objects
+#   Redaction rules this adapter supports, matching the contract
+#   redaction taxonomy.
+#
+# Each object:
+#   rule_id: string
+#   pattern_description: string (describe the pattern without exposing it)
+#   target_data_class: string[]
+#   applies_to: string[] (evidence kinds, trace actions, etc.)
+redaction_rules:
+  - rule_id: "example_rule"
+    pattern_description: "Description of what is redacted"
+    target_data_class:
+      - "api_tokens"
+    applies_to:
+      - "command_output"
+      - "log"
+
+# ---- OPTIONAL FIELDS ----
+
+# approval_boundaries: object
+#   Describes what actions this adapter considers approval-sensitive.
+#
+# Fields:
+#   always_requires_approval: string[]
+#     Actions that always need explicit operator approval.
+#   context_dependent: string[]
+#     Actions that need approval only in specific conditions.
+#   default_allowed: string[]
+#     Actions allowed without approval.
+approval_boundaries:
+  always_requires_approval:
+    - "production_restart"
+  context_dependent:
+    - "destructive_file_ops"
+  default_allowed:
+    - "read_only_inspection"
+
+# timeout_behavior: object
+#   Describes how this adapter handles time limits.
+#
+# Fields:
+#   supports_hard_timeout: boolean
+#   supports_soft_timeout: boolean
+#   default_grace_seconds: integer
+timeout_behavior:
+  supports_hard_timeout: false
+  supports_soft_timeout: false
+  default_grace_seconds: 60
+
+# task_families: string[]
+#   Which event families this adapter is designed for.
+#   Reference: ops-relay, node-readiness, performance-trial, code-sprint,
+#   wiki-marathon, safety-trial, coordination-drill, tool-decathlon,
+#   harness-reliability.
+task_families:
+  - ops-relay
+
+# fixture_dependencies: object
+#   Describes what fixture data the adapter typically needs.
+#
+# Fields:
+#   env_dependent: boolean
+#   generated: boolean
+#   bundled: boolean
+#   notes: string
+fixture_dependencies:
+  env_dependent: false
+  generated: false
+  bundled: true
+  notes: ""
+
+# known_limitations: string[]
+#   Documented limitations or gaps in this adapter's implementation.
+known_limitations: []

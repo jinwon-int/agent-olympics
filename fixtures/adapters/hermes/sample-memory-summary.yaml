@@ -1,0 +1,56 @@
+# Sample Hermes Memory Retrieval Summary
+#
+# This file mimics the memory retrieval summary a Hermes worker might
+# consult and record.  It documents what memory was accessed, what was
+# found, and whether the worker used any stored knowledge.
+#
+# No private memory content or secrets are included in this sample.
+
+schema_version: 1
+memory_summary_id: "mem-s3-worker-01"
+worker_id: "worker-gamma"
+workflow_id: "wf-ops-001-demo"
+step_id: "s3-log-inspection"
+retrieved_at: "2026-05-29T09:00:05+09:00"
+
+memory_sources_consulted:
+  - source: "worker_session_cache"
+    keys_requested:
+      - "previous_log_analysis_s3_results"
+      - "known_5xx_patterns"
+    keys_found:
+      - "known_5xx_patterns"
+    keys_not_found:
+      - "previous_log_analysis_s3_results"
+      - "note: previous_log_analysis_s3_results was not found (first run for this worker)"
+
+  - source: "shared_workflow_memory"
+    keys_requested:
+      - "gateway_config_paths"
+      - "expected_config_hash"
+    keys_found:
+      - "gateway_config_paths"
+    keys_not_found: []
+
+memory_content_retrieved:
+  - key: "known_5xx_patterns"
+    summary: "Common 5xx HTTP status code patterns (502, 503, 504) and their typical causes"
+    value_type: "reference_knowledge"
+    approximate_size_chars: 2048
+
+  - key: "gateway_config_paths"
+    summary: "Standard locations for gateway configuration files across deployment types"
+    value_type: "reference_knowledge"
+    approximate_size_chars: 512
+
+memory_written:
+  - key: "s3_log_analysis_result_worker_gamma"
+    summary: "Log analysis result for step s3: 3 x 5xx errors found, below threshold"
+    value_type: "workflow_state"
+    ttl_seconds: 3600
+
+usage_notes:
+  total_keys_requested: 4
+  total_keys_found: 2
+  cache_hit_ratio: 0.5
+  notes: "Memory retrieval was partially successful. Missing key 'previous_log_analysis_s3_results' is expected for a first-time worker. The worker relied on reference knowledge for the log pattern analysis."

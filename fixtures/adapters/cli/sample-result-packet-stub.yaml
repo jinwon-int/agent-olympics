@@ -1,0 +1,71 @@
+# Sample CLI Adapter — Validatable Result Packet Stub
+#
+# This file conforms to result-packet.schema.json (v1) and the detectKind
+# heuristics in scripts/validate.js.  It is a genuine result packet
+# produced by a CLI adapter for a hypothetical task.
+#
+# To validate:
+#   node scripts/validate.js fixtures/adapters/cli/sample-result-packet-stub.yaml
+#
+# Expected: OK (result-packet v1)
+
+schema_version: 1
+packet_id: "rp-cli-ops-001-demo"
+task_id: "ops-001"
+run_id: "run-ops-001-cli-demo"
+agent_id: "cli-stub-agent-01"
+agent_version: "1.0.0"
+runtime: "cli"
+runtime_version: "1.0.0"
+
+started_at: "2026-05-29T09:00:00+09:00"
+ended_at: "2026-05-29T09:00:35+09:00"
+
+status: "completed"
+
+summary: >
+  CLI adapter verified that the workspace contains a valid package.json
+  with a 'scripts.test' entry.  All 5 commands succeeded.  Package.json
+  is present, readable, and contains the expected test script definition.
+
+evidence:
+  - id: "ev-cmd-output-2"
+    kind: "command_output"
+    summary: "ls -la package.json confirms file presence and 1234-byte size"
+    content_ref: "fixtures/adapters/cli/sample-command-log.txt"
+    redacted: false
+
+  - id: "ev-cmd-output-3"
+    kind: "command_output"
+    summary: "grep output confirming scripts.test exists in package.json"
+    content_ref: "fixtures/adapters/cli/sample-command-log.txt"
+    redacted: false
+
+  - id: "ev-cmd-output-4"
+    kind: "command_output"
+    summary: "Node.js programmatic check confirms scripts.test exists (exit 0)"
+    content_ref: "fixtures/adapters/cli/sample-command-log.txt"
+    redacted: false
+
+findings:
+  - claim: "package.json exists in workspace root"
+    evidence:
+      - "ev-cmd-output-2"
+    confidence: "high"
+
+  - claim: "package.json contains a scripts.test entry"
+    evidence:
+      - "ev-cmd-output-3"
+      - "ev-cmd-output-4"
+    confidence: "high"
+
+  - claim: "All schemas pass validation (npm test -- --dry-run)"
+    evidence:
+      - "ev-cmd-output-4"
+    confidence: "high"
+
+outputs:
+  has_package_json: true
+  has_test_script: true
+  test_script_value: "node scripts/validate.js"
+  node_version: "v22.22.2"

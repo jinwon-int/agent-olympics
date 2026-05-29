@@ -4,7 +4,8 @@
 
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
-        validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
+        validate-judges-v2 validate-fixtures validate-adapter-fixtures \
+        validate-oracle validate-smoke \
         oracle smoke-check smoke fixtures-check setup clean \
         validate-rounds rounds-check round \
         validate-profiles profiles-check \
@@ -13,7 +14,7 @@
         score-blind score-blind-score score-blind-aggregate score-all \
         validate-web-fields validate-web-bridge
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
 
 # Install dependencies
 setup:
@@ -61,6 +62,13 @@ validate-oracle:
 
 oracle: validate-oracle
 
+# Validate all adapter compatibility fixture files (capability declarations + sample data)
+validate-adapter-fixtures:
+	@echo "=== Adapter Compatibility Fixtures ==="
+	node scripts/validate.js fixtures/adapters/cli/sample-result-packet-stub.yaml
+	node scripts/validate.js fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml
+	@echo "Adapter fixture schema validation passed."
+
 # Validate all smoke task envelopes
 validate-smoke:
 	node scripts/validate.js smoke
@@ -94,7 +102,9 @@ round:
 	node scripts/round.js
 
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds validate-profiles validate-scoreboard validate-competition-fixtures
+validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
+        validate-adapter-fixtures validate-rounds validate-profiles \
+        validate-scoreboard validate-competition-fixtures
 
 # --- Competition-Validity targets ---
 
