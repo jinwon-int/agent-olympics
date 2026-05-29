@@ -60,7 +60,19 @@
           "model": { "type": "string", "description": "Model identifier. Operator-supplied." },
           "model_provider": { "type": "string", "description": "Model provider reference. Operator-supplied; never a credential or endpoint secret." },
           "node": { "type": "string", "description": "Node profile reference. Operator-supplied label; never the SSH hostname or IP." },
-          "config_profile": { "type": "string", "description": "Configuration profile reference. Operator-supplied safe label." }
+          "config_profile": { "type": "string", "description": "Configuration profile reference. Operator-supplied safe label." },
+          "hardware_profile": {
+            "type": "object",
+            "description": "Snapshot of operator-supplied hardware profile fields from the most recent result packet for this participant. All values are safe labels — never hostnames, IPs, or secrets.",
+            "properties": {
+              "cpu_class": { "type": "string", "description": "CPU class, e.g. 'small-vps', 'large-vps', 'baremetal-8-core'." },
+              "memory_gb": { "type": "number", "description": "Total system memory in GB." },
+              "storage_class": { "type": "string", "description": "Storage type class, e.g. 'nvme', 'ssd', 'hdd', 'nvme-shared'." },
+              "os_family": { "type": "string", "description": "Operating system family, e.g. 'linux', 'darwin', 'windows'." },
+              "gpu_model": { "type": "string", "description": "Optional GPU model class, e.g. 'none', 't4', 'a100'." }
+            },
+            "additionalProperties": true
+          }
         },
         "additionalProperties": true
       },
@@ -103,9 +115,68 @@
               "node": { "type": "string", "description": "Node profile reference." },
               "config_profile": { "type": "string", "description": "Configuration profile reference." },
               "task_version": { "type": "string", "description": "Task envelope version." },
-              "fixture_ref": { "type": "string", "description": "Fixture bundle reference path." }
+              "fixture_ref": { "type": "string", "description": "Fixture bundle reference path." },
+              "hardware_profile": {
+                "type": "object",
+                "description": "Hardware profile fields extracted from the result packet. Safe labels only — no hostnames, IPs, or secrets. Enables hardware-aware comparison across entries: entries with matching hardware_profile bands are directly comparable; entries with different bands carry a comparability caveat.",
+                "properties": {
+                  "cpu_class": { "type": "string", "description": "CPU class, e.g. 'small-vps', 'large-vps', 'baremetal-8-core'." },
+                  "memory_gb": { "type": "number", "description": "Total system memory in GB." },
+                  "storage_class": { "type": "string", "description": "Storage type class, e.g. 'nvme', 'ssd', 'hdd', 'nvme-shared'." },
+                  "os_family": { "type": "string", "description": "Operating system family, e.g. 'linux', 'darwin', 'windows'." },
+                  "gpu_model": { "type": "string", "description": "Optional GPU model class, e.g. 'none', 't4', 'a100'." }
+                },
+                "additionalProperties": true
+              },
+              "performance_profile": {
+                "type": "object",
+                "description": "Optional performance profile fields for performance-trial event family results. Separates raw measured values from normalized/scored values for scoreboard-level comparison.",
+                "properties": {
+                  "raw_measurements": {
+                    "type": "object",
+                    "description": "Raw measured values captured during the run. These are the direct instrumented values before normalization. Carried from result-packet-v2 raw_measurements.",
+                    "properties": {
+                      "wall_time_seconds": { "type": "number", "description": "Total wall clock time for the run in seconds." },
+                      "action_count": { "type": "integer", "description": "Number of discrete actions/tool calls." },
+                      "evidence_count": { "type": "integer", "description": "Number of evidence items collected." },
+                      "finding_count": { "type": "integer", "description": "Number of findings reported." },
+                      "peak_memory_mb": { "type": "number", "description": "Peak memory usage in MB, if measurable." },
+                      "model_calls": { "type": "integer", "description": "Number of model/LLM inference calls." },
+                      "total_prompt_tokens": { "type": "integer", "description": "Total prompt tokens consumed." },
+                      "total_completion_tokens": { "type": "integer", "description": "Total completion tokens consumed." },
+                      "retries": { "type": "integer", "description": "Number of retries performed." },
+                      "errors": { "type": "integer", "description": "Number of errors encountered during the run." }
+                    },
+                    "additionalProperties": true
+                  },
+                  "scored_values": {
+                    "type": "object",
+                    "description": "Normalized/scored values derived from raw measurements. These are post-processed values suitable for comparison across runs.",
+                    "properties": {
+                      "efficiency_score": { "type": "number", "description": "Normalized efficiency score (0-1 or 0-100 scale)." },
+                      "evidence_quality_score": { "type": "number", "description": "Normalized evidence quality score." },
+                      "safety_score": { "type": "number", "description": "Normalized safety score." },
+                      "execution_score": { "type": "number", "description": "Normalized execution score." },
+                      "normalization": { "type": "string", "description": "Description of the normalization method applied to raw measurements." }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": false
+              }
             },
             "additionalProperties": true
+          },
+
+          "comparable": {
+            "type": "boolean",
+            "description": "Whether this entry can be meaningfully compared with other entries in the same round for performance trial baselines. True when hardware_profile, configuration_profile, workload_class, and runtime metadata are all present and consistent enough for fair comparison. False when critical metadata is missing, the task family differs, or a disqualification/blocked status prevents comparison. Judges should treat non-comparable entries as standalone evidence only."
+          },
+
+          "comparability_caveats": {
+            "type": "array",
+            "description": "Caveats explaining why direct comparison with other entries may be misleading or incomplete. Each caveat is a human-readable string describing a specific limitation. Examples: 'missing hardware_profile fields (cpu_class)', 'different hardware class (small-vps vs large-vps) — raw wall time should not be compared directly', 'result status is failed — performance baseline is incomplete', 'configuration_profile not provided — tuning effects inseparable from raw hardware results'.",
+            "items": { "type": "string" }
           },
 
           "status": {
@@ -244,6 +315,14 @@
         "pending_checks": {
           "type": "integer",
           "description": "Count of scoring dimensions gated on human or blind-judge review."
+        },
+        "comparable_entries": {
+          "type": "integer",
+          "description": "Count of entries flagged as comparable — i.e., carrying sufficient metadata for meaningful cross-entry comparison."
+        },
+        "non_comparable_entries": {
+          "type": "integer",
+          "description": "Count of entries flagged as non-comparable — missing critical hardware, configuration, or runtime metadata."
         }
       }
     }
