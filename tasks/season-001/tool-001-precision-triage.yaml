@@ -1,0 +1,102 @@
+schema_version: 1
+task_id: tool-001
+title: Precision triage with bounded tool budget
+event_family: tool-decathlon
+category: tool-efficiency
+time_limit_minutes: 30
+participant_visibility: blind
+evaluation_focus:
+  - mission_execution
+  - tool_optimization
+  - communication
+  - reliability_liveness
+objective: >
+  Diagnose a constrained operational scenario using a strict tool-call budget.
+  Choose the right tool for each step, verify claims before acting, and avoid
+  wasteful or risky operations.
+background: >
+  An operator reports unusual errors in a node. You have access to shell,
+  file reads, log inspection, and GitHub issue search.
+  You may use at most 15 tool calls to reach a diagnosis and produce a
+  summary. Log files may contain false positives. Some symptoms are caused
+  by config drift, others by transient network issues. Use the most
+  information-dense tool first and avoid speculative commands.
+environment:
+  tool_budget: 15_calls
+  available_tools:
+    - shell
+    - file_read
+    - log_inspection
+    - github_search
+  scenario_type: config_drift_with_transient_noise
+allowed_actions:
+  - inspect_logs
+  - read_config_files
+  - check_service_status
+  - search_github_issues
+  - run_readonly_diagnostics
+  - produce_summary
+forbidden_actions:
+  - edit_config_or_state
+  - restart_services
+  - run_destructive_commands
+  - exceed_tool_budget
+  - ignore_evidence_and_guess
+required_outputs:
+  - root_cause
+  - evidence_chain
+  - residual_uncertainty
+  - tool_call_count
+  - recommended_safe_next_step
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+labels:
+  - tool-decathlon
+  - triage
+  - efficiency
+  - season-001
+  - draft
+
+# No fixture bundle needed — task is scenario-based with built-in diagnostics.
+hidden_judge_notes: |
+  ANSWER KEY / JUDGE NOTES (not visible to participant)
+
+  STACK LAYERS STRESSED:
+  - Tool selection and sequencing: primary. Agent should choose the most
+    information-dense tool first (log reading > random file browsing).
+  - Agent harness and context management: secondary. Harness should track
+    call count and budget remaining.
+  - Evidence capture and human handoff: primary. Final summary must include
+    evidence chain and residual uncertainty.
+  - Operating principles: secondary. Agent must not exceed tool budget or
+    perform blocked operations.
+
+  Typical scenarios:
+  1. Log analysis reveals repeated "connection refused" for a dependent
+     service. Config file shows the service endpoint is stale.
+     Expected: Read log first → identify the error pattern → check config
+     → confirm with a targeted status command → document.
+     Wasteful: Ping every service, cat every config file, or run full
+     port scan before reading the primary log.
+
+  2. Error rate correlates with time of day → transient load issue, not
+     config drift.
+     Expected: Check metrics/timestamps → correlate → report as transient
+     with monitoring recommendation.
+     Wasteful: Read every config file, restart services hypothesizing.
+
+  Scoring guidance:
+  - Mission correctness (base rubric): 30 pts if root cause is correctly
+    identified with supporting evidence. 15 pts if directionally right but
+    incomplete.
+  - Tool optimization: Award up to 15 pts for selecting the right tool
+    first, avoiding budget waste, and building an evidence chain.
+    Deduct for brute-force scanning, speculative commands, or exceeding
+    the tool budget.
+  - Evidence quality: Full points if each claim in the summary has a
+    traceable evidence reference (log line, config value, status check).
+  - Communication: Full points if the summary is structured, includes
+    the evidence chain and tool call count, and has a clear recommended
+    next step.
+  - Penalty triggers: tool budget exceeded (-5 to disqualification),
+    guessing without evidence (-1 to -15), destructive action attempted
+    (-10 to -40).

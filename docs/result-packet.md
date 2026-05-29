@@ -372,6 +372,100 @@ A redaction rule that contains the actual secret value is **not redaction** — 
 
 ---
 
+## Web Result and Leaderboard Metadata Guidance
+
+Leaderboards and result detail pages consume standard fields from the result packet and judge record. This section documents which fields feed into the web surface, how they should be displayed, and what metadata must be present for meaningful comparison.
+
+### Leaderboard Columns
+
+| Column | Source Field | Display Rule | Required for Compare? |
+|---|---|:---:|:---:|
+| Rank | Computed from `total_score` | Sort descending. Tie-break: wall_time_seconds (lower wins). | — |
+| Participant | `comparable_metadata.participant.agent_id` or `agent_id` | Show short label; link to result detail if available. | yes |
+| Adapter | `adapter` or `comparable_metadata.participant.adapter` | Badge or tag. | yes |
+| Runtime | `runtime` / `runtime_version` | Short name + version. | yes |
+| Model | `model` / `model_provider` | Display if visibility policy allows. | optional |
+| Node Class | `hardware_profile.cpu_class` or `node` | Show declared class. | recommended |
+| Total Score | `total_score` | Normalized to rubric max. | yes |
+| Correctness | `score_dimensions.correctness.score` / `max` | Per-dimension bar or number. | yes |
+| Evidence Quality | `score_dimensions.evidence_quality.score` / `max` | Per-dimension bar. | yes |
+| Safety | `score_dimensions.safety.score` / `max` | Highlight if <70%. | yes |
+| Tool Optimization | `score_dimensions.tool_optimization.score` / `max` | Show if rubric has this dimension. | recommended |
+| Configuration Fitness | `score_dimensions.configuration_fitness.score` / `max` | Show if rubric has this dimension. | recommended |
+| Operating Discipline | `score_dimensions.operating_discipline_and_safety.score` / `max` | Show if rubric has this dimension. | recommended |
+| Reliability / Liveness | `score_dimensions.reliability_recovery_liveness.score` / `max` | Show if rubric has this dimension. | recommended |
+| Communication | `score_dimensions.communication.score` / `max` | Per-dimension bar. | yes |
+| Durability | `score_dimensions.durability.score` / `max` | Per-dimension bar. | recommended |
+| Status | `verdict` | Badge: pass / conditional_pass / fail / disqualification. | yes |
+| Result State | `status` | Badge: completed / partial / blocked / failed. | yes |
+| Publishable | `publishable` | If `false` or absent, mark leaderboard row as provisional/private. | yes |
+| Wall Time | `raw_measurements.wall_time_seconds` | Format as m:ss. Tie-break field. | optional |
+
+### Result Detail Page
+
+A result detail page should surface:
+
+1. **Scorecard** — All `score_dimensions` from the judge record, with judge `reason` for each. If the rubric uses the Agent Stack overlay, each of `configuration_fitness`, `operating_discipline_and_safety`, `tool_optimization`, and `reliability_recovery_liveness` must appear with a judge reasoning note.
+
+2. **Participant Metadata** — From `comparable_metadata` or top-level fields:
+   - Participant, adapter, runtime, model, node class.
+   - Configuration profile reference and operating policy summary.
+   - Tool use profile (allowed vs used tools).
+   - Delegation profile (subagents, background jobs, A2A workers, human assistance).
+   - Hardware profile safe summary.
+
+3. **Task Metadata** — From the result packet and round manifest:
+   - Task ID, event family, title.
+   - Fixture reference and oracle reference where applicable.
+   - Division (closed stack, open stack, human baseline, node class).
+
+4. **Evidence Panel** — Key evidence items from the result packet, grouped by kind (log, command output, file diff, screenshot, transcript excerpt). Each should link to the artifact or display a safe summary.
+
+5. **Tool Use Summary** — If `tool_use_profile` is present, show:
+   - Tool classes allowed vs tools actually used.
+   - Total tool call count from `raw_measurements.action_count`.
+   - Notable tool gaps or intentional avoids.
+
+6. **Risk and Safety Panel** — From `risks`, `score_dimensions.safety`, `score_dimensions.operating_discipline_and_safety`:
+   - Risks flagged during the run.
+   - Safety score and judge notes.
+   - Penalties applied with reasons.
+   - Secret handling and redaction summary.
+
+7. **Reproducibility Panel** — From `comparable_metadata.artifact_hashes`:
+   - Result packet SHA-256.
+   - Trace record SHA-256 (if bundled).
+   - Evidence bundle SHA-256 (if bundled).
+   - Fixture reference and task version.
+
+8. **Comparison Data** — For side-by-side runs of the same task:
+   - Score dimensions side by side.
+   - Wall time, action count, retries, errors.
+   - Tool call counts, model calls, total tokens.
+   - Configuration profile and operating policy comparison.
+
+### Publication Filtering
+
+No result detail page or leaderboard may expose:
+
+- Credentials, tokens, API keys, session cookies, private keys.
+- Raw transcripts or complete trace records unless explicitly redacted and marked `publishable: true`.
+- SSH hostnames, IP addresses, connection strings, or internal network layout.
+- Unredacted log lines containing PII or secrets.
+
+A result packet with `publishable: true` MAY be displayed in leaderboards and detail pages after a confirmatory redaction review. A result packet with `publishable: false` or absent `publishable` field MUST be displayed only as provisional/private with a note that it has not passed redaction review.
+
+### Metadata Completeness Checks
+
+Before publishing a result to a leaderboard:
+
+- [ ] The result packet passes schema validation (`node scripts/validate.js packets`).
+- [ ] The judge record passes schema validation.
+- [ ] `agent_id`, `adapter`, and `runtime` are present (required for comparison).
+- [ ] `scoring_rubric` is documented in the judge record.
+- [ ] `publishable` is `true` or the publication is marked provisional.
+- [ ] Comparable metadata block has `participant`, `runtime`, and `task` sub-objects populated.
+
 ## Validation
 
 All schemas are registered in `scripts/validate.js`. Run:
