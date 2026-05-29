@@ -5,9 +5,12 @@
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
         validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
-        oracle smoke-check smoke fixtures-check setup clean
+        oracle smoke-check smoke fixtures-check setup clean \
+        validate-rounds rounds-check round \
+        stub-adapter stub-adapter-fail test-stub \
+        score score-validate score-run score-aggregate validate-scoreboard
 
-all: validate-all validate-v2 validate-oracle validate-fixtures
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-scoreboard
 
 # Install dependencies
 setup:
@@ -69,11 +72,60 @@ validate-fixtures:
 # Validate all fixture bundle manifests
 fixtures-check: validate-fixtures
 
+# Validate all round manifests
+validate-rounds:
+	node scripts/validate.js rounds
+
+# Quick-run: validate rounds
+rounds-check: validate-rounds
+
+# Round engine CLI (alias for convenience)
+round:
+	node scripts/round.js
+
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures
+validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds validate-scoreboard
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
+
+# --- Stub adapter targets ---
+
+# Run stub adapter against the stub test envelope (success mode)
+stub-adapter:
+	node scripts/stub-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--seed make-stub --agent-id make-adapter --runtime cli
+
+# Run stub adapter in failure mode
+stub-adapter-fail:
+	node scripts/stub-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--seed make-stub-fail --agent-id make-adapter --runtime cli --exit 1
+
+# Run the full stub adapter test suite
+test-stub:
+	bash scripts/test-stub-adapter.sh
+
+# --- Scoring / Judge targets ---
+
+# Run score.js full pipeline: validate + auto-judge + scoreboard
+score:
+	node scripts/score.js run
+
+# Validate result packets through the scoring engine
+score-validate:
+	node scripts/score.js validate
+
+# Validate + auto-judge result packets
+score-run:
+	node scripts/score.js run
+
+# Aggregate scoreboard (validate + score + scoreboard JSON)
+score-aggregate:
+	node scripts/score.js aggregate
+
+# Validate the scoreboard schema
+validate-scoreboard:
+	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
 
 # Remove generated artifacts and dependencies
 clean:
