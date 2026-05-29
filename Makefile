@@ -12,7 +12,7 @@
         stub-adapter stub-adapter-fail test-stub \
         openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
         hermes-adapter hermes-adapter-code hermes-adapter-fail validate-hermes smoke-hermes \
-        score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
+        score score-validate score-run score-aggregate perf-harness perf-harness-validate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge
@@ -302,6 +302,16 @@ score-run:
 # Aggregate scoreboard (validate + score + scoreboard JSON)
 score-aggregate:
 	node scripts/score.js aggregate
+
+# --- perf-harness targets ---
+
+# Run the repeatable baseline harness (default 3 iterations)
+perf-harness:
+	node scripts/perf-harness.js --iterations $${PERF_ITERATIONS:-3}
+
+# Run harness with validation after generation
+perf-harness-validate:
+	node scripts/perf-harness.js --iterations $${PERF_ITERATIONS:-3} --validate
 
 # Validate the scoreboard schema
 validate-scoreboard:

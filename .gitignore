@@ -8,6 +8,10 @@ runs/
 results/*-auto-judge.yaml
 results/scoreboard.json
 
+# perf-harness — auto-generated multi-iteration reports
+results/perf-harness-report-*.json
+results/perf-harness-report-*.yaml
+
 # Web result consumer — generated output directories
 web-output/
 
