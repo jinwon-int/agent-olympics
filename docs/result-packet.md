@@ -33,6 +33,19 @@ configuration_profile:
   model_routing: documented
   liveness: telegram-visible
   resource_limits: configured
+tool_use_profile:
+  allowed:
+    - shell
+    - logs
+    - message
+  used:
+    - shell
+    - logs
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: no_subagents_used
 started_at: "2026-05-29T00:00:00+09:00"
 ended_at: "2026-05-29T00:24:00+09:00"
 status: completed
@@ -92,10 +105,18 @@ outputs:
 Node and performance events should include safe metadata about the execution environment:
 
 - Hardware profile: CPU class, memory size, storage class, operating system, and relevant constraints.
-- Configuration profile: runtime version, model/provider routing summary, resource limits, liveness behavior, tool availability, memory policy, and service ownership.
+- Configuration profile: runtime version, model/provider routing summary, resource limits, liveness behavior, tool availability, memory policy, context policy, retry/timeout/concurrency limits, sandbox/network mode, and service ownership.
+- Tool-use profile: tool classes allowed, tool classes used, notable tools intentionally avoided, and whether subagents, background jobs, or human help were used.
+- Operating policy: approval boundaries, secret handling, destructive-action rules, progress-reporting expectations, escalation rules, delegation policy, and durable-memory decision policy.
 - Workload metrics: wall time, retries, relevant check results, peak memory or CPU pressure when available, and whether user-facing services stayed responsive.
 
 Do not include token values, private keys, session cookies, or other secrets. The packet should describe credential locations or validation state only when needed and only at a safe level.
+
+### Publication Metadata
+
+Result packets are not automatically public. Leaderboards and result-detail pages should use redacted, publishable data only.
+
+Use a top-level `publishable: true` flag only after review confirms that the packet and linked artifacts do not expose secrets, private transcripts, private infrastructure details, or unsafe operational material. When in doubt, publish derived summaries and keep the raw artifact private.
 
 ### Evidence Rules
 

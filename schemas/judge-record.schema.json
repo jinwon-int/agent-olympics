@@ -84,6 +84,14 @@
       "type": "object",
       "description": "Optional per-dimension free-text notes beyond scores."
     },
+    "configuration_checks": {
+      "type": "object",
+      "description": "Optional checks for configuration fitness and provenance."
+    },
+    "operating_policy_checks": {
+      "type": "object",
+      "description": "Optional checks for approval discipline, secret handling, delegation, and liveness."
+    },
     "evidence_checks": {
       "type": "array",
       "items": {
