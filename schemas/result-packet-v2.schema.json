@@ -21,7 +21,7 @@
     "schema_version": {
       "type": "integer",
       "const": 2,
-      "description": "Result Packet schema version. v2 adds oracle_ref, v1_compat, enhanced evidence fields, and comparable_metadata for submission/result shape."
+      "description": "Result Packet schema version. v2 adds oracle_ref, v1_compat, and enhanced evidence fields."
     },
     "schema_description": {
       "type": "string",
@@ -29,17 +29,47 @@
     },
     "packet_id": { "type": "string", "minLength": 1, "description": "Unique packet identifier for judge cross-referencing." },
     "task_id": { "type": "string", "minLength": 1 },
-    "agent_id": { "type": "string", "minLength": 1, "description": "Participant identifier. Operator-supplied." },
-    "agent_version": { "type": "string", "description": "Agent software version. Operator-supplied." },
-    "adapter": { "type": "string", "description": "Adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'. Operator-supplied. Use instead of legacy 'runtime' for adapter identity." },
-    "runtime": { "type": "string", "minLength": 1, "description": "Runtime or adapter that produced this result. Operator-supplied." },
-    "runtime_version": { "type": "string", "description": "Runtime version. Operator-supplied." },
-    "model": { "type": "string", "description": "Model identifier, e.g. 'gpt-5.x'. Operator-supplied." },
-    "model_provider": { "type": "string", "description": "Model provider, e.g. 'openai', 'anthropic', 'google'. Operator-supplied reference; never the credential or endpoint secret." },
-    "node": { "type": "string", "description": "Node identifier or node profile reference. Operator-supplied label; never the SSH hostname or IP." },
-    "hardware_profile": { "type": "object", "description": "Hardware profile: cpu_class, memory_gb, storage_class, os_family, etc. Operator-supplied safe labels only." },
-    "configuration_profile": { "type": "object", "description": "Configuration profile: model_routing, liveness, resource_limits, tool_availability, memory_policy, service_ownership. Operator-supplied; secret values must not appear." },
-    "workload_metrics": { "type": "object", "description": "Raw measured values captured during run (wall_time_seconds, retries, peak_memory_mb). Engine-generated." },
+    "agent_id": { "type": "string", "minLength": 1 },
+    "agent_version": { "type": "string", "description": "Agent software version." },
+    "runtime": { "type": "string", "minLength": 1 },
+    "runtime_version": { "type": "string", "description": "Runtime version." },
+    "model": { "type": "string" },
+    "node": { "type": "string" },
+    "hardware_profile": { "type": "object" },
+    "configuration_profile": { "type": "object" },
+    "division": {
+      "type": "string",
+      "enum": ["closed_stack", "open_stack", "human_baseline", "node_class"],
+      "description": "Competition division. Defaults to open_stack if not declared."
+    },
+    "validity": {
+      "type": "string",
+      "enum": ["valid", "partial_valid", "invalid", "appealed", "disqualified"],
+      "description": "Result validity state. Set by round engine after validation and judging."
+    },
+    "appeal": {
+      "type": "object",
+      "description": "Appeal record when this result is challenged. Present only during or after an appeal.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["filed", "under_review", "upheld", "denied", "remanded", "dismissed"]
+        },
+        "filed_at": { "type": "string", "format": "date-time" },
+        "filed_by": { "type": "string", "description": "Identity of the filer (participant, judge, or curator)." },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "References to supporting evidence."
+        },
+        "reviewed_by": { "type": "string", "description": "Identity of the reviewer." },
+        "reviewed_at": { "type": "string", "format": "date-time" },
+        "outcome": { "type": "string", "description": "Final appeal decision." },
+        "outcome_notes": { "type": "string", "description": "Short explanation of the outcome." }
+      },
+      "additionalProperties": false
+    },
+    "workload_metrics": { "type": "object" },
     "started_at": { "type": "string", "format": "date-time" },
     "ended_at": { "type": "string", "format": "date-time" },
     "status": {
@@ -48,114 +78,9 @@
     },
     "summary": { "type": "string", "minLength": 1 },
 
-    "comparable_metadata": {
-      "type": "object",
-      "description": "Explicit submission/result metadata for comparing agent runs by runtime/model/node/profile/config without exposing secrets. All values are safe labels or references — never raw credentials, hostnames, or secrets.",
-      "properties": {
-        "participant": {
-          "type": "object",
-          "description": "Operator-supplied participant identity.",
-          "properties": {
-            "agent_id": { "type": "string", "description": "Unique participant identifier, e.g. 'yukson'." },
-            "adapter": { "type": "string", "description": "Adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'." }
-          },
-          "additionalProperties": false
-        },
-        "runtime": {
-          "type": "object",
-          "description": "Operator-supplied runtime identity.",
-          "properties": {
-            "name": { "type": "string", "description": "Runtime name, e.g. 'openclaw', 'hermes', 'codex'." },
-            "version": { "type": "string", "description": "Runtime version string." }
-          },
-          "additionalProperties": false
-        },
-        "model": {
-          "type": "object",
-          "description": "Operator-supplied model reference. Never contains credentials or API keys.",
-          "properties": {
-            "name": { "type": "string", "description": "Model name, e.g. 'gpt-5.x', 'claude-4-opus'." },
-            "provider": { "type": "string", "description": "Model provider, e.g. 'openai', 'anthropic', 'google'." }
-          },
-          "additionalProperties": false
-        },
-        "node": {
-          "type": "object",
-          "description": "Operator-supplied node profile reference. Never contains SSH hostnames, IP addresses, or connection strings.",
-          "properties": {
-            "profile_ref": { "type": "string", "description": "Node profile identifier, e.g. 'vps5', 'baremetal-1'. Must match a non-secret label in the node capability matrix." },
-            "hardware_profile": { "type": "object", "description": "Hardware description with safe labels: cpu_class, memory_gb, storage_class, os_family, gpu_model (where relevant)." }
-          },
-          "additionalProperties": false
-        },
-        "config": {
-          "type": "object",
-          "description": "Operator-supplied config profile reference. Never contains secrets, tokens, or private keys.",
-          "properties": {
-            "profile_ref": { "type": "string", "description": "Configuration profile identifier, e.g. 'default', 'production', 'staging'. Must match a non-secret profile label." },
-            "details": { "type": "object", "description": "Safe config details: model_routing, liveness, resource_limits, tool_availability, memory_policy, service_ownership." }
-          },
-          "additionalProperties": false
-        },
-        "task": {
-          "type": "object",
-          "description": "Operator-supplied task/fixture version reference.",
-          "properties": {
-            "task_id": { "type": "string", "description": "Task identifier, e.g. 'ops-001'." },
-            "task_version": { "type": "string", "description": "Task envelope version, e.g. 'v2', '2026-05-29'." },
-            "fixture_ref": { "type": "string", "description": "Fixture bundle reference path, e.g. 'fixtures/season-001/ops-001/'." },
-            "oracle_ref": { "type": "string", "description": "Oracle file reference, e.g. 'oracle/season-001/ops-001-telegram-final-reply.yaml'." }
-          },
-          "additionalProperties": false
-        },
-        "artifact_hashes": {
-          "type": "object",
-          "description": "Content integrity hashes for artifacts produced during this run. Engine-generated where available.",
-          "properties": {
-            "result_packet": { "type": "string", "description": "SHA-256 hash of the canonical result packet content." },
-            "trace_record": { "type": "string", "description": "SHA-256 hash of the trace record content, if bundled." },
-            "evidence_bundle": { "type": "string", "description": "SHA-256 hash of the evidence bundle content, if bundled." }
-          },
-          "additionalProperties": true
-        }
-      },
-      "additionalProperties": false
-    },
-
-    "raw_measurements": {
-      "type": "object",
-      "description": "Raw measured values captured during the run. Engine-generated. These are the direct instrumented values before any normalization or scoring.",
-      "properties": {
-        "wall_time_seconds": { "type": "number", "description": "Total wall clock time for the run in seconds." },
-        "action_count": { "type": "integer", "description": "Number of discrete actions/tool calls." },
-        "evidence_count": { "type": "integer", "description": "Number of evidence items collected." },
-        "finding_count": { "type": "integer", "description": "Number of findings reported." },
-        "peak_memory_mb": { "type": "number", "description": "Peak memory usage in MB, if measurable." },
-        "model_calls": { "type": "integer", "description": "Number of model/LLM inference calls." },
-        "total_prompt_tokens": { "type": "integer", "description": "Total prompt tokens consumed across all model calls." },
-        "total_completion_tokens": { "type": "integer", "description": "Total completion tokens consumed across all model calls." },
-        "retries": { "type": "integer", "description": "Number of retries performed." },
-        "errors": { "type": "integer", "description": "Number of errors encountered during the run." }
-      },
-      "additionalProperties": true
-    },
-
-    "scored_values": {
-      "type": "object",
-      "description": "Normalized/scored values derived from raw measurements. Engine-generated. These are post-processed values suitable for comparison across runs.",
-      "properties": {
-        "efficiency_score": { "type": "number", "description": "Normalized efficiency score (0-1 or 0-100 scale)." },
-        "evidence_quality_score": { "type": "number", "description": "Normalized evidence quality score." },
-        "safety_score": { "type": "number", "description": "Normalized safety score." },
-        "execution_score": { "type": "number", "description": "Normalized execution score." },
-        "normalization": { "type": "string", "description": "Description of the normalization method applied to the raw measurements." }
-      },
-      "additionalProperties": true
-    },
-
     "oracle_ref": {
       "type": "string",
-      "description": "Optional reference to the oracle file that was used for this task. Enables automated cross-referencing between result packets and answer keys. Operator-supplied reference; never contains credentials."
+      "description": "Optional reference to the oracle file that was used for this task. Enables automated cross-referencing between result packets and answer keys."
     },
 
     "v1_compat": {

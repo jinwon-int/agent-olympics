@@ -56,11 +56,6 @@ labels:
   - liveness
   - season-001
 
-# Fixture bundle: anonymised gateway and Telegram delivery logs prepared by runner.
-# See fixtures/season-001/ops-001/manifest.yaml for preparation details.
-fixtures:
-  - fixtures/season-001/ops-001/
-
 # v2: External references replace inline hidden_judge_notes.
 # These files are PRIVATE and must not be shared with participants.
 judge_notes_ref: docs/judge-notes-season-001.md

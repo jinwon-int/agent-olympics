@@ -4,14 +4,10 @@
 
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
-        validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
-        oracle smoke-check smoke fixtures-check setup clean \
-        validate-rounds rounds-check round \
-        validate-profiles profiles-check \
-        stub-adapter stub-adapter-fail test-stub \
-        score score-validate score-run score-aggregate validate-scoreboard
+        validate-judges-v2 validate-oracle validate-smoke oracle smoke-check \
+        smoke setup clean
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
+all: validate-all validate-v2 validate-oracle
 
 # Install dependencies
 setup:
@@ -66,100 +62,11 @@ validate-smoke:
 # Validate all smoke task envelopes
 smoke-check: validate-smoke
 
-# Validate all fixture bundle manifests
-validate-fixtures:
-	node scripts/validate.js fixtures
-
-# Validate all fixture bundle manifests
-fixtures-check: validate-fixtures
-
-# Validate all round manifests
-validate-rounds:
-	node scripts/validate.js rounds
-
-# Quick-run: validate rounds
-rounds-check: validate-rounds
-
-# Validate all node profile inventory files
-validate-profiles:
-	node scripts/validate.js profiles
-
-# Quick-run: validate profiles
-profiles-check: validate-profiles
-
-# Round engine CLI (alias for convenience)
-round:
-	node scripts/round.js
-
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds validate-profiles validate-scoreboard validate-competition-fixtures
-
-# --- Competition-Validity targets ---
-
-# Run competition-validity checks (scans repo-wide if no run dir)
-validate-competition:
-	node scripts/competition-validity.js all
-
-# Validate competition-validity fixtures (positive + negative examples)
-validate-competition-fixtures:
-	node scripts/competition-validity.js fixtures fixtures/competition-validity
-
-# Validate run manifest integrity only
-validate-run-manifests:
-	node scripts/competition-validity.js run-manifests runs/season-001/round-001
-
-# Validate engine output presence
-validate-engine-outputs:
-	node scripts/competition-validity.js engine-outputs runs/season-001/round-001
-
-# Validate cross-document consistency
-validate-consistency:
-	node scripts/competition-validity.js consistency runs/season-001/round-001
-
-# Validate all competition-validity checks (via validate.js wrapper)
-validate-cv:
-	node scripts/validate.js competition-validity
+validate: validate-all validate-v2 validate-oracle validate-smoke
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
-
-# --- Stub adapter targets ---
-
-# Run stub adapter against the stub test envelope (success mode)
-stub-adapter:
-	node scripts/stub-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
-		--seed make-stub --agent-id make-adapter --runtime cli
-
-# Run stub adapter in failure mode
-stub-adapter-fail:
-	node scripts/stub-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
-		--seed make-stub-fail --agent-id make-adapter --runtime cli --exit 1
-
-# Run the full stub adapter test suite
-test-stub:
-	bash scripts/test-stub-adapter.sh
-
-# --- Scoring / Judge targets ---
-
-# Run score.js full pipeline: validate + auto-judge + scoreboard
-score:
-	node scripts/score.js run
-
-# Validate result packets through the scoring engine
-score-validate:
-	node scripts/score.js validate
-
-# Validate + auto-judge result packets
-score-run:
-	node scripts/score.js run
-
-# Aggregate scoreboard (validate + score + scoreboard JSON)
-score-aggregate:
-	node scripts/score.js aggregate
-
-# Validate the scoreboard schema
-validate-scoreboard:
-	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
 
 # Remove generated artifacts and dependencies
 clean:

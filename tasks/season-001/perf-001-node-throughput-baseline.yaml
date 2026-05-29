@@ -56,12 +56,6 @@ labels:
   - hardware
   - resource-efficiency
   - season-001
-
-# Fixture bundle: controlled workload definition and repo prepared by runner.
-# See fixtures/season-001/perf-001/manifest.yaml for preparation details.
-fixtures:
-  - fixtures/season-001/perf-001/
-
 hidden_judge_notes: |
   ANSWER KEY / JUDGE NOTES (not visible to participant)
 

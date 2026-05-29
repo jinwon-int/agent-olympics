@@ -13,6 +13,19 @@ configuration_profile:
   model_routing: documented
   liveness: telegram-visible
   resource_limits: configured
+tool_use_profile:
+  allowed:
+    - shell
+    - logs
+    - message
+  used:
+    - shell
+    - logs
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: no_subagents_used
 started_at: "2026-05-29T00:00:00+09:00"
 ended_at: "2026-05-29T00:24:00+09:00"
 status: completed

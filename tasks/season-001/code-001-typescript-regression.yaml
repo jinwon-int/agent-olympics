@@ -40,12 +40,6 @@ labels:
   - typescript
   - tests
   - season-001
-
-# Fixture bundle: purpose-regressed TypeScript repo prepared by runner.
-# See fixtures/season-001/code-001/manifest.yaml for preparation details.
-fixtures:
-  - fixtures/season-001/code-001/
-
 hidden_judge_notes: |
   ANSWER KEY / JUDGE NOTES (not visible to participant)
 

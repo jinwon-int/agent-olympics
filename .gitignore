@@ -1,10 +1,2 @@
 node_modules/
 *.tgz
-
-# Round engine — auto-generated run directories
-runs/
-
-# OS files
-*.DS_Store
-Thumbs.db
-

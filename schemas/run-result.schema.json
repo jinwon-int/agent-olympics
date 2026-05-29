@@ -26,32 +26,11 @@
     },
     "agent_id": {
       "type": "string",
-      "minLength": 1,
-      "description": "Participant identifier. Operator-supplied."
+      "minLength": 1
     },
     "runtime": {
       "type": "string",
-      "description": "Runtime or adapter that produced this result. Operator-supplied."
-    },
-    "runtime_version": {
-      "type": "string",
-      "description": "Runtime version string. Operator-supplied."
-    },
-    "adapter": {
-      "type": "string",
-      "description": "Adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'. Operator-supplied."
-    },
-    "model": {
-      "type": "string",
-      "description": "Model identifier. Operator-supplied."
-    },
-    "model_provider": {
-      "type": "string",
-      "description": "Model provider reference, e.g. 'openai'. Operator-supplied; never a credential or endpoint secret."
-    },
-    "node": {
-      "type": "string",
-      "description": "Node profile reference. Operator-supplied label; never the SSH hostname or IP."
+      "description": "Runtime or adapter that produced this result."
     },
     "generated_at": {
       "type": "string",

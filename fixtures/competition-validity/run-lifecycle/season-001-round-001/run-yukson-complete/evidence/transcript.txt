@@ -1,4 +1,0 @@
-[SENSITIVE DATA REDACTED - SYNTHETIC FIXTURE]
-Session transcript excerpt:
-Position 47: "The Telegram reply was delivered to the session transcript
-but the user did not see it. Reviewing gateway delivery logs..."

@@ -1,4 +1,0 @@
-[SENSITIVE DATA REDACTED - SYNTHETIC FIXTURE]
-Gateway delivery log excerpt (anonymized):
-message_id: msg-001 -> delivery_status: source-visible
-outbound_attempt: none (stale session recovery path)

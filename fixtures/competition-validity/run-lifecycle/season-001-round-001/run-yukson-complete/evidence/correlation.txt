@@ -1,5 +1,0 @@
-[SENSITIVE DATA REDACTED - SYNTHETIC FIXTURE]
-Timestamp correlation:
-transcript_write: 18:59:30
-delivery_attempt: none
-conclusion: stale embedded-session path suppressed outbound delivery

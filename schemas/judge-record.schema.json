@@ -84,6 +84,41 @@
       "type": "object",
       "description": "Optional per-dimension free-text notes beyond scores."
     },
+    "division_verification": {
+      "type": "object",
+      "description": "Verification of the participant's declared division.",
+      "properties": {
+        "declared_division": { "type": "string", "description": "Division claimed by the participant." },
+        "verified": { "type": "boolean", "description": "Whether the division claim was verified against trace evidence." },
+        "note": { "type": "string", "description": "Any discrepancies or confirming observations." }
+      },
+      "additionalProperties": false
+    },
+    "appeal_record": {
+      "type": "object",
+      "description": "Record of an appeal related to this judgement.",
+      "properties": {
+        "appeal_id": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["filed", "under_review", "upheld", "denied", "remanded", "dismissed"]
+        },
+        "filed_by": { "type": "string" },
+        "filed_at": { "type": "string", "format": "date-time" },
+        "reviewed_by": { "type": "string" },
+        "outcome": { "type": "string" },
+        "outcome_notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "configuration_checks": {
+      "type": "object",
+      "description": "Optional checks for configuration fitness and provenance."
+    },
+    "operating_policy_checks": {
+      "type": "object",
+      "description": "Optional checks for approval discipline, secret handling, delegation, and liveness."
+    },
     "evidence_checks": {
       "type": "array",
       "items": {

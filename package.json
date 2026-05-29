@@ -7,15 +7,12 @@
   "scripts": {
     "validate:envelopes": "node scripts/validate.js envelopes",
     "validate:packets": "node scripts/validate.js packets",
-    "validate:fixtures": "node scripts/validate.js fixtures",
-    "validate:rounds": "node scripts/validate.js rounds",
     "validate:all": "node scripts/validate.js all",
-    "round": "node scripts/round.js",
     "test": "node scripts/validate.js all"
   },
   "dependencies": {
     "ajv": "^8.17.0",
     "ajv-formats": "^3.0.1",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.0"
   }
 }
