@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Olympics - Blind Leaderboard</title>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: #f5f7fa;
+  color: #1a1a2e;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+h2 { font-size: 1.3rem; margin-top: 1.8rem; margin-bottom: 0.6rem; }
+h3 { font-size: 1.1rem; margin-top: 1.2rem; margin-bottom: 0.4rem; }
+.subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 1rem; }
+.summary-box { 
+  background: white; border-radius: 8px; padding: 16px 20px; 
+  margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex; gap: 24px; flex-wrap: wrap;
+}
+.summary-item { text-align: center; }
+.summary-item .num { font-size: 1.4rem; font-weight: 700; color: #3b82f6; }
+.summary-item .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; }
+table { 
+  width: 100%; border-collapse: collapse; background: white; 
+  border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+th { 
+  background: #1e293b; color: white; padding: 10px 12px; 
+  text-align: left; font-size: 0.78rem; text-transform: uppercase; white-space: nowrap; cursor: default;
+}
+td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 0.88rem; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8fafc; }
+.rank { font-weight: 700; font-size: 1rem; text-align: center; width: 40px; }
+.rank-1 { color: #f59e0b; } .rank-2 { color: #94a3b8; } .rank-3 { color: #cd7f32; }
+.agent-link { font-weight: 600; color: #2563eb; text-decoration: none; }
+.agent-link:hover { text-decoration: underline; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+}
+.badge-pass { background: #d1fae5; color: #065f46; }
+.badge-conditional_pass { background: #fef3c7; color: #92400e; }
+.badge-fail { background: #fee2e2; color: #991b1b; }
+.badge-disqualification { background: #e2e8f0; color: #475569; }
+.badge-completed { background: #dbeafe; color: #1e40af; }
+.badge-partial { background: #fef3c7; color: #92400e; border: 1px dashed #d97706; }
+.badge-blocked { background: #f1f5f9; color: #64748b; }
+.badge-failed { background: #fee2e2; color: #991b1b; }
+.badge-disqualified { background: #e2e8f0; color: #475569; text-decoration: line-through; }
+.dim-bar { 
+  display: inline-block; height: 8px; border-radius: 4px; 
+  background: #e2e8f0; width: 80px; vertical-align: middle; margin-right: 6px;
+}
+.dim-fill { height: 8px; border-radius: 4px; transition: width 0.3s; }
+.dim-green { background: #22c55e; } .dim-yellow { background: #eab308; } .dim-red { background: #ef4444; }
+.score-cell { white-space: nowrap; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
+.card {
+  background: white; border-radius: 8px; padding: 16px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.card h3 { margin-top: 0; }
+.field-label { font-size: 0.78rem; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+.field-value { font-size: 0.92rem; margin-bottom: 10px; word-break: break-word; }
+.dim-card { 
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid #f1f5f9;
+}
+.dim-card:last-child { border-bottom: none; }
+.dim-name { font-weight: 500; font-size: 0.88rem; flex: 1; }
+.dim-score { font-size: 0.85rem; color: #475569; white-space: nowrap; }
+.compare-table { margin-top: 12px; }
+.compare-table th { font-size: 0.72rem; }
+.compare-table td { font-size: 0.82rem; }
+.pending-note { 
+  background: #fefce8; border: 1px solid #fde047; border-radius: 6px;
+  padding: 10px 14px; font-size: 0.85rem; color: #713f12; margin-bottom: 16px;
+}
+.provisional-banner {
+  background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px;
+  padding: 10px 14px; font-size: 0.85rem; color: #475569; margin-bottom: 16px;
+}
+.blind-banner {
+  background: #e0e7ff; border: 1px solid #a5b4fc; border-radius: 6px;
+  padding: 10px 14px; font-size: 0.85rem; color: #312e81; margin-bottom: 16px;
+}
+.nav-bar { 
+  background: #1e293b; color: white; padding: 12px 20px; 
+  margin: -20px -20px 20px -20px;
+}
+.nav-bar a { color: #93c5fd; text-decoration: none; }
+.nav-bar a:hover { text-decoration: underline; }
+.nav-bar .nav-title { font-weight: 700; font-size: 1rem; }
+pre.evidence-json { 
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
+  padding: 12px; font-size: 0.78rem; overflow-x: auto; max-height: 300px;
+}
+.evidence-card { 
+  border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 8px;
+}
+.evidence-card .ev-label { font-weight: 600; font-size: 0.82rem; }
+.caveat-item { font-size: 0.82rem; color: #b45309; padding: 4px 0; }
+.empty-state { color: #94a3b8; font-style: italic; padding: 20px; text-align: center; }
+.footer { text-align: center; font-size: 0.78rem; color: #94a3b8; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="nav-bar"><div class="container">
+<a href="index.html" style="margin-right:20px;" class="nav-title">🏆 Agent Olympics</a>
+</div></div>
+<div class="container">
+<div class="blind-banner">⚠ Blind scoring mode — participant identities are anonymized. Identifying metadata is withheld.</div>
+<h1>Comparison: perf-001</h1>
+<div class="subtitle">2 entries</div><h2>Score Comparison</h2>
+<table class="compare-table">
+<thead><tr><th>Participant</th><th>Total</th><th>evidence_quality</th><th>safety</th><th>execution</th><th>correctness</th><th>communication</th><th>durability</th><th>Wall Time</th><th>Verdict</th></tr></thead><tbody><tr>
+<td><a href="../detail/perf-001-baseline-agent-small.html">baseline-agent-small</a></td>
+<td><strong>46</strong></td><td>18/20 (90%)</td><td>13/15 (87%)</td><td>15/15 (100%)</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td>—</td>
+<td><span class="badge badge-pass">pass</span></td>
+</tr><tr>
+<td><a href="../detail/perf-001-baseline-agent.html">baseline-agent</a></td>
+<td><strong>46</strong></td><td>18/20 (90%)</td><td>13/15 (87%)</td><td>15/15 (100%)</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td style="color:#eab308;">⏳ Pending</td><td>—</td>
+<td><span class="badge badge-pass">pass</span></td>
+</tr></tbody></table><h2>Hardware Comparison</h2>
+<table class="compare-table">
+<thead><tr><th>Participant</th><th>CPU Class</th><th>Memory</th><th>Storage</th><th>OS</th><th>GPU</th></tr></thead><tbody><tr>
+<td>baseline-agent-small</td>
+<td>small-vps</td>
+<td>2 GB</td>
+<td>ssd</td>
+<td>linux</td>
+<td>—</td>
+</tr><tr>
+<td>baseline-agent</td>
+<td>medium-vps</td>
+<td>8 GB</td>
+<td>nvme-dedicated</td>
+<td>linux</td>
+<td>—</td>
+</tr></tbody></table><p><a href="../index.html">← Back to Leaderboard</a></p><div class="footer">Generated by Agent Olympics web-result-consumer.js | Scoreboard data is safe for web display</div>
+</div></body></html>
