@@ -56,6 +56,25 @@ files in `rounds/`, and runs are laid out in `runs/<season>/<round_id>/`.
 
 See [Round Engine](../docs/round-engine.md) for the CLI entrypoint and design details.
 
+## Comparable Submission Metadata
+
+Agent Olympics uses explicit `comparable_metadata` in v2 result packets to
+enable comparing agent runs by runtime, model, node, profile, and configuration
+without exposing secrets. The metadata block contains only safe labels and
+references:
+
+- Participant/adapter identifiers
+- Runtime name and version
+- Model name and provider label
+- Node profile reference (not SSH hostname or IP)
+- Config profile reference (not actual config values)
+- Task/fixture version references
+- Artifact hashes for content integrity
+
+Raw measured values (`raw_measurements`) are kept separate from normalized
+scored values (`scored_values`). This separation allows the scoreboard to
+display both instrumented data and post-processed comparison metrics.
+
 ## Blind Judging
 
 For serious comparisons, judges should score anonymized Result Packets first:
