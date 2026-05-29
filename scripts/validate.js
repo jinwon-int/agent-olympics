@@ -22,6 +22,7 @@
  *   node scripts/validate.js all                - validate all known types
  *   node scripts/validate.js all-v2             - validate only v2 documents
  *   node scripts/validate.js rounds            - validate all round manifests
+ *   node scripts/validate.js profiles           - validate all node profile inventory files
  *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -34,6 +35,8 @@ const Ajv = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
 
 const ROOT = path.resolve(__dirname, '..');
+
+
 
 // ---------------------------------------------------------------------------
 // Load schemas (v1)
@@ -66,6 +69,18 @@ let roundManifestSchema = null;
 try {
   roundManifestSchema = loadSchema('schemas/round-manifest.schema.json');
 } catch { /* ignore */ }
+
+// ---------------------------------------------------------------------------
+// Load node profile inventory schema
+// ---------------------------------------------------------------------------
+let nodeProfileSchema = null;
+let nodeProfileValidator = null;
+try {
+  nodeProfileSchema = loadSchema('schemas/node-profile-inventory.schema.json');
+  const npAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(npAjv);
+  nodeProfileValidator = npAjv.compile(nodeProfileSchema);
+} catch (e) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Load schemas (v2)
@@ -197,6 +212,77 @@ function semanticChecks(doc, kind, file, schemaVersion) {
       const oraclePath = path.join(ROOT, doc.oracle_ref);
       if (!fs.existsSync(oraclePath)) {
         issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+      }
+    }
+
+    // v2: comparable_metadata checks
+    if (schemaVersion === 2) {
+      if (doc.comparable_metadata) {
+        const cm = doc.comparable_metadata;
+
+        // Check participant block
+        if (cm.participant) {
+          if (cm.participant.agent_id !== doc.agent_id) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.participant.agent_id ("${cm.participant.agent_id}") differs from top-level agent_id ("${doc.agent_id}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.participant block' });
+        }
+
+        // Check runtime block matches top-level
+        if (cm.runtime) {
+          if (cm.runtime.name && cm.runtime.name !== doc.runtime) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.runtime.name ("${cm.runtime.name}") differs from top-level runtime ("${doc.runtime}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.runtime block' });
+        }
+
+        // Check model block
+        if (cm.model) {
+          if (cm.model.name && doc.model && cm.model.name !== doc.model) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.model.name ("${cm.model.name}") differs from top-level model ("${doc.model}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.model block' });
+        }
+
+        // Check node block
+        if (cm.node) {
+          if (cm.node.profile_ref && doc.node && cm.node.profile_ref !== doc.node) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.node.profile_ref ("${cm.node.profile_ref}") differs from top-level node ("${doc.node}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.node block' });
+        }
+
+        // Check task block
+        if (cm.task) {
+          if (cm.task.task_id && cm.task.task_id !== doc.task_id) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.task.task_id ("${cm.task.task_id}") differs from top-level task_id ("${doc.task_id}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.task block' });
+        }
+
+        // Secret scan inside comparable_metadata
+        detectSecrets(cm, issues, 'comparable_metadata');
+      } else {
+        issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata block' });
+      }
+
+      // raw_measurements checks
+      if (doc.raw_measurements) {
+        if (doc.raw_measurements.wall_time_seconds !== undefined) {
+          if (typeof doc.raw_measurements.wall_time_seconds !== 'number' || doc.raw_measurements.wall_time_seconds < 0) {
+            issues.push({ severity: SEVERITY.warn, msg: 'raw_measurements.wall_time_seconds should be a non-negative number' });
+          }
+        }
+      }
+
+      // scored_values should not contain secrets
+      if (doc.scored_values) {
+        detectSecrets(doc.scored_values, issues, 'scored_values');
       }
     }
 
@@ -489,6 +575,150 @@ function detectRoundManifest(doc) {
   return doc.schema_version !== undefined && doc.round_id !== undefined
     && doc.season !== undefined && doc.lifecycle !== undefined
     && Array.isArray(doc.tasks) && Array.isArray(doc.participants);
+}
+
+/**
+ * Detect node profile inventory files.
+ */
+function detectNodeProfile(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined
+    && doc.profile_id !== undefined
+    && doc.profile_class !== undefined
+    && doc.os_family !== undefined
+    && doc.cpu !== undefined
+    && doc.memory_gb !== undefined
+    && doc.runner_limits !== undefined
+    && doc.storage_class !== undefined
+    && doc.network_class !== undefined
+    && doc.capability_labels !== undefined;
+}
+
+/**
+ * Validate a node profile inventory file.
+ */
+function validateNodeProfile(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectNodeProfile(doc)) {
+    console.warn(`SKIP  ${rel}  - not a node profile (missing required fields)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Schema validation (if schema loaded)
+  if (nodeProfileValidator) {
+    const valid = nodeProfileValidator(doc);
+    if (!valid) {
+      for (const err of nodeProfileValidator.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        const extra = err.params ? JSON.stringify(err.params) : '';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg} ${extra}`.trim() });
+      }
+    }
+  }
+
+  // Cross-field checks
+  if (doc.cpu) {
+    if (typeof doc.cpu.cores_min === 'number' && typeof doc.cpu.cores_max === 'number') {
+      if (doc.cpu.cores_max < doc.cpu.cores_min) {
+        issues.push({ severity: SEVERITY.error, msg: 'cpu.cores_max must be >= cpu.cores_min' });
+      }
+    }
+  }
+
+  if (doc.memory_gb) {
+    if (typeof doc.memory_gb.min === 'number' && typeof doc.memory_gb.max === 'number') {
+      if (doc.memory_gb.max < doc.memory_gb.min) {
+        issues.push({ severity: SEVERITY.error, msg: 'memory_gb.max must be >= memory_gb.min' });
+      }
+    }
+  }
+
+  // Ensure capability_labels is non-empty
+  if (Array.isArray(doc.capability_labels) && doc.capability_labels.length === 0) {
+    issues.push({ severity: SEVERITY.error, msg: 'capability_labels must have at least one entry' });
+  }
+
+  // profile_id must be a safe slug (no hostnames, IPs, or paths)
+  if (doc.profile_id) {
+    if (!/^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/.test(doc.profile_id)) {
+      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" must be a safe slug (lowercase, digits, hyphens, underscores only)` });
+    }
+    // Additional heuristics: profile_id should not look like a hostname or IP
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(doc.profile_id)) {
+      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead` });
+    }
+    if (/^[a-zA-Z0-9-]+\.(com|org|net|io|dev|local|internal)$/.test(doc.profile_id)) {
+      issues.push({ severity: SEVERITY.warn, msg: `profile_id "${doc.profile_id}" looks like a hostname or domain; use a safe slug instead` });
+    }
+  }
+
+  // Check for forbidden secret-like fields anywhere in the document
+  detectSecrets(doc, issues);
+
+  // Additional node-profile-specific forbidden pattern detection
+  const FORBIDDEN_PROFILE_PATTERNS = [
+    { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
+    { pattern: /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/, description: 'potential hostname or domain' },
+    { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
+    { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
+    { pattern: /\/root\/\S+/i, description: 'root home path' },
+    { pattern: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/, description: 'private key material' },
+    { pattern: /sk-[a-zA-Z0-9]{20,}/, description: 'API key pattern' },
+  ];
+
+  function scanForbiddenPatterns(obj, objPath = '') {
+    if (!obj || typeof obj !== 'object') return;
+    for (const [key, val] of Object.entries(obj)) {
+      const fp = objPath ? `${objPath}.${key}` : key;
+      if (typeof val === 'string') {
+        for (const bp of FORBIDDEN_PROFILE_PATTERNS) {
+          if (bp.pattern.test(val)) {
+            issues.push({ severity: SEVERITY.error, msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern` });
+            break;
+          }
+        }
+      } else if (typeof val === 'object' && val !== null) {
+        scanForbiddenPatterns(val, fp);
+      }
+    }
+  }
+  scanForbiddenPatterns(doc);
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  - ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (node-profile)`);
+  }
+  fileCount++;
 }
 
 // ---------------------------------------------------------------------------
@@ -958,6 +1188,53 @@ function main() {
     process.exit(totalErrors > 0 ? 1 : 0);
   }
 
+  // Profiles mode
+  if (mode === 'profiles') {
+    const profilesDir = path.join(ROOT, 'fixtures', 'node-profiles');
+    if (!fs.existsSync(profilesDir)) {
+      console.log('No node-profiles directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(profilesDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No node profile files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} node profile file(s)...\n`);
+    for (const f of files) {
+      validateNodeProfile(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Competition-validity mode
+  if (mode === 'competition-validity') {
+    const { spawnSync } = require('child_process');
+    const cvPath = path.join(__dirname, 'competition-validity.js');
+    const cvArgs = process.argv.slice(3);
+
+    console.log('Delegating to competition-validity.js...\n');
+    const result = spawnSync(process.execPath, [cvPath, ...(cvArgs.length > 0 ? cvArgs : ['all', 'runs/season-001/round-001'])], {
+      stdio: 'inherit',
+      cwd: ROOT,
+    });
+
+    const exitCode = result.status !== null ? result.status : 1;
+    if (exitCode !== 0) {
+      totalErrors++;
+    }
+    fileCount++;
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
   // Fixtures mode
   if (mode === 'fixtures') {
     const fixturesDir = path.join(ROOT, 'fixtures');
@@ -996,7 +1273,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|oracle|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|oracle|competition-validity|all|all-v2|file>`);
     process.exit(1);
   }
 

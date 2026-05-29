@@ -1,0 +1,44 @@
+# Stub node profile: small
+#
+# Use for: lightweight smoke tasks, single-agent diagnosis, read-only audits
+# Comparable to: entry-level VPS, Raspberry Pi 4 (4 GB), container with 1-2 GB RAM
+#
+# This profile uses only safe, band-based values. No hostnames, IPs,
+# tokens, paths, or secrets appear here.
+
+schema_version: 1
+profile_id: stub-small-vps
+profile_class: small-vps
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 1
+  cores_max: 2
+  description: "entry-level cloud vCPU, burst-capable"
+memory_gb:
+  min: 1.0
+  max: 2.0
+  description: "shared with host operating system"
+runner_limits:
+  max_concurrent: 1
+  max_task_duration_minutes: 30
+  max_total_daily_tasks: 10
+  description: "single-runner node; no concurrent tasks"
+storage_class:
+  type: ssd
+  min_free_gb: 5
+  max_total_gb: 20
+  description: "ephemeral root volume; no persistent data across tasks"
+network_class:
+  class: low
+  public_egress: true
+  description: "shared consumer-grade NAT"
+capability_labels:
+  - smoke
+  - safety
+allowed_runner_types:
+  - cli
+notes: >
+  Smallest profile in the inventory. Suitable for short smoke tests
+  and safety trials where minimal resource usage is desired.
+last_updated: "2026-05-29T00:00:00+09:00"

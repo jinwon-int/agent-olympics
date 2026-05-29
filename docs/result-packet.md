@@ -2,7 +2,7 @@
 
 Agent Olympics uses a three-part submission model for each run:
 
-1. **Result Packet** (`result-packet.schema.json`) — Final outcome: status, summary, findings, and outputs.
+1. **Result Packet** (`result-packet.schema.json` / `result-packet-v2.schema.json`) — Final outcome: status, summary, findings, and outputs.
 2. **Trace Record** (`trace-record.schema.json`) — Ordered journal of agent actions and tool calls.
 3. **Evidence Bundle** (`evidence-bundle.schema.json`) — Collection of evidence artifacts with content refs, checksums, and redaction metadata.
 
@@ -16,14 +16,94 @@ The Result Packet is the standard output format submitted by each participant.
 
 It should be compact enough to score automatically, but rich enough for a human judge to inspect evidence and risk decisions.
 
-### Minimal YAML Example
+### Operator-Supplied vs Engine-Generated Fields
+
+Every field in a result packet is either **operator-supplied** (set by the participant submitting the result) or **engine-generated** (produced by the round engine from instrumentation). The v2 schema makes this distinction explicit:
+
+| Category | Fields | Source |
+|---|---|---|
+| **Participant identity** | `agent_id`, `adapter`, `runtime`, `runtime_version` | Operator-supplied |
+| **Model info** | `model`, `model_provider` | Operator-supplied |
+| **Environment** | `node`, `hardware_profile`, `configuration_profile` | Operator-supplied |
+| **Task reference** | `task_id`, `oracle_ref` | Operator-supplied |
+| **Comparable metadata** | `comparable_metadata.*` | Operator-supplied (safe labels/refs) |
+| **Timestamps** | `started_at`, `ended_at` | Operator-supplied |
+| **Outcome** | `status`, `summary`, `findings`, `actions`, `evidence`, `outputs` | Operator-supplied |
+| **Raw measurements** | `raw_measurements.*` (wall clock, counts, tokens) | Engine-generated |
+| **Scored values** | `scored_values.*` (normalized scores) | Engine-generated |
+| **Artifact hashes** | `comparable_metadata.artifact_hashes.*` | Engine-generated |
+
+### Comparable Submission Metadata (v2)
+
+To enable comparing agent runs by runtime, model, node, profile, and configuration without exposing secrets, v2 result packets include a `comparable_metadata` block. All values in this block are safe labels or references — never raw credentials, hostnames, or secrets.
 
 ```yaml
-schema_version: 1
+comparable_metadata:
+  participant:
+    agent_id: yukson
+    adapter: openclaw
+  runtime:
+    name: openclaw
+    version: 2.14.0
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    profile_ref: vps5
+    hardware_profile:
+      cpu_class: small-vps
+      memory_gb: 2
+      storage_class: nvme-shared
+      os_family: linux
+  config:
+    profile_ref: default
+  task:
+    task_id: ops-001
+    task_version: v2
+    fixture_ref: fixtures/season-001/ops-001/
+    oracle_ref: oracle/season-001/ops-001-telegram-final-reply.yaml
+  artifact_hashes:
+    result_packet: "sha256:a1b2c3d4e5f6a7b8c9d0..."
+    trace_record: "sha256:b2c3d4e5f6a7b8c9d0e1..."
+```
+
+### Raw Measurements vs Scored Values (v2)
+
+**Raw measurements** are the direct instrumented values captured during the run, before any normalization or scoring. They are engine-generated where instrumentation is available.
+
+```yaml
+raw_measurements:
+  wall_time_seconds: 1440
+  action_count: 8
+  evidence_count: 7
+  finding_count: 1
+  model_calls: 5
+  total_prompt_tokens: 12450
+  total_completion_tokens: 3820
+  retries: 0
+  errors: 0
+```
+
+**Scored values** are post-processed, normalized scores suitable for comparison across runs. They are engine-generated.
+
+```yaml
+scored_values:
+  efficiency_score: 0.85
+  evidence_quality_score: 0.75
+  normalization: "0-1 linear scale per rubric"
+```
+
+### Minimal YAML Example (v2)
+
+```yaml
+schema_version: 2
 task_id: ops-001
 agent_id: yukson
+adapter: openclaw
 runtime: openclaw
+runtime_version: 2.14.0
 model: gpt-5.x
+model_provider: openai
 node: vps5
 hardware_profile:
   cpu_class: small-vps
@@ -36,6 +116,34 @@ configuration_profile:
 started_at: "2026-05-29T00:00:00+09:00"
 ended_at: "2026-05-29T00:24:00+09:00"
 status: completed
+
+comparable_metadata:
+  participant:
+    agent_id: yukson
+    adapter: openclaw
+  runtime:
+    name: openclaw
+    version: 2.14.0
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    profile_ref: vps5
+  config:
+    profile_ref: default
+  task:
+    task_id: ops-001
+    task_version: v2
+    fixture_ref: fixtures/season-001/ops-001/
+
+raw_measurements:
+  wall_time_seconds: 1440
+  action_count: 8
+  evidence_count: 7
+  finding_count: 1
+
+scored_values:
+  efficiency_score: 0.85
 
 summary: >
   The final assistant answer was written to the session transcript but was not
@@ -108,6 +216,7 @@ Every major claim should reference an evidence item. Evidence summaries must not
 - Result fabricated without any trace or evidence.
 - Task environment intentionally damaged beyond the allowed scope.
 - Runtime identity misrepresented.
+- Consistent metadata tampering: repeated mismatch between `comparable_metadata` and actual runtime/task identity across multiple results.
 
 ### Redaction Fields
 
@@ -117,6 +226,15 @@ Each action and evidence item supports two redaction fields:
 |---|---|
 | `redacted` | Boolean — true if sensitive data was removed. |
 | `redaction_reason` | String describing *what rule* was applied, e.g. `"api_token_value"`, `"private_key_material"`. Must never contain the actual secret value. |
+
+### Field Origin Labels
+
+Throughout the v2 schemas and docs, fields are annotated with their origin:
+
+- **Operator-supplied** — set by the participant submitting the result packet. Participant identity, model, node, config, task references, outcome fields.
+- **Engine-generated** — produced by the round engine from instrumentation or post-processing. Raw measurements, scored values, artifact hashes.
+
+These labels are documentation hints only. The schema does not enforce them programmatically (the engine may not always be present). However, any field containing or derived from secrets must follow the redaction rules regardless of origin.
 
 ---
 

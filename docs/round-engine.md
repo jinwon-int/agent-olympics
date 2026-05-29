@@ -17,6 +17,17 @@ A **run** is one participant attempting one task within a round. Each run
 produces a result packet, trace record, and evidence bundle linked by a shared
 `run_id`.
 
+### Comparable Submission Metadata
+
+Each round manifest participant entry may include `adapter`, `runtime_version`,
+`model`, `model_provider`, `node`, and `config_profile` fields. These are
+carried forward into result packets as `comparable_metadata` and into the
+scoreboard as `submission_metadata`. This enables comparing agent runs by
+runtime, model, node, and configuration profile without exposing secrets.
+
+All participant metadata fields must be safe labels or references — never raw
+credentials, hostnames, IP addresses, or endpoint URLs.
+
 ### Manifest
 
 The **round manifest** (`rounds/<round_id>.yaml`) is the source of truth for

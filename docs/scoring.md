@@ -57,6 +57,23 @@ in the auto-generated judge record:
 These dimensions produce a partial score out of 50 (the full positive base
 is 100). The remaining 50 points require human review.
 
+### Comparable Metadata Scoring
+
+The scoreboard extracts `comparable_metadata` from each v2 result packet and
+carries it into the `submission_metadata` field on each scoreboard entry. This
+enables grouping and filtering by:
+
+- Runtime + runtime version
+- Adapter
+- Model + model provider
+- Node profile
+- Config profile
+- Task version
+
+All values are safe labels or references — no secrets. The scoreboard does
+not re-validate comparable metadata values; it only reports what the
+participant submitted.
+
 ---
 
 ## 3. Pending Dimensions (human or blind-judge required)

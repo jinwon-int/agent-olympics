@@ -619,14 +619,32 @@ async function buildScoreboard(resultsDir) {
       console.log(`   Judge: auto-generated — ${judgeRecordRef}`);
     }
 
+    // Extract comparable submission metadata
+    const comparableMeta = rp.comparable_metadata || {};
+    const subMeta = {
+      runtime: rp.runtime,
+      runtime_version: comparableMeta.runtime?.version || rp.runtime_version,
+      adapter: comparableMeta.participant?.adapter || rp.adapter,
+      model: comparableMeta.model?.name || rp.model,
+      model_provider: comparableMeta.model?.provider || rp.model_provider,
+      node: comparableMeta.node?.profile_ref || rp.node,
+      config_profile: comparableMeta.config?.profile_ref,
+      task_version: comparableMeta.task?.task_version,
+      fixture_ref: comparableMeta.task?.fixture_ref,
+    };
+
     // 5. Track participant
     const pKey = rp.agent_id;
     if (!participants.has(pKey)) {
       participants.set(pKey, {
         agent_id: rp.agent_id,
-        runtime: rp.runtime,
-        model: rp.model,
-        node: rp.node,
+        adapter: subMeta.adapter,
+        runtime: subMeta.runtime,
+        runtime_version: subMeta.runtime_version,
+        model: subMeta.model,
+        model_provider: subMeta.model_provider,
+        node: subMeta.node,
+        config_profile: subMeta.config_profile,
       });
     }
 
@@ -638,6 +656,7 @@ async function buildScoreboard(resultsDir) {
       run_id: runId,
       packet_id: packetId,
       packet_ref: path.relative(ROOT, f),
+      submission_metadata: subMeta,
       status: rp.status,
       schema_validation: {
         valid: schemaResult.valid,

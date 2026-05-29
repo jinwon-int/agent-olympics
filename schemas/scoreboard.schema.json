@@ -48,15 +48,19 @@
 
     "participants": {
       "type": "array",
-      "description": "List of participants in the round with their metadata. Deduplicated by agent_id.",
+      "description": "List of participants in the round with their comparable metadata. Deduplicated by agent_id. All values are safe labels or references — never raw credentials, hostnames, or secrets.",
       "items": {
         "type": "object",
         "required": ["agent_id"],
         "properties": {
-          "agent_id": { "type": "string", "minLength": 1 },
-          "runtime": { "type": "string" },
-          "model": { "type": "string" },
-          "node": { "type": "string" }
+          "agent_id": { "type": "string", "minLength": 1, "description": "Operator-supplied participant identifier." },
+          "adapter": { "type": "string", "description": "Adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'. Operator-supplied; never a credential." },
+          "runtime": { "type": "string", "description": "Runtime name. Operator-supplied." },
+          "runtime_version": { "type": "string", "description": "Runtime version. Operator-supplied." },
+          "model": { "type": "string", "description": "Model identifier. Operator-supplied." },
+          "model_provider": { "type": "string", "description": "Model provider reference. Operator-supplied; never a credential or endpoint secret." },
+          "node": { "type": "string", "description": "Node profile reference. Operator-supplied label; never the SSH hostname or IP." },
+          "config_profile": { "type": "string", "description": "Configuration profile reference. Operator-supplied safe label." }
         },
         "additionalProperties": true
       },
@@ -85,6 +89,23 @@
           "packet_ref": {
             "type": "string",
             "description": "Relative path to the result packet file."
+          },
+
+          "submission_metadata": {
+            "type": "object",
+            "description": "Comparable submission metadata extracted from the result packet. Operator-supplied safe labels only — no secrets.",
+            "properties": {
+              "runtime": { "type": "string", "description": "Runtime name." },
+              "runtime_version": { "type": "string", "description": "Runtime version." },
+              "adapter": { "type": "string", "description": "Adapter class." },
+              "model": { "type": "string", "description": "Model identifier." },
+              "model_provider": { "type": "string", "description": "Model provider reference." },
+              "node": { "type": "string", "description": "Node profile reference." },
+              "config_profile": { "type": "string", "description": "Configuration profile reference." },
+              "task_version": { "type": "string", "description": "Task envelope version." },
+              "fixture_ref": { "type": "string", "description": "Fixture bundle reference path." }
+            },
+            "additionalProperties": true
           },
 
           "status": {
