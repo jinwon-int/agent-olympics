@@ -9,7 +9,9 @@
         validate-rounds rounds-check round \
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
-        score score-validate score-run score-aggregate validate-scoreboard
+        score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
+        score-blind score-blind-score score-blind-aggregate score-all \
+        validate-web-fields validate-web-bridge
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
 
@@ -160,6 +162,46 @@ score-aggregate:
 # Validate the scoreboard schema
 validate-scoreboard:
 	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
+
+# --- Blind scoring targets ---
+
+# Run full pipeline in blind mode (anonymize before scoring)
+score-blind:
+	node scripts/score.js run --blind
+
+# Score only in blind mode
+score-blind-score:
+	node scripts/score.js score --blind
+
+# Aggregate only in blind mode
+score-blind-aggregate:
+	node scripts/score.js aggregate --blind
+
+# Run both blind and non-blind, validate both outputs
+score-all:
+	node scripts/score.js run
+	node scripts/score.js run --blind
+
+# --- Web data bridge targets ---
+
+# Validate scoreboard has all required web-display fields
+validate-web-fields:
+	node -e '\
+	const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8"));\
+	let missing = 0;\
+	for (const e of sb.entries) {\
+	  if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); }\
+	  if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); }\
+	  if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); }\
+	  if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); }\
+	}\
+	console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields");\
+	process.exit(missing > 0 ? 1 : 0);\
+'
+
+# Full web data bridge validation: scoreboard + blind + field check
+validate-web-bridge: score score-blind validate-web-fields
+	@echo "Web data bridge validation complete."
 
 # Remove generated artifacts and dependencies
 clean:

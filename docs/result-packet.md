@@ -397,6 +397,11 @@ A redaction rule that contains the actual secret value is **not redaction** — 
 
 Leaderboards and result detail pages consume standard fields from the result packet and judge record. This section documents which fields feed into the web surface, how they should be displayed, and what metadata must be present for meaningful comparison.
 
+> **Note:** The authoritative reference for judge-record-to-web-display field
+> mappings is now [`docs/web-result-data-bridge.md`](web-result-data-bridge.md).
+> This section provides a summary; the bridge doc covers filter predicates,
+> pagination, blind display rules, and comparison view design.
+
 ### Leaderboard Columns
 
 | Column | Source Field | Display Rule | Required for Compare? |

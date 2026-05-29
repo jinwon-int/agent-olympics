@@ -148,8 +148,58 @@ node scripts/score.js score [results-dir]
 # Aggregate only (validate + score + produce scoreboard JSON)
 node scripts/score.js aggregate [results-dir]
 
+# Blind judging mode (anonymize before scoring)
+node scripts/score.js score [results-dir] --blind
+node scripts/score.js aggregate [results-dir] --blind
+
 # Default results-dir: ./results/
 ```
+
+### Blind Judging with `--blind`
+
+The `--blind` flag anonymizes result packets before processing. It replaces
+participant identity, runtime, model, and node fields with blinded placeholders
+so that automated scoring does not reveal who produced which result.
+
+**Blind fields:**
+
+| Original | Blinded Replacement |
+|---|---|
+| `agent_id` | `blinded-participant-N` (counter-based) |
+| `runtime` | `blinded-runtime` |
+| `runtime_version` | `0.0.0` |
+| `model` | `blinded-model` |
+| `model_provider` | `blinded-provider` |
+| `node` | `blinded-node` |
+| `adapter` | `blinded-adapter` |
+| `comparable_metadata.*` | Same rules applied to each sub-block |
+
+**Preserved during blind scoring:**
+
+- `hardware_profile` (cpu_class, memory_gb, etc.) — enables hardware-fair
+  comparison without revealing participant or node identity.
+- `task_id`, `evidence`, `findings`, `outputs` — all scoring-relevant content.
+- `raw_measurements` — performance baselines remain comparable.
+
+**Output:**
+
+- Auto-generated judge records use blinded identifiers.
+- Scoreboard `schema_description` appends "(blind — anonymized)".
+- The scoreboard is identical in structure to a non-blind run — only identity
+  fields differ.
+
+**Workflow for official comparison rounds:**
+
+1. Collect all result packets in a directory.
+2. Run `node scripts/score.js run ./results --blind` to produce an anonymized
+   scoreboard.
+3. Human/blind judges score the three pending dimensions (correctness,
+   communication, durability) against blinded packets.
+4. An external reconciliation step maps blinded IDs back to actual
+   participants (handled by round orchestration, not score.js).
+
+See [Web Result Data Bridge](web-result-data-bridge.md) §5 for web display
+rules when consuming blind scoreboard data.
 
 ### Output files
 
@@ -185,6 +235,14 @@ The three lanes share the `scripts/` directory and the results directory.
 This scoring engine expects:
 - Result packets in the `results/` directory (or a specified subdirectory).
 - Existing judge records (optional) in the same directory, named `*-judge.yaml`.
+
+### Web Data Bridge
+
+The scoreboard produced by this engine is the **primary data source** for
+future web leaderboard and result-detail pages. See
+[Web Result Data Bridge](web-result-data-bridge.md) for the complete field
+mapping from judge record and scoreboard entry to web display columns,
+detail page sections, and comparison views.
 
 ---
 

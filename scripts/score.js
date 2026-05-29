@@ -680,7 +680,7 @@ function assessComparability(rp, hwProfile, subMeta) {
  * Gather all result packets from a directory, validate, score, and produce
  * a scoreboard JSON.
  */
-async function buildScoreboard(resultsDir) {
+async function buildScoreboard(resultsDir, blindMode) {
   const files = findResultPackets(resultsDir);
   if (files.length === 0) {
     console.error(`No result packet files found in ${resultsDir}`);
@@ -697,6 +697,20 @@ async function buildScoreboard(resultsDir) {
   for (const f of files) {
     const rel = path.relative(ROOT, f);
     const doc = loadYaml(f);
+
+    // Anonymize packet for blind judging BEFORE any processing
+    if (blindMode) {
+      if (doc.result_packet) {
+        // run-result wrapper
+        doc.result_packet = anonymisePacket(doc.result_packet);
+      } else {
+        // standalone result packet
+        // Apply anonymisation in-place by replacing identity fields
+        const blinded = anonymisePacket(doc);
+        Object.keys(blinded).forEach(k => { doc[k] = blinded[k]; });
+      }
+      console.log(`   Blind mode: anonymized ${rel}`);
+    }
     if (!doc) {
       console.error(`SKIP  ${rel}  - empty or unparseable`);
       continue;
@@ -875,13 +889,14 @@ async function buildScoreboard(resultsDir) {
   const automatedChecksCount = autoDims.length * totalEntries;
   const pendingChecksCount = pendDims.length * totalEntries;
 
+  const blindLabel = blindMode ? ' (blind — anonymized)' : '';
   const scoreboard = {
     schema_version: 1,
-    schema_description: 'Agent Olympics Scoreboard — automated validation + pending human/blind-judge dimensions',
+    schema_description: `Agent Olympics Scoreboard — automated validation + pending human/blind-judge dimensions${blindLabel}`,
     scoreboard_id: `sb-${path.basename(resultsDir)}-${Date.now()}`,
     round_id: `round-${path.basename(resultsDir)}`,
     generated_at: new Date().toISOString(),
-    generated_by: 'score.js v1 (MVP Round Engine — lane 3/3)',
+    generated_by: `score.js v1 (MVP Round Engine — lane 3/3)${blindLabel}`,
     participants: Array.from(participants.values()),
     entries: entries,
     summary: {
@@ -976,12 +991,100 @@ function findJudgeFiles(dir, packetFileName) {
 // CLI entry point
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Blind scoring helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Anonymise a result packet for blind judging by removing participant
+ * identity, runtime info, model info, and node references.
+ *
+ * Returns a new deep-cloned object with identity fields replaced by
+ * blinded placeholders. The original packet is not mutated.
+ *
+ * Blind fields:
+ *  - agent_id       → 'blinded-participant-N' (counter-based)
+ *  - runtime        → 'blinded-runtime'
+ *  - runtime_version → '0.0.0'
+ *  - model          → 'blinded-model'
+ *  - model_provider → 'blinded-provider'
+ *  - node           → 'blinded-node'
+ *  - adapter        → 'blinded-adapter'
+ *  - judge_identity → 'blind-judge'
+ *
+ * comparable_metadata blocks are also anonymised at the same level.
+ */
+let _blindCounter = 0;
+
+function anonymisePacket(rp) {
+  const copy = JSON.parse(JSON.stringify(rp));
+  _blindCounter++;
+
+  const blindId = `blinded-participant-${_blindCounter}`;
+
+  copy.agent_id = blindId;
+  if (copy.runtime) copy.runtime = 'blinded-runtime';
+  if (copy.runtime_version) copy.runtime_version = '0.0.0';
+  if (copy.model) copy.model = 'blinded-model';
+  if (copy.model_provider) copy.model_provider = 'blinded-provider';
+  if (copy.node) copy.node = 'blinded-node';
+  if (copy.adapter) copy.adapter = 'blinded-adapter';
+
+  // Anonymise comparable_metadata
+  if (copy.comparable_metadata) {
+    const cm = copy.comparable_metadata;
+    if (cm.participant) {
+      cm.participant.agent_id = blindId;
+      if (cm.participant.adapter) cm.participant.adapter = 'blinded-adapter';
+    }
+    if (cm.runtime) {
+      cm.runtime.name = 'blinded-runtime';
+      if (cm.runtime.version) cm.runtime.version = '0.0.0';
+    }
+    if (cm.model) {
+      cm.model.name = 'blinded-model';
+      if (cm.model.provider) cm.model.provider = 'blinded-provider';
+    }
+    if (cm.node) {
+      cm.node.profile_ref = 'blinded-node';
+      if (cm.node.hardware_profile) {
+        // Preserve hardware profile for comparability; class labels are safe
+      }
+    }
+    if (cm.config) {
+      cm.config.profile_ref = 'blinded-config';
+      if (cm.config.details) {
+        delete cm.config.details;
+      }
+    }
+  }
+
+  // Strip comparable metadata artifact_hashes (could fingerprint participant)
+  if (copy.comparable_metadata && copy.comparable_metadata.artifact_hashes) {
+    delete copy.comparable_metadata.artifact_hashes;
+  }
+
+  return copy;
+}
+
+/**
+ * Reset the blind counter between runs for deterministic output.
+ */
+function resetBlindCounter() {
+  _blindCounter = 0;
+}
+
 function usage() {
   console.log(`Usage:
-  node scripts/score.js validate [results-dir]
-  node scripts/score.js score [results-dir]
-  node scripts/score.js aggregate [results-dir]
-  node scripts/score.js run [results-dir]
+  node scripts/score.js validate [results-dir] [--blind]
+  node scripts/score.js score [results-dir] [--blind]
+  node scripts/score.js aggregate [results-dir] [--blind]
+  node scripts/score.js run [results-dir] [--blind]
+
+Options:
+  --blind    Anonymize result packets before scoring (blind judging mode).
+             Removes agent_id, runtime, model, node, and comparable_metadata
+             participant/runtime identity before auto-judging or aggregation.
 
 Modes:
   validate   — Run existing validator on result packets only
@@ -995,6 +1098,9 @@ Default results-dir: ${DEFAULT_RESULTS}`);
 
 async function main() {
   const args = process.argv.slice(2);
+  const blindFlagIndex = args.indexOf('--blind');
+  const blindMode = blindFlagIndex !== -1;
+  if (blindFlagIndex !== -1) args.splice(blindFlagIndex, 1);
   const mode = args[0] || 'run';
   const resultsDir = args[1] ? path.resolve(args[1]) : DEFAULT_RESULTS;
 
@@ -1034,8 +1140,13 @@ async function main() {
     }
   }
 
+  if (blindMode) {
+    console.log('Blind mode: ON — anonymizing participant identity before scoring.');
+    resetBlindCounter();
+  }
+
   // score, aggregate, and run all produce judge records
-  const scoreboard = await buildScoreboard(resultsDir);
+  const scoreboard = await buildScoreboard(resultsDir, blindMode);
 
   if (mode === 'score') {
     console.log('\n✓ Scoring complete. Judge records written.');
