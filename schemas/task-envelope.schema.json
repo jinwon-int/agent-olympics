@@ -29,7 +29,9 @@
         "code-sprint",
         "wiki-marathon",
         "safety-trial",
-        "coordination-drill"
+        "coordination-drill",
+        "tool-decathlon",
+        "harness-reliability"
       ]
     },
     "category": { "type": "string", "minLength": 1 },
@@ -51,7 +53,10 @@
           "resource_efficiency",
           "safety",
           "durability",
-          "communication"
+          "communication",
+          "tool_optimization",
+          "operating_discipline",
+          "reliability_liveness"
         ]
       }
     },
