@@ -5,9 +5,10 @@
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
         validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
-        oracle smoke-check smoke fixtures-check setup clean
+        oracle smoke-check smoke fixtures-check setup clean \
+        score score-validate score-run score-aggregate validate-scoreboard
 
-all: validate-all validate-v2 validate-oracle validate-fixtures
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-scoreboard
 
 # Install dependencies
 setup:
@@ -75,6 +76,34 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
 
-# Remove generated artifacts and dependencies
-clean:
-	rm -rf node_modules
+# --- Scoring / Judge targets ---
+
+# Run score.js full pipeline: validate + auto-judge + scoreboard
+score:
+	node scripts/score.js run
+
+# Validate result packets through the scoring engine
+score-validate:
+	node scripts/score.js validate
+
+# Validate + auto-judge result packets
+score-run:
+	node scripts/score.js run
+
+# Aggregate scoreboard (validate + score + scoreboard JSON)
+score-aggregate:
+	node scripts/score.js aggregate
+
+# Validate the scoreboard schema
+validate-scoreboard:
+	node -e "
+	var fs = require('fs');
+	var path = require('path');
+	var Ajv = require('ajv/dist/2020');
+	var addFormats = require('ajv-formats');
+	var ajv = new Ajv({ allErrors: true, verbose: true });
+	addFormats(ajv);
+	var schema = JSON.parse(fs.readFileSync('schemas/scoreboard.schema.json', 'utf8'));
+	ajv.addSchema(schema, schema.\$$id);
+	console.log('✓ Scoreboard schema loaded and compiled.');
+	
