@@ -966,7 +966,8 @@ function cmdFixtures(fixturesDir) {
     process.exit(1);
   }
 
-  const yamlFiles = findYamlFiles(fixturesDir);
+  const yamlFiles = findYamlFiles(fixturesDir)
+    .filter(f => !/fixtures[\\/]competition-validity[\\/](run-artifacts|run-lifecycle)[\\/]/.test(f));
   if (yamlFiles.length === 0) {
     warn('fixtures', 'No YAML files found in fixtures directory');
   }
@@ -992,6 +993,9 @@ function cmdFixtures(fixturesDir) {
         checkHiddenJudgeMaterial(doc, f);
         if (doc.judge_record_id) {
           checkScoreConsistency(doc, f);
+        }
+        if (doc.manifest_id && Array.isArray(doc.artifacts)) {
+          checkArtifactManifestDocument(doc, f);
         }
       }
     } catch (e) {
@@ -1029,6 +1033,81 @@ function cmdFixtures(fixturesDir) {
     }
   }
 
+  const runArtifactRoot = path.resolve(ROOT, fixturesDir, 'run-artifacts');
+  if (fs.existsSync(runArtifactRoot)) {
+    const cases = [
+      { name: 'positive', negative: false },
+      { name: 'negative', negative: true },
+    ];
+    for (const c of cases) {
+      const runDir = path.join(runArtifactRoot, c.name);
+      if (!fs.existsSync(runDir)) continue;
+
+      const rel = path.relative(ROOT, runDir);
+      const fileErrors = errors;
+      const fileWarnings = warnings;
+      checkRunArtifactIntegrity(runDir);
+      const newErrors = errors - fileErrors;
+      const newWarnings = warnings - fileWarnings;
+
+      if (c.negative) {
+        if (newErrors > 0) {
+          console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+          expectedFailures++;
+        } else {
+          console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
+          failedFiles++;
+        }
+      } else if (newErrors > 0) {
+        console.log(`FAIL  ${rel}  - ${newErrors} error(s), ${newWarnings} warning(s)`);
+        failedFiles++;
+      } else {
+        console.log(`OK    ${rel}  (pass)`);
+        passedFiles++;
+      }
+    }
+  }
+
+  const lifecycleRoundDir = path.resolve(ROOT, fixturesDir, 'run-lifecycle/season-001-round-001');
+  if (fs.existsSync(lifecycleRoundDir)) {
+    const runDirs = fs.readdirSync(lifecycleRoundDir, { withFileTypes: true })
+      .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+      .map(e => e.name)
+      .sort();
+
+    for (const dirName of runDirs) {
+      const runDir = path.join(lifecycleRoundDir, dirName);
+      const rel = path.relative(ROOT, runDir);
+      const isNegative = !dirName.endsWith('-complete');
+      const fileErrors = errors;
+      const fileWarnings = warnings;
+      const manifestPath = path.join(runDir, 'manifest.yaml');
+      const manifest = fs.existsSync(manifestPath) ? checkRunManifest(manifestPath) : null;
+      if (!manifest) warn(`fixtures:${rel}`, 'Run manifest unavailable for fixture evaluation');
+      checkEngineOutputs(runDir, manifest);
+      checkCrossDocumentConsistency(runDir, manifest);
+      checkRunArtifactIntegrity(runDir);
+      const newErrors = errors - fileErrors;
+      const newWarnings = warnings - fileWarnings;
+
+      if (isNegative) {
+        if (newErrors > 0) {
+          console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+          expectedFailures++;
+        } else {
+          console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
+          failedFiles++;
+        }
+      } else if (newErrors > 0) {
+        console.log(`FAIL  ${rel}  - ${newErrors} error(s), ${newWarnings} warning(s)`);
+        failedFiles++;
+      } else {
+        console.log(`OK    ${rel}  (pass)`);
+        passedFiles++;
+      }
+    }
+  }
+
   // Clean up accumulated counts — fixtures mode reports separately
   errors = 0;
   warnings = 0;
@@ -1039,6 +1118,45 @@ function cmdFixtures(fixturesDir) {
   console.log(`Expected failures: ${expectedFailures}`);
 
   process.exit(failedFiles > 0 ? 1 : 0);
+}
+
+function checkArtifactManifestDocument(manifest, filePath) {
+  const rel = path.relative(ROOT, filePath);
+  const requiredFields = ['manifest_id', 'run_id', 'round_id', 'task_id', 'agent_id', 'status'];
+  for (const field of requiredFields) {
+    if (!manifest[field]) {
+      error(`artifact-manifest:${rel}`, `Missing required field "${field}"`);
+    }
+  }
+
+  const validStatuses = ['pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified'];
+  if (manifest.status && !validStatuses.includes(manifest.status)) {
+    error(`artifact-manifest:${rel}`, `Invalid status "${manifest.status}"`);
+  }
+
+  const validRetention = ['ephemeral', 'round', 'season', 'permanent'];
+  for (const artifact of manifest.artifacts || []) {
+    if (!artifact.path) {
+      error(`artifact-manifest:${rel}`, 'Artifact entry missing "path"');
+    }
+    if (artifact.checksum) {
+      const { algorithm, value } = artifact.checksum;
+      if (!algorithm) warn(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has checksum value but no algorithm`);
+      if (!value || typeof value !== 'string' || !/^[a-f0-9]+$/i.test(value)) {
+        error(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has invalid checksum value`);
+      }
+    }
+    if (artifact.retention && !validRetention.includes(artifact.retention)) {
+      error(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has invalid retention "${artifact.retention}"`);
+    }
+  }
+
+  if (manifest.retention_policy) {
+    const defaultRetention = manifest.retention_policy.default_retention;
+    if (defaultRetention && !validRetention.includes(defaultRetention)) {
+      error(`artifact-manifest:${rel}`, `Invalid retention_policy.default_retention "${defaultRetention}"`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1074,6 +1192,11 @@ function checkRunArtifactIntegrity(runDir) {
     return false;
   }
   ok(`run-artifacts:${rel}/manifest.yaml`, 'Manifest parsed successfully');
+
+  if (!Array.isArray(manifest.artifacts) && manifest.lifecycle) {
+    warn(`run-artifacts:${rel}/manifest.yaml`, 'Lifecycle run manifest has no artifact manifest entries; artifact integrity skipped');
+    return true;
+  }
 
   // Required fields
   const requiredFields = ['manifest_id', 'run_id', 'round_id', 'task_id', 'agent_id', 'status'];
