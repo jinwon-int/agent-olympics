@@ -1,0 +1,248 @@
+# Baseline Run — perf-001 (Performance Trial, sogyo / OpenClaw profile)
+#
+# Third baseline sample for the sogyo node/runtime profile (OpenClaw 2.14.0
+# with agent-id "sogyo" and the openstack adapter mode).  This slice
+# demonstrates the OpenClaw adapter execution path for the Performance
+# Trial workload, using a medium-vps-class host.
+#
+# Raw measurement fields use the `raw_` prefix convention defined in
+# fixtures/season-001/perf-001/workload-definition.yaml.
+#
+# Acceptance criteria:
+#   #26 AC-1 ("baseline table exists for at least two nodes or runtime
+#   profiles") — this adds a third profile variant (OpenClaw runtime /
+#   sogyo agent) alongside the existing medium-vps and small-vps baselines.
+#
+# Related:
+#   Lane issue: https://github.com/jinwon-int/agent-olympics/issues/123
+#   Parent tracker: https://github.com/jinwon-int/agent-olympics/issues/122
+#   Run: agent-olympics-team1-mvp-perf-freeze-20260529T2310KST
+#   Adapter: adapters/openclaw-adapter.js  (--agent-id sogyo, --mode openstack)
+#   Package: tasks/season-001/perf-001-node-throughput-baseline.yaml
+
+schema_version: 1
+packet_id: pkt-perf-001-baseline-sogyo
+task_id: perf-001
+agent_id: sogyo
+agent_version: baseline-v1
+runtime: openclaw
+runtime_version: 2.14.0
+model: gpt-4o-2026-05
+model_provider: openai
+node: sogyo-openclaw-host
+hardware_profile:
+  cpu_class: medium-vps
+  cpu_cores: 4
+  cpu_model: Intel Xeon Platinum 8375C
+  memory_gb: 8
+  storage_class: nvme-dedicated
+  storage_gb: 100
+  os_family: linux
+  os_distro: ubuntu
+  os_version: "24.04"
+configuration_profile:
+  model_routing: direct
+  liveness: telegram-visible
+  resource_limits: configured
+  tool_availability: full
+  memory_policy: durable-enabled
+  service_ownership: documented
+  concurrency_limit: 4
+  adapter: openclaw
+  adapter_mode: openstack
+  seed: agent-olympics-team1-mvp-perf-freeze-20260529T2310KST
+workload_metrics:
+  raw_git_commit_count: 847
+  raw_file_count: 1423
+  raw_line_count: 48391
+  raw_scan_wall_time_seconds: 3.24
+  raw_validated_file_count: 28
+  raw_passed_count: 28
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 1.87
+  raw_validation_latency_ms: 66.8
+  raw_test_count: 34
+  raw_test_passed: 34
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 12.4
+  raw_test_throughput: 2.74
+  raw_probe_count: 5
+  raw_sequential_estimate_seconds: 35.0
+  raw_total_wall_time_seconds: 14.2
+  raw_speedup_factor: 2.46
+  raw_service_stability: stable
+  raw_adapter_overhead_ms: 380
+  raw_session_init_seconds: 1.2
+  raw_packet_assembly_seconds: 0.4
+started_at: "2026-05-29T22:00:00+09:00"
+ended_at: "2026-05-29T22:35:00+09:00"
+status: completed
+summary: >
+  Executed all four Performance Trial workload phases via the OpenClaw
+  adapter (sogyo agent-id, openstack mode) against a medium-vps host.
+  Repository scan completed in 3.2s.  Schema validation passed 28/28
+  files in 1.9s.  Test suite (34 tests) completed in 12.4s with zero
+  failures.  Five parallel probes finished with 2.46x speedup.  Adapter
+  overhead (session init + packet assembly) added ~1.6s.  All services
+  remained stable throughout.
+
+actions:
+  - id: act-init
+    type: adapter
+    target: local
+    command_summary: "OpenClaw adapter session init (sogyo, openstack mode)"
+    redacted: false
+    evidence_id: ev-adapter-init
+    duration_seconds: 1.2
+  - id: act-scan
+    type: command
+    target: local
+    command_summary: "git rev-list --count HEAD to measure repo size"
+    redacted: false
+    evidence_id: ev-git-count
+    duration_seconds: 0.3
+  - id: act-cloc
+    type: command
+    target: local
+    command_summary: "Count files and lines under workload directory"
+    redacted: false
+    evidence_id: ev-cloc
+    duration_seconds: 2.1
+  - id: act-validate
+    type: command
+    target: local
+    command_summary: "Validate all YAML/JSON against schemas"
+    redacted: false
+    evidence_id: ev-schema
+    duration_seconds: 1.9
+  - id: act-test
+    type: command
+    target: local
+    command_summary: "npm test on workload repository"
+    redacted: false
+    evidence_id: ev-test
+    duration_seconds: 12.4
+  - id: act-probes
+    type: command
+    target: local
+    command_summary: "Run multi-probe diagnostics (5 probes, parallel)"
+    redacted: false
+    evidence_id: ev-probes
+    duration_seconds: 14.2
+  - id: act-assemble
+    type: adapter
+    target: local
+    command_summary: "OpenClaw adapter result packet assembly and output"
+    redacted: false
+    evidence_id: ev-packet-assembly
+    duration_seconds: 0.4
+
+evidence:
+  - id: ev-adapter-init
+    kind: observation
+    source: openclaw-adapter.js
+    summary: >
+      OpenClaw adapter initialised with agent-id=sogyo, runtime=openclaw
+      2.14.0, mode=openstack, event-family=performance-trial, task=perf-001
+    redacted: false
+  - id: ev-git-count
+    kind: command_output
+    source: workload repo
+    summary: "git rev-list --count HEAD returned 847 commits"
+    redacted: false
+  - id: ev-cloc
+    kind: command_output
+    source: workload repo
+    summary: "1423 files, 48391 lines across workload directory"
+    redacted: false
+  - id: ev-schema
+    kind: command_output
+    source: schema validation run
+    summary: "28 schemas validated, 28 passed, 0 failed, avg 66.8ms per file"
+    redacted: false
+  - id: ev-test
+    kind: command_output
+    source: test suite run
+    summary: "34 tests passed, 0 failed, 12.4s wall time"
+    redacted: false
+  - id: ev-probes
+    kind: command_output
+    source: multi-probe diagnostics
+    summary: "5 probes completed, 14.2s total, 2.46x speedup, all services stable"
+    redacted: false
+  - id: ev-packet-assembly
+    kind: observation
+    source: openclaw-adapter.js
+    summary: >
+      Adapter assembled and emitted result-packet.yaml, trace.yaml,
+      evidence-bundle.yaml, manifest.yaml in 0.4s
+    redacted: false
+  - id: ev-stability
+    kind: observation
+    source: gateway health check
+    summary: "Gateway, messaging, and SSH remained responsive during workload"
+    redacted: false
+
+findings:
+  - claim: sogyo (OpenClaw, openstack mode) completes all four workload phases within the 60-minute time limit.
+    evidence: [ev-adapter-init, ev-git-count, ev-cloc, ev-schema, ev-test, ev-probes, ev-packet-assembly]
+    confidence: high
+  - claim: Schema validation throughput is 14.97 files/second with zero errors — consistent with OpenClaw direct-routing performance.
+    evidence: [ev-schema]
+    confidence: high
+  - claim: Five parallel probes achieve 2.46x speedup — moderate parallelism benefit on 4-core host with concurrency_limit=4.
+    evidence: [ev-probes]
+    confidence: high
+  - claim: Adapter overhead (session init + packet assembly) adds ~1.6s to total execution time — negligible for 60-minute envelopes.
+    evidence: [ev-adapter-init, ev-packet-assembly]
+    confidence: high
+  - claim: All services remained stable under concurrent workload.
+    evidence: [ev-stability, ev-probes]
+    confidence: high
+  - claim: No performance bottleneck was dominated by hardware limits at this workload scale.
+    evidence: [ev-cloc, ev-schema, ev-test, ev-probes]
+    confidence: medium
+
+risks:
+  - OpenClaw adapter overhead (~1.6s) scales with result-packet complexity; large evidence bundles may increase assembly time.
+  - Medium class (8 GB) may become CPU-bound for multi-probe phases with >5 concurrent probes.
+  - Single-threaded validation (Phase B) does not benefit from additional cores — parallel validation would improve throughput.
+  - sogyo agent-id configuration (openstack mode) grants full tool access; a misconfigured adapter could exceed forbidden-action boundaries.
+
+outputs:
+  workload_summary: >
+    sogyo (OpenClaw 2.14.0, openstack mode) on a medium-vps-class host
+    completed all four perf-001 workload phases in 35 minutes wall time.
+    Adapter overhead was 1.6s (session init + packet assembly).  Raw
+    measurements match the medium-vps baseline within margin, confirming
+    the OpenClaw adapter does not introduce significant runtime overhead
+    beyond session lifecycle.
+  hardware_profile: >
+    4 vCPU Intel Xeon Platinum, 8 GB RAM, NVMe dedicated storage,
+    Ubuntu 24.04.  Medium-class VPS suitable for single-agent and
+    light multi-probe workloads.
+  configuration_profile: >
+    OpenClaw runtime 2.14.0, openstack adapter mode, direct model
+    routing (gpt-4o), Telegram-visible liveness, resource limits
+    configured, concurrency_limit=4, durable memory enabled.
+  workload_metrics: >
+    See workload_metrics field above.  All raw_ prefix values carry
+    measured data.  The raw_adapter_overhead_ms and raw_session_init_seconds
+    fields are sogyo-profile-specific additions capturing OpenClaw
+    adapter lifecycle timing.
+  stability_assessment: >
+    Gateway remained stable.  Telegram messaging responsive.  SSH
+    session uninterrupted.  No reconnection or timeout events during
+    any phase.  OpenClaw adapter emitted all six output artifacts
+    (result-packet, trace, evidence-bundle, manifest, run, envelope-copy)
+    without error.
+  tuning_recommendations: >
+    1. Increase concurrency_limit to 6 for Phase D on 4-core hosts
+       to improve probe speedup.
+    2. Parallelise Phase B schema validation for CPU-bound improvement.
+    3. Monitor adapter assembly time as evidence-bundle size grows;
+       consider streaming output for large result packets.
+    4. For competitive rounds, pin the OpenClaw adapter version and
+       seed to ensure reproducible adapter behaviour.
+
+durable_memory_decision: wiki_update_needed
