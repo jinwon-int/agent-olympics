@@ -1243,6 +1243,136 @@ function cmdRunArtifacts(roundDir) {
   process.exit(errors > 0 ? 1 : 0);
 }
 
+// ---------------------------------------------------------------------------
+// 7) LIFECYCLE SUMMARY
+// ---------------------------------------------------------------------------
+
+function safeLoadYaml(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return { ok: false, doc: null };
+    return { ok: true, doc: loadYaml(filePath) };
+  } catch {
+    return { ok: false, doc: { parse_error: 'unparseable' } };
+  }
+}
+
+function cmdLifecycleSummary(roundDir) {
+  const resolved = path.resolve(ROOT, roundDir || '.');
+
+  if (!fs.existsSync(resolved)) {
+    console.log(JSON.stringify({ error: 'Directory not found', path: roundDir }, null, 2));
+    process.exit(1);
+  }
+
+  const runDirs = fs.readdirSync(resolved, { withFileTypes: true })
+    .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+    .map(e => e.name)
+    .sort();
+
+  const summary = {
+    source_dir: roundDir,
+    generated_at: new Date().toISOString(),
+    runner: process.env.A2A_RUNNER || 'manual',
+    run_count: runDirs.length,
+    runs: [],
+  };
+
+  for (const dirName of runDirs) {
+    const runDir = path.join(resolved, dirName);
+    const manifest = safeLoadYaml(path.join(runDir, 'manifest.yaml'));
+    const packet = safeLoadYaml(path.join(runDir, 'result-packet.yaml'));
+    const trace = safeLoadYaml(path.join(runDir, 'trace.yaml'));
+    const judge = safeLoadYaml(path.join(runDir, 'judge-record.yaml'));
+    const bundle = safeLoadYaml(path.join(runDir, 'evidence-bundle.yaml'));
+    const evidenceDir = path.join(runDir, 'evidence');
+
+    const issues = [];
+    if (!manifest.ok) issues.push('missing_manifest');
+    if (!packet.ok) issues.push('missing_result_packet');
+    if (!trace.ok) issues.push('missing_trace');
+    if (!judge.ok) issues.push('missing_judge_record');
+    if (!bundle.ok) issues.push('missing_evidence_bundle');
+
+    const manifestDoc = manifest.doc || {};
+    const packetDoc = packet.doc || {};
+    const judgeDoc = judge.doc || {};
+
+    const lifecycle = manifestDoc.lifecycle || manifestDoc.status;
+    if (lifecycle && !VALID_RUN_STATUSES.has(lifecycle) && lifecycle !== 'disqualified') {
+      issues.push('invalid_lifecycle_status');
+    }
+
+    const taskIds = [manifestDoc.task_id, packetDoc.task_id].filter(Boolean);
+    if (taskIds.length >= 2 && new Set(taskIds).size > 1) issues.push('task_id_mismatch');
+
+    const agentIds = [manifestDoc.agent_id, packetDoc.agent_id].filter(Boolean);
+    if (agentIds.length >= 2 && new Set(agentIds).size > 1) issues.push('agent_id_mismatch');
+
+    if (packetDoc.started_at && packetDoc.ended_at) {
+      const startedAt = new Date(packetDoc.started_at);
+      const endedAt = new Date(packetDoc.ended_at);
+      if (!Number.isNaN(startedAt.valueOf()) && !Number.isNaN(endedAt.valueOf()) && endedAt < startedAt) {
+        issues.push('ended_before_started');
+      }
+    }
+
+    let evidenceFileCount = 0;
+    if (fs.existsSync(evidenceDir)) {
+      evidenceFileCount = fs.readdirSync(evidenceDir).filter(f => f !== '.gitkeep').length;
+    }
+
+    const runEntry = {
+      run_dir: dirName,
+      run_id: manifestDoc.run_id || null,
+      task_id: manifestDoc.task_id || packetDoc.task_id || null,
+      agent_id: manifestDoc.agent_id || packetDoc.agent_id || null,
+      lifecycle: lifecycle || null,
+      status: packetDoc.status || null,
+      has_manifest: manifest.ok,
+      has_result_packet: packet.ok,
+      has_trace: trace.ok,
+      has_judge_record: judge.ok,
+      has_evidence_bundle: bundle.ok,
+      evidence_files: evidenceFileCount,
+      issues,
+      valid: issues.length === 0,
+    };
+
+    if (packetDoc.raw_measurements) runEntry.raw_measurements = packetDoc.raw_measurements;
+    if (packetDoc.scored_values) runEntry.scored_values = packetDoc.scored_values;
+    if (packetDoc.comparable_metadata) runEntry.comparable_metadata = packetDoc.comparable_metadata;
+    if (judgeDoc.total_score !== undefined) runEntry.total_score = judgeDoc.total_score;
+    if (judgeDoc.verdict) runEntry.verdict = judgeDoc.verdict;
+
+    summary.runs.push(runEntry);
+  }
+
+  const validRuns = summary.runs.filter(r => r.valid);
+  const invalidRuns = summary.runs.filter(r => !r.valid);
+  summary.valid_run_count = validRuns.length;
+  summary.invalid_run_count = invalidRuns.length;
+
+  const aggregateBy = (field) => {
+    const aggregate = {};
+    for (const run of summary.runs) {
+      const id = run[field] || 'unknown';
+      if (!aggregate[id]) aggregate[id] = { [field]: id, total: 0, valid: 0, invalid: 0, statuses: {} };
+      aggregate[id].total++;
+      if (run.valid) aggregate[id].valid++;
+      else aggregate[id].invalid++;
+      const status = run.status || 'unknown';
+      aggregate[id].statuses[status] = (aggregate[id].statuses[status] || 0) + 1;
+    }
+    return Object.values(aggregate).sort((a, b) => String(a[field]).localeCompare(String(b[field])));
+  };
+
+  summary.task_summary = aggregateBy('task_id');
+  summary.agent_summary = aggregateBy('agent_id');
+
+  console.log(JSON.stringify(summary, null, 2));
+  process.exit(invalidRuns.length > 0 ? 1 : 0);
+}
+
 function cmdHelp() {
   console.log(`
 Agent Olympics Competition-Validity Validator
@@ -1255,6 +1385,7 @@ Commands:
   engine-outputs <round-dir>   Validate engine outputs per run
   consistency <round-dir>      Cross-document consistency checks
   run-artifacts <round-dir>    Validate run-directory artifact manifest integrity
+  lifecycle-summary <round-dir> Compact completion summary JSON for leaderboard/import
   all <round-dir>              All competition-validity checks
   fixtures <fixtures-dir>      Validate competition-validity fixtures
 
@@ -1287,6 +1418,9 @@ function main() {
       break;
     case 'run-artifacts':
       cmdRunArtifacts(cmdArg || '.');
+      break;
+    case 'lifecycle-summary':
+      cmdLifecycleSummary(cmdArg || '.');
       break;
     case 'all':
       cmdAll(cmdArg || '.');

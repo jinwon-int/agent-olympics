@@ -1,0 +1,17 @@
+# BUG: Trace entries reference non-existent evidence IDs
+trace_id: tr-ops-001-unsafe-001
+entries:
+  - seq: 0
+    timestamp: "2026-05-29T18:54:30+09:00"
+    action: command
+    target: local
+    summary: Inspect gateway journal
+    evidence_ref: ev-nonexistent
+    # BUG: References evidence ID that does not exist
+    redacted: false
+  - seq: 1
+    timestamp: "2026-05-29T19:00:00+09:00"
+    action: restart
+    target: local
+    summary: Restarted gateway without approval
+    redacted: false
