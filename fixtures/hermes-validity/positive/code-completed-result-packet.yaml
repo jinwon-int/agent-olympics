@@ -1,0 +1,193 @@
+# Positive fixture: Hermes code task, completed, all required evidence present
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-hermes-code-001-completed-20260529
+run_id: run-code-001-sogyo-20260529T223000KST
+task_id: code-001
+agent_id: sogyo
+runtime: hermes
+runtime_version: 1.0.0
+model: gpt-5.x
+model_provider: openai
+node: orchestrator-node
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  storage_class: nvme-shared
+  os_family: linux
+configuration_profile:
+  model_routing: documented
+  liveness: hermes-orchestrator
+  resource_limits: configured
+  adapter_mode: orchestrator
+  worker_count: 3
+  max_concurrent_workers: 3
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - delegate
+  used:
+    - read
+    - write
+    - exec
+    - delegate
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: worker_dispatched
+  timeout_handling: timeout_after_900s_status_partial
+  contradiction_resolution: automated_resolved
+started_at: "2026-05-29T22:30:00+09:00"
+ended_at: "2026-05-29T22:40:00+09:00"
+status: completed
+publishable: false
+summary: "Hermes adapter completed code-001 task. 3-step workflow, 3 workers. All worker results merged."
+comparable_metadata:
+  participant:
+    agent_id: sogyo
+    adapter: hermes
+  runtime:
+    name: hermes
+    version: 1.0.0
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    profile_ref: orchestrator-node
+  config:
+    profile_ref: orchestrator-default
+    adapter_mode: orchestrator
+    event_family: code
+    max_concurrent_workers: 3
+  task:
+    task_id: code-001
+    task_version: v1
+  workflow:
+    workflow_id: wf-code-001-sogyo-20260529T223000KST
+    step_count: 3
+    worker_count: 3
+    worker_profiles:
+      - stub-small-vps
+      - stub-medium-vps
+raw_measurements:
+  wall_time_seconds: 600
+  workflow_step_count: 3
+  worker_count: 3
+  workers_completed: 3
+  workers_failed: 0
+  memory_retrievals: 6
+  memory_cache_hit_ratio: 0.67
+  tool_invocations_total: 9
+  retries: 0
+  errors: 0
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 0
+  delivery_probes_succeeded: 0
+actions:
+  - id: act-001
+    type: read
+    target: task_envelope
+    command_summary: Parse task envelope from file
+    redacted: false
+    evidence_id: ev-session-input
+  - id: act-002
+    type: api_call
+    target: hermes_orchestrator
+    command_summary: Create Hermes orchestrator session
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    evidence_id: ev-orchestrator-session
+  - id: act-003
+    type: plan
+    target: workflow
+    command_summary: Decompose task "code" into 3-step workflow plan
+    redacted: false
+    evidence_id: ev-workflow-plan
+  - id: act-004
+    type: delegate
+    target: worker_pool
+    command_summary: Dispatch 3 workers with code subtasks
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    evidence_id: ev-worker-assignments
+  - id: act-005
+    type: collect
+    target: worker_results
+    command_summary: Collect code diff and test results from workers
+    redacted: false
+    evidence_id: ev-worker-traces
+  - id: act-006
+    type: synthesize
+    target: commander_report
+    command_summary: Synthesize final code review report
+    redacted: false
+    evidence_id: ev-commander-report
+evidence:
+  - id: ev-session-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input task envelope for code event family
+    redacted: false
+    content_ref: envelope-copy.yaml
+  - id: ev-orchestrator-session
+    kind: log
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+  - id: ev-workflow-plan
+    kind: workflow_plan
+    source: hermes workflow engine
+    summary: Workflow plan with 3 steps for event family "code"
+    redacted: false
+    content_ref: evidence/workflow-plan.yaml
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+    redacted: false
+  - id: ev-worker-traces
+    kind: worker_trace
+    source: worker execution traces
+    summary: Consolidated code tool traces from 3 workers
+    redacted: false
+    content_ref: evidence/worker-traces.yaml
+  - id: ev-memory-summary
+    kind: memory_summary
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted)
+    redacted: true
+    redaction_reason: hermes_memory_content
+    content_ref: evidence/memory-summary.yaml
+  - id: ev-commander-report
+    kind: commander_report
+    source: hermes commander
+    summary: Synthesized commander report with code review findings
+    redacted: false
+    content_ref: evidence/commander-report.yaml
+findings:
+  - claim: Hermes adapter executed workflow for code-001 with status completed.
+    evidence:
+      - ev-session-input
+      - ev-orchestrator-session
+    confidence: high
+  - claim: Three workers dispatched for code analysis, fix, and verification.
+    evidence:
+      - ev-worker-assignments
+      - ev-worker-traces
+    confidence: high
+  - claim: Commander report synthesized with code review findings and artifact hashes.
+    evidence:
+      - ev-commander-report
+      - ev-memory-summary
+    confidence: high
+risks:
+  - Code diffs submitted by workers may overlap and conflict; contradiction log would capture mismatches
+outputs:
+  commander_report: Hermes commander report for code-001. 3 workers completed.
+  code_review: Typescript regression analysis complete. All fixes verified.

@@ -36,6 +36,19 @@ fixtures/adapters/
     sample-evidence-bundle-stub.yaml     ← Validatable evidence bundle stub
 ```
 
+## Adapter Validity Fixtures
+
+Each adapter also has a dedicated validity fixture directory for regression
+and schema-compliance testing:
+
+| Adapter | Validity Fixtures |
+|---|---|
+| OpenClaw | `fixtures/openclaw-validity/` — positive + negative result packets, traces, evidence bundles |
+| Hermes   | `fixtures/hermes-validity/` — positive + negative result packets, traces, evidence bundles, manifests |
+
+Validity fixtures follow the same naming conventions as the adapter-specific
+directories. See `docs/adapter-compatibility-fixtures.md` for full documentation.
+
 ## What These Are Not
 
 - **Not task fixture bundles.** Task-specific fixture data (gateway logs,
