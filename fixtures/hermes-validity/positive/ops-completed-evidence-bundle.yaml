@@ -1,0 +1,71 @@
+# Positive fixture: Hermes ops task evidence bundle
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+bundle_id: eb-run-ops-001-sogyo-20260529T222800KST
+run_id: run-ops-001-sogyo-20260529T222800KST
+agent_id: sogyo
+runtime: hermes
+generated_at: "2026-05-29T22:45:00+09:00"
+adapter_mode: orchestrator
+event_family: ops
+items:
+  - id: ev-session-input
+    kind: config_snippet
+    source: task envelope
+    summary: Copy of input task envelope for ops event family
+    content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    size_bytes: 2048
+    checksum:
+      algorithm: sha256
+      value: aaa123def456abc123def456abc123def456abc123def456abc123def4567890
+    redacted: false
+  - id: ev-workflow-plan
+    kind: workflow_plan
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+    content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    size_bytes: 2560
+    checksum:
+      algorithm: sha256
+      value: bbb123def456abc123def456abc123def456abc123def456abc123def4567890
+    redacted: false
+  - id: ev-worker-traces
+    kind: worker_trace
+    source: worker execution traces
+    summary: Consolidated tool traces from 3 workers
+    content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    size_bytes: 4096
+    checksum:
+      algorithm: sha256
+      value: ccc123def456abc123def456abc123def456abc123def456abc123def4567890
+    redacted: false
+  - id: ev-memory-summary
+    kind: memory_summary
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+    content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    size_bytes: 2048
+    checksum:
+      algorithm: sha256
+      value: ddd123def456abc123def456abc123def456abc123def456abc123def4567890
+    redacted: true
+    redaction_rule: hermes_memory_content
+    metadata:
+      total_keys_requested: 4
+      total_keys_found: 2
+      cache_hit_ratio: 0.5
+  - id: ev-commander-report
+    kind: commander_report
+    source: hermes commander
+    summary: Synthesized commander report from all worker results
+    content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    size_bytes: 3072
+    checksum:
+      algorithm: sha256
+      value: fff123def456abc123def456abc123def456abc123def456abc123def4567890
+    redacted: false

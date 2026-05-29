@@ -1,0 +1,217 @@
+# Positive fixture: Hermes ops task, completed, all required evidence present
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-hermes-ops-001-completed-20260529
+run_id: run-ops-001-sogyo-20260529T222800KST
+task_id: ops-001
+agent_id: sogyo
+runtime: hermes
+runtime_version: 1.0.0
+model: gpt-5.x
+model_provider: openai
+node: orchestrator-node
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  storage_class: nvme-shared
+  os_family: linux
+configuration_profile:
+  model_routing: documented
+  liveness: hermes-orchestrator
+  resource_limits: configured
+  adapter_mode: orchestrator
+  worker_count: 3
+  max_concurrent_workers: 3
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  used:
+    - read
+    - write
+    - exec
+    - web_search
+    - delegate
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: required_for_long_tasks
+  delegation_policy: worker_dispatched
+  timeout_handling: timeout_after_900s_status_partial
+  contradiction_resolution: automated_resolved
+started_at: "2026-05-29T22:28:00+09:00"
+ended_at: "2026-05-29T22:45:00+09:00"
+status: completed
+publishable: true
+summary: "Hermes adapter completed ops-001 task. Workflow plan with 4 steps, 3 workers dispatched. All worker evidence merged cleanly. Commander report synthesized with no contradictions."
+comparable_metadata:
+  participant:
+    agent_id: sogyo
+    adapter: hermes
+  runtime:
+    name: hermes
+    version: 1.0.0
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    profile_ref: orchestrator-node
+  config:
+    profile_ref: orchestrator-default
+    adapter_mode: orchestrator
+    event_family: ops
+    max_concurrent_workers: 3
+  task:
+    task_id: ops-001
+    task_version: v1
+  workflow:
+    workflow_id: wf-ops-001-sogyo-20260529T222800KST
+    step_count: 4
+    worker_count: 3
+    worker_profiles:
+      - stub-small-vps
+      - stub-medium-vps
+raw_measurements:
+  wall_time_seconds: 1020
+  workflow_step_count: 4
+  worker_count: 3
+  workers_completed: 3
+  workers_failed: 0
+  memory_retrievals: 8
+  memory_cache_hit_ratio: 0.5
+  tool_invocations_total: 12
+  retries: 0
+  errors: 0
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+
+actions:
+  - id: act-001
+    type: read
+    target: task_envelope
+    command_summary: Parse task envelope from file
+    redacted: false
+    evidence_id: ev-session-input
+  - id: act-002
+    type: api_call
+    target: hermes_orchestrator
+    command_summary: Create Hermes orchestrator session
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    evidence_id: ev-orchestrator-session
+  - id: act-003
+    type: plan
+    target: workflow
+    command_summary: Decompose task "ops" into 4-step workflow plan
+    redacted: false
+    evidence_id: ev-workflow-plan
+  - id: act-004
+    type: delegate
+    target: worker_pool
+    command_summary: Dispatch 3 workers with assigned subtasks
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    evidence_id: ev-worker-assignments
+  - id: act-005
+    type: api_call
+    target: worker_readiness
+    command_summary: Probe worker readiness and memory cache availability
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    evidence_id: ev-probe-result
+  - id: act-006
+    type: collect
+    target: worker_results
+    command_summary: Collect tool traces and memory summaries from workers
+    redacted: false
+    evidence_id: ev-worker-traces
+  - id: act-007
+    type: synthesize
+    target: commander_report
+    command_summary: Synthesize final commander report from all worker results
+    redacted: false
+    evidence_id: ev-commander-report
+
+evidence:
+  - id: ev-session-input
+    kind: config_snippet
+    source: task envelope
+    summary: Input task envelope for ops event family
+    redacted: false
+    content_ref: envelope-copy.yaml
+  - id: ev-orchestrator-session
+    kind: log
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+  - id: ev-workflow-plan
+    kind: workflow_plan
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+    redacted: false
+    content_ref: evidence/workflow-plan.yaml
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+    redacted: false
+  - id: ev-probe-result
+    kind: probe_result
+    source: worker readiness probe
+    summary: Worker readiness confirmed for all selected profiles
+    redacted: false
+  - id: ev-worker-traces
+    kind: worker_trace
+    source: worker execution traces
+    summary: Consolidated tool traces from 3 workers with redaction applied to sensitive outputs
+    redacted: false
+    content_ref: evidence/worker-traces.yaml
+  - id: ev-memory-summary
+    kind: memory_summary
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+    redacted: true
+    redaction_reason: hermes_memory_content
+    content_ref: evidence/memory-summary.yaml
+  - id: ev-commander-report
+    kind: commander_report
+    source: hermes commander
+    summary: Synthesized commander report from all worker results
+    redacted: false
+    content_ref: evidence/commander-report.yaml
+
+findings:
+  - claim: Hermes adapter executed workflow for ops task with status completed. Workflow plan with 4 steps created.
+    evidence:
+      - ev-orchestrator-session
+      - ev-workflow-plan
+    confidence: high
+  - claim: Workflow plan created with 4 steps, 3 workers dispatched and ready.
+    evidence:
+      - ev-worker-assignments
+      - ev-probe-result
+    confidence: high
+  - claim: All worker results synthesized into coherent commander report. No contradictions detected.
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+      - ev-memory-summary
+    confidence: high
+
+risks:
+  - Worker evidence merging may fail when workers return contradictory results
+  - Memory retrieval summaries may inadvertently contain private content
+  - Workflow plan may require human review for complex coordination tasks
+
+outputs:
+  commander_report: Synthesized Hermes commander report for ops-001.
+  diagnosis: Gateway delivery confirmed. Workflow orchestration completed.

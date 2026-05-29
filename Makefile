@@ -11,6 +11,7 @@
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
         openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
+        hermes-adapter hermes-adapter-code hermes-adapter-fail validate-hermes smoke-hermes \
         score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
         validate-web-fields validate-web-bridge
@@ -172,6 +173,62 @@ validate-openclaw:
 	done
 	@echo ""
 	@echo "OpenClaw adapter fixture validation complete."
+
+# --- Hermes adapter targets ---
+
+# Run Hermes adapter against the stub test envelope (orchestrator mode, ops)
+hermes-adapter:
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes
+
+# Run Hermes adapter in simulation mode
+hermes-adapter-code:
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode simulation --event-family general --seed make-hermes-code
+
+# Run Hermes adapter in failure mode
+hermes-adapter-fail:
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes-fail --exit 1
+
+# Validate all Hermes adapter output fixtures
+validate-hermes:
+	@echo "=== Validating Hermes adapter positive fixtures ==="
+	@for f in fixtures/hermes-validity/positive/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f" || exit 1; \
+	done
+	@echo ""
+	@echo "=== Validating Hermes adapter negative fixtures ==="
+	@for f in fixtures/hermes-validity/negative/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f"; \
+		echo "(expected to produce errors for negative fixtures)"; \
+	done
+	@echo ""
+	@echo "Hermes adapter fixture validation complete."
+
+# Smoke-test Hermes adapter without writing generated artifacts to the repo
+smoke-hermes:
+	@set -eu; \
+	tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes --run-dir "$$tmp/ops"; \
+	node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode simulation --event-family general --seed make-hermes-code --run-dir "$$tmp/sim"; \
+	if node adapters/hermes-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime hermes --runtime-version 1.0.0 \
+		--mode orchestrator --event-family ops --seed make-hermes-fail --exit 1 --run-dir "$$tmp/fail"; then \
+		echo "Expected Hermes failure-mode run to exit non-zero"; \
+		exit 1; \
+	fi; \
+	echo "Hermes adapter smoke tests passed."
 
 # Run OpenClaw adapter smoke checks without writing generated artifacts to the repo.
 test-openclaw:

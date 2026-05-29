@@ -159,6 +159,27 @@ for f in \
 done
 ```
 
+## Adapter Validity Fixtures
+
+Beyond the shared compatibility fixtures under `fixtures/adapters/`, each
+adapter ships its own validation fixture directories for regression testing
+and schema compliance:
+
+### OpenClaw Validity Fixtures
+
+Directory: `fixtures/openclaw-validity/`
+- Positive: ops-completed + code-completed result packets, traces, evidence bundles, manifests
+- Negative: missing evidence, redaction leak, invalid status, mode-family mismatch
+
+### Hermes Validity Fixtures
+
+Directory: `fixtures/hermes-validity/`
+- Positive: ops-completed + code-completed result packets, traces, evidence bundles, manifests
+- Negative: missing evidence, redaction leak, invalid status, mode-family mismatch
+
+These validity fixtures are validated by dedicated Makefile targets
+(`validate-openclaw`, `validate-hermes`) and CI pipelines.
+
 ## Adding a New Adapter
 
 To add fixture data for a new adapter (e.g., `openclaw`):
@@ -166,9 +187,11 @@ To add fixture data for a new adapter (e.g., `openclaw`):
 1. Create `fixtures/adapters/capabilities/<adapter>.yaml` following
    the structure in `adapter-capability-declaration.yaml`.
 2. Create `fixtures/adapters/<adapter>/` with sample data files.
-3. Document any new adapter-specific fields in
+3. Create `fixtures/<adapter>-validity/` with positive and negative validation fixtures.
+4. Document any new adapter-specific fields in
    [Platform-Neutral Adapter Fields](platform-neutral-adapter-fields.md).
-4. Update this document's Structure table.
+5. Update this document's Structure table.
+6. Add Makefile targets for adapter execution and validation.
 
 ## Related Documents
 

@@ -1,0 +1,105 @@
+# Positive fixture: Hermes ops task trace record
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+trace_id: tr-hermes-run-ops-001-sogyo-20260529T222800KST
+run_id: run-ops-001-sogyo-20260529T222800KST
+agent_id: sogyo
+runtime: hermes
+generated_at: "2026-05-29T22:45:00+09:00"
+adapter_mode: orchestrator
+event_family: ops
+entries:
+  - seq: 0
+    timestamp: "2026-05-29T22:28:00+09:00"
+    action: read
+    target: task_envelope
+    summary: "Read task envelope ops-001 from disk"
+    duration_ms: 45
+    result_summary: "Loaded envelope for event family ops"
+    evidence_ref: ev-session-input
+  - seq: 1
+    timestamp: "2026-05-29T22:28:01+09:00"
+    action: api_call
+    target: hermes_orchestrator
+    summary: "Create Hermes orchestrator session"
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    duration_ms: 350
+    result_summary: "Orchestrator session created and authenticated"
+    evidence_ref: ev-orchestrator-session
+  - seq: 2
+    timestamp: "2026-05-29T22:28:02+09:00"
+    action: plan
+    target: workflow
+    summary: "Decompose task into 4-step workflow plan"
+    duration_ms: 1200
+    result_summary: "Workflow plan created for ops with step dependencies mapped"
+    evidence_ref: ev-workflow-plan
+  - seq: 3
+    timestamp: "2026-05-29T22:28:03+09:00"
+    action: delegate
+    target: worker_pool
+    summary: "Dispatch 3 workers with assigned subtasks"
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    duration_ms: 800
+    result_summary: "Workers dispatched: stub-small-vps, stub-medium-vps"
+    evidence_ref: ev-worker-assignments
+  - seq: 4
+    timestamp: "2026-05-29T22:28:04+09:00"
+    action: api_call
+    target: worker_readiness
+    summary: "Probe worker readiness and memory cache availability"
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    duration_ms: 600
+    result_summary: "All workers ready, memory cache hit ratio: 0.5"
+    evidence_ref: ev-probe-result
+  - seq: 5
+    timestamp: "2026-05-29T22:28:05+09:00"
+    action: collect
+    target: worker_results
+    summary: "Collect tool traces and memory summaries from all workers"
+    duration_ms: 900
+    result_summary: "All worker traces collected, redaction applied to sensitive outputs"
+    evidence_ref: ev-worker-traces
+  - seq: 6
+    timestamp: "2026-05-29T22:28:06+09:00"
+    action: collect
+    target: memory_summaries
+    summary: "Aggregate memory retrieval summaries from each worker"
+    redacted: true
+    redaction_reason: hermes_memory_content
+    duration_ms: 400
+    result_summary: "Memory summaries collected, private content redacted"
+    evidence_ref: ev-memory-summary
+  - seq: 7
+    timestamp: "2026-05-29T22:45:00+09:00"
+    action: synthesize
+    target: commander_report
+    summary: "Synthesize final commander report from all worker results"
+    duration_ms: 1100
+    result_summary: "Commander report synthesized with merged evidence from all workers"
+    evidence_ref: ev-commander-report
+  - seq: 8
+    timestamp: "2026-05-29T22:45:01+09:00"
+    action: write
+    target: result_packet
+    summary: "Write all output artifacts to run directory"
+    duration_ms: 50
+    result_summary: "All output artifacts written"
+redaction_policy:
+  applied_rules:
+    - rule_id: rr-hermes-001
+      pattern_description: "Credential-like strings in worker command output or API response"
+      reason: hermes_credential_in_worker_output
+    - rule_id: rr-hermes-002
+      pattern_description: "Private memory content in retrieval summaries"
+      reason: hermes_memory_content
+    - rule_id: rr-hermes-003
+      pattern_description: "Sensitive parameter values in workflow invocation arguments"
+      reason: hermes_workflow_arguments
+    - rule_id: rr-hermes-004
+      pattern_description: "Worker session tokens and credentials in trace entries"
+      reason: prevent_worker_credential_exposure_in_trace
+  default_reason: sensitive_value_redacted

@@ -1,0 +1,95 @@
+# Positive fixture: Hermes code task trace record
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+trace_id: tr-hermes-run-code-001-sogyo-20260529T223000KST
+run_id: run-code-001-sogyo-20260529T223000KST
+agent_id: sogyo
+runtime: hermes
+generated_at: "2026-05-29T22:40:00+09:00"
+adapter_mode: orchestrator
+event_family: code
+entries:
+  - seq: 0
+    timestamp: "2026-05-29T22:30:00+09:00"
+    action: read
+    target: task_envelope
+    summary: Read task envelope code-001 from disk
+    duration_ms: 45
+    result_summary: "Loaded envelope for event family code"
+    evidence_ref: ev-session-input
+  - seq: 1
+    timestamp: "2026-05-29T22:30:01+09:00"
+    action: api_call
+    target: hermes_orchestrator
+    summary: Create Hermes orchestrator session
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    duration_ms: 350
+    result_summary: "Orchestrator session created"
+    evidence_ref: ev-orchestrator-session
+  - seq: 2
+    timestamp: "2026-05-29T22:30:02+09:00"
+    action: plan
+    target: workflow
+    summary: "Decompose code task into 3-step workflow"
+    duration_ms: 1000
+    result_summary: "Workflow plan created for code with analysis, fix, verify steps"
+    evidence_ref: ev-workflow-plan
+  - seq: 3
+    timestamp: "2026-05-29T22:30:03+09:00"
+    action: delegate
+    target: worker_pool
+    summary: "Dispatch 3 workers with code subtasks"
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    duration_ms: 750
+    result_summary: "Workers dispatched: analysis, fix, verify"
+    evidence_ref: ev-worker-assignments
+  - seq: 4
+    timestamp: "2026-05-29T22:30:04+09:00"
+    action: collect
+    target: worker_results
+    summary: "Collect code tool traces and test results"
+    duration_ms: 800
+    result_summary: "All worker traces collected"
+    evidence_ref: ev-worker-traces
+  - seq: 5
+    timestamp: "2026-05-29T22:30:05+09:00"
+    action: collect
+    target: memory_summaries
+    summary: "Collect memory summaries from code workers"
+    redacted: true
+    redaction_reason: hermes_memory_content
+    duration_ms: 350
+    result_summary: "Memory summaries collected"
+    evidence_ref: ev-memory-summary
+  - seq: 6
+    timestamp: "2026-05-29T22:40:00+09:00"
+    action: synthesize
+    target: commander_report
+    summary: "Synthesize code review commander report"
+    duration_ms: 900
+    result_summary: "Code review report synthesized"
+    evidence_ref: ev-commander-report
+  - seq: 7
+    timestamp: "2026-05-29T22:40:01+09:00"
+    action: write
+    target: result_packet
+    summary: "Write all output artifacts"
+    duration_ms: 50
+    result_summary: "All output artifacts written"
+redaction_policy:
+  applied_rules:
+    - rule_id: rr-hermes-001
+      pattern_description: "Credential-like strings in worker output"
+      reason: hermes_credential_in_worker_output
+    - rule_id: rr-hermes-002
+      pattern_description: "Private memory content"
+      reason: hermes_memory_content
+    - rule_id: rr-hermes-003
+      pattern_description: "Sensitive parameter values"
+      reason: hermes_workflow_arguments
+    - rule_id: rr-hermes-004
+      pattern_description: "Worker session tokens"
+      reason: prevent_worker_credential_exposure_in_trace
+  default_reason: sensitive_value_redacted
