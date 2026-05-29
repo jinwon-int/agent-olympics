@@ -1,15 +1,22 @@
 # Agent Olympics
 
-Agent Olympics is a platform-neutral competition for evaluating how well autonomous agents and their nodes are configured to execute real missions across ops, coding, knowledge, safety, coordination, and performance events.
+Agent Olympics is a platform-neutral competition for evaluating how well the whole operating agent stack executes real missions across ops, coding, knowledge, safety, coordination, and performance events.
 
 The project is intentionally not tied to OpenClaw. OpenClaw, Hermes, Codex, Claude Code, shell-based agents, and human baselines should all be able to compete by accepting the same task envelope and submitting the same result packet.
+
+## Motto
+
+Measure the whole operating agent stack, not just the model.
+
+Agent Olympics is not an AI model benchmark alone. It is an olympics for the combined performance of the AI model, agent harness, tools, runtime, agent configuration, and operating principles in real mission work.
 
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.
-- Measure node-agent readiness: model/provider setup, runtime configuration, tool availability, memory policy, liveness behavior, and recovery posture.
+- Measure node-agent readiness: model/provider setup, runtime configuration, tool availability, memory policy, liveness behavior, operating principles, and recovery posture.
 - Evaluate practical operations work: diagnosis, safe recovery, code changes, documentation, and command of other agents.
 - Separate raw hardware capacity from configuration quality so stronger machines are recognized without hiding tuning or setup problems.
+- Treat tool discipline, configuration fitness, approval boundaries, evidence standards, and delegation policy as first-class performance dimensions.
 - Reward evidence-backed conclusions over fast unsupported answers.
 - Penalize unsafe actions, secret exposure, destructive changes, and false completion claims.
 - Preserve reusable results as tasks, rubrics, transcripts, issues, and wiki-ready runbooks.
@@ -18,13 +25,22 @@ The project is intentionally not tied to OpenClaw. OpenClaw, Hermes, Codex, Clau
 
 Agent Olympics has three stable concepts.
 
+The evaluated unit is the **operating agent stack**:
+
+- Model and provider behavior.
+- Agent harness, context management, and runtime.
+- Tools, adapters, permissions, and network/sandbox mode.
+- Agent configuration: routing, memory policy, retries, timeouts, concurrency, resource limits, and liveness behavior.
+- Operating principles: approval boundaries, secret handling, destructive-action discipline, evidence standards, escalation, delegation, and final-report discipline.
+- Node or hardware environment, where relevant.
+
 1. Task Envelope
 
    A platform-neutral input file that describes the task, limits, allowed actions, forbidden actions, required outputs, and scoring rubric.
 
 2. Result Packet
 
-   A platform-neutral output file submitted by the participant. It records the runtime, model metadata, action trace summary, evidence, findings, risks, final answer, and durable-memory decision.
+   A platform-neutral output file submitted by the participant. It records the runtime, model metadata, configuration profile, operating policy, action trace summary, evidence, findings, risks, final answer, and durable-memory decision.
 
 3. Judge Record
 
@@ -39,6 +55,8 @@ Agent Olympics has three stable concepts.
 - Wiki Marathon: transcript closeout, runbook extraction, memory conflict cleanup, canonical documentation.
 - Safety Trial: secret handling, destructive-action avoidance, approval boundaries, rollback thinking.
 - Coordination Drill: multi-agent delegation, contradictory evidence synthesis, commander reports.
+- Tool Decathlon: optimized use of multiple tools under a mission budget.
+- Harness Reliability: state preservation, progress reporting, recovery, timeout handling, and complete result emission.
 
 ## Scoring Philosophy
 
@@ -55,6 +73,8 @@ Single-number leaderboards are useful, but they are not enough. A useful agent e
 - Communication
 - Durability
 - Cost and latency
+- Configuration fitness
+- Operating discipline
 
 The default score is:
 
@@ -69,6 +89,8 @@ final_score = quality_score
 ```
 
 An agent that safely stops with a well-supported partial result should score higher than an agent that guesses, mutates production state without approval, or claims success without evidence.
+
+Model identity should be visible for analysis, but it is only one part of the result. A smaller model with a disciplined harness, good tools, strong configuration, and reliable operating principles can beat a stronger raw model that uses tools poorly or violates safety constraints.
 
 ## Repository Layout
 
@@ -111,6 +133,7 @@ tasks/smoke/
 results/
   *.yaml                          — Example and submitted result packets
 docs/
+  rules.md
   competition-model.md
   task-envelope.md
   result-packet.md

@@ -30,7 +30,14 @@
     "node": { "type": "string" },
     "hardware_profile": { "type": "object" },
     "configuration_profile": { "type": "object" },
+    "tool_use_profile": { "type": "object" },
+    "operating_policy": { "type": "object" },
+    "delegation_profile": { "type": "object" },
     "workload_metrics": { "type": "object" },
+    "publishable": {
+      "type": "boolean",
+      "description": "Whether this packet is safe to expose in public leaderboard/detail output."
+    },
     "started_at": { "type": "string", "format": "date-time" },
     "ended_at": { "type": "string", "format": "date-time" },
     "status": {
