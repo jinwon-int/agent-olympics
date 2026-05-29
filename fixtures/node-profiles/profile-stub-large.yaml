@@ -1,0 +1,55 @@
+# Stub node profile: large
+#
+# Use for: performance trials, throughput baselines, multi-agent coordination,
+#          large code sprints, and compute-heavy knowledge tasks
+# Comparable to: high-end VPS/dedicated server (16+ vCPU, 32+ GB RAM)
+#
+# This profile uses only safe, band-based values. No hostnames, IPs,
+# tokens, paths, or secrets appear here.
+
+schema_version: 1
+profile_id: stub-large-vps
+profile_class: large-vps
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 8
+  cores_max: 16
+  description: "dedicated high-frequency vCPU"
+memory_gb:
+  min: 16.0
+  max: 32.0
+  description: "dedicated ECC RAM"
+runner_limits:
+  max_concurrent: 4
+  max_task_duration_minutes: 120
+  max_total_daily_tasks: 50
+  description: "high-concurrency runner pool; supports long-running tasks"
+storage_class:
+  type: nvme
+  min_free_gb: 100
+  max_total_gb: 500
+  description: "local NVMe RAID; high IOPS for parallel workloads"
+network_class:
+  class: high
+  public_egress: true
+  description: "dedicated outbound with high bandwidth"
+capability_labels:
+  - ops
+  - code
+  - knowledge
+  - node-readiness
+  - coordination
+  - performance
+  - safety
+  - smoke
+allowed_runner_types:
+  - openclaw
+  - hermes
+  - codex
+  - cli
+notes: >
+  Highest-capacity profile. Suitable for performance baselines and
+  throughput-sensitive workloads. Four concurrent runners enable
+  multi-agent drills.
+last_updated: "2026-05-29T00:00:00+09:00"

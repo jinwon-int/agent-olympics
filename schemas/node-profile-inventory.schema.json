@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/node-profile-inventory.schema.json",
+  "title": "Agent Olympics Node Profile Inventory",
+  "description": "A safe, non-secret schema for describing an agent execution node's capacity and capability for pre-season inventory. Designed for operators to declare available node profiles before a competition season starts, without leaking hostnames, IPs, tokens, private paths, SSH details, or exact sensitive infrastructure values.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "profile_id",
+    "profile_class",
+    "os_family",
+    "cpu",
+    "memory_gb",
+    "runner_limits",
+    "storage_class",
+    "network_class",
+    "capability_labels"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Node profile inventory schema version."
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$",
+      "description": "Unique identifier for this profile. Must be a safe slug — no hostnames, IPs, or infrastructure identifiers."
+    },
+    "profile_class": {
+      "type": "string",
+      "description": "Node class label for capacity planning. Examples: 'small-vps', 'medium-vps', 'large-vps', 'gpu-worker', 'raspberry-pi-4', 'container-512mb'. Should be generic and reusable across seasons."
+    },
+    "os_family": {
+      "type": "string",
+      "enum": ["linux", "darwin", "windows", "unknown"],
+      "description": "Operating system family. Use 'unknown' when OS is not pre-determined."
+    },
+    "cpu": {
+      "type": "object",
+      "required": ["class", "cores_min", "cores_max"],
+      "properties": {
+        "class": {
+          "type": "string",
+          "description": "CPU class or architecture band. Examples: 'x86-64', 'arm64', 'riscv64'."
+        },
+        "cores_min": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum guaranteed CPU cores."
+        },
+        "cores_max": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum available CPU cores. Must be >= cores_min."
+        },
+        "description": {
+          "type": "string",
+          "description": "Free-text description of CPU capability. Must not contain exact model numbers or serials. Examples: 'consumer-grade desktop CPU', 'entry-level cloud vCPU', 'high-end server-grade'."
+        }
+      }
+    },
+    "memory_gb": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum guaranteed system memory in GB."
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum system memory in GB. Must be >= min."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional note about memory constraints, e.g., 'shared with other containers', 'dedicated'."
+        }
+      }
+    },
+    "runner_limits": {
+      "type": "object",
+      "required": ["max_concurrent", "max_task_duration_minutes"],
+      "properties": {
+        "max_concurrent": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum concurrent agent runners this node can host."
+        },
+        "max_task_duration_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum single-task wall-clock duration in minutes before runner timeout."
+        },
+        "max_total_daily_tasks": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional daily task cap for rate-limiting or fairness."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional note about runner limits policy."
+        }
+      }
+    },
+    "storage_class": {
+      "type": "object",
+      "required": ["type", "min_free_gb"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["nvme", "ssd", "hdd", "network", "hybrid", "unknown"],
+          "description": "Storage medium or class."
+        },
+        "min_free_gb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum guaranteed free disk space in GB."
+        },
+        "max_total_gb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Approximate total storage capacity in GB (optional, can be 'unknown' omitted)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Free-text description of storage layout or constraints. Must not contain mount paths or device names."
+        }
+      }
+    },
+    "network_class": {
+      "type": "object",
+      "required": ["class", "public_egress"],
+      "properties": {
+        "class": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "unknown"],
+          "description": "Estimated network bandwidth class relative to other nodes in the season."
+        },
+        "public_egress": {
+          "type": "boolean",
+          "description": "Whether the node has outbound internet access."
+        },
+        "description": {
+          "type": "string",
+          "description": "Free-text description of network constraints. Must not contain IP addresses, hostnames, or ISP details."
+        }
+      }
+    },
+    "capability_labels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]{1,31}$"
+      },
+      "description": "Allowed capability labels for matching this node to task envelopes. These are the SAFE capability categories this node is declared eligible for. Examples: ['ops', 'code', 'knowledge', 'coordination', 'performance', 'safety', 'smoke']. Labels must match the task envelope label convention."
+    },
+    "allowed_runner_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["openclaw", "hermes", "codex", "cli", "human", "custom"]
+      },
+      "description": "Runner/types that are pre-approved for this node profile. Empty or absent means any compatible runner may be assigned."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Operator notes for pre-season planning. Must not contain secrets, hostnames, IPs, or paths."
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when this profile was last reviewed or updated."
+    }
+  },
+  "forbidden_field_patterns": {
+    "description": "Profiles must not contain fields whose names match these patterns. This is documented in spec; enforcement is through application-level validation (see scripts/validate.js).",
+    "fieldBans": [
+      "hostname",
+      "host_name",
+      "ip_address",
+      "ipv4",
+      "ipv6",
+      "mac_address",
+      "token",
+      "secret",
+      "api_key",
+      "password",
+      "private_key",
+      "ssh_key",
+      "ssh_host",
+      "ssh_port",
+      "credential",
+      "auth_token"
+    ]
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,50 @@
+# Stub node profile: medium
+#
+# Use for: Ops relay, code sprints, knowledge tasks, configuration audits
+# Comparable to: mid-range VPS (4 vCPU, 8 GB RAM), laptop-class desktop
+#
+# This profile uses only safe, band-based values. No hostnames, IPs,
+# tokens, paths, or secrets appear here.
+
+schema_version: 1
+profile_id: stub-medium-vps
+profile_class: medium-vps
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 2
+  cores_max: 4
+  description: "dedicated vCPU, moderate single-thread performance"
+memory_gb:
+  min: 4.0
+  max: 8.0
+  description: "dedicated RAM; no swap"
+runner_limits:
+  max_concurrent: 2
+  max_task_duration_minutes: 60
+  max_total_daily_tasks: 20
+  description: "two concurrent runners max; single long task supported"
+storage_class:
+  type: nvme
+  min_free_gb: 20
+  max_total_gb: 80
+  description: "local NVMe; fast read/write for build artifacts"
+network_class:
+  class: medium
+  public_egress: true
+  description: "dedicated outbound with moderate bandwidth"
+capability_labels:
+  - ops
+  - code
+  - knowledge
+  - node-readiness
+  - coordination
+  - smoke
+allowed_runner_types:
+  - openclaw
+  - hermes
+  - cli
+notes: >
+  Primary workhorse profile. Suitable for most season events.
+  Supports two concurrent runners for coordination drills.
+last_updated: "2026-05-29T00:00:00+09:00"

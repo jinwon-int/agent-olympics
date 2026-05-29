@@ -7,10 +7,11 @@
         validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
         oracle smoke-check smoke fixtures-check setup clean \
         validate-rounds rounds-check round \
+        validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
         score score-validate score-run score-aggregate validate-scoreboard
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-scoreboard
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard
 
 # Install dependencies
 setup:
@@ -78,6 +79,13 @@ validate-rounds:
 
 # Quick-run: validate rounds
 rounds-check: validate-rounds
+
+# Validate all node profile inventory files
+validate-profiles:
+	node scripts/validate.js profiles
+
+# Quick-run: validate profiles
+profiles-check: validate-profiles
 
 # Round engine CLI (alias for convenience)
 round:
