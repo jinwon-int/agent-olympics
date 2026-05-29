@@ -112,6 +112,8 @@ runs/
 
 ## Lifecycle States
 
+### Round Lifecycle States
+
 | State | Description | Transitions |
 |---|---|---|
 | `pending` | Round defined, not started | → `fixture_preparation` |
@@ -120,6 +122,40 @@ runs/
 | `completed` | All participants finished execution | → `scored`, `running` (re-run) |
 | `scored` | Judges scored all run results | → `archived` |
 | `archived` | Final immutable state | (none) |
+
+### Run Lifecycle States
+
+Each individual run (one participant × one task) has its own lifecycle state,
+stored in `runs/<season>/<round-id>/run-*-*/manifest.yaml`.
+
+| State | Description | Transitions |
+|---|---|---|
+| `pending` | Run initialized, not started | → `running` |
+| `running` | Adapter is executing the run | → `completed`, `partial`, `failed`, `blocked`, `disqualified` |
+| `completed` | Run completed successfully | (terminal) |
+| `partial` | Run finished with partial results | (terminal) |
+| `failed` | Run finished but failed to meet objectives | (terminal) |
+| `blocked` | Run blocked by external condition | (terminal) |
+| `disqualified` | Run disqualified (violation, secret exposure) | (terminal) |
+
+### Non-Success State Mapping
+
+When a run transitions to a non-success state, the reason is documented in the
+run manifest's `status_history` array. The mapping between adapter exit codes
+and run statuses is:
+
+| Exit Code | Status | Meaning |
+|---|---|---|
+| 0 | `completed` | Adapter exited normally with valid output artifacts |
+| 1 | `failed` | Adapter exited with error or produced wrong result |
+| 2 | `partial` | Adapter timed out or produced incomplete output |
+| 3+ | `blocked` | Adapter encountered an external blocker (missing file, broken env) |
+| _(validation)_ | `failed` | Adapter reported success but output artifacts failed schema or presence validation |
+| _(secret)_ | `disqualified` | Adapter output contained credential patterns, key material, or secret exposure |
+| _(missing output)_ | `disqualified` | Adapter exited with code 0 but produced no result packet |
+
+These mappings are enforced by the `execute` command. The `--exit` flag can
+override the stub adapter exit code for testing failure scenarios.
 
 ## CLI Entrypoint
 
@@ -136,6 +172,8 @@ node scripts/round.js <command> [options]
 | `list [season]` | List available rounds, optionally filtered by season |
 | `status <round_id>` | Show lifecycle status for a round |
 | `validate <manifest>` | Validate a round manifest against the schema |
+| `execute <manifest>` | Execute pending runs via stub adapter (source-only) |
+| `resume <manifest>` | Resume interrupted runs (those in `running` state) |
 
 ### Options
 
@@ -143,6 +181,9 @@ node scripts/round.js <command> [options]
 |---|---|
 | `--verbose, -v` | Verbose output |
 | `--strict` | Fail on warnings |
+| `--run-id <id>` | Execute/resume only a specific run (by `run_id`) |
+| `--exit <code>` | Override stub adapter exit code (for testing) |
+| `--seed <string>` | Deterministic seed for stable output |
 | `--help` | Show usage |
 
 ### Plan Output
@@ -156,6 +197,62 @@ The `plan` command prints:
 - Fixture bundle checks (warn if a bundle path does not exist)
 - Envelope schema validation status
 - Current lifecycle state
+
+### Execute Command
+
+The `execute` command runs pending runs in a round using the stub adapter
+(source-only, no live nodes).
+
+```bash
+# Execute all pending runs
+node scripts/round.js execute rounds/season-001-round-001.yaml
+
+# Execute with deterministic seed for stable output
+node scripts/round.js execute rounds/season-001-round-001.yaml --seed stable
+
+# Execute only one specific run
+node scripts/round.js execute rounds/season-001-round-001.yaml --run-id run-ops-001-sogyo-*
+
+# Simulate a failure to test error handling
+node scripts/round.js execute rounds/season-001-round-001.yaml --exit 1
+
+# Simulate a timeout
+node scripts/round.js execute rounds/season-001-round-001.yaml --exit 2
+```
+
+The execute command performs the following steps for each pending run:
+
+1. **Load run manifest** — Read `manifest.yaml` from the run directory.
+2. **Validate prereqs** — Check that the task envelope exists and fixture
+   bundles are present (warn only for missing fixtures).
+3. **Transition to `running`** — Update the run manifest lifecycle.
+4. **Copy envelope** — Copy the task envelope into the run directory.
+5. **Invoke stub adapter** — Call `scripts/stub-adapter.js` with the
+   envelope path, run directory, agent ID, and runtime.
+6. **Collect output** — Read `result-packet.yaml`, `trace.yaml`, and
+   `evidence-bundle.yaml` from the run directory.
+7. **Validate output** — Check schema conformance, required fields, and
+   scan for credential exposure patterns.
+8. **Transition to final state** — Update the run manifest lifecycle to
+   `completed`, `failed`, `partial`, `blocked`, or `disqualified`.
+9. **Update round lifecycle** — When all runs reach terminal states, the
+   round lifecycle transitions to `completed`.
+
+### Resume Command
+
+The `resume` command resumes runs that were interrupted mid-execution
+(lifecycle state = `running`). It is equivalent to `execute --resume`.
+
+```bash
+# Resume interrupted runs
+node scripts/round.js resume rounds/season-001-round-001.yaml
+```
+
+When a run is in `running` state, the resume command:
+1. Checks if output artifacts already exist (`result-packet.yaml`, etc.)
+2. If artifacts exist, it validates them and transitions to the appropriate
+   terminal state
+3. If artifacts are missing, it re-runs the adapter
 
 ## Integration with Existing Schemas
 
