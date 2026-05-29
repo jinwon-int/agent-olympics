@@ -10,6 +10,10 @@ Measure the whole operating agent stack, not just the model.
 
 Agent Olympics is not an AI model benchmark alone. It is an olympics for the combined performance of the AI model, agent harness, tools, runtime, agent configuration, and operating principles in real mission work.
 
+See [Constitution and Public Positioning](docs/constitution.md) for the
+competition's guiding principles, platform-neutrality commitment, English
+motto, and Korean working line.
+
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.

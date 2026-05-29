@@ -45,6 +45,10 @@ Safe operation is performance. Human-readable evidence is part of the product. R
 
    Good routing, tool permissions, liveness settings, retry policies, context handling, approval discipline, and delegation judgment are not implementation trivia. They are part of what the competition measures.
 
+These principles are formalised in the project
+[Constitution and Public Positioning](constitution.md), which also states the
+English motto and Korean working line.
+
 ## Divisions
 
 - **Closed stack**: fixed model, tool budget, and runtime limits for controlled comparisons.
