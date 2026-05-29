@@ -1,0 +1,97 @@
+schema_version: 1
+round_id: season-001-round-001
+season: season-001
+title: Season 001 — Smoke Round
+description: >
+  Initial round for the MVP round engine.  Validates that the round manifest format, deterministic run ID generation,
+  directory layout, and lifecycle state machine work end to end.  Uses all seven Season 001 tasks and the Team1
+  participant list.  Source-only — no live node calls.
+created_at: '2026-05-29T17:27:00+09:00'
+lifecycle:
+  status: pending
+  status_history:
+    - status: pending
+      timestamp: '2026-05-29T17:27:00+09:00'
+      note: Round created by A2A runner lane 1/3 for sogyo
+tasks:
+  - task_id: ops-001
+    title: Telegram final reply does not appear
+    envelope_path: tasks/season-001/ops-001-telegram-final-reply-v2.yaml
+    time_limit_minutes: 30
+    fixture_bundle_ref: fixtures/season-001/ops-001/
+    oracle_ref: oracle/season-001/ops-001-telegram-final-reply.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 1
+  - task_id: ops-002
+    title: Decide whether clean reinstall is needed
+    envelope_path: tasks/season-001/ops-002-clean-reinstall-drift-v2.yaml
+    time_limit_minutes: 35
+    fixture_bundle_ref: fixtures/season-001/ops-002/
+    oracle_ref: oracle/season-001/ops-002-clean-reinstall-drift.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 2
+  - task_id: node-001
+    title: Audit node agent readiness for mission execution
+    envelope_path: tasks/season-001/node-001-agent-readiness-audit-v2.yaml
+    time_limit_minutes: 45
+    fixture_bundle_ref: fixtures/season-001/node-001/
+    oracle_ref: oracle/season-001/node-001-agent-readiness-audit.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 3
+  - task_id: perf-001
+    title: Measure node throughput on a controlled mission workload
+    envelope_path: tasks/season-001/perf-001-node-throughput-baseline-v2.yaml
+    time_limit_minutes: 60
+    fixture_bundle_ref: fixtures/season-001/perf-001/
+    oracle_ref: oracle/season-001/perf-001-node-throughput-baseline.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 4
+  - task_id: code-001
+    title: TypeScript regression fix with targeted tests
+    envelope_path: tasks/season-001/code-001-typescript-regression-v2.yaml
+    time_limit_minutes: 60
+    fixture_bundle_ref: fixtures/season-001/code-001/
+    oracle_ref: oracle/season-001/code-001-typescript-regression.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 5
+  - task_id: knowledge-001
+    title: Convert an incident transcript into a wiki-ready closeout
+    envelope_path: tasks/season-001/knowledge-001-wiki-closeout-v2.yaml
+    time_limit_minutes: 45
+    fixture_bundle_ref: fixtures/season-001/knowledge-001/
+    oracle_ref: oracle/season-001/knowledge-001-wiki-closeout.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 6
+  - task_id: coord-001
+    title: Merge contradictory node reports into a commander report
+    envelope_path: tasks/season-001/coord-001-commander-report-v2.yaml
+    time_limit_minutes: 50
+    fixture_bundle_ref: fixtures/season-001/coord-001/
+    oracle_ref: oracle/season-001/coord-001-commander-report.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 7
+participants:
+  - agent_id: sogyo
+    runtime: openclaw
+    label: sogyo (OpenClaw A2A)
+    enabled: true
+  - agent_id: seoseo
+    runtime: openclaw
+    runtime_version: broker
+    label: seoseo (OpenClaw / Team1 Broker)
+    enabled: true
+run_directory: runs/season-001/round-001/
+run_id_template: run-{task_id}-{agent_id}-{timestamp}
+parent_issue: https://github.com/jinwon-int/agent-olympics/issues/61
+round_issue: https://github.com/jinwon-int/agent-olympics/issues/62
+labels:
+  - season-001
+  - smoke
+  - mvp

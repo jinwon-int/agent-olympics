@@ -69,8 +69,19 @@ validate-fixtures:
 # Validate all fixture bundle manifests
 fixtures-check: validate-fixtures
 
+# Validate all round manifests
+validate-rounds:
+	node scripts/validate.js rounds
+
+# Quick-run: validate rounds
+rounds-check: validate-rounds
+
+# Round engine CLI (alias for convenience)
+round:
+	node scripts/round.js
+
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures
+validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke

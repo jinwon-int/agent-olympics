@@ -29,13 +29,32 @@ Each participant receives the same Task Envelope and returns the same Result Pac
 ## Round Lifecycle
 
 1. Curator creates a Task Envelope.
-2. Runner invokes each participant with the envelope.
-3. Participant executes within the allowed action boundary.
-4. Participant submits a Result Packet.
-5. Automated checks validate schema, timing, forbidden content, required outputs, and evidence references.
-6. Judges score subjective dimensions such as causal diagnosis and risk judgment.
-7. Results are published as scorecards and leaderboards.
-8. Reusable operational findings are promoted into the appropriate wiki or runbook.
+2. A **round manifest** defines which tasks and participants are selected for a competition round.
+3. Runner invokes each participant with the task envelope.
+4. Participant executes within the allowed action boundary.
+5. Participant submits a Result Packet.
+6. Automated checks validate schema, timing, forbidden content, required outputs, and evidence references.
+7. Judges score subjective dimensions such as causal diagnosis and risk judgment.
+8. Results are published as scorecards and leaderboards.
+9. Reusable operational findings are promoted into the appropriate wiki or runbook.
+
+### Round Lifecycle States
+
+The round engine tracks each round through a state machine:
+
+| State | Description |
+|---|---|
+| `pending` | Round defined, not started |
+| `fixture_preparation` | Preparing fixture data for tasks |
+| `running` | Participants are executing tasks |
+| `completed` | All participants finished execution |
+| `scored` | Judges scored all run results |
+| `archived` | Final immutable state |
+
+Rounds are defined as version-controlled [round manifest](../schemas/round-manifest.schema.json)
+files in `rounds/`, and runs are laid out in `runs/<season>/<round_id>/`.
+
+See [Round Engine](../docs/round-engine.md) for the CLI entrypoint and design details.
 
 ## Blind Judging
 
