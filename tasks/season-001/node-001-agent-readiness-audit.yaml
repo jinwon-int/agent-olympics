@@ -56,6 +56,12 @@ labels:
   - configuration
   - mission-execution
   - season-001
+
+# Fixture bundle: target node profile prepared by runner.
+# See fixtures/season-001/node-001/manifest.yaml for preparation details.
+fixtures:
+  - fixtures/season-001/node-001/
+
 hidden_judge_notes: |
   ANSWER KEY / JUDGE NOTES (not visible to participant)
 

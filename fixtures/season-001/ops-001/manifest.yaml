@@ -1,0 +1,56 @@
+# Fixture bundle: ops-001 — Telegram final reply does not appear
+#
+# The runner provides anonymised gateway and Telegram delivery logs.
+# The participant diagnoses why a reply visible in the transcript
+# was never delivered to the Telegram user.
+#
+# ⚠ This bundle contains ONLY participant-facing fixture data.
+#    Judge notes, answer keys, and oracle material live in
+#    oracle/season-001/ and docs/judge-notes-season-001.md.
+
+schema_version: 1
+bundle_id: season-001-ops-001-v1
+season: season-001
+task_id: ops-001
+version: 1
+description: >
+  Anonymised gateway journal excerpts and Telegram delivery log
+  snippets simulating a source-visible reply release failure.
+  The logs show a completed agent transcript with a final answer,
+  but no evidence of actual Telegram outbound delivery.
+dry_run_compatible: true
+required: true
+files:
+  - path: gateway-journal.log
+    description: >
+      Anonymised gateway journal showing session activity, message
+      objects, and delivery attempts.  Contains only synthetic or
+      fully anonymised data — no real credentials, tokens, or
+      user identifiers.
+    content_type: text/plain
+  - path: telegram-delivery.log
+    description: >
+      Anonymised Telegram outbound delivery log showing API
+      responses, retry counts, and message metadata.  The final
+      reply message either has no delivery record or has a
+      null/unassigned message id.
+    content_type: text/plain
+  - path: config-snapshot.yaml
+    description: >
+      Redacted gateway configuration snapshot relevant to the
+      Telegram messaging channel.  Includes channel target,
+      thread id settings, and delivery timeout values.
+    content_type: text/yaml
+    optional: true
+preparation:
+  method: runner_provided
+  description: >
+    The runner generates or copies anonymised log files.  A
+    generation script at fixtures/season-001/ops-001/generate.sh
+    can produce synthetic logs for the three root-cause categories
+    (source-visible reply release failure, gateway readiness vs
+    delivery, thread context mismatch).  Logs must be scanned
+    for any real secrets before use.
+  expected_duration_minutes: 5
+environment_requirements: []
+depends_on: []

@@ -1,0 +1,52 @@
+# Fixture bundle: node-001 — Audit node agent readiness
+#
+# The runner prepares a target node with a known configuration
+# profile.  The participant audits it for mission readiness.
+#
+# ⚠ This bundle contains ONLY participant-facing fixture data.
+#    Judge notes, answer keys, and oracle material live in
+#    oracle/season-001/ and docs/judge-notes-season-001.md.
+
+schema_version: 1
+bundle_id: season-001-node-001-v1
+season: season-001
+task_id: node-001
+version: 1
+description: >
+  A target node configuration profile describing hardware, runtime
+  version, tool paths, service state, and resource limits.  The
+  runner applies this configuration to a test node before the
+  participant starts.  The participant audits and reports readiness.
+dry_run_compatible: true
+required: true
+files:
+  - path: node-profile.yaml
+    description: >
+      Structured node profile in Node Capability Matrix format.
+      Describes the node's hardware (CPU, RAM, disk), runtime
+      (OpenClaw version, gateway config), tool availability
+      (git, node, npm, ssh), service status (systemd units),
+      resource limits, and any intentional misconfigurations
+      the participant should discover.
+    content_type: text/yaml
+  - path: setup-instructions.md
+    description: >
+      Instructions for the runner to configure a test node to
+      match the node profile.  Not shown to the participant.
+    content_type: text/markdown
+    optional: true
+preparation:
+  method: env_dependent
+  description: >
+    The runner configures a target node (physical, VM, or
+    container) to match the node-profile.yaml.  The fixture
+    includes a profile that defines what the participant will
+    find.  The runner should ensure that tools listed as
+    available are actually installed, and that the documented
+    misconfigurations exist on the node.  For dry runs, a
+    mock profile can be used without a live node.
+  expected_duration_minutes: 20
+environment_requirements:
+  - access to a test node (physical, VM, or container)
+  - sudo or setup automation for applying the profile
+depends_on: []

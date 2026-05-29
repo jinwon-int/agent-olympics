@@ -4,10 +4,10 @@
 
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
-        validate-judges-v2 validate-oracle validate-smoke oracle smoke-check \
-        smoke setup clean
+        validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
+        oracle smoke-check smoke fixtures-check setup clean
 
-all: validate-all validate-v2 validate-oracle
+all: validate-all validate-v2 validate-oracle validate-fixtures
 
 # Install dependencies
 setup:
@@ -62,8 +62,15 @@ validate-smoke:
 # Validate all smoke task envelopes
 smoke-check: validate-smoke
 
+# Validate all fixture bundle manifests
+validate-fixtures:
+	node scripts/validate.js fixtures
+
+# Validate all fixture bundle manifests
+fixtures-check: validate-fixtures
+
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke
+validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
