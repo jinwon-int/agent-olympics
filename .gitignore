@@ -4,6 +4,10 @@ node_modules/
 # Round engine — auto-generated run directories
 runs/
 
+# Score engine — auto-generated judge records and scoreboard
+results/*-auto-judge.yaml
+results/scoreboard.json
+
 # OS files
 *.DS_Store
 Thumbs.db
