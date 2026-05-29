@@ -12,6 +12,13 @@
     "started_at",
     "ended_at",
     "status",
+    "division",
+    "validity",
+    "publishable",
+    "tool_use_profile",
+    "operating_policy",
+    "delegation_profile",
+    "comparable_metadata",
     "summary",
     "evidence",
     "findings",
@@ -39,9 +46,55 @@
     "node": { "type": "string", "description": "Node identifier or node profile reference. Operator-supplied label; never the SSH hostname or IP." },
     "hardware_profile": { "type": "object", "description": "Hardware profile: cpu_class, memory_gb, storage_class, os_family, etc. Operator-supplied safe labels only." },
     "configuration_profile": { "type": "object", "description": "Configuration profile: model_routing, liveness, resource_limits, tool_availability, memory_policy, context_policy, retry_policy, timeout_policy, concurrency_limits, sandbox_mode, network_mode, service_ownership. Operator-supplied; secret values must not appear." },
-    "tool_use_profile": { "type": "object", "description": "Tool classes allowed and actually used during the run. Operator-supplied safe labels only." },
-    "operating_policy": { "type": "object", "description": "Operating principles followed: approval_boundaries, secret_handling, destructive_action_rules, progress_reporting, escalation_policy, delegation_policy, durable_memory_policy. Operator-supplied safe labels only." },
-    "delegation_profile": { "type": "object", "description": "Delegation and support: subagents_used, background_jobs_used, human_assistance, a2a_workers, supported_by, notes. Operator-supplied." },
+    "tool_use_profile": {
+      "type": "object",
+      "description": "Tool classes allowed and actually used during the run. Operator-supplied safe labels only.",
+      "properties": {
+        "classes_allowed": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "classes_used": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "allowed": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "used": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "disclosure_level": { "type": "string", "enum": ["full", "representative", "minimal"] },
+        "notes": { "type": "string" }
+      },
+      "anyOf": [
+        { "required": ["classes_allowed", "classes_used"] },
+        { "required": ["allowed", "used"] }
+      ],
+      "additionalProperties": false
+    },
+    "operating_policy": {
+      "type": "object",
+      "description": "Operating principles followed: approval_boundaries, secret_handling, destructive_action_rules, progress_reporting, escalation_policy, delegation_policy, durable_memory_policy. Operator-supplied safe labels only.",
+      "required": ["approval_boundaries", "secret_handling", "destructive_action_rules"],
+      "properties": {
+        "approval_boundaries": { "type": "string", "minLength": 1 },
+        "secret_handling": { "type": "string", "minLength": 1 },
+        "destructive_action_rules": { "type": "string", "minLength": 1 },
+        "progress_reporting": { "type": "string" },
+        "escalation_policy": { "type": "string" },
+        "delegation_policy": { "type": "string" },
+        "durable_memory_policy": { "type": "string" },
+        "timeout_handling": { "type": "string" },
+        "contradiction_resolution": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "delegation_profile": {
+      "type": "object",
+      "description": "Delegation and support: subagents_used, background_jobs_used, human_assistance, a2a_workers, supported_by, notes. Operator-supplied.",
+      "required": ["subagents_used", "background_jobs_used", "human_assistance"],
+      "properties": {
+        "subagents_used": { "type": "boolean" },
+        "background_jobs_used": { "type": "boolean" },
+        "human_assistance": { "type": "boolean" },
+        "a2a_workers": { "type": "array", "items": { "type": "string" } },
+        "supported_by": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "division": {
       "type": "string",
       "enum": ["closed_stack", "open_stack", "human_baseline", "node_class"],

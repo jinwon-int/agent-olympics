@@ -109,7 +109,7 @@
         "concurrency_limits_declared": { "type": "boolean" },
         "notes": { "type": "string", "description": "Judge reasoning for configuration fitness score." }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
 
     "operating_policy_checks": {
@@ -123,7 +123,7 @@
         "destructive_action_restraint_checked": { "type": "boolean" },
         "notes": { "type": "string", "description": "Judge reasoning for operating discipline score." }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
 
     "division_verification": {

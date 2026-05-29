@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/oracle.schema.json",
+  "title": "Agent Olympics Oracle / Answer Key",
+  "description": "Private oracle file containing expected answer categories, scoring guidance, strong answer markers, and machine-readable checks. Oracle files are judge-only and must not be distributed to participants.",
+  "type": "object",
+  "required": [
+    "oracle_schema_version",
+    "oracle_id",
+    "task_id",
+    "expected_answer_categories",
+    "scoring_guidance",
+    "answer_key_checks"
+  ],
+  "properties": {
+    "oracle_schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "oracle_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^oracle-[a-z]+-\\d{3}$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z]+-\\d{3}$"
+    },
+    "expected_answer_categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "description"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "common_trigger": { "type": "string" },
+          "evidence_hints": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "scoring_guidance": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["max_points"],
+        "properties": {
+          "max_points": { "type": "number", "minimum": 0 },
+          "full": { "type": "string" },
+          "partial": { "type": "string" },
+          "zero": { "type": "string" },
+          "penalty": { "type": "string" },
+          "deduction": { "type": "string" }
+        },
+        "additionalProperties": { "type": "string" }
+      }
+    },
+    "strong_answer_markers": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "string" }
+          }
+        ]
+      }
+    },
+    "penalty_triggers": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "range": { "type": "string" },
+              "note": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "answer_key_checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["question_id", "question", "expected"],
+        "properties": {
+          "question_id": { "type": "string", "minLength": 1 },
+          "question": { "type": "string", "minLength": 1 },
+          "expected": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
