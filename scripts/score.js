@@ -1124,20 +1124,42 @@ async function main() {
   }
 
   if (mode === 'validate') {
-    // Just validate — run the existing validator
+    // Validate result packets and adapter capability declarations
     console.log(`\nFound ${resultPacketFiles.length} result packet file(s). Running validate.js...\n`);
     const { execSync } = require('child_process');
+
+    // Validate result packets
     try {
       execSync(`node "${path.join(ROOT, 'scripts', 'validate.js')}" packets`, {
         cwd: ROOT,
         stdio: 'inherit',
       });
-      console.log('\n✓ Validation complete.');
-      process.exit(0);
+      console.log('\n✓ Result packet validation complete.');
     } catch {
-      console.error('\n✗ Validation found errors.');
+      console.error('\n✗ Result packet validation found errors.');
       process.exit(1);
     }
+
+    // Validate adapter capability declarations
+    console.log('\nValidating adapter capability declarations...');
+    const capsDir = path.join(ROOT, 'fixtures', 'adapters', 'capabilities');
+    if (fs.existsSync(capsDir)) {
+      try {
+        execSync(`node "${path.join(ROOT, 'scripts', 'validate.js')}" adapter-capabilities`, {
+          cwd: ROOT,
+          stdio: 'inherit',
+        });
+        console.log('\n✓ Adapter capability declaration validation complete.');
+      } catch {
+        console.error('\n✗ Adapter capability validation found errors.');
+        process.exit(1);
+      }
+    } else {
+      console.log('SKIP  No adapter capabilities directory found.');
+    }
+
+    console.log('\n✓ All validation complete.');
+    process.exit(0);
   }
 
   if (blindMode) {

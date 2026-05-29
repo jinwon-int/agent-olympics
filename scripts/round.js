@@ -325,6 +325,9 @@ Commands:
   validate <manifest>  Validate a round manifest against the schema
   execute <manifest>   Execute pending runs via stub adapter (source-only)
   resume <manifest>    Resume interrupted runs (those in 'running' state)
+  validate-adapter-outputs  [adapter]  Validate adapter output fixture files.
+                        With [adapter] (hermes, cli, human) validates a single
+                        adapter's output; without, validates all adapter outputs.
 
 Options:
   --verbose, -v        Verbose output
@@ -345,6 +348,94 @@ Round Lifecycle States:
   pending → fixture_preparation → running → completed → scored → archived
 `;
   console.log(HELP);
+}
+
+/**
+ * Validate adapter output fixture files.
+ * Delegates to validate.js's built-in adapter-fixtures and
+ * adapter-capabilities modes via child process.
+ * When an [adapter] argument is provided (hermes, cli, or human),
+ * validates only that adapter's sample files by passing individual
+ * file paths through validate.js.
+ */
+function cmdValidateAdapterOutputs(adapterArg, options) {
+  const { spawnSync } = require('child_process');
+  const VALIDATE_JS = path.resolve(__dirname, 'validate.js');
+
+  // Define which adapter dirs to scan
+  const adapterDirs = {
+    hermes: 'fixtures/adapters/hermes',
+    cli: 'fixtures/adapters/cli',
+    human: 'fixtures/adapters/human-baseline',
+  };
+
+  if (!adapterArg) {
+    // Validate ALL adapter fixtures using the built-in mode
+    console.log('=== Validating adapter capability declarations ===');
+    const capsResult = spawnSync(process.execPath, [VALIDATE_JS, 'adapter-capabilities'], {
+      stdio: 'inherit',
+      cwd: ROOT,
+    });
+    if (capsResult.status !== 0) {
+      console.error('Adapter capability validation failed.');
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log('=== Validating all adapter fixture files ===');
+    const fixtureResult = spawnSync(process.execPath, [VALIDATE_JS, 'adapter-fixtures'], {
+      stdio: 'inherit',
+      cwd: ROOT,
+    });
+    if (fixtureResult.status !== 0) {
+      console.error('Adapter fixture validation failed.');
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log('All adapter output validation passed.');
+    process.exit(0);
+  }
+
+  // Single adapter mode — validate individual files
+  const normalized = adapterArg.replace(/^human(-baseline)?$/, 'human').replace(/^human-/, '');
+  const dir = adapterDirs[normalized];
+  if (!dir) {
+    console.error(`Unknown adapter: "${adapterArg}". Expected one of: hermes, cli, human`);
+    process.exit(1);
+  }
+
+  const fullDir = path.resolve(ROOT, dir);
+  if (!fs.existsSync(fullDir)) {
+    console.log(`SKIP  ${dir}  - directory not found`);
+    process.exit(1);
+  }
+
+  const files = fs.readdirSync(fullDir).filter(f => /\.ya?ml$/.test(f));
+  if (files.length === 0) {
+    console.log(`No YAML files found in ${dir}`);
+    process.exit(0);
+  }
+
+  let totalErrors = 0;
+  let totalFiles = 0;
+
+  for (const file of files) {
+    const filePath = path.join(fullDir, file);
+    const result = spawnSync(process.execPath, [VALIDATE_JS, filePath], {
+      stdio: 'inherit',
+      cwd: ROOT,
+    });
+    totalFiles++;
+    if (result.status !== 0) {
+      totalErrors++;
+    }
+  }
+
+  console.log(`\n--- Adapter Output Validation Summary ---`);
+  console.log(`Files checked: ${totalFiles}`);
+  console.log(`Files with errors: ${totalErrors}`);
+  process.exit(totalErrors > 0 ? 1 : 0);
 }
 
 function cmdValidate(manifestArg, options) {
@@ -1168,6 +1259,9 @@ function main() {
       break;
     case 'status':
       cmdStatus(cmdArg, options);
+      break;
+    case 'validate-adapter-outputs':
+      cmdValidateAdapterOutputs(cmdArg, options);
       break;
     case 'execute':
       cmdExecute(cmdArg, execOptions);
