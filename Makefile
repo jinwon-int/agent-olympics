@@ -16,7 +16,7 @@
         score-blind score-blind-score score-blind-aggregate score-all \
         validate-web-fields validate-web-bridge
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # Install dependencies
 setup:
@@ -64,12 +64,30 @@ validate-oracle:
 
 oracle: validate-oracle
 
-# Validate all adapter compatibility fixture files (capability declarations + sample data)
+# Validate all adapter capability declaration files (fixtures/adapters/capabilities/*.yaml)
+# against the adapter-capability-declaration.schema.json
+validate-adapter-capabilities:
+	@echo "=== Adapter Capability Declarations ==="
+	node scripts/validate.js adapter-capabilities
+	@echo "Adapter capability declaration validation passed."
+
+# Validate all adapter fixture sample data files (Hermes, CLI, human-baseline)
+# Checks standard-schema files (result packets, evidence bundles) and
+# adapter-specific format files (commands, timestamp logs, actions, etc.)
 validate-adapter-fixtures:
 	@echo "=== Adapter Compatibility Fixtures ==="
-	node scripts/validate.js fixtures/adapters/cli/sample-result-packet-stub.yaml
-	node scripts/validate.js fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml
-	@echo "Adapter fixture schema validation passed."
+	node scripts/validate.js adapter-fixtures
+	@echo ""
+	@echo "Adapter fixture validation passed."
+
+# Validate all Hermes-specific fixture files (workflow plan, worker trace,
+# memory summary) with both schema and structural checks
+validate-hermes-fixtures:
+	@echo "=== Hermes Adapter Fixtures ==="
+	node scripts/validate.js fixtures/adapters/hermes/sample-workflow-plan.yaml
+	node scripts/validate.js fixtures/adapters/hermes/sample-worker-trace.yaml
+	node scripts/validate.js fixtures/adapters/hermes/sample-memory-summary.yaml
+	@echo "Hermes adapter fixture validation passed."
 
 # Validate all smoke task envelopes
 validate-smoke:
@@ -105,7 +123,8 @@ round:
 
 # Default validation target
 validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
-        validate-adapter-fixtures validate-rounds validate-profiles \
+        validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
+        validate-rounds validate-profiles \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # --- Competition-Validity targets ---

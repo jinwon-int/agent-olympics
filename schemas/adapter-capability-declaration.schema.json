@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/adapter-capability-declaration.schema.json",
+  "title": "Adapter Capability Declaration",
+  "description": "Describes what an adapter can produce, what fields it adds to result packets, which redaction rules it applies, and its known limitations. Every adapter in fixtures/adapters/capabilities/ must conform to this schema.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "adapter_id",
+    "adapter_type",
+    "display_name",
+    "description",
+    "status",
+    "evidence_kinds",
+    "runtime_fields",
+    "redaction_rules"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Version of this declaration format."
+    },
+    "adapter_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for the adapter runtime, e.g. 'hermes', 'cli', 'human-baseline'."
+    },
+    "adapter_type": {
+      "type": "string",
+      "enum": ["agent", "orchestrator", "automation", "manual"],
+      "description": "Broad category: agent-runtime (OpenClaw), orchestrator (Hermes), automation (CLI scripts), manual (human operator)."
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name for dashboards and reports."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short paragraph describing what this adapter does and when to use it."
+    },
+    "status": {
+      "type": "object",
+      "required": ["standard_statuses", "internal_mapping"],
+      "properties": {
+        "standard_statuses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["completed", "partial", "blocked", "failed", "disqualified"]
+          },
+          "description": "Which of the five standard statuses this adapter can produce."
+        },
+        "internal_mapping": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["completed", "partial", "blocked", "failed", "disqualified"]
+          },
+          "description": "Maps internal state names to standard statuses."
+        }
+      },
+      "description": "Status mapping: internal adapter states mapped to standard result packet statuses."
+    },
+    "evidence_kinds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Which evidence kinds this adapter commonly produces."
+    },
+    "runtime_fields": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Adapter-specific optional fields the adapter may add to result packets. Keys are field names, values are one-sentence descriptions."
+    },
+    "redaction_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "pattern_description", "target_data_class", "applies_to"],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pattern_description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_data_class": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "applies_to": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "description": "Redaction rules this adapter supports, matching the contract redaction taxonomy."
+    },
+    "approval_boundaries": {
+      "type": "object",
+      "description": "Describes what actions this adapter considers approval-sensitive.",
+      "properties": {
+        "always_requires_approval": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "context_dependent": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "default_allowed": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "timeout_behavior": {
+      "type": "object",
+      "description": "Describes how this adapter handles time limits.",
+      "properties": {
+        "supports_hard_timeout": { "type": "boolean" },
+        "supports_soft_timeout": { "type": "boolean" },
+        "default_grace_seconds": { "type": "integer" }
+      }
+    },
+    "task_families": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Which event families this adapter is designed for."
+    },
+    "fixture_dependencies": {
+      "type": "object",
+      "description": "Describes what fixture data the adapter typically needs.",
+      "properties": {
+        "env_dependent": { "type": "boolean" },
+        "generated": { "type": "boolean" },
+        "bundled": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Documented limitations or gaps in this adapter's implementation."
+    }
+  }
+}

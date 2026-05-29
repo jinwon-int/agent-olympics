@@ -83,6 +83,18 @@ try {
 } catch (e) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
+// Load adapter capability declaration schema
+// ---------------------------------------------------------------------------
+let adapterCapSchema = null;
+let adapterCapValidator = null;
+try {
+  adapterCapSchema = loadSchema('schemas/adapter-capability-declaration.schema.json');
+  const acAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(acAjv);
+  adapterCapValidator = acAjv.compile(adapterCapSchema);
+} catch (e) { /* ignore */ }
+
+// ---------------------------------------------------------------------------
 // Load schemas (v2)
 // ---------------------------------------------------------------------------
 let v2Schemas = {};
@@ -568,6 +580,17 @@ function detectSeasonFixtureManifest(doc) {
 }
 
 /**
+ * Detect adapter capability declaration files.
+ */
+function detectAdapterCapability(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined && doc.adapter_id !== undefined
+    && doc.adapter_type !== undefined && doc.display_name !== undefined
+    && doc.status !== undefined && doc.evidence_kinds !== undefined
+    && doc.runtime_fields !== undefined && doc.redaction_rules !== undefined;
+}
+
+/**
  * Detect round manifest files.
  */
 function detectRoundManifest(doc) {
@@ -749,6 +772,11 @@ function validateFile(filePath) {
 
   const kind = detectKind(doc);
   if (!kind) {
+    // Fall through to adapter fixture validation for files in the adapters fixture tree
+    const relLower = rel.toLowerCase();
+    if (relLower.startsWith('fixtures' + path.sep + 'adapters' + path.sep)) {
+      return validateAdapterFixtureFile(filePath);
+    }
     console.warn(`SKIP  ${rel}  - unknown document kind, skipping`);
     fileCount++;
     return;
@@ -1122,6 +1150,185 @@ function validateRoundManifest(filePath) {
 }
 
 // ---------------------------------------------------------------------------
+// Adapter fixture validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate an adapter capability declaration file against the schema.
+ * Follows the pattern of validateNodeProfile / validateRoundManifest.
+ */
+function validateAdapterCapabilities(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectAdapterCapability(doc)) {
+    console.warn(`SKIP  ${rel}  - not an adapter capability declaration (missing required fields)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Schema validation
+  if (adapterCapValidator) {
+    const valid = adapterCapValidator(doc);
+    if (!valid) {
+      for (const err of adapterCapValidator.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        const extra = err.params ? JSON.stringify(err.params) : '';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg} ${extra}`.trim() });
+      }
+    }
+  }
+
+  // Cross-field semantic checks
+  // adapter_id must be a safe slug
+  if (doc.adapter_id && !/^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/.test(doc.adapter_id)) {
+    issues.push({ severity: SEVERITY.error, msg: `adapter_id "${doc.adapter_id}" must be a safe slug` });
+  }
+
+  // Check for adapter-specific known limitations linking to issues
+  if (Array.isArray(doc.known_limitations) && doc.known_limitations.length > 0) {
+    for (let i = 0; i < doc.known_limitations.length; i++) {
+      if (doc.known_limitations[i].length < 10) {
+        issues.push({ severity: SEVERITY.warn, msg: `known_limitations[${i}] is too short to be meaningful` });
+      }
+    }
+  }
+
+  // Detect forbidden patterns (no secrets, host-specific paths)
+  detectSecrets(doc, issues);
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${issue.severity === SEVERITY.error ? 'FAIL' : 'WARN'}  ${rel}  - ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (adapter-capability)`);
+  }
+  fileCount++;
+}
+
+/**
+ * Validate an adapter fixture file with custom schema-aware checks.
+ * Handles adapter-specific formats (commands.yaml, timestamp-log.yaml,
+ * actions.yaml, workflow-plan.yaml, worker-trace.yaml, memory-summary.yaml)
+ * by at minimum verifying YAML validity, required fields, and no secrets.
+ */
+function validateAdapterFixtureFile(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+  const fileName = path.basename(filePath).toLowerCase();
+
+  // schema_version presence check for all adapter fixture files
+  if (doc.schema_version === undefined) {
+    issues.push({ severity: SEVERITY.warn, msg: 'missing schema_version field (recommended for all adapter fixture files)' });
+  } else if (typeof doc.schema_version !== 'number') {
+    issues.push({ severity: SEVERITY.error, msg: 'schema_version must be an integer' });
+  }
+
+  // Type-specific structural checks
+  if (fileName === 'sample-workflow-plan.yaml') {
+    if (!doc.workflow_id) issues.push({ severity: SEVERITY.error, msg: 'missing workflow_id for Hermes workflow plan' });
+    if (!Array.isArray(doc.steps) || doc.steps.length === 0) {
+      issues.push({ severity: SEVERITY.error, msg: 'workflow plan must have at least one step' });
+    }
+    if (!doc.objective) issues.push({ severity: SEVERITY.warn, msg: 'workflow plan missing objective' });
+  }
+
+  if (fileName === 'sample-worker-trace.yaml') {
+    if (!doc.trace_id) issues.push({ severity: SEVERITY.error, msg: 'missing trace_id for Hermes worker trace' });
+    if (!Array.isArray(doc.timeline) || doc.timeline.length === 0) {
+      issues.push({ severity: SEVERITY.error, msg: 'worker trace must have at least one timeline entry' });
+    }
+    if (!doc.classification) issues.push({ severity: SEVERITY.warn, msg: 'worker trace missing classification' });
+  }
+
+  if (fileName === 'sample-memory-summary.yaml') {
+    if (!doc.memory_summary_id) issues.push({ severity: SEVERITY.error, msg: 'missing memory_summary_id for Hermes memory summary' });
+    if (!doc.worker_id) issues.push({ severity: SEVERITY.error, msg: 'missing worker_id for memory summary' });
+    if (!Array.isArray(doc.memory_sources_consulted)) {
+      issues.push({ severity: SEVERITY.warn, msg: 'memory summary missing memory_sources_consulted' });
+    }
+  }
+
+  if (fileName === 'sample-commands.yaml') {
+    if (doc.adapter_id !== 'cli') issues.push({ severity: SEVERITY.warn, msg: 'CLI commands file should have adapter_id: cli' });
+    if (!Array.isArray(doc.commands) || doc.commands.length === 0) {
+      issues.push({ severity: SEVERITY.error, msg: 'CLI commands file must have at least one command entry' });
+    }
+  }
+
+  if (fileName === 'sample-timestamp-log.yaml') {
+    if (!doc.operator_log_id) issues.push({ severity: SEVERITY.error, msg: 'missing operator_log_id for human baseline timestamp log' });
+    if (!Array.isArray(doc.entries) || doc.entries.length === 0) {
+      issues.push({ severity: SEVERITY.error, msg: 'timestamp log must have at least one entry' });
+    }
+  }
+
+  if (fileName === 'sample-actions.yaml') {
+    if (!Array.isArray(doc.operator_actions) || doc.operator_actions.length === 0) {
+      issues.push({ severity: SEVERITY.error, msg: 'operator actions must have at least one action entry' });
+    }
+  }
+
+  // Detect forbidden patterns (no secrets, host-specific paths)
+  detectSecrets(doc, issues);
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${issue.severity === SEVERITY.error ? 'FAIL' : 'WARN'}  ${rel}  - ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (adapter-fixture)`);
+  }
+  fileCount++;
+}
+
+// ---------------------------------------------------------------------------
 // Mode resolution
 // ---------------------------------------------------------------------------
 const MODES = {
@@ -1145,6 +1352,78 @@ const MODES = {
 function main() {
   const args = process.argv.slice(2);
   let mode = args[0] || 'all';
+
+  // Adapter capabilities mode
+  if (mode === 'adapter-capabilities') {
+    const capsDir = path.join(ROOT, 'fixtures', 'adapters', 'capabilities');
+    if (!fs.existsSync(capsDir)) {
+      console.log('No adapter capabilities directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(capsDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No adapter capability declaration files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} adapter capability declaration file(s)...\n`);
+    for (const f of files) {
+      validateAdapterCapabilities(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Capability files:  ${files.length}`);
+    console.log(`Errors:           ${totalErrors}`);
+    console.log(`Warnings:         ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Adapter fixtures mode — validate all adapter sample fixture files
+  if (mode === 'adapter-fixtures') {
+    const cliDir = path.join(ROOT, 'fixtures', 'adapters', 'cli');
+    const hermesDir = path.join(ROOT, 'fixtures', 'adapters', 'hermes');
+    const humanDir = path.join(ROOT, 'fixtures', 'adapters', 'human-baseline');
+    const dirs = [cliDir, hermesDir, humanDir].filter(d => fs.existsSync(d));
+    if (dirs.length === 0) {
+      console.log('No adapter fixture directories found.');
+      process.exit(0);
+    }
+    let files = [];
+    for (const d of dirs) {
+      files = files.concat(findFiles(d, /\.ya?ml$/));
+    }
+    if (files.length === 0) {
+      console.log('No adapter fixture YAML files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} adapter fixture file(s)...\n`);
+
+    // Separate standard-schema files from adapter-specific format files
+    const standardFiles = [];
+    const customFiles = [];
+    const bundleIds = ['sample-result-packet-stub.yaml', 'sample-evidence-bundle-stub.yaml'];
+    for (const f of files) {
+      const base = path.basename(f).toLowerCase();
+      if (bundleIds.includes(base)) {
+        standardFiles.push(f);
+      } else {
+        customFiles.push(f);
+      }
+    }
+
+    // Validate standard-schema files through validateFile
+    for (const f of standardFiles) {
+      validateFile(f);
+    }
+    // Validate adapter-specific format files through custom checks
+    for (const f of customFiles) {
+      validateAdapterFixtureFile(f);
+    }
+
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:                  ${files.length}`);
+    console.log(`Errors:                 ${totalErrors}`);
+    console.log(`Warnings:               ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
 
   // Oracle mode
   if (mode === 'oracle') {
@@ -1273,7 +1552,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|oracle|competition-validity|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
     process.exit(1);
   }
 
