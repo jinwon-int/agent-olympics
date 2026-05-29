@@ -200,6 +200,77 @@ function semanticChecks(doc, kind, file, schemaVersion) {
       }
     }
 
+    // v2: comparable_metadata checks
+    if (schemaVersion === 2) {
+      if (doc.comparable_metadata) {
+        const cm = doc.comparable_metadata;
+
+        // Check participant block
+        if (cm.participant) {
+          if (cm.participant.agent_id !== doc.agent_id) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.participant.agent_id ("${cm.participant.agent_id}") differs from top-level agent_id ("${doc.agent_id}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.participant block' });
+        }
+
+        // Check runtime block matches top-level
+        if (cm.runtime) {
+          if (cm.runtime.name && cm.runtime.name !== doc.runtime) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.runtime.name ("${cm.runtime.name}") differs from top-level runtime ("${doc.runtime}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.runtime block' });
+        }
+
+        // Check model block
+        if (cm.model) {
+          if (cm.model.name && doc.model && cm.model.name !== doc.model) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.model.name ("${cm.model.name}") differs from top-level model ("${doc.model}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.model block' });
+        }
+
+        // Check node block
+        if (cm.node) {
+          if (cm.node.profile_ref && doc.node && cm.node.profile_ref !== doc.node) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.node.profile_ref ("${cm.node.profile_ref}") differs from top-level node ("${doc.node}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.node block' });
+        }
+
+        // Check task block
+        if (cm.task) {
+          if (cm.task.task_id && cm.task.task_id !== doc.task_id) {
+            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.task.task_id ("${cm.task.task_id}") differs from top-level task_id ("${doc.task_id}")` });
+          }
+        } else {
+          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.task block' });
+        }
+
+        // Secret scan inside comparable_metadata
+        detectSecrets(cm, issues, 'comparable_metadata');
+      } else {
+        issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata block' });
+      }
+
+      // raw_measurements checks
+      if (doc.raw_measurements) {
+        if (doc.raw_measurements.wall_time_seconds !== undefined) {
+          if (typeof doc.raw_measurements.wall_time_seconds !== 'number' || doc.raw_measurements.wall_time_seconds < 0) {
+            issues.push({ severity: SEVERITY.warn, msg: 'raw_measurements.wall_time_seconds should be a non-negative number' });
+          }
+        }
+      }
+
+      // scored_values should not contain secrets
+      if (doc.scored_values) {
+        detectSecrets(doc.scored_values, issues, 'scored_values');
+      }
+    }
+
     // Check for forbidden patterns (potential secret leaks)
     detectSecrets(rp, issues);
   }

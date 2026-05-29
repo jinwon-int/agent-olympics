@@ -142,24 +142,36 @@
           "agent_id": {
             "type": "string",
             "minLength": 1,
-            "description": "Unique participant identifier, e.g. 'yukson', 'sogyo', 'seoseo'."
+            "description": "Unique participant identifier, e.g. 'yukson', 'sogyo', 'seoseo'. Operator-supplied."
+          },
+          "adapter": {
+            "type": "string",
+            "description": "Adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'. Operator-supplied; not a credential or secret. When present, the adapter is the preferred comparable key over runtime."
           },
           "runtime": {
             "type": "string",
             "minLength": 1,
-            "description": "Runtime or adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'."
+            "description": "Runtime or adapter class, e.g. 'openclaw', 'hermes', 'cli', 'human'. Operator-supplied."
           },
           "runtime_version": {
             "type": "string",
-            "description": "Optional runtime version string."
+            "description": "Optional runtime version string. Operator-supplied."
           },
           "model": {
             "type": "string",
-            "description": "Optional model identifier used by this participant."
+            "description": "Optional model identifier used by this participant. Operator-supplied; never a credential or API key."
+          },
+          "model_provider": {
+            "type": "string",
+            "description": "Optional model provider reference, e.g. 'openai', 'anthropic'. Operator-supplied; never an endpoint URL or credential."
           },
           "node": {
             "type": "string",
-            "description": "Optional node identifier where this participant runs."
+            "description": "Optional node profile reference where this participant runs. Operator-supplied label; never the SSH hostname or IP."
+          },
+          "config_profile": {
+            "type": "string",
+            "description": "Optional configuration profile reference describing the participant's setup. Operator-supplied safe label."
           },
           "label": {
             "type": "string",
@@ -173,7 +185,7 @@
         },
         "additionalProperties": false
       },
-      "description": "List of participants competing in this round."
+      "description": "List of participants competing in this round. Participant metadata enables comparison across agent runs by runtime, model, node, and config profile."
     },
     "run_directory": {
       "type": "string",
