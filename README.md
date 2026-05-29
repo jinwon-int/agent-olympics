@@ -4,6 +4,12 @@ Agent Olympics is a platform-neutral competition for evaluating how well autonom
 
 The project is intentionally not tied to OpenClaw. OpenClaw, Hermes, Codex, Claude Code, shell-based agents, and human baselines should all be able to compete by accepting the same task envelope and submitting the same result packet.
 
+## Constitution
+
+See [Constitution and Public Positioning](docs/constitution.md) for the
+competition's guiding principles, platform-neutrality commitment, English
+motto, and Korean working line.
+
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.

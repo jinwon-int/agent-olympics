@@ -26,6 +26,10 @@ Each participant receives the same Task Envelope and returns the same Result Pac
 
    OpenClaw may have better channel delivery evidence. Hermes may have better orchestration. CLI agents may have stronger repo-local coding flow. These are recorded, but the primary score uses common dimensions.
 
+These principles are formalised in the project
+[Constitution and Public Positioning](constitution.md), which also states the
+English motto and Korean working line.
+
 ## Round Lifecycle
 
 1. Curator creates a Task Envelope.
