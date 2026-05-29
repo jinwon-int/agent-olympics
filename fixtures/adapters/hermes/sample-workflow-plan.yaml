@@ -1,0 +1,73 @@
+# Sample Hermes Workflow Plan
+#
+# This file mimics the workflow plan a Hermes adapter might produce
+# after decomposing a Task Envelope into sub-tasks for worker agents.
+# It can be validated locally without a running Hermes runtime.
+#
+# The Hermes adapter receives a Task Envelope, creates a workflow plan,
+# assigns workers to each step, and collects their results.
+
+schema_version: 1
+workflow_id: "wf-ops-001-demo"
+source_envelope_id: "env-ops-001-v1"
+created_at: "2026-05-29T09:00:00+09:00"
+
+objective: >
+  Verify that the production gateway is reachable, its TLS certificate
+  is valid for at least 30 more days, the configuration file hash
+  matches the expected value, and the logs show no unusual 5xx errors
+  in the last 24 hours.
+
+steps:
+  - step_id: "s1-connectivity"
+    description: "Check gateway connectivity and TLS certificate validity"
+    worker_count: 1
+    worker_profile: "stub-small-vps"
+    expected_duration_seconds: 30
+    input:
+      target_hostname: "gateway.example.com"
+      target_port: 443
+    depends_on: []
+
+  - step_id: "s2-config-integrity"
+    description: "Fetch and hash the current gateway configuration file"
+    worker_count: 1
+    worker_profile: "stub-medium-vps"
+    expected_duration_seconds: 15
+    input:
+      config_path: "/etc/openclaw/gateway.yaml"
+    depends_on:
+      - "s1-connectivity"
+
+  - step_id: "s3-log-inspection"
+    description: "Inspect gateway logs for 5xx errors in the last 24 hours"
+    worker_count: 2
+    worker_profile: "stub-medium-vps"
+    expected_duration_seconds: 60
+    input:
+      log_path: "/var/log/openclaw/gateway.log"
+      error_threshold: 10
+      time_range_hours: 24
+    depends_on:
+      - "s1-connectivity"
+
+  - step_id: "s4-synthesis"
+    description: "Merge results from all prior steps into a final report"
+    worker_count: 1
+    worker_profile: "stub-small-vps"
+    expected_duration_seconds: 10
+    input:
+      merge_fields:
+        - connectivity_ok
+        - tls_days_remaining
+        - config_hash_match
+        - error_count_last_24h
+    depends_on:
+      - "s2-config-integrity"
+      - "s3-log-inspection"
+
+parallelism:
+  max_concurrent_workers: 2
+  strategy: "eager"
+
+timeout_seconds: 300

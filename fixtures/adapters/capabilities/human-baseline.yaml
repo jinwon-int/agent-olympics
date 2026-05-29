@@ -1,0 +1,128 @@
+# Human Baseline Adapter Capability Declaration
+#
+# Declares what the Human Baseline adapter can produce, what fields it
+# adds to result packets, which redaction rules it applies, and its
+# known limitations.  This file follows the adapter-capability-declaration
+# format documented in fixtures/adapters/adapter-capability-declaration.yaml.
+#
+# The Human Baseline adapter is a human operator who reads the task
+# envelope, performs actions manually, and records the result.  It
+# establishes a "good enough" reference for what a competent human can
+# achieve — making it the anchor for comparing agent performance.
+
+schema_version: 1
+adapter_id: human-baseline
+adapter_type: manual
+display_name: "Human Baseline Adapter"
+description: >
+  A human operator follows the task envelope as a written instruction
+  and records a timestamped action log, observations, and conclusions.
+  The operator produces a result packet and evidence bundle matching
+  the Adapter Execution Contract.  Human baselines provide the
+  reference quality level for judging agent performance — if an agent
+  significantly outperforms or underperforms the human baseline, that
+  is a meaningful signal.
+
+status:
+  standard_statuses:
+    - completed
+    - partial
+    - blocked
+    - failed
+    - disqualified
+  internal_mapping:
+    operator_finished_all_required_outputs: "completed"
+    operator_provided_partial_answers: "partial"
+    operator_identified_missing_info: "blocked"
+    operator_reached_wrong_conclusion: "failed"
+    operator_intentionally_violated_rules: "disqualified"
+
+evidence_kinds:
+  - log
+  - screenshot
+  - command_output
+  - transcript_excerpt
+  - file_diff
+  - config_snippet
+  - probe_result
+  - url
+
+runtime_fields:
+  operator_action_log: "Timeline of operator actions with timestamps, descriptions, durations, and outcomes."
+  operator_notes: "Free-text observations and reasoning recorded by the operator during the task."
+  reference_material_consulted: "List of documents, wikis, or runbooks the operator referenced."
+  screen_recordings: "Paths or URLs to optional screen recordings or screenshots."
+  artifact_references: "Paths or links to output files produced by the operator."
+
+redaction_rules:
+  - rule_id: "human_credential_in_screenshots"
+    pattern_description: "Credential values visible in screen captures or video"
+    target_data_class:
+      - "api_tokens"
+      - "private_keys"
+      - "session_cookies"
+    applies_to:
+      - "screenshot"
+      - "command_output"
+
+  - rule_id: "human_personal_information"
+    pattern_description: "Operator personal identifiers or contact information"
+    target_data_class:
+      - "personally_identifiable_information"
+    applies_to:
+      - "log"
+      - "operator_notes"
+      - "transcript_excerpt"
+
+  - rule_id: "human_credential_in_notes"
+    pattern_description: "Credential or token values in operator's free-text notes"
+    target_data_class:
+      - "api_tokens"
+      - "credential_from_config"
+    applies_to:
+      - "log"
+      - "operator_notes"
+
+approval_boundaries:
+  always_requires_approval:
+    - production_gateway_restart
+    - production_db_mutation
+    - credential_rotation_or_exposure
+  context_dependent:
+    - destructive_file_ops
+    - git_push_to_shared_branch
+    - posting_public_comments
+  default_allowed:
+    - read_only_inspection
+    - file_reads_and_writes_in_workspace
+    - running_tests_in_workspace
+    - taking_screenshots
+
+timeout_behavior:
+  supports_hard_timeout: false
+  supports_soft_timeout: true
+  default_grace_seconds: 120
+
+task_families:
+  - ops-relay
+  - code-sprint
+  - wiki-marathon
+  - safety-trial
+  - coordination-drill
+
+fixture_dependencies:
+  env_dependent: false
+  generated: true
+  bundled: true
+  notes: >
+    The human baseline requires no special environment beyond what the
+    task specifies.  Sample fixture data in fixtures/adapters/
+    human-baseline/ provides timestamp log and action description
+    templates for operators to follow or adapt.
+
+known_limitations:
+  - "Human operators are slower and less consistent than automated adapters — use for reference scoring, not volume."
+  - "Human baselines are inherently non-deterministic — two operators may produce different result packets for the same task."
+  - "Screen recording capture is optional and may be impractical for some operators."
+  - "The human baseline adapter cannot enforce approval boundaries programmatically; enforcement is the operator's responsibility."
+  - "Operator action logs may contain typos, imprecise timestamps, or incomplete descriptions — judge accordingly."

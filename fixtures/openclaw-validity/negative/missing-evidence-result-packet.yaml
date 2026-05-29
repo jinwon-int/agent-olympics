@@ -1,0 +1,56 @@
+# Negative fixture: Missing required evidence for completed status
+# Schema-valid but COMPETITION-INVALID.
+# This result packet is marked "completed" but has no delivery probe evidence.
+schema_version: 1
+packet_id: pkt-openclaw-incomplete-20260529
+run_id: run-ops-001-incomplete-20260529
+task_id: ops-001
+agent_id: sogyo
+runtime: openclaw
+runtime_version: 2.14.0
+model: gpt-5.x
+model_provider: openai
+node: vps5
+started_at: "2026-05-29T17:00:00+09:00"
+ended_at: "2026-05-29T17:22:00+09:00"
+status: completed
+summary: >
+  Missing evidence: delivery probe for Telegram is absent despite
+  completed status. Opened a gateway session but never checked if
+  the message was delivered.
+actions:
+  - id: act-001
+    type: api_call
+    target: gateway
+    command_summary: Create session
+    redacted: true
+    redaction_reason: gateway_auth_header_redacted
+    evidence_id: ev-session
+  - id: act-002
+    type: message
+    target: session
+    command_summary: Send task message
+    redacted: false
+    evidence_id: ev-session
+  - id: act-003
+    type: message
+    target: session
+    command_summary: Post final answer
+    redacted: false
+    evidence_id: ev-session
+evidence:
+  - id: ev-session
+    kind: config_snippet
+    source: task envelope
+    summary: Session created and message sent
+    redacted: false
+  # Missing: delivery_probe evidence (ev-telegram-delivery)
+  # Missing: ev-tool-calls, ev-final-report
+findings:
+  - claim: Session created and message posted.
+    evidence:
+      - ev-session
+    confidence: medium
+  # Missing: finding about delivery confirmation
+outputs:
+  diagnosis: Session created

@@ -1,0 +1,48 @@
+# Positive fixture: OpenClaw code task trace record, completed
+schema_version: 1
+trace_id: tr-run-code-001-sogyo-20260529T220000KST
+run_id: run-code-001-sogyo-20260529T220000KST
+agent_id: sogyo
+generated_at: "2026-05-29T22:30:00+09:00"
+entries:
+  - seq: 0
+    timestamp: "2026-05-29T22:00:00+09:00"
+    action: read
+    target: task_envelope
+    summary: Read code task envelope
+    duration_ms: 40
+    result_summary: Loaded code-001 envelope
+    evidence_ref: ev-input
+  - seq: 1
+    timestamp: "2026-05-29T22:01:00+09:00"
+    action: read
+    target: local
+    summary: Read source files for code review
+    duration_ms: 500
+    result_summary: Source files reviewed
+    evidence_ref: ev-code-review
+  - seq: 2
+    timestamp: "2026-05-29T22:05:00+09:00"
+    action: think
+    target: null
+    summary: Analyze code issue and plan fix
+    duration_ms: 3000
+    result_summary: Fix plan created
+  - seq: 3
+    timestamp: "2026-05-29T22:10:00+09:00"
+    action: write
+    target: local
+    summary: Apply code fix
+    duration_ms: 1500
+    result_summary: Fix applied to source file
+    evidence_ref: ev-code-changes
+  - seq: 4
+    timestamp: "2026-05-29T22:20:00+09:00"
+    action: command
+    target: local
+    summary: Run test suite to verify fix
+    redacted: true
+    redaction_reason: test_output_contained_sensitive_data
+    duration_ms: 5000
+    result_summary: Tests passed, output redacted
+    evidence_ref: ev-test-results

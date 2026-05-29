@@ -881,7 +881,7 @@ function cmdAll(roundDir) {
       console.log('No YAML files found in repository.');
       process.exit(0);
     }
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity/;
+    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative/;
     for (const f of yamlFiles) {
       if (excludedDirs.test(f)) continue;
       try {
@@ -914,7 +914,7 @@ function cmdAll(roundDir) {
   if (runDirs.length === 0) {
     warn('all', 'No run directories found — checking files in directory path only');
     // Fall back to checking individual YAML files
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity/;
+    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative/;
     const yamlFiles = findYamlFiles(roundDir).filter(f => !excludedDirs.test(f));
     for (const f of yamlFiles) {
       try {

@@ -1,0 +1,133 @@
+# Hermes Adapter Capability Declaration
+#
+# Declares what the Hermes adapter can produce, what fields it adds to
+# result packets, which redaction rules it applies, and its known
+# limitations.  This file follows the adapter-capability-declaration
+# format documented in fixtures/adapters/adapter-capability-declaration.yaml.
+#
+# The Hermes adapter orchestrates multi-step workflows by delegating
+# sub-tasks to child workers.  Its core differentiator is hierarchical
+# evidence merging — the adapter must synthesize outputs from multiple
+# workers into a single coherent result packet.
+
+schema_version: 1
+adapter_id: hermes
+adapter_type: orchestrator
+display_name: "Hermes Adapter"
+description: >
+  Accepts a Task Envelope, decomposes it into a workflow, assigns workers
+  to subtasks, collects their tool traces and memory retrievals, and
+  synthesizes a final result packet.  Supports contradictory evidence
+  resolution and merged child-worker evidence.
+
+status:
+  standard_statuses:
+    - completed
+    - partial
+    - blocked
+    - failed
+    - disqualified
+  internal_mapping:
+    workflow_completed_all_outputs_present: "completed"
+    workflow_completed_some_outputs_missing: "partial"
+    workflow_timed_out: "partial"
+    workflow_blocked_worker_assignment: "blocked"
+    workflow_blocked_memory_retrieval: "blocked"
+    workflow_blocked_missing_plugin: "blocked"
+    workflow_produced_wrong_result: "failed"
+    workflow_contradictory_unresolved: "failed"
+    value_exposure_detected: "disqualified"
+
+evidence_kinds:
+  - log
+  - command_output
+  - transcript_excerpt
+  - file_diff
+  - config_snippet
+  - probe_result
+  - api_response
+  - url
+
+runtime_fields:
+  workflow_id: "Hermes workflow execution identifier used for state tracking and cross-referencing."
+  workflow_plan: "Task decomposition plan showing how the envelope objective was split into worker subtasks."
+  worker_assignments: "Array of worker identifiers and their assigned subtask descriptions."
+  worker_state_transitions: "State change timeline for each worker (e.g., assigned → running → completed)."
+  memory_retrieval_summary: "Summary of what memory was consulted and what was found (no leak of private content)."
+  tool_trace_summary: "Aggregated tool call summaries from all workers, with redaction status."
+  final_commander_report: "Synthesized findings report produced by the Hermes commander after all workers complete."
+  contradictions: "List of contradictory evidence encountered across workers and how they were resolved."
+
+redaction_rules:
+  - rule_id: "hermes_credential_in_worker_output"
+    pattern_description: "Credential-like strings in worker command output or API response"
+    target_data_class:
+      - "api_tokens"
+      - "private_keys"
+      - "session_cookies"
+    applies_to:
+      - "command_output"
+      - "log"
+      - "api_response"
+
+  - rule_id: "hermes_memory_content"
+    pattern_description: "Private memory content in retrieval summaries"
+    target_data_class:
+      - "memory_values"
+      - "conversation_content"
+      - "user_identifiers"
+    applies_to:
+      - "transcript_excerpt"
+      - "log"
+
+  - rule_id: "hermes_workflow_arguments"
+    pattern_description: "Sensitive parameter values in workflow invocation arguments"
+    target_data_class:
+      - "api_tokens"
+      - "credential_from_config"
+    applies_to:
+      - "log"
+      - "config_snippet"
+
+approval_boundaries:
+  always_requires_approval:
+    - worker_provisioning
+    - external_service_call
+  context_dependent:
+    - destructive_file_ops
+    - memory_update_without_verification
+  default_allowed:
+    - read_only_inspection
+    - tool_calls_within_workspace
+    - child_worker_delegation_within_cluster
+
+timeout_behavior:
+  supports_hard_timeout: true
+  supports_soft_timeout: true
+  default_grace_seconds: 60
+
+task_families:
+  - ops-relay
+  - node-readiness
+  - code-sprint
+  - knowledge-wiki
+  - safety-trial
+  - coordination-drill
+  - harness-reliability
+
+fixture_dependencies:
+  env_dependent: true
+  generated: false
+  bundled: false
+  notes: >
+    Hermes requires a running Hermes orchestrator and available worker
+    nodes.  For local validation the sample fixture files in
+    fixtures/adapters/hermes/ provide deterministic workflow plans,
+    worker traces, and memory summaries that mimic live Hermes output
+    without requiring a running orchestration environment.
+
+known_limitations:
+  - "Child worker evidence merging is an open design question (see issues/roadmap-04-hermes-adapter.md)."
+  - "Memory retrieval summarization without leaking content is a design challenge — summaries must be informative but contain zero private data."
+  - "Contradictory evidence from workers may require human-in-the-loop resolution in the current design."
+  - "The Hermes adapter has not been run against a live Hermes runtime as of the initial fixture publication."

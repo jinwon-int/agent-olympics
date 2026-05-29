@@ -1,0 +1,52 @@
+# Sample Human Baseline — Validatable Evidence Bundle Stub
+#
+# This file conforms to evidence-bundle.schema.json (v1) and the detectKind
+# heuristics in scripts/validate.js.  It mimics the evidence items a
+# human baseline operator would attach to their result packet.
+#
+# To validate:
+#   node scripts/validate.js fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml
+#
+# Expected: OK (evidence-bundle v1)
+
+schema_version: 1
+bundle_id: "eb-human-ops-001-demo"
+run_id: "run-ops-001-human-demo"
+agent_id: "human-operator-alpha"
+generated_at: "2026-05-29T10:32:00+09:00"
+
+items:
+  - id: "ev-timestamp-log"
+    kind: "log"
+    summary: "Operator timestamp log: 8 entries with timestamps, durations, and results covering the full 32-minute baseline session"
+    content_ref: "fixtures/adapters/human-baseline/sample-timestamp-log.yaml"
+    redacted: false
+
+  - id: "ev-connectivity-output"
+    kind: "command_output"
+    summary: "curl -v to gateway health endpoint confirms reachability and TLS handshake"
+    content_ref: "fixtures/adapters/human-baseline/evidence/connectivity.log"
+    redacted: false
+
+  - id: "ev-tls-check"
+    kind: "command_output"
+    summary: "openssl certificate expiry check: certificate valid for 45 more days"
+    content_ref: "fixtures/adapters/human-baseline/evidence/tls-check.log"
+    redacted: false
+
+  - id: "ev-config-hash"
+    kind: "command_output"
+    summary: "sha256sum of gateway config matches expected value from task envelope"
+    content_ref: "fixtures/adapters/human-baseline/evidence/config-hash.log"
+    redacted: false
+
+  - id: "ev-log-grep"
+    kind: "command_output"
+    summary: "3 x 5xx errors found in gateway log (24h window) — below threshold of 10"
+    content_ref: "fixtures/adapters/human-baseline/evidence/log-grep.log"
+    redacted: false
+
+redaction_policy:
+  applied: false
+  rules: []
+  notes: "Stub evidence bundle — no redaction applied. In a real run, credential-like patterns would be redacted per the human-baseline capability declaration."

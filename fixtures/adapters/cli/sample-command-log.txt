@@ -1,0 +1,42 @@
+# Sample CLI Command Log
+#
+# Raw terminal transcript from a CLI adapter run. This is a sample
+# of the kind of output a CLI adapter would capture from stdout/stderr.
+#
+# Task: Verify that the workspace contains a valid package.json with
+# a "scripts.test" entry.
+
+$ pwd
+/work/repo
+
+$ ls -la package.json
+-rw-r--r-- 1 root root 1234 May 29 09:00 package.json
+
+$ cat package.json | grep -A 5 '"scripts"'
+  "scripts": {
+    "test": "node scripts/validate.js",
+    "lint": "echo ok",
+    "build": "echo ok"
+  },
+
+$ node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)"
+$ echo $?
+0
+
+$ npm test -- --dry-run 2>&1 | tail -10
+
+> agent-olympics@1.0.0 test
+> node scripts/validate.js --dry-run
+
+Validating schemas...
+  ✓ evidence-bundle.schema.json
+  ✓ fixture-bundle.schema.json
+  ✓ result-packet.schema.json
+  ✓ season-fixture-manifest.schema.json
+  ✓ trace-record.schema.json
+
+All schemas valid.
+Dry run: no fixture files checked.
+
+$ echo "Task complete: package.json has a test script entry."
+Task complete: package.json has a test script entry.

@@ -1,0 +1,77 @@
+# Sample Human Baseline — Operator Timestamp Log
+#
+# A human operator recorded each action with a timestamp and a brief
+# description.  This log serves as the primary evidence for what the
+# operator did and in what order.  All entries are safe to share;
+# no credentials, private paths, or PII appear here.
+
+schema_version: 1
+operator_log_id: "human-log-ops-001-demo"
+task_id: "ops-001"
+operator_id: "human-operator-alpha"
+session_started_at: "2026-05-29T10:00:00+09:00"
+session_ended_at: "2026-05-29T10:32:00+09:00"
+
+entries:
+  - sequence: 1
+    timestamp: "2026-05-29T10:00:00+09:00"
+    action: "read_task_envelope"
+    description: "Opened the task envelope YAML and read the objective: verify gateway connectivity, TLS certificate, config hash, and log errors."
+    duration_seconds: 60
+
+  - sequence: 2
+    timestamp: "2026-05-29T10:01:00+09:00"
+    action: "create_workspace"
+    description: "Created a working directory /tmp/human-ops-001/ for storing logs and results."
+    duration_seconds: 15
+
+  - sequence: 3
+    timestamp: "2026-05-29T10:01:15+09:00"
+    action: "run_connectivity_check"
+    description: "Ran 'curl -v https://gateway.example.com:443/health 2>&1 | tee connectivity.log'. Verified the gateway is reachable and TLS certificate is presented."
+    duration_seconds: 120
+    result: "gateway reachable, TLS certificate valid"
+
+  - sequence: 4
+    timestamp: "2026-05-29T10:03:15+09:00"
+    action: "check_tls_expiry"
+    description: "Ran 'echo | openssl s_client -connect gateway.example.com:443 2>/dev/null | openssl x509 -noout -enddate' to extract the certificate expiration date."
+    duration_seconds: 90
+    result: "Certificate expiring in 45 days — OK, above 30-day threshold"
+
+  - sequence: 5
+    timestamp: "2026-05-29T10:04:45+09:00"
+    action: "fetch_config_hash"
+    description: "SSH to the gateway host and ran 'sha256sum /etc/openclaw/gateway.yaml'. Compared with expected hash from the task envelope."
+    duration_seconds: 180
+    result: "Config hash matches expected value"
+    tool_used: "ssh"
+
+  - sequence: 6
+    timestamp: "2026-05-29T10:07:45+09:00"
+    action: "inspect_gateway_logs"
+    description: "SSH to the gateway host and ran 'grep -c \"HTTP/1.[01]\" 5[0-9][0-9] ' /var/log/openclaw/gateway.log | tail -24'. Counted 5xx errors."
+    duration_seconds: 240
+    result: "3 x 5xx errors found in the last 24 hours — below threshold of 10"
+    tool_used: "ssh"
+
+  - sequence: 7
+    timestamp: "2026-05-29T10:11:45+09:00"
+    action: "write_findings"
+    description: "Summarized all findings in a structured result packet."
+    duration_seconds: 300
+
+  - sequence: 8
+    timestamp: "2026-05-29T10:16:45+09:00"
+    action: "review_and_submit"
+    description: "Double-checked the result packet against the envelope's required_outputs. Confirmed all outputs present. Submitted the result packet."
+    duration_seconds: 120
+
+operator_notes: >
+  The gateway is healthy. TLS certificate has 45 days remaining,
+  well above the 30-day threshold. Config hash matches. Logs show
+  occasional 502/504 errors (3 total) but well within tolerance.
+  No immediate action needed.
+
+total_active_seconds: 1920
+total_rest_seconds: 0

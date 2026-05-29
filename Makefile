@@ -4,14 +4,18 @@
 
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
-        validate-judges-v2 validate-fixtures validate-oracle validate-smoke \
+        validate-judges-v2 validate-fixtures validate-adapter-fixtures \
+        validate-oracle validate-smoke \
         oracle smoke-check smoke fixtures-check setup clean \
         validate-rounds rounds-check round \
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
-        score score-validate score-run score-aggregate validate-scoreboard
+        openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
+        score score-validate score-run score-aggregate validate-scoreboard validate-competition-fixtures \
+        score-blind score-blind-score score-blind-aggregate score-all \
+        validate-web-fields validate-web-bridge
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-profiles validate-scoreboard validate-competition-fixtures
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # Install dependencies
 setup:
@@ -59,6 +63,13 @@ validate-oracle:
 
 oracle: validate-oracle
 
+# Validate all adapter compatibility fixture files (capability declarations + sample data)
+validate-adapter-fixtures:
+	@echo "=== Adapter Compatibility Fixtures ==="
+	node scripts/validate.js fixtures/adapters/cli/sample-result-packet-stub.yaml
+	node scripts/validate.js fixtures/adapters/human-baseline/sample-evidence-bundle-stub.yaml
+	@echo "Adapter fixture schema validation passed."
+
 # Validate all smoke task envelopes
 validate-smoke:
 	node scripts/validate.js smoke
@@ -92,7 +103,9 @@ round:
 	node scripts/round.js
 
 # Default validation target
-validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures validate-rounds validate-profiles validate-scoreboard validate-competition-fixtures
+validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
+        validate-adapter-fixtures validate-rounds validate-profiles \
+        validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # --- Competition-Validity targets ---
 
@@ -122,6 +135,62 @@ validate-cv:
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
+
+# --- OpenClaw adapter targets ---
+
+# Run OpenClaw adapter against the stub test envelope (success mode, ops)
+openclaw-adapter:
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw
+
+# Run OpenClaw adapter in closed stack code mode
+openclaw-adapter-code:
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode closedstack --event-family code --seed make-openclaw-code
+
+# Run OpenClaw adapter in failure mode
+openclaw-adapter-fail:
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw-fail --exit 1
+
+# Validate all OpenClaw adapter output fixtures
+validate-openclaw:
+	@echo "=== Validating OpenClaw adapter positive fixtures ==="
+	@for f in fixtures/openclaw-validity/positive/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f" || exit 1; \
+	done
+	@echo ""
+	@echo "=== Validating OpenClaw adapter negative fixtures ==="
+	@for f in fixtures/openclaw-validity/negative/*.yaml; do \
+		echo "--- $$(basename $$f) ---"; \
+		node scripts/validate.js "$$f"; \
+		echo "(expected to produce errors for negative fixtures)"; \
+	done
+	@echo ""
+	@echo "OpenClaw adapter fixture validation complete."
+
+# Run OpenClaw adapter smoke checks without writing generated artifacts to the repo.
+test-openclaw:
+	@set -eu; \
+	tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw --run-dir "$$tmp/ops"; \
+	node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode closedstack --event-family code --seed make-openclaw-code --run-dir "$$tmp/code"; \
+	if node adapters/openclaw-adapter.js tasks/stub-test/stub-hello-envelope.yaml \
+		--agent-id sogyo --runtime openclaw --runtime-version 2.14.0 \
+		--mode openstack --event-family ops --seed make-openclaw-fail --exit 1 --run-dir "$$tmp/fail"; then \
+		echo "Expected OpenClaw failure-mode run to exit non-zero"; \
+		exit 1; \
+	fi; \
+	echo "OpenClaw adapter smoke tests passed."
 
 # --- Stub adapter targets ---
 
@@ -160,6 +229,46 @@ score-aggregate:
 # Validate the scoreboard schema
 validate-scoreboard:
 	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
+
+# --- Blind scoring targets ---
+
+# Run full pipeline in blind mode (anonymize before scoring)
+score-blind:
+	node scripts/score.js run --blind
+
+# Score only in blind mode
+score-blind-score:
+	node scripts/score.js score --blind
+
+# Aggregate only in blind mode
+score-blind-aggregate:
+	node scripts/score.js aggregate --blind
+
+# Run both blind and non-blind, validate both outputs
+score-all:
+	node scripts/score.js run
+	node scripts/score.js run --blind
+
+# --- Web data bridge targets ---
+
+# Validate scoreboard has all required web-display fields
+validate-web-fields:
+	node -e '\
+	const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8"));\
+	let missing = 0;\
+	for (const e of sb.entries) {\
+	  if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); }\
+	  if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); }\
+	  if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); }\
+	  if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); }\
+	}\
+	console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields");\
+	process.exit(missing > 0 ? 1 : 0);\
+'
+
+# Full web data bridge validation: scoreboard + blind + field check
+validate-web-bridge: score score-blind validate-web-fields
+	@echo "Web data bridge validation complete."
 
 # Remove generated artifacts and dependencies
 clean:

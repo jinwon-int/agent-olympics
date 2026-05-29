@@ -1,0 +1,66 @@
+# Sample CLI Adapter — Structured Command Record
+#
+# Each command the CLI adapter ran, with duration, exit code, and a
+# safe summary of output (not full terminal text, to avoid leaking
+# sensitive content).  This is the structured analogue of the raw
+# terminal transcript in sample-command-log.txt.
+
+schema_version: 1
+adapter_id: cli
+session_id: "cli-run-ops-001-demo"
+started_at: "2026-05-29T09:00:00+09:00"
+ended_at: "2026-05-29T09:00:35+09:00"
+working_directory: "/work/repo"
+
+commands:
+  - index: 1
+    command: "node --version"
+    cwd: "/work/repo"
+    duration_ms: 120
+    exit_code: 0
+    output_summary: "v22.22.2"
+    redacted: false
+    evidence_ref: "cmd-output-1"
+
+  - index: 2
+    command: "ls -la package.json"
+    cwd: "/work/repo"
+    duration_ms: 15
+    exit_code: 0
+    output_summary: "File exists, 1234 bytes, permissions -rw-r--r--"
+    redacted: false
+    evidence_ref: "cmd-output-2"
+
+  - index: 3
+    command: "grep -A 5 '\"scripts\"' package.json"
+    cwd: "/work/repo"
+    duration_ms: 20
+    exit_code: 0
+    output_summary: "Found scripts section with 'test', 'lint', 'build' entries"
+    redacted: false
+    evidence_ref: "cmd-output-3"
+
+  - index: 4
+    command: "node -e 'const p = require(\"./package.json\"); process.exit(p.scripts && p.scripts.test ? 0 : 1)'"
+    cwd: "/work/repo"
+    duration_ms: 250
+    exit_code: 0
+    output_summary: "package.json has scripts.test — exited 0"
+    redacted: false
+    evidence_ref: "cmd-output-4"
+
+  - index: 5
+    command: "npm test -- --dry-run"
+    cwd: "/work/repo"
+    duration_ms: 4200
+    exit_code: 0
+    output_summary: "All schemas valid. Dry run completed."
+    redacted: false
+    evidence_ref: "cmd-output-5"
+
+summary:
+  total_commands: 5
+  succeeded: 5
+  failed: 0
+  total_duration_ms: 4605
+  average_duration_ms: 921

@@ -1,0 +1,82 @@
+# Sample Human Baseline — Structured Action Descriptions
+#
+# This file provides structured descriptions of the human operator's
+# actions, with explicit mapping to the task outputs they produced.
+# Unlike the timestamp log (which records the timeline), this file
+# focuses on what was done, what tool was used, and which output
+# each action contributed to.
+
+schema_version: 1
+operator_actions:
+  - action_id: "act-001"
+    label: "Read task envelope"
+    description: "Read the Ops-001 task envelope YAML and understood all requirements"
+    tool: "paper_task_sheet"
+    contributes_to_outputs:
+      - "gateway_connectivity"
+      - "tls_status"
+      - "config_integrity"
+      - "log_health"
+    duration_seconds: 60
+    difficulty: "trivial"
+
+  - action_id: "act-002"
+    label: "Verify gateway connectivity"
+    description: "Used curl to check if the gateway responds on port 443 and that a TLS handshake completes"
+    tool: "curl"
+    contributes_to_outputs:
+      - "gateway_connectivity"
+    duration_seconds: 120
+    difficulty: "easy"
+
+  - action_id: "act-003"
+    label: "Check TLS certificate expiry"
+    description: "Used openssl s_client and openssl x509 to extract the certificate's end date"
+    tool: "openssl"
+    contributes_to_outputs:
+      - "tls_status"
+    duration_seconds: 90
+    difficulty: "medium"
+    notes: "Required chaining two openssl commands; the operator had to redirect stderr to avoid noise"
+
+  - action_id: "act-004"
+    label: "Verify config file hash"
+    description: "SSH to the gateway host and compute sha256sum of the gateway config, then compare to expected value from the task envelope"
+    tool: "ssh + sha256sum"
+    contributes_to_outputs:
+      - "config_integrity"
+    duration_seconds: 180
+    difficulty: "medium"
+    notes: "SSH key authentication required; operator had the key pre-configured"
+
+  - action_id: "act-005"
+    label: "Inspect gateway logs for 5xx errors"
+    description: "SSH to the gateway host and grep the gateway log for HTTP 5xx status codes in the last 24 hours"
+    tool: "ssh + grep"
+    contributes_to_outputs:
+      - "log_health"
+    duration_seconds: 240
+    difficulty: "easy"
+
+  - action_id: "act-006"
+    label: "Produce result packet"
+    description: "Wrote a structured result packet YAML with findings, evidence references, and all required outputs"
+    tool: "text_editor"
+    contributes_to_outputs:
+      - "gateway_connectivity"
+      - "tls_status"
+      - "config_integrity"
+      - "log_health"
+    duration_seconds: 300
+    difficulty: "easy"
+
+summary:
+  total_actions: 6
+  total_duration_seconds: 990
+  unique_tools_used:
+    - curl
+    - openssl
+    - ssh
+    - sha256sum
+    - grep
+    - text_editor

@@ -1,0 +1,81 @@
+# Positive fixture: OpenClaw ops task evidence bundle
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+bundle_id: eb-run-ops-001-sogyo-20260529T212600KST
+run_id: run-ops-001-sogyo-20260529T212600KST
+agent_id: sogyo
+generated_at: "2026-05-29T21:50:00+09:00"
+items:
+  - id: ev-session-input
+    kind: config_snippet
+    source: task envelope
+    summary: Copy of input task envelope for ops event family
+    content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    size_bytes: 2048
+    checksum:
+      algorithm: sha256
+      value: abc123def456abc123def456abc123def456abc123def456abc123def4567890
+    redacted: false
+  - id: ev-gateway-readiness
+    kind: log
+    source: gateway journal
+    summary: Gateway readiness poll result with session creation and delivery probe status
+    content_ref: evidence/gateway-journal.txt
+    content_type: text/plain
+    size_bytes: 4096
+    checksum:
+      algorithm: sha256
+      value: def456abc123def456abc123def456abc123def456abc123def456abc1237890
+    redacted: true
+    redaction_rule: gateway_response_contained_session_token_in_headers
+    metadata:
+      log_level: info
+      source_line_range: 1-48
+  - id: ev-message-delivery
+    kind: probe_result
+    source: gateway delivery probe
+    summary: Delivery probe result for session run-ops-001-sogyo-20260529T212600KST
+    content_ref: evidence/delivery-probe.json
+    content_type: application/json
+    size_bytes: 512
+    checksum:
+      algorithm: sha256
+      value: 111abc123def456abc123def456abc123def456abc123def456abc123def456
+    redacted: false
+    metadata:
+      probe_success: true
+      probe_duration_ms: 180
+  - id: ev-tool-calls
+    kind: command_output
+    source: session tool trace
+    summary: Consolidated tool call trace with redacted sensitive outputs
+    content_ref: trace.yaml
+    content_type: application/x-yaml
+    size_bytes: 5120
+    checksum:
+      algorithm: sha256
+      value: 222abc123def456abc123def456abc123def456abc123def456abc123def456
+    redacted: false
+  - id: ev-telegram-delivery
+    kind: probe_result
+    source: telegram delivery probe
+    summary: Telegram channel delivery probe confirmation
+    content_ref: evidence/telegram-probe.txt
+    content_type: text/plain
+    size_bytes: 256
+    checksum:
+      algorithm: sha256
+      value: 333abc123def456abc123def456abc123def456abc123def456abc123def456
+    redacted: false
+  - id: ev-final-report
+    kind: transcript_excerpt
+    source: session transcript
+    summary: Final diagnosis message from session transcript, safe excerpt
+    content_ref: evidence/final-report.txt
+    content_type: text/plain
+    size_bytes: 1024
+    checksum:
+      algorithm: sha256
+      value: 444abc123def456abc123def456abc123def456abc123def456abc123def456
+    redacted: false
