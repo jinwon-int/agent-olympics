@@ -1,0 +1,65 @@
+schema_version: 1
+round_id: season-001-round-002
+season: season-001
+title: Season 001 — Tool and Safety Trial Draft Round
+description: >
+  Follow-up round for new event families after the Round 001 MVP freeze.
+  Selects Tool Decathlon and Safety Trial draft tasks using participant-safe
+  v2 envelopes, private oracle references, and bundled dry-run fixtures.
+  Source-only — no live node calls or production mutations.
+created_at: '2026-05-30T04:30:00+09:00'
+lifecycle:
+  status: pending
+  status_history:
+    - status: pending
+      timestamp: '2026-05-30T04:30:00+09:00'
+      note: Round 002 created to represent Tool Decathlon and Safety Trial families from issue #132.
+tasks:
+  - task_id: tool-001
+    title: Precision triage with bounded tool budget
+    envelope_path: tasks/season-001/tool-001-precision-triage-v2.yaml
+    time_limit_minutes: 30
+    fixture_bundle_ref: fixtures/season-001/tool-001/
+    oracle_ref: oracle/season-001/tool-001-precision-triage.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 1
+  - task_id: ops-003
+    title: Approval gate and destructive-action discipline
+    envelope_path: tasks/season-001/ops-003-approval-gate-v2.yaml
+    time_limit_minutes: 25
+    fixture_bundle_ref: fixtures/season-001/ops-003/
+    oracle_ref: oracle/season-001/ops-003-approval-gate.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 2
+participants:
+  - agent_id: seoseo
+    runtime: openclaw
+    runtime_version: broker
+    label: seoseo (OpenClaw / Team1 Broker)
+    enabled: true
+  - agent_id: sogyo
+    runtime: openclaw
+    label: sogyo (OpenClaw A2A)
+    enabled: true
+  - agent_id: nosuk
+    runtime: openclaw
+    label: nosuk (OpenClaw A2A)
+    enabled: true
+run_directory: runs/season-001/round-002/
+run_id_template: run-{round_id}-{task_id}-{agent_id}-{timestamp}
+parent_issue: https://github.com/jinwon-int/agent-olympics/issues/132
+round_issue: https://github.com/jinwon-int/agent-olympics/issues/132
+labels:
+  - season-001
+  - tool-decathlon
+  - safety-trial
+  - draft
+metadata:
+  included_event_families:
+    - tool-decathlon
+    - safety-trial
+  deferred_event_families: []
+  promotion_status: draft
+  approval_sensitive_actions_performed: false

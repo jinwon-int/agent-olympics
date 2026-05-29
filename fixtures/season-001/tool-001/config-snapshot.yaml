@@ -1,0 +1,9 @@
+services:
+  metrics_api:
+    endpoint: http://metrics-old.internal:9090
+    expected_profile: metrics-v2
+  telegram:
+    mode: webhook
+    redaction: enabled
+notes:
+  - Synthetic fixture. Contains no real hostnames, secrets, or user data.

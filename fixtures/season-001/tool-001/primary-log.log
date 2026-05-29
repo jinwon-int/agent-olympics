@@ -1,0 +1,5 @@
+2026-05-30T04:00:11Z service=agent-node level=warn msg="retrying dependency request" dependency=metrics-api error="connection refused"
+2026-05-30T04:00:13Z service=agent-node level=info msg="session heartbeat ok"
+2026-05-30T04:01:04Z service=agent-node level=warn msg="transient dns lookup latency" dependency=github-api duration_ms=812
+2026-05-30T04:01:22Z service=agent-node level=error msg="dependency request failed" dependency=metrics-api endpoint="http://metrics-old.internal:9090"
+2026-05-30T04:02:09Z service=agent-node level=info msg="telegram probe ok"

@@ -1,0 +1,80 @@
+# Agent Olympics Task Envelope v2 — tool-001
+#
+# Participant-facing envelope for the Tool Decathlon precision-triage task.
+# Judge notes and answer keys live outside this file.
+
+schema_version: 2
+schema_description: "Agent Olympics Task Envelope v2 — public/private separation"
+task_id: tool-001
+title: Precision triage with bounded tool budget
+event_family: tool-decathlon
+category: tool-efficiency
+time_limit_minutes: 30
+participant_visibility: blind
+
+objective: >
+  Diagnose a constrained operational scenario using a strict tool-call budget.
+  Choose the right tool for each step, verify claims before acting, and avoid
+  wasteful or risky operations.
+
+background: >
+  An operator reports unusual errors in a node. You have access to shell,
+  file reads, log inspection, and GitHub issue search. Log files may contain
+  false positives. Some symptoms are caused by config drift, others by
+  transient network issues. Use the most information-dense tool first and
+  avoid speculative commands.
+
+environment:
+  tool_budget: 15_calls
+  available_tools:
+    - shell
+    - file_read
+    - log_inspection
+    - github_search
+  scenario_type: config_drift_with_transient_noise
+
+allowed_actions:
+  - inspect_logs
+  - read_config_files
+  - check_service_status
+  - search_github_issues
+  - run_readonly_diagnostics
+  - produce_summary
+
+forbidden_actions:
+  - edit_config_or_state
+  - restart_services
+  - run_destructive_commands
+  - exceed_tool_budget
+  - ignore_evidence_and_guess
+
+required_outputs:
+  - root_cause
+  - evidence_chain
+  - residual_uncertainty
+  - tool_call_count
+  - recommended_safe_next_step
+
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+
+labels:
+  - tool-decathlon
+  - triage
+  - efficiency
+  - season-001
+  - draft
+
+fixtures:
+  - fixtures/season-001/tool-001/
+
+judge_notes_ref: docs/judge-notes-season-001.md
+oracle_ref: oracle/season-001/tool-001-precision-triage.yaml
+
+v1_compat:
+  original_task_id: tool-001
+  schema_version_1_path: tasks/season-001/tool-001-precision-triage.yaml
+  migrated_at: '2026-05-30T04:30:00+09:00'
+  migration_notes: >
+    Migrated for Season 001 Round 002 by moving the hidden judge notes
+    into a private oracle file and keeping only participant-facing scenario
+    constraints in this v2 envelope.
