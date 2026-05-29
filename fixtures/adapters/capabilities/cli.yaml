@@ -1,0 +1,128 @@
+# CLI Adapter Capability Declaration
+#
+# Declares what the CLI adapter can produce, what fields it adds to
+# result packets, which redaction rules it applies, and its known
+# limitations.  This file follows the adapter-capability-declaration
+# format documented in fixtures/adapters/adapter-capability-declaration.yaml.
+#
+# The CLI adapter runs local commands against a controlled workspace.
+# It is the simplest adapter class — used by shell scripts, coding
+# agents (Claude Code, Codex), and deterministic stub adapters.
+
+schema_version: 1
+adapter_id: cli
+adapter_type: automation
+display_name: "CLI Adapter"
+description: >
+  Executes a task by running local commands in a workspace directory.
+  Captures stdout, stderr, exit codes, git diffs, and file changes.
+  Converts the terminal transcript into a structured result packet,
+  trace record, and evidence bundle.  Does not require external
+  orchestration services or a running agent gateway.
+
+status:
+  standard_statuses:
+    - completed
+    - partial
+    - blocked
+    - failed
+    - disqualified
+  internal_mapping:
+    script_success_all_outputs_present: "completed"
+    script_success_outputs_incomplete: "partial"
+    script_exit_nonzero: "failed"
+    script_crash_or_timeout: "partial"
+    prerequisite_missing: "blocked"
+    network_unreachable: "blocked"
+    permission_denied: "blocked"
+    sandbox_forbidden_operation: "disqualified"
+
+evidence_kinds:
+  - command_output
+  - log
+  - file_diff
+  - config_snippet
+  - transcript_excerpt
+  - screenshot
+
+runtime_fields:
+  working_directory: "Absolute path to the workspace directory where commands were executed."
+  exit_codes: "Exit code of each major command or script invocation."
+  command_durations_ms: "Wall-clock duration of each command, in milliseconds."
+  git_diff: "Unified diff output for file changes, when applicable."
+  test_results: "Structured test result summary (pass/fail counts, output snippets)."
+  terminal_history: "Full or truncated stdout/stderr transcript."
+  file_change_list: "List of files created, modified, or deleted during the run."
+
+redaction_rules:
+  - rule_id: "cli_credential_in_command_output"
+    pattern_description: "Credential-like strings in command stdout or stderr"
+    target_data_class:
+      - "api_tokens"
+      - "private_keys"
+      - "session_cookies"
+    applies_to:
+      - "command_output"
+      - "log"
+
+  - rule_id: "cli_credential_in_config_files"
+    pattern_description: "Credential values in config files read or written during the run"
+    target_data_class:
+      - "credential_from_config"
+    applies_to:
+      - "config_snippet"
+      - "file_diff"
+
+  - rule_id: "cli_path_exposure"
+    pattern_description: "User-specific home paths or absolute system paths in evidence summaries"
+    target_data_class:
+      - "private_paths"
+    applies_to:
+      - "command_output"
+      - "log"
+      - "file_diff"
+
+approval_boundaries:
+  always_requires_approval:
+    - production_restart
+    - destructive_rm_outside_workspace
+  context_dependent:
+    - destructive_file_ops
+    - package_installation
+    - git_push
+  default_allowed:
+    - read_write_within_workspace
+    - git_diff_status
+    - npm_test
+    - file_inspection
+    - evidence_creation
+
+timeout_behavior:
+  supports_hard_timeout: true
+  supports_soft_timeout: true
+  default_grace_seconds: 60
+
+task_families:
+  - ops-relay
+  - node-readiness
+  - code-sprint
+  - performance-trial
+  - tool-decathlon
+  - harness-reliability
+
+fixture_dependencies:
+  env_dependent: false
+  generated: true
+  bundled: true
+  notes: >
+    The CLI adapter only needs a workspace directory and the task envelope.
+    Sample fixture data in fixtures/adapters/cli/ provides deterministic
+    command logs and structured command records for local validation.
+    The stub adapter (scripts/stub-adapter.js) is a working CLI adapter
+    implementation.
+
+known_limitations:
+  - "The CLI adapter produces flat output (stdout/stderr) — it does not natively structure multi-agent interactions."
+  - "Sensitive command output must be redacted post-hoc; no automatic redaction is applied at the shell level."
+  - "Full terminal capture is possible but may be verbose — the adapter should truncate or summarize long transcripts."
+  - "The CLI adapter currently has no built-in support for approval boundaries; these are enforced by the runner."
