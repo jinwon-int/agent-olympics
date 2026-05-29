@@ -1,0 +1,100 @@
+# Agent Olympics 2026 — Season 001 Fixture Bundle Manifest
+#
+# This manifest lists every fixture bundle available for Season 001.
+# Runners inspect this file to discover bundles, their locations, and
+# whether they support dry-run mode.
+#
+# A fixture bundle is a directory under fixtures/season-001/<task_id>/
+# containing:
+#   manifest.yaml   — Bundle metadata (required)
+#   <files>         — Participant-facing fixture data (no judge material)
+#
+# See fixtures/season-001/README.md for runner instructions.
+
+schema_version: 1
+manifest_id: season-001-fixtures-v1
+season: season-001
+title: "Agent Olympics 2026 — Season 001 Fixture Bundles"
+description: >
+  Participant-facing fixture bundles for the seven Season 001 events.
+  Each bundle describes external data the runner must prepare before
+  the participant starts.  No bundle contains judge notes, answer keys,
+  or oracle material — only what the participant legitimately needs
+  to complete the task.
+parent_issue: "https://github.com/jinwon-int/agent-olympics/issues/24"
+bundles:
+  - bundle_id: season-001-code-001-v1
+    task_id: code-001
+    path: fixtures/season-001/code-001/
+    description: >
+      A purpose-regressed TypeScript repository with a small regression
+      (missing optional chaining, type narrowing error, or import
+      breakage).  The runner clones or generates the repo and places
+      it at the path referenced by the task envelope.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-coord-001-v1
+    task_id: coord-001
+    path: fixtures/season-001/coord-001/
+    description: >
+      Two or three contradictory node-agent reports and a shared
+      evidence corpus.  The participant merges these into a single
+      commander report.  Reports are plain YAML or Markdown files;
+      the runner generates them with known contradictions.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-knowledge-001-v1
+    task_id: knowledge-001
+    path: fixtures/season-001/knowledge-001/
+    description: >
+      A synthetic incident transcript (gateway delivery outage, model
+      routing failure, or workspace/permission incident).  The
+      participant converts the transcript into a wiki-ready closeout.
+      Transcript is a plain text or markdown file.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-node-001-v1
+    task_id: node-001
+    path: fixtures/season-001/node-001/
+    description: >
+      A target node description or configuration snapshot for audit.
+      The fixture describes the node hardware, installed runtime,
+      tool paths, and service state.  The runner applies the
+      configuration to a test node before the participant starts.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-ops-001-v1
+    task_id: ops-001
+    path: fixtures/season-001/ops-001/
+    description: >
+      Gateway and Telegram delivery logs simulating a scenario where
+      the agent transcript contains a final answer but the Telegram
+      user never received it.  Logs are anonymised and contain no
+      real credentials.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-ops-002-v1
+    task_id: ops-002
+    path: fixtures/season-001/ops-002/
+    description: >
+      A configuration snapshot and status output from a gateway that
+      has experienced configuration drift after a system update.
+      Includes pre-drift and post-drift state for comparison.
+    dry_run_compatible: true
+    required_for_season: true
+
+  - bundle_id: season-001-perf-001-v1
+    task_id: perf-001
+    path: fixtures/season-001/perf-001/
+    description: >
+      A controlled workload definition for the Performance Trial.
+      Defines the four workload phases (repository scan, schema
+      validation, targeted test execution, multi-probe diagnostics)
+      with expected commands and measurement points.
+    dry_run_compatible: true
+    required_for_season: true

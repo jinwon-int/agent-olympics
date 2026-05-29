@@ -1,0 +1,44 @@
+# Fixture bundle: code-001 — TypeScript regression fix
+#
+# The runner must prepare a small TypeScript repository with a seeded
+# regression.  The participant inspects, reproduces, fixes, and verifies.
+#
+# ⚠ This bundle contains ONLY participant-facing fixture data.
+#    Judge notes, answer keys, and oracle material live in
+#    oracle/season-001/ and docs/judge-notes-season-001.md.
+
+schema_version: 1
+bundle_id: season-001-code-001-v1
+season: season-001
+task_id: code-001
+version: 1
+description: >
+  A purpose-regressed TypeScript repository with one of four regression
+  patterns: missing optional chaining, incorrect type narrowing,
+  async/await mismatch, or import path breakage.  The runner generates
+  or clones this repo before the participant starts.
+dry_run_compatible: true
+required: true
+files:
+  - path: .
+    description: >
+      Root directory of the TypeScript repository.  Contains source
+      files, tsconfig.json, package.json, and a test runner
+      (Jest, Vitest, or Node built-in test runner).
+    content_type: inode/directory
+preparation:
+  method: generated
+  description: >
+    The runner creates a minimal TypeScript repo with a known regression.
+    A generation script (fixtures/season-001/code-001/generate.sh) can
+    produce all four regression variants.  The runner selects one variant
+    per participant round so that the regression pattern is not leaked
+    across runs.  After generation the repo must pass `npm install` and
+    the failing test must reproduce before the fix.
+  script_ref: fixtures/season-001/code-001/generate.sh
+  expected_duration_minutes: 5
+environment_requirements:
+  - node >= 18
+  - npm
+  - git
+depends_on: []

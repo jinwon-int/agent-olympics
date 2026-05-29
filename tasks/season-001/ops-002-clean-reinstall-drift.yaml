@@ -42,6 +42,12 @@ labels:
   - install
   - drift
   - season-001
+
+# Fixture bundle: pre/post drift configuration snapshots prepared by runner.
+# See fixtures/season-001/ops-002/manifest.yaml for preparation details.
+fixtures:
+  - fixtures/season-001/ops-002/
+
 hidden_judge_notes: |
   ANSWER KEY / JUDGE NOTES (not visible to participant)
 

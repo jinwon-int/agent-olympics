@@ -1,0 +1,101 @@
+# Oracle / Answer Key for code-001: TypeScript regression fix with targeted tests
+#
+# This file is PRIVATE. It must not be shared with participants.
+# It contains the answer key, scoring guidance, and expected patterns.
+# The public task envelope references this file via oracle_ref.
+
+oracle_schema_version: 1
+oracle_id: oracle-code-001
+task_id: code-001
+
+expected_answer_categories:
+  - id: optional-chaining
+    label: Missing optional chaining on nullable field
+    description: >
+      Symptom: TypeScript compilation error or runtime undefined access.
+      Fix: Add `?.` or a null check before field access.
+      Test: Add a case where the field is undefined/null.
+    evidence_hints:
+      - show failing test output
+      - show git diff of minimal change
+      - show passing test after fix
+      - show typecheck passing
+
+  - id: type-narrowing
+    label: Incorrect type narrowing in conditional
+    description: >
+      Symptom: A valid code path is rejected by the type checker or a valid
+      state is not covered.
+      Fix: Adjust the type guard or conditional logic.
+      Test: Add a case that exercises the previously uncovered branch.
+
+  - id: async-await-mismatch
+    label: Async/await mismatch
+    description: >
+      Symptom: Promise returned instead of resolved value, or uncaught
+      promise rejection.
+      Fix: Add missing await or .catch().
+      Test: Verify async function resolves correctly.
+
+  - id: import-path-breakage
+    label: Import path breakage after refactor
+    description: >
+      Symptom: Module not found or incorrect default/named import.
+      Fix: Correct the import path or export.
+      Test: Import and use the symbol in a test.
+
+scoring_guidance:
+  correctness:
+    max_points: 30
+    full: Full if fix addresses actual root cause (not symptom or unrelated code).
+    partial_15: 15 pts if fix works but is more invasive than needed.
+    partial_5: 5 pts if fix is incorrect or introduces new issues.
+  evidence_quality:
+    max_points: 20
+    full: Must include failing test output AND passing test output. Evidence of type-check pass is strong.
+    zero: No evidence scores 0.
+  safety:
+    max_points: 15
+    full: Only the relevant file(s) changed.
+    penalty: Deduct for reformatting entire files, changing unrelated code, or removing tests.
+  execution:
+    max_points: 15
+    full: Efficient diagnosis (compile/run tests → read error → fix → verify).
+    penalty: Reading every file in the repo before forming a hypothesis loses points.
+  communication:
+    max_points: 10
+    full: Fix summary explains what broke, why, and how the fix works. Residual risk is honest.
+  durability:
+    max_points: 10
+    full: Award for adding a regression test covering the exact scenario.
+
+strong_answer_markers:
+  - identifies_introducing_commit: Identifies the exact commit or change that introduced the regression
+  - minimal_change: Fix is minimal (1-5 lines changed)
+  - test_fails_before_passes_after: Test fails before fix, passes after fix
+  - git_diff_shown: Uses git diff or equivalent to show exactly what changed
+  - honest_residual_risk: Residual risk is honest and specific
+
+penalty_triggers:
+  - id: skip-tests-no-justification
+    label: Skipping tests without justification
+    range: "-10 to -15"
+    note: Missing required output
+  - id: broad-format-churn
+    label: Broad format churn or unrelated refactor
+    range: "-5 to -10"
+    note: Unsafe mutation
+
+answer_key_checks:
+  - question_id: q-root-cause
+    question: Was the actual root cause identified?
+    expected: Fix addresses the real regression, not a symptom
+  - question_id: q-test-evidence
+    question: Was before-and-after test evidence shown?
+    expected: Failing test output AND passing test output presented
+  - question_id: q-minimal-change
+    question: Was the fix minimal and targeted?
+    expected: Only relevant files changed; no unrelated refactors
+  - question_id: q-regression-test
+    question: Was a regression test added?
+    expected: New test covers the exact regression scenario

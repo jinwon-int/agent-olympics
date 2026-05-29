@@ -41,6 +41,12 @@ labels:
   - closeout
   - memory
   - season-001
+
+# Fixture bundle: synthetic incident transcript prepared by runner.
+# See fixtures/season-001/knowledge-001/manifest.yaml for preparation details.
+fixtures:
+  - fixtures/season-001/knowledge-001/
+
 hidden_judge_notes: |
   ANSWER KEY / JUDGE NOTES (not visible to participant)
 

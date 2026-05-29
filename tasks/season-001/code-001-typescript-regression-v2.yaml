@@ -1,0 +1,72 @@
+# Agent Olympics Task Envelope v2 — code-001
+#
+# This is a v2 migration of the original Season 001 code-001 task.
+# The key v2 change: hidden_judge_notes is removed from the public envelope
+# and replaced with judge_notes_ref and oracle_ref pointing to private files.
+
+schema_version: 2
+schema_description: "Agent Olympics Task Envelope v2 — public/private separation"
+task_id: code-001
+title: TypeScript regression fix with targeted tests
+event_family: code-sprint
+category: bugfix
+time_limit_minutes: 60
+participant_visibility: blind
+
+objective: >
+  Fix a small TypeScript regression, add or update focused tests, and prepare a
+  concise PR-ready summary.
+
+background: >
+  A recent change introduced a regression in a TypeScript codebase. The exact
+  nature of the regression is not disclosed in the envelope. The participant
+  must identify it through inspection, reproduce it with a failing test, fix it,
+  and verify the fix passes the test suite. The repository contains the broken
+  state.
+
+environment:
+  repo_path: /work/agent-codebench
+  language: typescript
+
+allowed_actions:
+  - inspect_repo
+  - edit_files
+  - run_targeted_tests
+  - run_typecheck_if_reasonable
+  - prepare_patch_summary
+
+forbidden_actions:
+  - unrelated_refactor
+  - broad_format_churn
+  - revert_unrelated_user_changes
+  - skip_tests_without_reason
+
+required_outputs:
+  - changed_files
+  - test_results
+  - bug_cause
+  - fix_summary
+  - residual_risk
+
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+
+labels:
+  - code
+  - typescript
+  - tests
+  - season-001
+
+# v2: External references replace inline hidden_judge_notes.
+# These files are PRIVATE and must not be shared with participants.
+judge_notes_ref: docs/judge-notes-season-001.md
+oracle_ref: oracle/season-001/code-001-typescript-regression.yaml
+
+# v2: Migration metadata tracks the original v1 source.
+v1_compat:
+  original_task_id: code-001
+  schema_version_1_path: tasks/season-001/code-001-typescript-regression.yaml
+  migration_notes: >
+    Migrated from v1 to v2 by: (1) extracting inline hidden_judge_notes to
+    oracle/season-001/code-001-typescript-regression.yaml, (2) replacing
+    the hidden_judge_notes field with judge_notes_ref and oracle_ref,
+    (3) adding schema_description for tooling discovery.

@@ -7,20 +7,21 @@
  * definitions (v1 or v2 where available), plus cross-field semantic checks.
  *
  * Usage:
- *   node scripts/validate.js envelopes          — validate all task envelopes (v1)
- *   node scripts/validate.js envelopes-v2       — validate v2-only task envelopes
- *   node scripts/validate.js packets            — validate all result packets
- *   node scripts/validate.js packets-v2         — validate v2-only result packets
- *   node scripts/validate.js traces             — validate all trace records
- *   node scripts/validate.js bundles            — validate all evidence bundles
- *   node scripts/validate.js runs               — validate all run results
- *   node scripts/validate.js judges             — validate all judge records
- *   node scripts/validate.js judges-v2          — validate v2-only judge records
- *   node scripts/validate.js smoke              — validate smoke suite envelopes
- *   node scripts/validate.js oracle             — validate oracle answer key files
- *   node scripts/validate.js all                — validate all known types
- *   node scripts/validate.js all-v2             — validate only v2 documents
- *   node scripts/validate.js <single-file>      — validate one file (auto-detect)
+ *   node scripts/validate.js envelopes          - validate all task envelopes (v1)
+ *   node scripts/validate.js envelopes-v2       - validate v2-only task envelopes
+ *   node scripts/validate.js packets            - validate all result packets
+ *   node scripts/validate.js packets-v2         - validate v2-only result packets
+ *   node scripts/validate.js traces             - validate all trace records
+ *   node scripts/validate.js bundles            - validate all evidence bundles
+ *   node scripts/validate.js runs               - validate all run results
+ *   node scripts/validate.js judges             - validate all judge records
+ *   node scripts/validate.js judges-v2          - validate v2-only judge records
+ *   node scripts/validate.js smoke              - validate smoke suite envelopes
+ *   node scripts/validate.js oracle             - validate oracle answer key files
+ *   node scripts/validate.js fixtures           - validate fixture bundle manifests and season fixture manifests
+ *   node scripts/validate.js all                - validate all known types
+ *   node scripts/validate.js all-v2             - validate only v2 documents
+ *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
  */
@@ -44,6 +45,18 @@ const v1Schemas = {
   'evidence-bundle':  loadSchema('schemas/evidence-bundle.schema.json'),
   'run-result':       loadSchema('schemas/run-result.schema.json'),
 };
+
+// ---------------------------------------------------------------------------
+// Load fixture schemas
+// ---------------------------------------------------------------------------
+let fixtureBundleSchema = null;
+let seasonFixtureManifestSchema = null;
+try {
+  fixtureBundleSchema = loadSchema('schemas/fixture-bundle.schema.json');
+} catch { /* ignore */ }
+try {
+  seasonFixtureManifestSchema = loadSchema('schemas/season-fixture-manifest.schema.json');
+} catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Load schemas (v2)
@@ -244,14 +257,16 @@ function semanticChecks(doc, kind, file, schemaVersion) {
       issues.push({ severity: SEVERITY.warn, msg: `task_id "${doc.task_id}" does not match convention 'family-XXX'` });
     }
 
-    // v1: hidden_judge_notes should be present in well-formed envelopes
-    if (schemaVersion === 1 && !doc.hidden_judge_notes) {
-      issues.push({ severity: SEVERITY.warn, msg: 'v1 envelope missing hidden_judge_notes (participants should not see this, but it aids judging)' });
-    }
-
-    // v2: hidden_judge_notes must not appear
-    if (schemaVersion === 2 && doc.hidden_judge_notes) {
-      issues.push({ severity: SEVERITY.error, msg: 'v2 envelope must not contain hidden_judge_notes; use judge_notes_ref and oracle_ref instead' });
+    // Public-facing envelopes MUST NOT contain hidden_judge_notes. Season 001
+    // keeps v1 envelopes as private historical/judge material, while v2
+    // envelopes are the participant-facing files used for new runs.
+    const pubVis = doc.participant_visibility === 'visible' || doc.participant_visibility === 'blind';
+    const participantFacingFile = schemaVersion === 2 || file.includes('/public/') || /-v2\.ya?ml$/.test(file);
+    if (participantFacingFile && pubVis && doc.hidden_judge_notes) {
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `participant_visibility is "${doc.participant_visibility}" but envelope contains hidden_judge_notes — public envelopes must not expose judge-only material; use judge_notes_ref and oracle_ref instead`
+      });
     }
 
     // v2: judge_notes_ref and oracle_ref should reference existing files
@@ -280,7 +295,7 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     if (hasSeasonLabel && tier !== 'verified' && tier !== 'retired') {
       issues.push({
         severity: SEVERITY.warn,
-        msg: `season task "${doc.task_id}" has tier="${tier}" — not yet verified for competitive use. Set tier="verified" only after a human or trusted baseline agent completes it and the judge result matches the intended rubric.`
+        msg: `season task "${doc.task_id}" has tier="${tier}" - not yet verified for competitive use. Set tier="verified" only after a human or trusted baseline agent completes it and the judge result matches the intended rubric.`
       });
     }
 
@@ -339,7 +354,7 @@ function detectSecrets(obj, issues, path = '') {
       // Check for redaction_reason that accidentally contains a secret
       if ((key === 'redaction_reason' || key === 'redaction_rule') &&
           val.length > 200) {
-        issues.push({ severity: SEVERITY.warn, msg: `Unusually long ${key} (${val.length} chars) — may contain secret data` });
+        issues.push({ severity: SEVERITY.warn, msg: `Unusually long ${key} (${val.length} chars) - may contain secret data` });
       }
     } else if (typeof val === 'object' && val !== null) {
       detectSecrets(val, issues, fp);
@@ -432,6 +447,26 @@ function getSchemaVersion(doc) {
   return 1;
 }
 
+/**
+ * Detect fixture bundle manifest files.
+ */
+function detectFixtureBundle(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined && doc.bundle_id !== undefined
+    && doc.season !== undefined && doc.task_id !== undefined
+    && doc.files !== undefined && Array.isArray(doc.files);
+}
+
+/**
+ * Detect season fixture manifest files.
+ */
+function detectSeasonFixtureManifest(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined && doc.manifest_id !== undefined
+    && doc.season !== undefined && doc.bundles !== undefined
+    && Array.isArray(doc.bundles);
+}
+
 // ---------------------------------------------------------------------------
 // Validation logic
 // ---------------------------------------------------------------------------
@@ -445,14 +480,14 @@ function validateFile(filePath) {
   try {
     doc = loadYaml(filePath);
   } catch (err) {
-    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
     totalErrors++;
     fileCount++;
     return;
   }
 
   if (doc === null || doc === undefined) {
-    console.error(`FAIL  ${rel}  — empty document`);
+    console.error(`FAIL  ${rel}  - empty document`);
     totalErrors++;
     fileCount++;
     return;
@@ -460,7 +495,7 @@ function validateFile(filePath) {
 
   const kind = detectKind(doc);
   if (!kind) {
-    console.warn(`SKIP  ${rel}  — unknown document kind, skipping`);
+    console.warn(`SKIP  ${rel}  - unknown document kind, skipping`);
     fileCount++;
     return;
   }
@@ -486,7 +521,7 @@ function validateFile(filePath) {
     schemaErrors = validator.errors;
   } else {
     if (schemaVersion === 2) {
-      console.error(`FAIL  ${rel}  — v2 schema not loaded for ${kind}`);
+      console.error(`FAIL  ${rel}  - v2 schema not loaded for ${kind}`);
       totalErrors++;
       fileCount++;
       return;
@@ -499,13 +534,13 @@ function validateFile(filePath) {
     const taskIds = doc.tasks.map(t => t.task_id);
     const dups = taskIds.filter((id, i) => taskIds.indexOf(id) !== i);
     if (dups.length) {
-      console.error(`FAIL  ${rel}  — manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
+      console.error(`FAIL  ${rel}  - manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
       totalErrors++;
     }
 
     // Check minimum task count (5 required)
     if (doc.tasks.length < 5) {
-      console.error(`FAIL  ${rel}  — manifest has ${doc.tasks.length} tasks, minimum is 5`);
+      console.error(`FAIL  ${rel}  - manifest has ${doc.tasks.length} tasks, minimum is 5`);
       totalErrors++;
     }
 
@@ -516,7 +551,7 @@ function validateFile(filePath) {
       if (!task.title) missing.push('title');
       if (!task.envelope) missing.push('envelope');
       if (missing.length) {
-        console.error(`FAIL  ${rel}  — task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
+        console.error(`FAIL  ${rel}  - task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
         totalErrors++;
       }
     }
@@ -538,20 +573,20 @@ function validateFile(filePath) {
     console.log(`OK    ${rel}  (${kind} ${versionLabel})`);
   } else {
     if (hasSchemaIssues) {
-      console.error(`FAIL  ${rel}  — schema errors (${schemaName}):`);
+      console.error(`FAIL  ${rel}  - schema errors (${schemaName}):`);
       console.error(formatErrors(schemaErrors));
       totalErrors++;
     }
     for (const issue of semantic) {
       const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
       const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
-      console.error(`${prefix}  ${rel}  — ${label}: ${issue.msg}`);
+      console.error(`${prefix}  ${rel}  - ${label}: ${issue.msg}`);
       if (issue.severity === SEVERITY.error) totalErrors++;
       else totalWarnings++;
     }
     if (!hasSchemaIssues && !semantic.some(s => s.severity === SEVERITY.error)) {
-      // Only warnings — still count as pass
-      console.log(`OK    ${rel}  (${kind} ${versionLabel}) — see warnings above`);
+      // Only warnings - still count as pass
+      console.log(`OK    ${rel}  (${kind} ${versionLabel}) - see warnings above`);
     }
   }
   fileCount++;
@@ -566,21 +601,21 @@ function validateOracle(filePath) {
   try {
     doc = loadYaml(filePath);
   } catch (err) {
-    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
     totalErrors++;
     fileCount++;
     return;
   }
 
   if (!doc || typeof doc !== 'object') {
-    console.error(`FAIL  ${rel}  — empty or invalid document`);
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
     totalErrors++;
     fileCount++;
     return;
   }
 
   if (!detectOracle(doc)) {
-    console.warn(`SKIP  ${rel}  — not an oracle file (missing oracle_schema_version / oracle_id)`);
+    console.warn(`SKIP  ${rel}  - not an oracle file (missing oracle_schema_version / oracle_id)`);
     fileCount++;
     return;
   }
@@ -615,13 +650,121 @@ function validateOracle(filePath) {
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
     const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
-    console.error(`${prefix}  ${rel}  — ${label}: ${issue.msg}`);
+    console.error(`${prefix}  ${rel}  - ${label}: ${issue.msg}`);
     if (issue.severity === SEVERITY.error) totalErrors++;
     else totalWarnings++;
   }
 
   if (!hasIssues) {
     console.log(`OK    ${rel}  (oracle)`);
+  }
+  fileCount++;
+}
+
+/**
+ * Validate a fixture bundle manifest or season fixture manifest file.
+ */
+function validateFixtureBundle(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  — empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  // Determine kind
+  const isBundle = detectFixtureBundle(doc);
+  const isSeasonManifest = detectSeasonFixtureManifest(doc);
+
+  if (!isBundle && !isSeasonManifest) {
+    console.warn(`SKIP  ${rel}  — not a fixture bundle or season manifest (missing bundle_id+season+task_id+files or manifest_id+season+bundles)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+  const kind = isBundle ? 'fixture-bundle' : 'season-fixture-manifest';
+  const schema = isBundle ? fixtureBundleSchema : seasonFixtureManifestSchema;
+
+  // Schema validation
+  if (schema) {
+    const ajv = new Ajv({ allErrors: true, verbose: true });
+    const addFormats = require('ajv-formats');
+    addFormats(ajv);
+    const validate = ajv.compile(schema);
+    const valid = validate(doc);
+    if (!valid) {
+      for (const err of validate.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg}` });
+      }
+    }
+  }
+
+  if (isBundle) {
+    // Bundle non-schema checks
+    if (!/^season-\d{3}-[a-z]+-\d{3}-v\d+$/.test(doc.bundle_id)) {
+      issues.push({ severity: SEVERITY.warn, msg: `bundle_id "${doc.bundle_id}" does not match convention 'season-XXX-family-NNN-vN'` });
+    }
+
+    // Check that referenced files exist relative to the manifest directory
+    const bundleDir = path.dirname(filePath);
+    for (const f of doc.files) {
+      if (f.path && f.path !== '.' && !f.path.endsWith('/')) {
+        const fullPath = path.join(bundleDir, f.path);
+        if (!fs.existsSync(fullPath)) {
+          issues.push({ severity: SEVERITY.warn, msg: `referenced file "${f.path}" does not exist in bundle directory` });
+        }
+      }
+    }
+  }
+
+  if (isSeasonManifest) {
+    // Season manifest non-schema checks
+    if (!/^season-\d{3}-fixtures-v\d+$/.test(doc.manifest_id)) {
+      issues.push({ severity: SEVERITY.warn, msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-fixtures-vN'` });
+    }
+
+    // Check that referenced bundle paths exist
+    for (const b of doc.bundles) {
+      if (b.path) {
+        const bundleDir = path.join(ROOT, b.path);
+        if (!fs.existsSync(bundleDir)) {
+          issues.push({ severity: SEVERITY.warn, msg: `bundle path "${b.path}" does not exist` });
+        } else {
+          const bundleManifest = path.join(bundleDir, 'manifest.yaml');
+          if (!fs.existsSync(bundleManifest)) {
+            issues.push({ severity: SEVERITY.warn, msg: `bundle path "${b.path}" is missing manifest.yaml` });
+          }
+        }
+      }
+    }
+  }
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  — ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (${kind})`);
   }
   fileCount++;
 }
@@ -670,6 +813,29 @@ function main() {
     process.exit(totalErrors > 0 ? 1 : 0);
   }
 
+  // Fixtures mode
+  if (mode === 'fixtures') {
+    const fixturesDir = path.join(ROOT, 'fixtures');
+    if (!fs.existsSync(fixturesDir)) {
+      console.log('No fixtures directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(fixturesDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No fixture files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} fixture file(s)...\n`);
+    for (const f of files) {
+      validateFixtureBundle(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
   // Single file mode
   if (fs.existsSync(mode)) {
     const files = [path.resolve(mode)];
@@ -685,7 +851,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|all|all-v2|oracle|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|fixtures|oracle|all|all-v2|file>`);
     process.exit(1);
   }
 

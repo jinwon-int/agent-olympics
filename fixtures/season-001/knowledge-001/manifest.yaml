@@ -1,0 +1,43 @@
+# Fixture bundle: knowledge-001 — Convert incident transcript to wiki closeout
+#
+# The runner provides a synthetic incident transcript.  The participant
+# converts it into a structured wiki-ready closeout.
+#
+# ⚠ This bundle contains ONLY participant-facing fixture data.
+#    Judge notes, answer keys, and oracle material live in
+#    oracle/season-001/ and docs/judge-notes-season-001.md.
+
+schema_version: 1
+bundle_id: season-001-knowledge-001-v1
+season: season-001
+task_id: knowledge-001
+version: 1
+description: >
+  A synthetic incident transcript simulating a real operational
+  incident (gateway delivery outage, model routing failure, or
+  workspace/permission issue).  The transcript includes timestamps,
+  agent actions, human replies, and system events.  The participant
+  reads the transcript and produces a wiki-ready closeout covering
+  timeline, root cause, fix, and follow-up.
+dry_run_compatible: true
+required: true
+files:
+  - path: incident-transcript.md
+    description: >
+      Plain Markdown transcript of an operational incident.  Contains
+      T+0 through T+N entries with agent actions, human inquiries,
+      and system responses.  No secrets or real credentials.
+    content_type: text/markdown
+preparation:
+  method: runner_provided
+  description: >
+    The runner writes a synthetic transcript following one of the
+    incident archetypes (delivery outage, routing failure, or
+    permission incident).  A template at
+    fixtures/season-001/knowledge-001/templates/ provides the
+    expected structure.  The transcript should be 300-800 words with
+    6-15 timeline entries.  No real credentials or internal
+    system identifiers should appear.
+  expected_duration_minutes: 10
+environment_requirements: []
+depends_on: []

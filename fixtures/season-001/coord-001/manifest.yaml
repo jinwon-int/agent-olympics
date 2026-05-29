@@ -1,0 +1,61 @@
+# Fixture bundle: coord-001 — Merge contradictory node reports
+#
+# The runner provides 2-3 contradictory node-agent reports and an
+# optional shared evidence corpus.  The participant synthesises them
+# into a single commander report.
+#
+# ⚠ This bundle contains ONLY participant-facing fixture data.
+#    Judge notes, answer keys, and oracle material live in
+#    oracle/season-001/ and docs/judge-notes-season-001.md.
+
+schema_version: 1
+bundle_id: season-001-coord-001-v1
+season: season-001
+task_id: coord-001
+version: 1
+description: >
+  Two or three node-agent reports with known contradictions covering
+  hardware-vs-configuration disputes, timing conflicts, or
+  evidence-vs-interpretation patterns.  Reports are YAML or Markdown
+  files following the Result Packet structure.  An optional shared
+  evidence corpus provides raw log lines that both agents saw.
+dry_run_compatible: true
+required: true
+files:
+  - path: report-agent-a.yaml
+    description: >
+      First agent's investigation report with claims, evidence
+      references, and a recommended conclusion.
+    content_type: text/yaml
+  - path: report-agent-b.yaml
+    description: >
+      Second agent's investigation report.  Contains at least one
+      claim that contradicts Agent A's findings.
+    content_type: text/yaml
+  - path: report-agent-c.yaml
+    description: >
+      Optional third agent's report, introduces a minority position
+      or additional nuance.
+    content_type: text/yaml
+    optional: true
+  - path: shared-evidence.yaml
+    description: >
+      Raw log lines, config snippets, or command outputs that both
+      agents had access to.  Lets the participant independently
+      evaluate interpretations.
+    content_type: text/yaml
+    optional: true
+preparation:
+  method: runner_provided
+  description: >
+    The runner writes 2-3 reports and an optional shared evidence
+    file.  A template/example set is at
+    fixtures/season-001/coord-001/examples/ for reference.  The
+    runner should introduce at least one well-defined contradiction
+    (hardware vs config, timing, or interpretation) and optionally
+    a minority report with a plausible but unsupported claim.
+    Reports must not contain real secrets or credential values.
+  expected_duration_minutes: 15
+environment_requirements:
+  - text editor or script to generate reports
+depends_on: []

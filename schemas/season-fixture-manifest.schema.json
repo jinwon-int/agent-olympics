@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/season-fixture-manifest.schema.json",
+  "title": "Agent Olympics Season Fixture Manifest",
+  "description": "A season-level manifest that lists all available fixture bundles for a competition season. Runners inspect this manifest to discover which bundles exist and how to select them for dry runs or competitive rounds.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "season",
+    "title",
+    "bundles"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "manifest_id": {
+      "type": "string",
+      "pattern": "^season-\\d{3}-fixtures-v\\d+$"
+    },
+    "season": {
+      "type": "string",
+      "pattern": "^season-\\d{3}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "parent_issue": {
+      "type": "string",
+      "description": "Link to the parent coordination issue."
+    },
+    "bundles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["bundle_id", "task_id", "path", "description", "dry_run_compatible"],
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "description": "Bundle identifier matching the bundle's manifest.yaml."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "The task this bundle serves."
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path from repo root to the bundle directory."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dry_run_compatible": {
+            "type": "boolean",
+            "description": "Can this bundle be used in a dry run without judge material exposure?"
+          },
+          "required_for_season": {
+            "type": "boolean",
+            "default": true,
+            "description": "Is this bundle mandatory for running the season?"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -7,6 +7,7 @@
   "scripts": {
     "validate:envelopes": "node scripts/validate.js envelopes",
     "validate:packets": "node scripts/validate.js packets",
+    "validate:fixtures": "node scripts/validate.js fixtures",
     "validate:all": "node scripts/validate.js all",
     "test": "node scripts/validate.js all"
   },
