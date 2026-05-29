@@ -1,0 +1,359 @@
+# Sample Baseline Run — perf-001 (Performance Trial, nosuk a2a-runner profile)
+#
+# Third baseline sample completing the triple-profile requirement from #26
+# AC-1 ("baseline table exists for at least two nodes or runtime profiles").
+# This result packet uses schema_version 2 with explicit raw_measurements
+# and scored_values fields to demonstrate the raw-vs-normalized reporting
+# separation required by #26 AC-2.
+#
+# nosuk runs on the a2a-runner class (4-6 vCPU, 8-16 GB RAM, dedicated NVMe),
+# which sits between the existing medium-vps and small-vps tiers.  Raw
+# measurements reflect actual instrumented values; scored values are
+# normalized for cross-profile fair comparison.
+
+schema_version: 2
+packet_id: pkt-perf-001-baseline-003
+task_id: perf-001
+agent_id: nosuk
+agent_version: openclaw-v22.2.0
+runtime: openclaw
+runtime_version: v22.2.0
+model: gpt-4o-2026-05
+model_provider: openai
+node: a2a-runner
+adapter: openclaw
+division: closed_stack
+validity: valid
+publishable: true
+
+hardware_profile:
+  cpu_class: a2a-runner
+  cpu_cores: 4
+  cpu_model: Intel Xeon Platinum 8475C
+  memory_gb: 12
+  storage_class: nvme-dedicated
+  storage_gb: 150
+  os_family: linux
+  os_distro: ubuntu
+  os_version: "24.04"
+
+configuration_profile:
+  model_routing: direct
+  liveness: telegram-visible
+  resource_limits: configured
+  tool_availability: full
+  memory_policy: durable-enabled
+  service_ownership: documented
+  concurrency_limit: 3
+
+operating_policy:
+  approval_boundaries: configured
+  secret_handling: redact-all
+  destructive_action_rules: block-untested
+  progress_reporting: heartbeat
+  delegation_policy: subagent-allowed
+  durable_memory_policy: wiki-update
+
+tool_use_profile:
+  classes_allowed:
+    - command
+    - read
+    - write
+    - edit
+    - web_search
+    - web_fetch
+    - image
+    - message
+    - canvas
+    - cron
+    - memory_search
+    - memory_get
+  classes_used:
+    - command
+    - read
+    - write
+    - edit
+    - web_search
+    - web_fetch
+    - image
+    - message
+
+# ---------------------------------------------------------------------------
+# Raw measurements — direct instrumented values captured during the run.
+# These are the pre-normalization data.  No scored/derived values appear here.
+# ---------------------------------------------------------------------------
+raw_measurements:
+  wall_time_seconds: 138.6
+  action_count: 52
+  evidence_count: 14
+  finding_count: 6
+  peak_memory_mb: 896
+  model_calls: 31
+  total_prompt_tokens: 112400
+  total_completion_tokens: 18900
+  retries: 1
+  errors: 0
+  raw_git_commit_count: 847
+  raw_file_count: 1423
+  raw_line_count: 48391
+  raw_scan_wall_time_seconds: 2.94
+  raw_validated_file_count: 28
+  raw_passed_count: 28
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 1.42
+  raw_validation_latency_ms: 50.7
+  raw_test_count: 34
+  raw_test_passed: 34
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 8.6
+  raw_test_throughput: 3.95
+  raw_probe_count: 6
+  raw_sequential_estimate_seconds: 42.0
+  raw_total_wall_time_seconds: 12.8
+  raw_speedup_factor: 3.28
+  raw_service_stability: stable
+
+# ---------------------------------------------------------------------------
+# Scored values — normalized metrics derived from raw measurements.
+# These are hardware-aware and suitable for cross-profile comparison.
+# No raw/measured values appear here.
+# ---------------------------------------------------------------------------
+scored_values:
+  efficiency_score: 0.87
+  evidence_quality_score: 0.90
+  safety_score: 1.0
+  execution_score: 0.95
+  normalization: >
+    wall_time_seconds / (cpu_cores / 4 * memory_gb / 8) — weighted by CPU
+    core count and memory relative to medium-vps (4 vCPU / 8 GB) baseline.
+
+# ---------------------------------------------------------------------------
+# Legacy workload_metrics — retained for backward compatibility with v1
+# judge engines.  All values also appear in raw_measurements above.
+# ---------------------------------------------------------------------------
+workload_metrics:
+  raw_git_commit_count: 847
+  raw_file_count: 1423
+  raw_line_count: 48391
+  raw_scan_wall_time_seconds: 2.94
+  raw_validated_file_count: 28
+  raw_passed_count: 28
+  raw_failed_count: 0
+  raw_validation_wall_time_seconds: 1.42
+  raw_validation_latency_ms: 50.7
+  raw_test_count: 34
+  raw_test_passed: 34
+  raw_test_failed: 0
+  raw_test_wall_time_seconds: 8.6
+  raw_test_throughput: 3.95
+  raw_probe_count: 6
+  raw_sequential_estimate_seconds: 42.0
+  raw_total_wall_time_seconds: 12.8
+  raw_speedup_factor: 3.28
+  raw_service_stability: stable
+
+# ---------------------------------------------------------------------------
+# Comparable metadata — enables fair cross-participant comparison without
+# exposing hostnames, IPs, tokens, or secrets.
+# ---------------------------------------------------------------------------
+comparable_metadata:
+  participant:
+    agent_id: nosuk
+    adapter: openclaw
+  runtime:
+    name: openclaw
+    version: v22.2.0
+  model:
+    name: gpt-4o-2026-05
+    provider: openai
+  node:
+    profile_ref: a2a-runner
+    hardware_profile:
+      cpu_class: a2a-runner
+      cpu_cores: 4
+      memory_gb: 12
+      storage_class: nvme-dedicated
+      os_family: linux
+  config:
+    profile_ref: default-a2a
+    details:
+      model_routing: direct
+      concurrency_limit: 3
+      memory_policy: durable-enabled
+  task:
+    task_id: perf-001
+    task_version: v1
+    fixture_ref: fixtures/season-001/perf-001/
+    oracle_ref: oracle/season-001/perf-001-node-throughput-baseline.yaml
+  artifact_hashes:
+    result_packet: "sha256-placeholder-a2a-runner-baseline"
+
+started_at: "2026-05-29T14:00:00+09:00"
+ended_at: "2026-05-29T14:32:00+09:00"
+status: completed
+
+oracle_ref: oracle/season-001/perf-001-node-throughput-baseline.yaml
+
+summary: >
+  Executed the full Performance Trial workload against the nosuk a2a-runner
+  profile (4 vCPU, 12 GB RAM, dedicated NVMe).  Repository scan completed
+  in 2.94s — the fastest of all three baseline profiles, benefiting from
+  NVMe I/O.  Schema validation passed 28/28 files in 1.42s at 50.7ms/file.
+  Test suite (34 tests) completed in 8.6s at 3.95 tests/s — the highest
+  throughput across all profiles.  Six parallel probes (concurrency_limit=3)
+  achieved 3.28x speedup over sequential estimate, demonstrating strong
+  parallelism benefit on 4 vCPU with memory headroom.
+
+actions:
+  - id: act-scan
+    type: command
+    target: local
+    command_summary: "git rev-list --count HEAD to measure repo size"
+    redacted: false
+    evidence_id: ev-git-count
+    duration_seconds: 0.3
+  - id: act-cloc
+    type: command
+    target: local
+    command_summary: "Count files and lines under workload directory"
+    redacted: false
+    evidence_id: ev-cloc
+    duration_seconds: 1.8
+  - id: act-validate
+    type: command
+    target: local
+    command_summary: "Validate all YAML/JSON against schemas"
+    redacted: false
+    evidence_id: ev-schema
+    duration_seconds: 1.4
+  - id: act-test
+    type: command
+    target: local
+    command_summary: "npm test on workload repository"
+    redacted: false
+    evidence_id: ev-test
+    duration_seconds: 8.6
+  - id: act-probes
+    type: command
+    target: local
+    command_summary: "Run multi-probe diagnostics (6 probes, parallel)"
+    redacted: false
+    evidence_id: ev-probes
+    duration_seconds: 12.8
+  - id: act-a2a-relay
+    type: message
+    target: coordination
+    command_summary: "A2A relay heartbeat to broker (seoseo)"
+    redacted: false
+    evidence_id: ev-a2a-heartbeat
+    duration_seconds: 0.8
+
+evidence:
+  - id: ev-git-count
+    kind: command_output
+    source: workload repo
+    summary: "git rev-list --count HEAD returned 847 commits"
+    redacted: false
+  - id: ev-cloc
+    kind: command_output
+    source: workload repo
+    summary: "1423 files, 48391 lines across workload directory"
+    redacted: false
+  - id: ev-schema
+    kind: command_output
+    source: schema validation run
+    summary: "28 schemas validated, 28 passed, 0 failed, avg 50.7ms per file"
+    redacted: false
+  - id: ev-test
+    kind: command_output
+    source: test suite run
+    summary: "34 tests passed, 0 failed, 8.6s wall time, 3.95 tests/s"
+    redacted: false
+  - id: ev-probes
+    kind: command_output
+    source: multi-probe diagnostics
+    summary: "6 probes completed, 12.8s total, 3.28x speedup, all services stable"
+    redacted: false
+  - id: ev-a2a-heartbeat
+    kind: message_log
+    source: gateway A2A relay
+    summary: "Coordination heartbeat sent to broker; response received in 0.8s"
+    redacted: false
+  - id: ev-stability
+    kind: observation
+    source: gateway health check
+    summary: "Gateway, messaging, and A2A relay remained responsive during workload"
+    redacted: false
+
+findings:
+  - claim: >
+      Nosuk a2a-runner baseline completes all four Performance Trial phases
+      within the extended time window (32 min wall time vs 90 min limit).
+    evidence: [ev-git-count, ev-cloc, ev-schema, ev-test, ev-probes]
+    confidence: high
+  - claim: >
+      Schema validation throughput is 19.72 files/second — 32% faster than
+      medium-vps (14.97/s) and 2.4x faster than small-vps (8.19/s).
+    evidence: [ev-schema]
+    confidence: high
+  - claim: >
+      Six parallel probes achieve 3.28x speedup over sequential — strong
+      parallelism benefit on 4 vCPU with 12 GB memory overhead.
+    evidence: [ev-probes]
+    confidence: high
+  - claim: >
+      Test throughput (3.95 tests/s) is 44% higher than medium-vps (2.74/s)
+      and 3.3x higher than small-vps (1.18/s), driven by NVMe I/O and
+      memory headroom for test parallelism.
+    evidence: [ev-test]
+    confidence: high
+  - claim: >
+      Raw measurements across all three profiles show predictable hardware
+      scaling: small→medium→a2a-runner improvement is consistent with core
+      count, memory, and storage class differences.
+    evidence: [ev-schema, ev-test, ev-probes]
+    confidence: high
+  - claim: >
+      Scored values provide hardware-agnostic comparison: efficiency_score
+      (0.87) reflects the a2a-runner's advantage over medium-vps baseline
+      after normalizing for CPU/memory.
+    evidence: [ev-test, ev-probes, ev-schema]
+    confidence: medium
+
+risks:
+  - A2A relay dependency adds latency variability — coordination heartbeat may
+    be affected by broker-side contention during concurrent rounds.
+  - 12 GB memory is sufficient for this workload but may be limiting for
+    larger repos with multiple concurrent probes.
+  - A2A runner class assumes dedicated NVMe; shared-storage environments may
+    produce different raw_measurements.
+
+outputs:
+  workload_summary: >
+    Nosuk a2a-runner (4 vCPU, 12 GB RAM, dedicated NVMe) completed all four
+    workload phases in 32 minutes wall time.  Raw measurements show the
+    a2a-runner class is 20-44% faster than medium-vps across all phases
+    due to NVMe storage and memory headroom.  The normalization divisor
+    (cpu_cores / 4 * memory_gb / 8 = 1.5) produces an efficiency_score of
+    0.87, indicating the extra resources yield proportionally less than
+    linear speedup — consistent with Amdahl's law on this workload.
+  hardware_profile: >
+    4 vCPU Intel Xeon Platinum 8475C, 12 GB RAM, dedicated NVMe storage,
+    Ubuntu 24.04.  A2A runner class with 3 concurrent runner slots.
+  configuration_profile: >
+    Direct model routing, Telegram-visible liveness, resource limits
+    configured, concurrency_limit=3, durable memory enabled, subagent
+    delegation allowed.
+  workload_metrics: >
+    See raw_measurements field above for pre-normalization values and
+    scored_values field for normalized cross-profile metrics.
+  stability_assessment: >
+    Gateway remained stable.  A2A relay heartbeat confirmed broker
+    connectivity.  No reconnection or timeout events during any phase.
+  tuning_recommendations: >
+    1. Increase concurrency_limit to 4 for Phase D to fully utilise 4 vCPU.
+    2. Consider probe count reduction to 5 (current 6 probes on 4 vCPU show
+       diminishing returns — 3.28x vs theoretical 4x).
+    3. Parallelise Phase B validation for additional CPU-bound improvement.
+    4. This profile is the recommended reference for A2A coordination tasks.
+
