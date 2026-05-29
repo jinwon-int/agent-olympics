@@ -1,0 +1,43 @@
+# Positive fixture: CLI node readiness smoke — evidence bundle
+# Expected to PASS schema validation.
+schema_version: 1
+bundle_id: eb-cli-node-readiness-smoke-20260530T071800KST
+run_id: run-node-readiness-smoke-cli-20260530T071800KST
+agent_id: smoke-agent
+runtime: cli
+generated_at: "2026-05-30T07:25:00+09:00"
+event_family: node
+items:
+  - id: ev-command-log
+    kind: command_output
+    source: stdout/stderr
+    summary: Full command log for all 6 steps with exit codes and durations
+    content_type: text/plain
+    size_bytes: 4096
+    checksum:
+      algorithm: sha256
+      value: 11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff
+    redacted: false
+  - id: ev-probe-output
+    kind: command_output
+    source: node capability probe script
+    summary: Hardware, OS, runtime, and storage data
+    content_ref: ../../evidence/node-capability-report.yaml
+    content_type: application/x-yaml
+    size_bytes: 1862
+    checksum:
+      algorithm: sha256
+      value: 223344556677889900aabbccddeeff11223344556677889900aabbccddeeff11
+    redacted: true
+    redaction_rule: command_output_may_contain_paths
+  - id: ev-node-capability-report
+    kind: report
+    source: capability report generation script
+    summary: Node capability matrix YAML output
+    content_ref: ../../evidence/node-capability-report.yaml
+    content_type: application/x-yaml
+    size_bytes: 1862
+    checksum:
+      algorithm: sha256
+      value: 3344556677889900aabbccddeeff11223344556677889900aabbccddeeff1122
+    redacted: false

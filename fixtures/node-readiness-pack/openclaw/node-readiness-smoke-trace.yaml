@@ -1,0 +1,81 @@
+# Positive fixture: OpenClaw node readiness smoke — trace record
+# Expected to PASS schema validation.
+schema_version: 1
+trace_id: tr-openclaw-node-readiness-smoke-20260530T071000KST
+run_id: run-node-readiness-smoke-openclaw-20260530T071000KST
+agent_id: smoke-agent
+runtime: openclaw
+generated_at: "2026-05-30T07:22:00+09:00"
+event_family: node
+entries:
+  - seq: 0
+    timestamp: "2026-05-30T07:10:00+09:00"
+    action: read
+    target: task_envelope
+    summary: "Read node-001 task envelope from disk"
+    duration_ms: 40
+    result_summary: "Loaded envelope for node readiness audit"
+    evidence_ref: ev-envelope
+  - seq: 1
+    timestamp: "2026-05-30T07:10:01+09:00"
+    action: exec
+    target: node_probe
+    summary: "Run node capability probe (uname, cpuinfo, meminfo, df, swapon)"
+    redacted: true
+    redaction_reason: command_output_may_contain_paths
+    duration_ms: 3200
+    result_summary: "Collected hardware, OS, runtime, and storage data"
+    evidence_ref: ev-probe-output
+  - seq: 2
+    timestamp: "2026-05-30T07:10:05+09:00"
+    action: exec
+    target: service_check
+    summary: "Check systemd service status: sshd, docker, nginx"
+    duration_ms: 1100
+    result_summary: "sshd running, docker stopped, nginx stopped"
+    evidence_ref: ev-service-status
+  - seq: 3
+    timestamp: "2026-05-30T07:10:07+09:00"
+    action: read
+    target: config_file
+    summary: "Read non-secret fields from gateway.yaml"
+    duration_ms: 60
+    result_summary: "Read 7 safe config fields"
+    evidence_ref: ev-config-snapshot
+  - seq: 4
+    timestamp: "2026-05-30T07:10:08+09:00"
+    action: web_fetch
+    target: network_probe
+    summary: "Probe outbound HTTPS to regional health endpoint"
+    duration_ms: 380
+    result_summary: "Connectivity confirmed, DNS 15ms, HTTP 22ms"
+    evidence_ref: ev-network-probe
+  - seq: 5
+    timestamp: "2026-05-30T07:10:09+09:00"
+    action: analyze
+    target: findings
+    summary: "Analyze probe results and identify risks"
+    duration_ms: 2500
+    result_summary: "Identified 2 risks: low disk space, no swap"
+    evidence_ref: ev-node-capability-report
+  - seq: 6
+    timestamp: "2026-05-30T07:22:00+09:00"
+    action: write
+    target: output
+    summary: "Write result packet, trace, and evidence bundle to run directory"
+    duration_ms: 90
+    result_summary: "All output artifacts written"
+  - seq: 7
+    timestamp: "2026-05-30T07:22:01+09:00"
+    action: write
+    target: node_capability_report
+    summary: "Write node capability matrix document"
+    duration_ms: 50
+    result_summary: "Capability report written to outputs/"
+    evidence_ref: ev-node-capability-report
+redaction_policy:
+  applied_rules:
+    - rule_id: rr-openclaw-001
+      pattern_description: "Local filesystem paths in command output"
+      reason: command_output_may_contain_paths
+  default_reason: sensitive_value_redacted

@@ -1,0 +1,125 @@
+# Positive fixture: CLI node readiness smoke — completed
+# Expected to PASS schema validation and competition-validity checks.
+schema_version: 1
+packet_id: pkt-cli-node-readiness-smoke-20260530
+run_id: run-node-readiness-smoke-cli-20260530T071800KST
+task_id: node-001
+agent_id: smoke-agent
+runtime: cli
+runtime_version: cli-probe-20260530
+model: n/a
+model_provider: n/a
+node: smoke-node
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 8
+  storage_class: hybrid-ssd-hdd
+  os_family: linux
+configuration_profile:
+  model_routing: not-applicable
+  liveness: verified
+  resource_limits: standard
+  adapter_mode: scripted
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - web_fetch
+  used:
+    - read
+    - write
+    - exec
+    - web_fetch
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  progress_reporting: stdout_logged
+  timeout_handling: command_timeout_after_300s
+started_at: "2026-05-30T07:18:00+09:00"
+ended_at: "2026-05-30T07:25:00+09:00"
+status: completed
+publishable: true
+summary: "CLI adapter completed node readiness smoke pack via sequential script execution. Node probe, config snapshot, service check, network probe, and capability report all produced with zero errors."
+
+actions:
+  - id: act-001
+    type: exec
+    target: read_envelope
+    command_summary: "cat node-001 envelope | parse required fields"
+    redacted: false
+    evidence_id: ev-command-log
+  - id: act-002
+    type: exec
+    target: node_probe
+    command_summary: "./scripts/node-capability-probe.sh --output probe-output.yaml"
+    redacted: true
+    redaction_reason: command_output_may_contain_paths
+    evidence_id: ev-probe-output
+  - id: act-003
+    type: exec
+    target: service_check
+    command_summary: "systemctl is-active sshd docker nginx; systemctl is-enabled sshd docker nginx"
+    redacted: false
+    evidence_id: ev-command-log
+  - id: act-004
+    type: exec
+    target: config_inspection
+    command_summary: "cat gateway.yaml | grep -E 'version|port|model|tools'"
+    redacted: false
+    evidence_id: ev-command-log
+  - id: act-005
+    type: web_fetch
+    target: network_probe
+    command_summary: "curl -o /dev/null -s -w '%{http_code} %{time_total}' https://health.example.com/ping"
+    redacted: false
+    evidence_id: ev-command-log
+  - id: act-006
+    type: exec
+    target: write_report
+    command_summary: "./scripts/write-capability-report.sh --input probe-output.yaml --output outputs/capability-report.yaml"
+    redacted: false
+    evidence_id: ev-node-capability-report
+
+evidence:
+  - id: ev-command-log
+    kind: command_output
+    source: stdout/stderr of sequential commands
+    summary: Full command log with exit codes and durations for all 6 steps
+    redacted: false
+  - id: ev-probe-output
+    kind: command_output
+    source: node capability probe script
+    summary: Hardware, OS, runtime, and storage data collected by probe script
+    redacted: true
+    redaction_reason: command_output_may_contain_paths
+    content_ref: ../../evidence/node-capability-report.yaml
+  - id: ev-node-capability-report
+    kind: report
+    source: capability report generation script
+    summary: Node capability matrix in output YAML
+    redacted: false
+    content_ref: ../../evidence/node-capability-report.yaml
+
+findings:
+  - claim: All 6 CLI commands executed successfully with exit code 0.
+    evidence:
+      - ev-command-log
+    confidence: high
+  - claim: Node probe confirmed medium-VPS profile with 2 risks (low disk, no swap).
+    evidence:
+      - ev-probe-output
+      - ev-node-capability-report
+    confidence: high
+  - claim: Config inspection and network probe passed baseline thresholds.
+    evidence:
+      - ev-command-log
+    confidence: high
+
+risks:
+  - Probe script may fail if target node does not match expected OS family
+  - Command output may contain local paths that require redaction
+
+outputs:
+  capability_report: outputs/capability-report.yaml
+  readiness_verdict: "NOT READY — low workspace storage and missing swap."
