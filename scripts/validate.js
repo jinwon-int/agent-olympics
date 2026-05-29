@@ -95,6 +95,18 @@ try {
 } catch (e) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
+// Load oracle schema
+// ---------------------------------------------------------------------------
+let oracleSchema = null;
+let oracleValidator = null;
+try {
+  oracleSchema = loadSchema('schemas/oracle.schema.json');
+  const oracleAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(oracleAjv);
+  oracleValidator = oracleAjv.compile(oracleSchema);
+} catch (e) { /* ignore */ }
+
+// ---------------------------------------------------------------------------
 // Load schemas (v2)
 // ---------------------------------------------------------------------------
 let v2Schemas = {};
@@ -164,6 +176,13 @@ function formatErrors(errors) {
     const extra = e.params ? JSON.stringify(e.params) : '';
     return `  ${field}: ${msg} ${extra}`.trim();
   }).join('\n');
+}
+
+function profileList(profile, preferredKey, legacyKey) {
+  if (!profile || typeof profile !== 'object') return [];
+  const preferred = Array.isArray(profile[preferredKey]) ? profile[preferredKey] : [];
+  const legacy = Array.isArray(profile[legacyKey]) ? profile[legacyKey] : [];
+  return [...new Set([...preferred, ...legacy])];
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +314,34 @@ function semanticChecks(doc, kind, file, schemaVersion) {
       // scored_values should not contain secrets
       if (doc.scored_values) {
         detectSecrets(doc.scored_values, issues, 'scored_values');
+      }
+
+      // Hardened operating-agent-stack fields must be coherent enough for
+      // scoring, rule checks, and web-result publication. Schema validation
+      // enforces presence/shape; these semantic checks catch cross-field drift.
+      const allowedTools = profileList(doc.tool_use_profile, 'classes_allowed', 'allowed');
+      const usedTools = profileList(doc.tool_use_profile, 'classes_used', 'used');
+      for (const tool of usedTools) {
+        if (!allowedTools.includes(tool)) {
+          issues.push({ severity: SEVERITY.error, msg: `tool_use_profile lists used tool "${tool}" that is not declared in allowed tools` });
+        }
+      }
+      if (doc.actions && usedTools.length) {
+        for (const action of doc.actions) {
+          if (action.type && !usedTools.includes(action.type)) {
+            issues.push({ severity: SEVERITY.warn, msg: `action "${action.id || '(unnamed)'}" type "${action.type}" is not declared in tool_use_profile used tools` });
+          }
+        }
+      }
+      if (doc.validity === 'appealed' && !doc.appeal) {
+        issues.push({ severity: SEVERITY.error, msg: 'validity is "appealed" but appeal metadata is missing' });
+      }
+      if (doc.publishable === true && ['invalid', 'appealed', 'disqualified'].includes(doc.validity)) {
+        issues.push({ severity: SEVERITY.error, msg: `publishable=true is not allowed for validity="${doc.validity}"` });
+      }
+      if (doc.delegation_profile && Array.isArray(doc.delegation_profile.a2a_workers) &&
+          doc.delegation_profile.a2a_workers.length > 0 && !doc.delegation_profile.subagents_used) {
+        issues.push({ severity: SEVERITY.warn, msg: 'delegation_profile lists a2a_workers while subagents_used=false; confirm delegation disclosure' });
       }
     }
 
@@ -905,6 +952,18 @@ function validateOracle(filePath) {
   }
 
   const issues = [];
+
+  if (oracleValidator) {
+    const valid = oracleValidator(doc);
+    if (!valid) {
+      for (const err of oracleValidator.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        const extra = err.params ? JSON.stringify(err.params) : '';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg} ${extra}`.trim() });
+      }
+    }
+  }
 
   // Required fields
   if (!doc.task_id) {

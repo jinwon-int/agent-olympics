@@ -54,6 +54,14 @@ operating_policy:
   delegation_policy: subagent-allowed
   durable_memory_policy: wiki-update
 
+delegation_profile:
+  subagents_used: false
+  background_jobs_used: false
+  human_assistance: false
+  a2a_workers: []
+  supported_by: []
+  notes: Static baseline packet produced without delegated workers.
+
 tool_use_profile:
   classes_allowed:
     - command

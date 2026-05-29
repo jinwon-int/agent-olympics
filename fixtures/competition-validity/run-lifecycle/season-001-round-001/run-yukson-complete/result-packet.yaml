@@ -9,6 +9,9 @@ runtime_version: 2.14.0
 model: gpt-5.x
 model_provider: openai
 node: vps5
+division: closed_stack
+validity: valid
+publishable: true
 hardware_profile:
   cpu_class: small-vps
   memory_gb: 2
@@ -16,6 +19,29 @@ hardware_profile:
 configuration_profile:
   model_routing: documented
   liveness: telegram-visible
+tool_use_profile:
+  classes_allowed:
+    - command
+    - read
+    - think
+  classes_used:
+    - command
+    - read
+    - think
+operating_policy:
+  approval_boundaries: documented
+  secret_handling: redacted
+  destructive_action_rules: approval-required
+  progress_reporting: required_for_long_tasks
+  delegation_policy: none
+  durable_memory_policy: wiki-update-needed
+delegation_profile:
+  subagents_used: false
+  background_jobs_used: false
+  human_assistance: false
+  a2a_workers: []
+  supported_by: []
+  notes: Positive fixture uses a single OpenClaw worker packet without delegation.
 started_at: "2026-05-29T18:54:30+09:00"
 ended_at: "2026-05-29T19:15:00+09:00"
 status: completed
