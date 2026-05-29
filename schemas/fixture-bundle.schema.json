@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/fixture-bundle.schema.json",
+  "title": "Agent Olympics Fixture Bundle Manifest",
+  "description": "A fixture bundle describes external data that a runner must prepare before a participant starts a task. Bundles live in fixtures/season-XXX/<task_id>/ and carry a manifest.yaml plus the actual fixture files. Only participant-facing data belongs here — no judge notes, answer keys, or oracle material.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "season",
+    "task_id",
+    "version",
+    "description",
+    "files",
+    "preparation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "bundle_id": {
+      "type": "string",
+      "pattern": "^season-\\d{3}-[a-z]+-\\d{3}-v\\d+$",
+      "description": "Globally unique bundle identifier, e.g. 'season-001-code-001-v1'."
+    },
+    "season": {
+      "type": "string",
+      "pattern": "^season-\\d{3}$",
+      "description": "The competition season this bundle belongs to, e.g. 'season-001'."
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[a-z]+-\\d{3}$",
+      "description": "The task_id this bundle is prepared for."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Bundle version. Increment when fixture content or structure changes."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable description of what this fixture bundle contains and how it is used."
+    },
+    "dry_run_compatible": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if this bundle can be used for a dry run without revealing judge material. All public bundles must be dry-run-compatible."
+    },
+    "required": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if the task cannot be completed without this fixture bundle."
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "description"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path from the bundle directory to the fixture file."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What this fixture file contains and how the participant uses it."
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type or format hint, e.g. 'text/yaml', 'application/gzip', 'inode/directory'."
+          },
+          "optional": {
+            "type": "boolean",
+            "default": false,
+            "description": "True if the participant can complete the task without this specific file."
+          },
+          "size_hint": {
+            "type": "string",
+            "description": "Approximate size, e.g. '~2 KB' or '~50 MB'. Helps runners plan storage."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "preparation": {
+      "type": "object",
+      "required": ["method", "description"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["runner_provided", "generated", "bundled", "external_repo", "env_dependent"],
+          "description": "How this fixture is prepared. runner_provided: the runner must create it. generated: created by a script in this repo. bundled: checked into this repo. external_repo: cloned from a separate repository. env_dependent: depends on runtime environment state."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Step-by-step instructions for the runner to prepare this fixture bundle."
+        },
+        "script_ref": {
+          "type": "string",
+          "description": "Path to a preparation script in this repository, if applicable."
+        },
+        "expected_duration_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How long the runner should budget for preparing this fixture."
+        }
+      },
+      "additionalProperties": false
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Other bundle_ids that must be prepared before this one, if any."
+    },
+    "environment_requirements": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Runtime requirements, e.g. 'node >= 18', 'git', 'docker'."
+    },
+    "changelog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["version", "date", "change"],
+        "properties": {
+          "version": { "type": "integer" },
+          "date": { "type": "string", "format": "date" },
+          "change": { "type": "string", "minLength": 1 },
+          "author": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Version history for this bundle."
+    }
+  },
+  "additionalProperties": false
+}
