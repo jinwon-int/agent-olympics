@@ -10,6 +10,7 @@ for pre-season planning and validation.
 | `profile-stub-small.yaml` | small-vps | 1-2 | 1-2 | SSD 5+ GB | 1 | Smoke, safety, minimal resource tests |
 | `profile-stub-medium.yaml` | medium-vps | 2-4 | 4-8 | NVMe 20+ GB | 2 | Ops, code, knowledge, coordination |
 | `profile-stub-large.yaml` | large-vps | 8-16 | 16-32 | NVMe 100+ GB | 4 | Performance, multi-agent, throughput |
+| `profile-live-openclaw-medium-20260530.yaml` | large-vps | 8 | 16-24 | Hybrid 70+ GB | 3 | Live validated OpenClaw node-readiness and performance smoke |
 
 ## Usage
 
