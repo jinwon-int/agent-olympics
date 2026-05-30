@@ -1,0 +1,22 @@
+# Negative fixture: result packet with publishable: true but validity=appealed.
+# Expected to FAIL provisional-scoring gate.
+schema_version: 2
+packet_id: pkt-prov-001
+task_id: ops-001
+agent_id: test-agent
+runtime: openclaw
+started_at: '2026-05-30T01:00:00Z'
+ended_at: '2026-05-30T02:00:00Z'
+status: completed
+validity: appealed
+publishable: true
+summary: Result under appeal.
+evidence:
+  - id: ev-001
+    description: Output
+    content: "Diagnostic output"
+findings:
+  - claim: Issue identified
+    confidence: medium
+    evidence:
+      - ev-001

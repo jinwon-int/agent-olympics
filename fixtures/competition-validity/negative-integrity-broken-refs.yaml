@@ -1,0 +1,27 @@
+# Negative fixture: result packet with findings referencing non-existent evidence IDs.
+# Expected to FAIL integrity gate (unresolved evidence refs).
+schema_version: 2
+packet_id: pkt-integ-002
+task_id: ops-001
+agent_id: test-agent
+runtime: openclaw
+started_at: '2026-05-30T01:00:00Z'
+ended_at: '2026-05-30T02:00:00Z'
+status: completed
+summary: Completed diagnosis.
+evidence:
+  - id: ev-001
+    description: Log output
+    content: "System is running normally"
+findings:
+  - claim: Identified the issue
+    confidence: high
+    evidence:
+      - ev-001
+      - ev-nonexistent-001
+      - ev-nonexistent-002
+actions:
+  - id: act-1
+    type: exec
+    command_summary: check status
+    evidence_id: ev-001

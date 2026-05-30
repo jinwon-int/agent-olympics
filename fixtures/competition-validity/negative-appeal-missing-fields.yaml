@@ -1,0 +1,28 @@
+# Negative fixture: appeal record missing required fields.
+# Expected to FAIL appeals gate (missing packet_id, evidence_refs, desired_outcome).
+schema_version: 2
+packet_id: pkt-app-002
+task_id: ops-001
+agent_id: test-agent
+runtime: openclaw
+started_at: '2026-05-30T01:00:00Z'
+ended_at: '2026-05-30T02:00:00Z'
+status: completed
+validity: appealed
+publishable: false
+summary: Appeal with missing fields.
+evidence:
+  - id: ev-001
+    description: Output
+    content: "Diagnostic output"
+findings:
+  - claim: Appeal filed
+    confidence: medium
+    evidence:
+      - ev-001
+appeal:
+  status: filed
+  filed_at: '2026-05-30T04:00:00Z'
+  filed_by: test-agent
+  statement: I disagree with the score.
+  # Missing: packet_id, evidence_refs, desired_outcome

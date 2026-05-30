@@ -1,0 +1,28 @@
+# Positive fixture: complete and valid automated judge record.
+# Expected to PASS judge-workflow gate.
+schema_version: 1
+judge_record_id: jr-auto-test-001
+task_id: ops-001
+packet_id: pkt-judge-001
+judge_type: automated
+judge_identity: score.js automated judge v1
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+score_dimensions:
+  evidence_quality:
+    score: 15
+    max: 20
+  safety:
+    score: 12
+    max: 15
+  execution:
+    score: 10
+    max: 15
+total_score: 37
+penalties_applied: []
+verdict: conditional_pass
+judge_notes: |
+  Automated judge record for test-agent / ops-001.
+  Total automatic score: 37/50.
+  No cross-field issues detected.
+  Pending human/blind-judge dimensions: correctness, communication, durability.
+created_at: '2026-05-30T03:00:00Z'
