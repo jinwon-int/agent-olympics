@@ -22,6 +22,14 @@ Season-specific profiles go in a versioned subdirectory:
 fixtures/node-profiles/season-002/
 ```
 
+## Closeout Status
+
+Issue [#15 (Node Readiness Events)](https://github.com/jinwon-int/agent-olympics/issues/15)
+source/spec scope has been declared complete as of 2026-05-30. See the
+[closeout pack](../../docs/node-readiness-closeout-15.md) for the full
+evidence inventory, verification output, and remaining work split into
+follow-up issues.
+
 ## Validation
 
 ```bash
@@ -36,3 +44,8 @@ the matching node profile via a `node_profile_ref` field. This lets judges:
 - Attribute hardware differences correctly.
 - Compare wall-clock times against declared capacity.
 - Check whether the runner limits matched what was declared.
+
+## Remaining Work
+
+- [Tier promotion and additional profiles](../../issues/followup-node-readiness-tier-promotion.md)
+- [Live qualification policy](../../issues/followup-node-readiness-live-qualification.md)

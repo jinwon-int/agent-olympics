@@ -7,6 +7,12 @@
 This document records the current evidence-backed status of the two remaining
 broad Agent Olympics parent trackers.
 
+> **Update 2026-05-30:** Node Readiness #15 source/spec closeout pack created
+> ([docs/node-readiness-closeout-15.md](node-readiness-closeout-15.md)).
+> The source/spec scope is declared complete. Follow-up issues filed for
+> tier promotion and live qualification policy. See the closeout pack for
+> full evidence inventory, verification output, and decision rationale.
+
 ## #15 Node Readiness Events
 
 **Decision:** keep open as a broad tracker.
@@ -27,13 +33,24 @@ broad Agent Olympics parent trackers.
 - More approved node classes need safe profile fixtures before tier promotion.
 - Any live node qualification must remain read-only unless separately approved.
 
-**Recommended follow-up issue:**
+**Recommended follow-up issues:**
 
-Title: `Node Readiness: collect second approved node profile and compare smoke evidence`
+1. **Tier Promotion and Additional Profiles**
+   Title: `Node Readiness: add second approved node profile and compare smoke evidence`
+   File: [`issues/followup-node-readiness-tier-promotion.md`](../issues/followup-node-readiness-tier-promotion.md)
+   Scope: source/docs/fixtures only unless the operator approves a read-only live
+   inventory. Add one additional redacted node profile, compare smoke evidence
+   against the current OpenClaw fixture, and update qualification notes.
 
-Scope: source/docs/fixtures only unless the operator approves a read-only live
-inventory. Add one additional redacted node profile, compare smoke evidence
-against the current OpenClaw fixture, and update qualification notes.
+2. **Live Qualification Policy**
+   Title: `Node Readiness: define and approve live read-only inventory policy for additional nodes`
+   File: [`issues/followup-node-readiness-live-qualification.md`](../issues/followup-node-readiness-live-qualification.md)
+   Scope: policy/docs only. Document approved safe-inventory procedure, define
+   operator approval chain, extend profile validator with live-probe redaction
+   check, and qualify at least one additional operator node.
+
+See the [closeout pack](node-readiness-closeout-15.md) for full evidence inventory,
+verification output, risk notes, and approval-sensitive blockers.
 
 ## #16 Performance Trial
 
