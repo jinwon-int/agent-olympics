@@ -32,9 +32,33 @@ follow-up issues.
 
 ## Validation
 
+### Standard profile validation
+
 ```bash
 node scripts/validate.js profiles
 ```
+
+### Live-probe enhanced redaction check
+
+Profiles sourced from live node inventory should also pass the enhanced
+redaction and forbidden-field validator:
+
+```bash
+# Validate a single profile
+node scripts/validate.js live-probe fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+
+# Validate all profiles with enhanced checks
+node scripts/validate.js live-probe
+
+# Run against the validity test fixtures
+node scripts/validate.js live-probe fixtures/node-profiles/validity/live-probe/positive-clean.yaml
+node scripts/validate.js live-probe fixtures/node-profiles/validity/live-probe/negative-forbidden-values.yaml
+```
+
+### Validity test fixtures
+
+See [`fixtures/node-profiles/validity/live-probe/README.md`](validity/live-probe/README.md)
+for positive and negative test cases exercising the live-probe validator.
 
 ## Compare with Result Metadata
 

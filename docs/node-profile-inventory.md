@@ -241,6 +241,28 @@ The validator runs:
 3. Forbidden field scan — checks both key names and values for known secret
    patterns (hostnames, IPs, tokens, private key material).
 
+## Live Node Qualification
+
+Profiles sourced from live operator nodes (rather than static stub declarations)
+require additional safeguards defined in the
+**[Live Node Qualification Policy](live-node-qualification-policy.md)**.
+
+Key requirements:
+- Probe must use the approved read-only command chain.
+- Raw probe output must be discarded after the profile YAML is written.
+- The profile must pass `node scripts/validate.js live-probe <profile>` before
+  commit.
+- Each qualification requires explicit operator sign-off.
+
+See the [full policy](live-node-qualification-policy.md) for the approved
+procedure, forbidden fields, retained fields, approval chain, and disposal
+rules.
+
+```bash
+# Run live-probe redaction and forbidden-field validation
+node scripts/validate.js live-probe fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+```
+
 ## Compatibility
 
 The node profile inventory is designed to work alongside:
