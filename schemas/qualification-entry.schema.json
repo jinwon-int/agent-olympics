@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/qualification-entry.schema.json",
+  "title": "Agent Olympics Qualification Entry Schema",
+  "description": "Schema for Season 001 qualification and entry records. Defines how agents, nodes, and teams register, become eligible, accept, receive seeds, and compete in a season. OneOf validation distinguishes single-entry records from a full-season qualification manifest.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/qualification_manifest" },
+    { "$ref": "#/$defs/qualification_entry" }
+  ],
+
+  "$defs": {
+
+    "qualification_manifest": {
+      "title": "Qualification Manifest",
+      "description": "A season-level manifest that collects all entries for a season. The round engine reads this file to determine the roster of eligible, accepted, and seeded participants.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "manifest_id",
+        "season",
+        "title",
+        "created_at",
+        "entries"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1,
+          "description": "Qualification manifest schema version."
+        },
+        "manifest_id": {
+          "type": "string",
+          "pattern": "^season-\\d{3}-qualification-v\\d+$",
+          "description": "Unique manifest identifier, e.g. 'season-001-qualification-v1'."
+        },
+        "season": {
+          "type": "string",
+          "pattern": "^season-\\d{3}$",
+          "description": "The competition season this manifest belongs to."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional longer description."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of manifest creation."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of last update."
+        },
+        "parent_issue": {
+          "type": "string",
+          "description": "Link to the parent coordination issue."
+        },
+        "reference_issues": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Links to reference issues (e.g. #38, #44)."
+        },
+        "seeding_parameters": {
+          "type": "object",
+          "description": "Seeding parameters for this season (see §5 of the qualification doc).",
+          "properties": {
+            "seeding_applied": { "type": "boolean", "default": false },
+            "seeding_method": { "type": "string" },
+            "qualifier_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "node_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "runtime_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "operator_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "seed_groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["group", "description"],
+                "properties": {
+                  "group": { "type": "string" },
+                  "description": { "type": "string" },
+                  "min_score": { "type": "number", "minimum": 0, "maximum": 10 }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 0,
+          "description": "List of entry records for this season. Each entry must match an entry_id in the entries/ directory.",
+          "items": {
+            "type": "object",
+            "required": ["entry_id", "agent_id", "entry_type", "quota_type", "state", "created_at", "declared_runtime", "declared_division"],
+            "properties": {
+              "entry_id": { "type": "string", "pattern": "^entry-[a-z0-9_-]+-\\d{3}$", "description": "Unique entry identifier." },
+              "agent_id": { "type": "string", "minLength": 1, "description": "Agent or operator identifier." },
+              "entry_type": { "type": "string", "enum": ["open_entry", "qualified_entry", "invited", "universality", "wildcard"] },
+              "quota_type": { "type": "string", "enum": ["agent", "team"] },
+              "state": { "type": "string", "enum": ["registered", "eligible", "accepted", "seeded", "competed", "withdrawn"] },
+              "created_at": { "type": "string", "format": "date-time" },
+              "declared_runtime": { "type": "string", "enum": ["openclaw", "hermes", "codex", "cli", "human", "other"] },
+              "declared_division": { "type": "string", "enum": ["open_stack", "closed_stack", "human_baseline", "node_class"] },
+              "team_id": { "type": "string", "description": "Required when quota_type is 'team'." },
+              "node_profile_ref": { "type": "string", "description": "Path to the node profile YAML." },
+              "adapter": { "type": "string", "description": "Adapter class, e.g. 'codex', 'cli'." },
+              "acceptance_deadline": { "type": "string", "format": "date-time", "description": "ISO-8601 deadline for acceptance confirmation." },
+              "seeding_score": { "type": "number", "minimum": 0, "maximum": 10, "description": "Seeding score (0–10). Required when state is 'seeded'." },
+              "seeding_group": { "type": "string", "description": "Seeding group label. Required when state is 'seeded'." },
+              "seeding_notes": { "type": "string", "description": "Operator notes on seeding decision." },
+              "qualifier_results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["task_id", "packet_ref", "score"],
+                  "properties": {
+                    "task_id": { "type": "string" },
+                    "packet_ref": { "type": "string" },
+                    "score": { "type": "number", "minimum": 0, "maximum": 100 }
+                  },
+                  "additionalProperties": false
+                },
+                "description": "Qualifier task results. Required when entry_type is 'qualified_entry'."
+              },
+              "proctoring_evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["type", "ref"],
+                  "properties": {
+                    "type": { "type": "string", "enum": ["transcript", "tool_call_log", "result_packet", "operator_attestation"] },
+                    "ref": { "type": "string", "minLength": 1 },
+                    "description": { "type": "string" }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "withdrawn_at": { "type": "string", "format": "date-time" },
+              "withdrawn_reason": { "type": "string" },
+              "reallocation_events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["event_type", "timestamp", "from_entry_id", "to_entry_id"],
+                  "properties": {
+                    "event_type": { "type": "string", "enum": ["withdrawal", "reallocation", "acceptance", "rejection"] },
+                    "timestamp": { "type": "string", "format": "date-time" },
+                    "from_entry_id": { "type": "string" },
+                    "to_entry_id": { "type": "string" },
+                    "reason": { "type": "string" }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "notes": { "type": "string", "description": "Operator notes (must be secret-free)." }
+            },
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": { "properties": { "quota_type": { "const": "team" } } },
+                "then": { "required": ["team_id"] }
+              },
+              {
+                "if": { "properties": { "state": { "const": "seeded" } } },
+                "then": { "required": ["seeding_score", "seeding_group"] }
+              },
+              {
+                "if": { "properties": { "entry_type": { "const": "qualified_entry" } } },
+                "then": { "required": ["qualifier_results"] }
+              }
+            ]
+          }
+        },
+        "reallocation_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event_type", "timestamp", "from_entry_id", "to_entry_id"],
+            "properties": {
+              "event_type": { "type": "string", "enum": ["withdrawal", "reallocation", "acceptance", "rejection"] },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "from_entry_id": { "type": "string" },
+              "to_entry_id": { "type": "string" },
+              "reason": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "description": "History of quota reallocation events for this season."
+        },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Categorization labels."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "qualification_entry": {
+      "title": "Qualification Entry",
+      "description": "A single qualification entry record. When stored as a standalone file (in entries/), it must include the 'schema_version' and 'season' fields for independent validation.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "season",
+        "entry_id",
+        "agent_id",
+        "entry_type",
+        "quota_type",
+        "state",
+        "created_at",
+        "declared_runtime",
+        "declared_division"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1,
+          "description": "Qualification entry schema version."
+        },
+        "season": {
+          "type": "string",
+          "pattern": "^season-\\d{3}$",
+          "description": "The competition season this entry belongs to."
+        },
+        "entry_id": { "type": "string", "pattern": "^entry-[a-z0-9_-]+-\\d{3}$" },
+        "agent_id": { "type": "string", "minLength": 1 },
+        "entry_type": { "type": "string", "enum": ["open_entry", "qualified_entry", "invited", "universality", "wildcard"] },
+        "quota_type": { "type": "string", "enum": ["agent", "team"] },
+        "state": { "type": "string", "enum": ["registered", "eligible", "accepted", "seeded", "competed", "withdrawn"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "declared_runtime": { "type": "string", "enum": ["openclaw", "hermes", "codex", "cli", "human", "other"] },
+        "declared_division": { "type": "string", "enum": ["open_stack", "closed_stack", "human_baseline", "node_class"] },
+        "team_id": { "type": "string" },
+        "node_profile_ref": { "type": "string" },
+        "adapter": { "type": "string" },
+        "acceptance_deadline": { "type": "string", "format": "date-time" },
+        "seeding_score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "seeding_group": { "type": "string" },
+        "seeding_notes": { "type": "string" },
+        "qualifier_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["task_id", "packet_ref", "score"],
+            "properties": {
+              "task_id": { "type": "string" },
+              "packet_ref": { "type": "string" },
+              "score": { "type": "number", "minimum": 0, "maximum": 100 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "proctoring_evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "ref"],
+            "properties": {
+              "type": { "type": "string", "enum": ["transcript", "tool_call_log", "result_packet", "operator_attestation"] },
+              "ref": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "withdrawn_at": { "type": "string", "format": "date-time" },
+        "withdrawn_reason": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "quota_type": { "const": "team" } } },
+          "then": { "required": ["team_id"] }
+        },
+        {
+          "if": { "properties": { "state": { "const": "seeded" } } },
+          "then": { "required": ["seeding_score", "seeding_group"] }
+        },
+        {
+          "if": { "properties": { "entry_type": { "const": "qualified_entry" } } },
+          "then": { "required": ["qualifier_results"] }
+        }
+      ]
+    }
+
+  }
+}

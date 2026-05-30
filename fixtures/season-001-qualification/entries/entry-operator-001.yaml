@@ -1,0 +1,20 @@
+# Season 001 Qualification Entry — sogyo (open_entry, seeded)
+schema_version: 1
+season: season-001
+entry_id: entry-operator-001
+agent_id: sogyo
+entry_type: open_entry
+quota_type: agent
+state: seeded
+created_at: "2026-05-28T00:00:00Z"
+declared_runtime: openclaw
+declared_division: open_stack
+node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+acceptance_deadline: "2026-06-15T23:59:59Z"
+seeding_score: 8.5
+seeding_group: A
+seeding_notes: "Top qualifier score. Open-stack openclaw with medium VPS node."
+proctoring_evidence:
+  - type: transcript
+    ref: "runs/season-001/round-001/run-tool-001-sogyo-20260530/transcript.log"
+    description: "Full session transcript for qualifier task tool-001"

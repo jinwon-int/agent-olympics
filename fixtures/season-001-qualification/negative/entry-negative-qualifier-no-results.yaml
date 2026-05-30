@@ -1,0 +1,12 @@
+# Negative fixture: qualified_entry missing qualifier_results
+schema_version: 1
+season: season-001
+entry_id: entry-negative-fail-003
+agent_id: bad-qualifier
+entry_type: qualified_entry
+quota_type: agent
+state: accepted
+created_at: "2026-05-25T00:00:00Z"
+declared_runtime: openclaw
+declared_division: closed_stack
+# Missing: qualifier_results (required when entry_type is 'qualified_entry')
