@@ -315,6 +315,13 @@ perf-harness:
 perf-harness-validate:
 	node scripts/perf-harness.js --iterations $${PERF_ITERATIONS:-3} --validate
 
+# Transform latest harness report into v2 result packets for scoreboard
+perf-harness-to-packets:
+	node scripts/harness-to-packet.js results/perf-harness-report-*.$$(ls results/perf-harness-report-*.json 2>/dev/null >/dev/null && echo json || echo yaml) --agent-id $${AGENT_ID:-perf-harness}
+
+# Full pipeline: harness → packets → scoreboard → validate
+perf-harness-pipeline: perf-harness perf-harness-to-packets score-aggregate
+
 # Validate the scoreboard schema
 validate-scoreboard:
 	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
@@ -406,6 +413,30 @@ validate-gates:
 # Validate all dry-run evidence output format (after generation)
 validate-dry-run-evidence:
 	node -e 'const fs=require("fs"); const d="evidence/dry-run"; if(!fs.existsSync(d)){console.log("No dry-run evidence yet. Run a gate first.");process.exit(0);} const files=fs.readdirSync(d).filter(f=>f.endsWith(".json")); let ok=0;let bad=0; for(const f of files){try{const j=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(j.allPassed!==undefined)ok++;else bad++;console.log(f+": "+(j.allPassed!==undefined?"valid":"missing allPassed"));}catch(e){bad++;console.log(f+": parse error - "+e.message);}} console.log(ok+" valid, "+bad+" invalid"); process.exit(bad>0?1:0);'
+
+# --- Dry-Run Execution targets ---
+
+# Run the dry-run execution manifest against selected Season 001 tasks
+# Source-only: uses stub adapter, no live mutation
+dry-run-execute:
+	node scripts/dry-run-execute.js --validate
+
+# List tasks selected by the dry-run execution manifest
+dry-run-execute-list:
+	node scripts/dry-run-execute.js --list
+
+# Run dry-run execution for one task (useful for testing)
+# Usage: make dry-run-execute-task TASK=tool-001
+dry-run-execute-task:
+	node scripts/dry-run-execute.js --task $(TASK) --validate
+
+# Validate dry-run execution output (post-execution gates only)
+dry-run-execute-validate:
+	node scripts/dry-run-execute.js --manifest fixtures/dry-run-execution/manifest.yaml --skip-gates --validate --verbose
+
+# Full dry-run pipeline: validate gates + execute + validate outputs
+dry-run-pipeline: dry-run-readiness dry-run-execute dry-run-execute-validate
+	@echo "Dry-run pipeline complete."
 
 # Remove generated artifacts and dependencies
 clean:

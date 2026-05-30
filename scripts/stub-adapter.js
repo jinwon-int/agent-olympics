@@ -55,6 +55,14 @@ function shortId(seed) {
   return Math.random().toString(16).slice(2, 8);
 }
 
+function repoRelative(filePath) {
+  const root = path.resolve(__dirname, '..');
+  const relative = path.relative(root, filePath);
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
+    ? relative
+    : filePath;
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -251,7 +259,7 @@ function generateRunMetadata(envelopePath, envelope, runId, status, exitCode, st
     schema_version: 1,
     run_id: runId,
     task_id: envelope.task_id || 'unknown',
-    envelope_path: envelopePath,
+    envelope_path: repoRelative(envelopePath),
     agent_id: 'stub-adapter',
     runtime: 'cli',
     status: status,

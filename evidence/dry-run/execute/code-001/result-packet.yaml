@@ -1,0 +1,49 @@
+agent_id: sogyo
+ended_at: '2026-05-30T00:19:48Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-stub-input
+    kind: config_snippet
+    source: task envelope
+    summary: >
+      Input task envelope: "TypeScript regression fix with targeted tests". Objective: Fix a small TypeScript
+      regression, add or update focused tests, and prepare a concise PR-ready summary.
+  - content_ref: adapter.log
+    content_type: text/plain
+    id: ev-stub-run
+    kind: command_output
+    source: stub adapter
+    summary: 'Stub adapter executed with exit code 0 (mapped status: completed). No live commands were run.'
+  - content_ref: ''
+    content_type: text/plain
+    id: ev-stub-task
+    kind: log
+    source: stub adapter
+    summary: >-
+      Task code-001 processed. Required outputs: changed_files, test_results, bug_cause, fix_summary, residual_risk.
+      Stub adapter does not produce real outputs.
+findings:
+  - claim: Stub adapter executed successfully (deterministic stub).
+    confidence: high
+    evidence:
+      - ev-stub-input
+      - ev-stub-run
+  - claim: Produced result packet for task "code-001" with status "completed". No real work was performed.
+    confidence: medium
+    evidence:
+      - ev-stub-run
+outputs:
+  bug_cause: '[stub] Placeholder output for "bug_cause". Replace with real output from the participant adapter.'
+  changed_files: '[stub] Placeholder output for "changed_files". Replace with real output from the participant adapter.'
+  fix_summary: '[stub] Placeholder output for "fix_summary". Replace with real output from the participant adapter.'
+  residual_risk: '[stub] Placeholder output for "residual_risk". Replace with real output from the participant adapter.'
+  test_results: '[stub] Placeholder output for "test_results". Replace with real output from the participant adapter.'
+runtime: openclaw
+schema_version: 2
+started_at: '2026-05-30T00:19:48Z'
+status: completed
+summary: >-
+  Stub adapter run for task "code-001". Status: completed. This is a deterministic placeholder — no live participant
+  executed.
+task_id: code-001

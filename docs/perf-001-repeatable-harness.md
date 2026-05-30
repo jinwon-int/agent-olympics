@@ -134,6 +134,80 @@ This matches the `validateRawScoredSeparation()` checks in `scripts/score.js`.
 | Scored values | Computed locally via normalization formula | Computed by score.js or judge engine |
 | Caveats | Explicit cache/container/environment caveats | Host-contention and hardware-class caveats |
 
+## Transform to Scoreboard Pipeline
+
+The harness report format is not directly consumable by the scoring/publication
+pipeline (`score.js aggregate`, `dry-run-gates.js publication`), which expects
+standard result packets with `evidence`/`findings` arrays.
+
+The bridge script `scripts/harness-to-packet.js` transforms any perf-harness
+report (JSON or YAML) into one or more v2 result packets that the pipeline
+accepts.
+
+### Usage
+
+```bash
+# Run the harness first
+node scripts/perf-harness.js --iterations 3
+
+# Transform the generated report into scoreboard-compatible packets
+node scripts/harness-to-packet.js results/perf-harness-report-*.json
+
+# Or transform the last report explicitly
+node scripts/harness-to-packet.js results/perf-harness-report-$(ls -t results/perf-harness-report-*.json | head -1 | xargs basename .json).json
+
+# Now the output packets can enter the standard pipeline
+node scripts/score.js aggregate
+node scripts/dry-run-gates.js publication
+```
+
+### Output
+
+The transform writes one packet per iteration plus an aggregate summary packet:
+
+| File | Content |
+|---|---|
+| `perf-harness-packet-<run-id>-iter-<N>.yaml` | Per-iteration v2 result packet with evidence, findings, and raw/scored separation preserved |
+| `perf-harness-packet-<run-id>-summary.yaml` | Aggregate summary packet with statistics across all iterations |
+
+### Options
+
+```bash
+# Specify output directory
+node scripts/harness-to-packet.js <report> --output-dir results/
+
+# Override agent_id (for scoreboard tracking)
+node scripts/harness-to-packet.js <report> --agent-id nosuk
+
+# Skip summary packet
+node scripts/harness-to-packet.js <report> --no-summary
+
+# Quiet mode (only emit packet filenames, for scripting)
+node scripts/harness-to-packet.js <report> --quiet
+```
+
+### What the Transform Preserves
+
+| Aspect | Preservation |
+|---|---|
+| Raw/scored separation | `raw_measurements` and `scored_values` mapped directly to v2 result-packet fields |
+| Hardware profile | Written to `hardware_profile` + `comparable_metadata.node` for `assessComparability()` |
+| Iteration caveats | Added to `risks` array and `summary` text |
+| Summary statistics | Available in the aggregate summary packet's `outputs.summary_statistics` |
+| Raw measurement fidelity | All `raw_`-prefixed fields preserved in `raw_measurements` |
+
+### Caveats Pipeline
+
+The transform ensures harness-level caveats (cache effects, container runtime,
+hardware profile, source-only mode) are surfaced in the standard pipeline:
+
+1. Per-iteration caveats → `risks[]` and `summary` string
+2. Per-iteration caveats → `comparable_metadata._harness_caveats` (for `assessComparability()`)
+3. Harness-level caveats from `summary.caveats` → `risks[]` in summary packet
+
+This means the scoreboard entries for harness packets will include the
+comparability caveats, allowing consumers to account for source-only bias.
+
 ## Fixture Report
 
 A demo multi-iteration report is available at:
@@ -142,10 +216,12 @@ A demo multi-iteration report is available at:
 results/perf-harness-three-iteration-demo.yaml
 ```
 
-This fixture shows three iterations with realistic values, summary
-statistics, and machine/human visible caveats. It validates against the
-snapshot schema and can be used as a reference for building live harness
-reports.
+To test the transform pipeline with this fixture:
+
+```bash
+node scripts/harness-to-packet.js results/perf-harness-three-iteration-demo.yaml --verbose
+node scripts/score.js validate results/pkt-harness-*  # validate schema
+```
 
 ## Make Targets
 
@@ -155,11 +231,21 @@ make perf-harness
 
 # Run with custom iteration count
 PERF_ITERATIONS=5 make perf-harness
+
+# Run the full pipeline (harness → packets → scoreboard)
+make perf-harness-pipeline
+
+# Run the full pipeline with custom agent id
+AGENT_ID=nosuk make perf-harness-pipeline
 ```
+
+See the `perf-harness-pipeline` and `perf-harness-to-packets` targets in
+`Makefile` for exact commands.
 
 ## See Also
 
 - `scripts/perf-harness.js` — the harness script
+- `scripts/harness-to-packet.js` — transform harness reports to scoreboard-compatible v2 result packets
 - `results/perf-harness-three-iteration-demo.yaml` — demo multi-iteration fixture
 - `scripts/score.js` — scoring engine with `extractPerformanceProfile()`,
   `validateRawScoredSeparation()`, and `assessComparability()`

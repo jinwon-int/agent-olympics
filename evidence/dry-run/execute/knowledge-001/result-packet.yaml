@@ -1,0 +1,50 @@
+agent_id: sogyo
+ended_at: '2026-05-30T00:19:49Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-stub-input
+    kind: config_snippet
+    source: task envelope
+    summary: >-
+      Input task envelope: "Convert an incident transcript into a wiki-ready closeout". Objective: Convert a long
+      incident transcript into durable documentation with timeline, root cause, evidence, fix, validation, and 
+  - content_ref: adapter.log
+    content_type: text/plain
+    id: ev-stub-run
+    kind: command_output
+    source: stub adapter
+    summary: 'Stub adapter executed with exit code 0 (mapped status: completed). No live commands were run.'
+  - content_ref: ''
+    content_type: text/plain
+    id: ev-stub-task
+    kind: log
+    source: stub adapter
+    summary: >-
+      Task knowledge-001 processed. Required outputs: timeline, root_cause, evidence_links, validation, followups,
+      wiki_paths. Stub adapter does not produce real outputs.
+findings:
+  - claim: Stub adapter executed successfully (deterministic stub).
+    confidence: high
+    evidence:
+      - ev-stub-input
+      - ev-stub-run
+  - claim: Produced result packet for task "knowledge-001" with status "completed". No real work was performed.
+    confidence: medium
+    evidence:
+      - ev-stub-run
+outputs:
+  evidence_links: '[stub] Placeholder output for "evidence_links". Replace with real output from the participant adapter.'
+  followups: '[stub] Placeholder output for "followups". Replace with real output from the participant adapter.'
+  root_cause: '[stub] Placeholder output for "root_cause". Replace with real output from the participant adapter.'
+  timeline: '[stub] Placeholder output for "timeline". Replace with real output from the participant adapter.'
+  validation: '[stub] Placeholder output for "validation". Replace with real output from the participant adapter.'
+  wiki_paths: '[stub] Placeholder output for "wiki_paths". Replace with real output from the participant adapter.'
+runtime: openclaw
+schema_version: 2
+started_at: '2026-05-30T00:19:49Z'
+status: completed
+summary: >-
+  Stub adapter run for task "knowledge-001". Status: completed. This is a deterministic placeholder — no live
+  participant executed.
+task_id: knowledge-001
