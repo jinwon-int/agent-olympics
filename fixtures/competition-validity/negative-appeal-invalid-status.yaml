@@ -1,0 +1,32 @@
+# Negative fixture: appeal with invalid status value and missing reviewer.
+# Expected to FAIL appeals gate.
+schema_version: 2
+packet_id: pkt-app-003
+task_id: ops-001
+agent_id: test-agent
+runtime: openclaw
+started_at: '2026-05-30T01:00:00Z'
+ended_at: '2026-05-30T02:00:00Z'
+status: completed
+validity: appealed
+publishable: false
+summary: Invalid appeal status.
+evidence:
+  - id: ev-001
+    description: Output
+    content: "Diagnostic output"
+findings:
+  - claim: Appealing score
+    confidence: low
+    evidence:
+      - ev-001
+appeal:
+  status: escalated  # Invalid status
+  packet_id: pkt-app-003
+  filed_at: '2026-05-30T04:00:00Z'
+  filed_by: test-agent
+  statement: Score is incorrect.
+  evidence_refs:
+    - ev-001
+  desired_outcome: re-score
+  # reviewed_by is missing — required for escalated/under_review

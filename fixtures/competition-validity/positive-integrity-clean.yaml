@@ -1,0 +1,35 @@
+# Positive fixture: clean result packet with no integrity issues.
+# Expected to PASS integrity gate.
+schema_version: 2
+packet_id: pkt-integ-003
+task_id: ops-001
+agent_id: test-agent
+runtime: openclaw
+started_at: '2026-05-30T01:00:00Z'
+ended_at: '2026-05-30T02:00:00Z'
+status: completed
+summary: Complete diagnosis with clean evidence chain.
+evidence:
+  - id: ev-log
+    description: System log excerpt
+    content: "INFO: service running normally"
+  - id: ev-config
+    description: Config file snapshot (redacted)
+    content: "[redacted per policy]"
+    redacted: true
+    redaction_reason: "Contains hostname — value-free replacement"
+findings:
+  - claim: Service is operating within normal parameters
+    confidence: high
+    evidence:
+      - ev-log
+      - ev-config
+actions:
+  - id: act-1
+    type: exec
+    command_summary: read log file
+    evidence_id: ev-log
+  - id: act-2
+    type: read
+    command_summary: inspect config
+    evidence_id: ev-config
