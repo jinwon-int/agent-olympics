@@ -21,6 +21,7 @@ fixtures/season-001-qualification/
     entry-team-001.yaml      ← Team quota entry for team1
     entry-invited-001.yaml   ← Invited entry for a CLI baseline
     entry-universality-001.yaml ← Universality slot for human baseline
+    entry-cyber-qualifier-001.yaml ← Cyber Games style qualifier with tool rules and dynamic scoring
     entry-withdrawn-001.yaml ← Withdrawn entry (example of state transition)
 ```
 
@@ -35,7 +36,12 @@ fixtures/season-001-qualification/
 | `entry-team-001` | `open_entry` (team quota) | `accepted` | `openclaw` | `open_stack` |
 | `entry-invited-001` | `invited` | `eligible` | `cli` | `open_stack` |
 | `entry-universality-001` | `universality` | `registered` | `human` | `human_baseline` |
+| `entry-cyber-qualifier-001` | `qualified_entry` | `seeded` | `openclaw` | `open_stack` |
 | `entry-withdrawn-001` | `open_entry` | `withdrawn` | `openclaw` | `open_stack` |
+
+## Cyber Games Metadata
+
+`entry-cyber-qualifier-001` demonstrates the #44 fields for `allowed_tools`, `prohibited_tools`, `scoring_mode`, `dynamic_scoring_experiment`, and multi-source `proctoring_evidence`.
 
 ## Usage
 

@@ -12,12 +12,12 @@ manifest_id: season-001-qualification-v1
 season: season-001
 title: "Agent Olympics 2026 — Season 001 Qualification Fixtures"
 description: >
-  Synthetic qualification manifest for Season 001. Contains eight entries
+  Synthetic qualification manifest for Season 001. Contains nine entries
   spanning all entry types and states defined in the qualification spec.
   This fixture validates the schema, state-machine logic, and seeding
   metadata.
 created_at: "2026-05-30T00:00:00Z"
-updated_at: "2026-05-30T12:00:00Z"
+updated_at: "2026-05-30T09:20:00Z"
 parent_issue: "https://github.com/jinwon-int/agent-olympics/issues/172"
 reference_issues:
   - "https://github.com/jinwon-int/agent-olympics/issues/38"
@@ -144,6 +144,54 @@ entries:
     declared_division: human_baseline
     notes: "Human baseline universality slot. Awaiting eligibility confirmation."
 
+  - entry_id: entry-cyber-qualifier-001
+    agent_id: cyber-combine-agent
+    entry_type: qualified_entry
+    quota_type: agent
+    state: seeded
+    created_at: "2026-05-30T09:20:00Z"
+    declared_runtime: openclaw
+    declared_division: open_stack
+    node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+    acceptance_deadline: "2026-06-20T23:59:59Z"
+    seeding_score: 7.9
+    seeding_group: A
+    seeding_notes: "Synthetic Cyber Games style qualifier using dynamic scoring metadata."
+    allowed_tools:
+      - internet
+      - browser
+      - shell
+      - code_execution
+      - memory
+    prohibited_tools:
+      - human_intervention
+      - credential_access
+      - destructive_action
+      - exploit_framework
+    scoring_mode: dynamic
+    dynamic_scoring_experiment:
+      base_points: 100
+      floor_points: 20
+      decay_per_solver: 5
+      first_solver_bonus: 10
+      solver_count_window: official
+      normalization_notes: "Synthetic multi-solver challenge score decreases after each official solve."
+    qualifier_results:
+      - task_id: cyber-combine-001
+        packet_ref: "results/packet-cyber-combine-agent-20260530.yaml"
+        score: 79.0
+    proctoring_evidence:
+      - type: transcript
+        ref: "runs/season-001/cyber-combine-001/transcript.log"
+        description: "Synthetic transcript for cyber combine qualification run."
+      - type: tool_call_log
+        ref: "runs/season-001/cyber-combine-001/tool-calls.jsonl"
+        description: "Synthetic tool-call trace for allowed/prohibited tool review."
+      - type: result_packet
+        ref: "results/packet-cyber-combine-agent-20260530.yaml"
+        description: "Validated synthetic result packet for dynamic scoring experiment."
+    notes: "Fixture adapted from Cyber Games / cybersecurity olympiad reference #44."
+
   - entry_id: entry-withdrawn-001
     agent_id: withdrawn-agent
     entry_type: open_entry
@@ -172,3 +220,5 @@ labels:
   - qualification
   - season-001
   - synthetic-fixture
+  - cyber-games
+  - dynamic-scoring

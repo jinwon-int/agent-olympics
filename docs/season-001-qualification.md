@@ -159,6 +159,10 @@ Every Season 001 entry is represented as a YAML record conforming to the
 | `seeding_group` | `state: seeded` | Seeding group label (e.g. `A`, `B`). |
 | `qualifier_results` | `entry_type: qualified_entry` | Array of qualifier task references. |
 | `proctoring_evidence` | Any | Array of evidence reference URLs or paths (see §6). |
+| `allowed_tools` | Cyber/combine qualifiers | Tool classes explicitly permitted for this entry. |
+| `prohibited_tools` | Cyber/combine qualifiers | Tool classes forbidden for this entry. |
+| `scoring_mode` | Any qualifier | `static`, `dynamic`, or `hybrid`. |
+| `dynamic_scoring_experiment` | `scoring_mode: dynamic` | Synthetic dynamic-scoring parameters for multi-solver challenges. |
 | `withdrawn_at` | `state: withdrawn` | Withdrawal timestamp. |
 
 ### 4.3 Example Entry Record
@@ -238,6 +242,14 @@ scoring_rubric:
 Qualification records should include the expected dynamic scoring mode so the
 round engine can adjust per-participant scores.
 
+### 5.4 Cyber Games Dynamic Scoring Fixture
+
+The synthetic entry `entry-cyber-qualifier-001` records a dynamic scoring
+experiment with base points, a floor, first-solver bonus, and a solver-count
+window. This keeps the experiment source-visible without changing the existing
+static scoring behavior for Season 001.
+
+
 ---
 
 ## 6. Proctoring and Evidence
@@ -268,6 +280,10 @@ proctoring_evidence:
     ref: "results/packet-tool-001-sogyo-20260530.yaml"
     description: "Validated result packet for qualifier"
 ```
+
+### 6.3 Tool Rule Review
+
+Cyber Games style entries declare `allowed_tools` and `prohibited_tools` so judges can compare declared rules against transcript and tool-call evidence. The schema treats these as auditable metadata; enforcement belongs to round execution and judge review.
 
 ---
 
