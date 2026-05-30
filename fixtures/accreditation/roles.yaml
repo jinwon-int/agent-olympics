@@ -1,0 +1,136 @@
+# Accreditation Roles
+#
+# Maps role identifiers to accreditation classes with default
+# zone grants and delegation patterns.  Used by the runner to
+# determine default accreditation for participants.
+#
+# Following the Olympic role model from issue #42.
+
+schema_version: 1
+role_registry_id: roles-team1-001
+description: "Team1 Season 001 role-to-accreditation mappings"
+
+roles:
+  - role_id: agent-competitor
+    display_name: "Agent Competitor"
+    accreditation_class: competitor
+    default_delegation_scope: within_class
+    default_max_depth: 1
+    default_zone_grants:
+      - zone_id: public
+        access_level: full
+        escort_required: false
+      - zone_id: competition-floor
+        access_level: full
+        escort_required: false
+      - zone_id: team-staging
+        access_level: limited
+        escort_required: false
+    description: >
+      Standard agent participating in competitions. May delegate to
+      sub-agents of the same class but cannot cross class boundaries.
+
+  - role_id: human-competitor
+    display_name: "Human Baseline Operator"
+    accreditation_class: competitor
+    default_delegation_scope: none
+    default_max_depth: 0
+    default_zone_grants:
+      - zone_id: public
+        access_level: full
+        escort_required: false
+      - zone_id: competition-floor
+        access_level: full
+        escort_required: false
+    description: >
+      Human operator executing tasks manually. Cannot delegate.
+      Operates directly on the competition floor.
+
+  - role_id: orchestrator
+    display_name: "Workflow Orchestrator"
+    accreditation_class: support
+    default_delegation_scope: within_team
+    default_max_depth: 2
+    default_zone_grants:
+      - zone_id: public
+        access_level: full
+        escort_required: false
+      - zone_id: competition-floor
+        access_level: full
+        escort_required: false
+      - zone_id: team-staging
+        access_level: full
+        escort_required: false
+    description: >
+      Orchestration adapter (e.g., Hermes) that decomposes tasks into
+      sub-workflows and coordinates worker agents. May delegate within
+      the team.
+
+  - role_id: schema-judge
+    display_name: "Schema Validator Judge"
+    accreditation_class: judge
+    default_delegation_scope: any_accredited
+    default_max_depth: 1
+    default_zone_grants:
+      - zone_id: public
+        access_level: full
+        escort_required: false
+      - zone_id: competition-floor
+        access_level: full
+        escort_required: false
+      - zone_id: judges-chamber
+        access_level: full
+        escort_required: false
+      - zone_id: archives-and-evidence
+        access_level: full
+        escort_required: false
+      - zone_id: observers-gallery
+        access_level: full
+        escort_required: false
+    description: >
+      Automated judge that validates submissions against schemas.
+      Has broad access zones but must audit all delegated actions.
+
+  - role_id: gateway-operator
+    display_name: "Gateway Operator"
+    accreditation_class: operator
+    default_delegation_scope: within_team
+    default_max_depth: 1
+    default_zone_grants:
+      - zone_id: public
+        access_level: full
+        escort_required: false
+      - zone_id: competition-floor
+        access_level: full
+        escort_required: false
+      - zone_id: team-staging
+        access_level: full
+        escort_required: false
+      - zone_id: operators-console
+        access_level: full
+        escort_required: false
+      - zone_id: security-enclave
+        access_level: supervised
+        escort_required: true
+    description: >
+      Operator managing the gateway, pipeline, and credential vault.
+      Has the broadest zone access but security enclave requires escort.
+
+  - role_id: log-auditor
+    display_name: "Log Auditor"
+    accreditation_class: observer
+    default_delegation_scope: none
+    default_max_depth: 0
+    default_zone_grants:
+      - zone_id: public
+        access_level: full
+        escort_required: false
+      - zone_id: observers-gallery
+        access_level: full
+        escort_required: false
+      - zone_id: archives-and-evidence
+        access_level: supervised
+        escort_required: true
+    description: >
+      Read-only observer monitoring competition logs and audit trails.
+      Cannot delegate and has supervised access to archives.

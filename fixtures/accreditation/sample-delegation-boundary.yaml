@@ -1,0 +1,71 @@
+# Sample Delegation Boundary
+#
+# Illustrates common delegation boundary patterns for each
+# accreditation class.  This file exists as a reference for
+# fixture developers creating new accreditation declarations.
+#
+# Following the Olympic accreditation model from issue #42.
+
+schema_version: 1
+accreditation_id: acc-sample-delegation-boundary-001
+description: "Reference examples of delegation boundary configurations per accreditation class"
+
+examples:
+  - class: competitor
+    description: "Competitor with limited within-class delegation"
+    delegation_boundary:
+      can_delegate: true
+      delegation_scope: within_class
+      max_delegation_depth: 1
+      subjects_revocable: false
+      audit_required: true
+      approval_chain:
+        - action: "delegate_outside_class"
+          required_approver_role: "operator"
+          notes: "Cross-class delegation requires operator approval"
+
+  - class: support
+    description: "Support role with within-team delegation"
+    delegation_boundary:
+      can_delegate: true
+      delegation_scope: within_team
+      max_delegation_depth: 2
+      subjects_revocable: true
+      audit_required: true
+      approval_chain: []
+
+  - class: judge
+    description: "Judge with broad delegation and mandatory audit"
+    delegation_boundary:
+      can_delegate: true
+      delegation_scope: any_accredited
+      max_delegation_depth: 1
+      subjects_revocable: true
+      audit_required: true
+      approval_chain:
+        - action: "delegate_beyond_depth"
+          required_approver_role: "operator"
+          notes: "Delegation chains deeper than 1 require operator approval"
+
+  - class: operator
+    description: "Operator with within-team delegation and approval chains for sensitive actions"
+    delegation_boundary:
+      can_delegate: true
+      delegation_scope: within_team
+      max_delegation_depth: 1
+      subjects_revocable: true
+      audit_required: true
+      approval_chain:
+        - action: "delegate_to_security_enclave"
+          required_approver_role: "operator"
+          notes: "Security enclave access requires explicit operator consent"
+
+  - class: observer
+    description: "Observer with no delegation capability"
+    delegation_boundary:
+      can_delegate: false
+      delegation_scope: none
+      max_delegation_depth: 0
+      subjects_revocable: false
+      audit_required: false
+      approval_chain: []

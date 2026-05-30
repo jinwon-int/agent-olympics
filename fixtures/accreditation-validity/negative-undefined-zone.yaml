@@ -1,0 +1,42 @@
+# Negative: Reference to Undefined Zone
+#
+# This fixture tests that the validator rejects accreditation declarations
+# that reference a zone_id not present in the zone taxonomy
+# (fixtures/accreditation/access-zones.yaml).
+#
+# Expected to FAIL accreditation validation.
+
+schema_version: 1
+accreditation_id: acc-negative-undefined-zone-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: agent
+  identifier: rogue-adapter
+  display_name: "Rogue Adapter"
+
+accreditation_class: competitor
+accreditation_class_description: >
+  A competitor referencing zones that do not exist in the taxonomy.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Access public documentation"
+  - zone_id: competition-floor
+    access_level: full
+    escort_required: false
+    purpose: "Execute task envelopes"
+  - zone_id: secret-underground-vault
+    access_level: full
+    escort_required: false
+    purpose: "UNDEFINED ZONE: This zone does not exist in the taxonomy"
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: within_class
+  max_delegation_depth: 0
+  subjects_revocable: false
+  audit_required: true
+  approval_chain: []

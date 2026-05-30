@@ -1,0 +1,109 @@
+# Access Zone Taxonomy
+#
+# Formal definition of all access zones in the Agent Olympics
+# competition framework.  This file serves as the zone registry
+# that accreditation declarations reference.
+#
+# Following the Olympic venue/zone model from issue #42.
+
+schema_version: 1
+zone_registry_id: zones-team1-001
+description: "Team1 Season 001 access zone taxonomy"
+parent_reference: "issue-42-olympic-accreditation-model"
+
+zones:
+  - zone_id: public
+    display_name: "Public Zone"
+    access_class_required: null
+    escort_policy: none
+    description: "Open to all. No accreditation required."
+    examples:
+      - "Repository README"
+      - "Documentation"
+      - "Public fixture files"
+
+  - zone_id: competition-floor
+    display_name: "Competition Floor"
+    access_class_required:
+      - competitor
+      - support
+      - judge
+      - operator
+    escort_policy: escorted_for_support_only
+    description: "Primary competition execution zone. Task envelopes are dispatched here and results are collected."
+    examples:
+      - "Task envelope execution"
+      - "Result packet submission"
+      - "Evidence bundle collection"
+
+  - zone_id: team-staging
+    display_name: "Team Staging"
+    access_class_required:
+      - support
+      - operator
+    escort_policy: none
+    description: "Team-specific coordination and preparation area. Pre-run staging."
+    examples:
+      - "Team workspace"
+      - "Pre-run configuration"
+      - "Coordination channels"
+
+  - zone_id: judges-chamber
+    display_name: "Judges Chamber"
+    access_class_required:
+      - judge
+      - operator
+    escort_policy: escorted_for_operator_only
+    description: "Scoring and deliberation zone. Judge records and rubrics are handled here."
+    examples:
+      - "Scoring rubrics"
+      - "Verdict deliberation"
+      - "Score aggregation"
+
+  - zone_id: operators-console
+    display_name: "Operators Console"
+    access_class_required:
+      - operator
+    escort_policy: none
+    description: "Gateway controls, pipeline triggers, credential management."
+    examples:
+      - "Gateway dashboard"
+      - "Pipeline triggers"
+      - "Credential vault"
+      - "Runner controls"
+
+  - zone_id: observers-gallery
+    display_name: "Observers Gallery"
+    access_class_required:
+      - observer
+      - judge
+      - operator
+    escort_policy: escorted_for_observer_only
+    description: "Read-only observation zone. Log feeds and audit trails are visible here."
+    examples:
+      - "Read-only log feeds"
+      - "Audit trail viewer"
+      - "Monitoring dashboards"
+
+  - zone_id: archives-and-evidence
+    display_name: "Archives & Evidence"
+    access_class_required:
+      - judge
+      - operator
+    escort_policy: escorted_for_judge_only
+    description: "Long-term storage for result packets, evidence bundles, and run artifacts."
+    examples:
+      - "Result packet storage"
+      - "Evidence bundle vault"
+      - "Run artifact repository"
+
+  - zone_id: security-enclave
+    display_name: "Security Enclave"
+    access_class_required:
+      - operator
+    escort_policy: escorted_only
+    description: "High-security zone for secrets, private keys, and access tokens."
+    examples:
+      - "Secrets storage"
+      - "Private key management"
+      - "Access token vault"

@@ -687,7 +687,53 @@ In addition to the common contract, the Hermes adapter must:
 
 ---
 
-## 11. Validation Commands
+## 11. Accreditation and Access Zones
+
+Every adapter operates within an **accreditation class** and **access zone**
+framework defined in the [Accreditation & Access Zones](accreditation-access-zones.md)
+specification (issue #42, #171).
+
+### 11.1 Accreditation Class Assignment
+
+Each adapter's capability declaration (under `fixtures/adapters/capabilities/`)
+should document its default accreditation class:
+
+| Adapter | Default Class | Reasoning |
+|---|---|---|
+| **Hermes** | Competitor (or Support) | Orchestrates sub-agents; delegates within class or team |
+| **CLI** | Competitor | Runs local commands directly; execution only |
+| **Human Baseline** | Competitor | Human operator performing task directly |
+| **OpenClaw** | Competitor | Agent gateway executing through its own runtime |
+
+### 11.2 Pre-Run Accreditation Check
+
+Before dispatching a task envelope to an adapter, the runner MUST verify:
+
+1. The adapter's `default_class` is compatible with the task's required
+   accreditation level.
+2. The adapter is granted access to all zones the task envelope requires.
+3. The adapter's delegation boundary permits any sub-delegation the task
+   specifies.
+
+If any check fails, the adapter must report status `blocked` with reason
+`accreditation_denied: <detail>`.
+
+### 11.3 Delegation and Boundaries
+
+Adapters that support delegation (e.g., Hermes) must document their
+`delegation_boundary` in their capability declaration, including:
+
+- `can_delegate` — whether delegation is permitted
+- `delegation_scope` — who may receive delegated tasks
+- `max_delegation_depth` — chain length limit
+- `audit_required` — whether delegated actions are logged
+
+See [Accreditation & Access Zones](accreditation-access-zones.md) for the
+complete delegation boundary model.
+
+---
+
+## 12. Validation Commands
 
 Adapters should verify their output against the schemas before submission.
 The runner may also perform validation after receiving the output.
