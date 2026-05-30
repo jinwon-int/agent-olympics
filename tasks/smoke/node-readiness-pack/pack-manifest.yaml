@@ -82,6 +82,14 @@ adapter_samples:
       completing the node readiness smoke pack. Demonstrates sequential
       command execution for node probe, capability matrix generation,
       and evidence capture.
+  macos-arm64:
+    path: fixtures/node-readiness-pack/macos-arm64/
+    description: >
+      Second-profile smoke comparison notes (candidate, not live-probed).
+      Demonstrates cross-class schema conformance between the existing
+      OpenClaw Linux reference and a projected macOS/arm64 result packet.
+      Requires live validation per the promotion checklist before this
+      can be considered a full adapter sample.
 fixtures:
   - fixture_id: season-001-node-001-v1
     path: fixtures/season-001/node-001/

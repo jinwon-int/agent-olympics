@@ -1,0 +1,78 @@
+# Candidate node profile: macOS/arm64 (Apple Silicon)
+#
+# Represents: Mac Mini, MacBook Pro, or Mac Studio (M1/M2/M3/M4 series)
+# Comparable to: mid-range Apple Silicon Mac (8–12 performance cores, 8–24 GB unified memory)
+#
+# THIS IS A CANDIDATE PROFILE — NOT LIVE-VALIDATED.
+# It is a source fixture path for pre-season planning and cross-class
+# smoke comparison. See docs/node-readiness-second-profile-promotion-checklist.md
+# for the steps required to promote this fixture to live-validated status.
+#
+# This profile uses only safe, band-based values. No hostnames, IPs,
+# tokens, paths, serial numbers, or secrets appear here.
+
+schema_version: 1
+profile_id: candidate-macos-arm64-20260530
+profile_class: macos-arm64
+os_family: darwin
+cpu:
+  class: "arm64"
+  cores_min: 8
+  cores_max: 12
+  description: "Apple Silicon performance cores; unified memory architecture; no hyperthreading"
+memory_gb:
+  min: 8.0
+  max: 24.0
+  description: "unified memory (shared CPU/GPU); no swap configured in typical deployment"
+runner_limits:
+  max_concurrent: 2
+  max_task_duration_minutes: 60
+  max_total_daily_tasks: 20
+  description: "two concurrent runners; macOS energy-management may throttle under sustained load"
+storage_class:
+  type: nvme
+  min_free_gb: 30
+  max_total_gb: 500
+  description: "integrated Apple SSD; fast read/write but shared with system volume"
+network_class:
+  class: high
+  public_egress: true
+  description: "Wi-Fi or Thunderbolt bridge; latency and throughput vary by deployment environment"
+capability_labels:
+  - ops
+  - code
+  - knowledge
+  - node-readiness
+  - coordination
+  - smoke
+allowed_runner_types:
+  - openclaw
+  - hermes
+  - cli
+notes: >
+  CANDIDATE PROFILE — NOT LIVE-VALIDATED.
+
+  Represents a typical Apple Silicon macOS deployment for agent work.
+  Key differences from the existing Linux x86-64 profiles:
+  - OS family: darwin (not linux)
+  - CPU architecture: arm64 (not x86-64)
+  - Memory: unified architecture — same pool for CPU and GPU
+  - Swap: typically disabled or space-constrained on macOS
+  - Tool availability: Homebrew package manager, no apt/dnf/yum
+  - Service management: launchd (not systemd)
+  - Process model: different ulimit and resource constraint semantics
+  - No Docker daemon by default (Docker Desktop or Colima required)
+
+  Before promotion to live-validated status, an operator must:
+  1. Approve a read-only live probe of a qualifying macOS node
+     (see the promotion checklist document).
+  2. Run the node readiness smoke pack on the live node.
+  3. Compare the smoke result packet against the existing OpenClaw
+     Linux reference.
+  4. Verify that all schema-required fields are populated and that
+     no secrets leak into the result packet.
+
+  This fixture exists so that pre-season planning, cross-class schema
+  validation, and smoke comparison harness logic can be developed and
+  tested without waiting for a live macOS node.
+last_updated: "2026-05-30T00:00:00+09:00"
