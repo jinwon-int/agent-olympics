@@ -150,7 +150,7 @@ Full participant adapter runs would be part of the competitive round.
 
 ---
 
-## 4. Decision: #15 Source-Complete, Keep Open for Remaining Work
+## 4. Decision: #15 Source-Complete, Broad Tracker Close-Ready
 
 ### What "Source-Complete" Means
 
@@ -163,26 +163,27 @@ operator or broker can:
 4. **Produce** schema-valid result packets, traces, and evidence bundles
 5. **Reference** official dry-run execution evidence for framework validation
 
-### What Remains Open
+### What Continues In Follow-Up Issues
 
 | Area | Scope | Tracked In |
 |---|---|---|
-| Tier promotion (verified) | Additional node profile classes, run participant adapter, compare smoke evidence, promote node-001 from draft | Follow-up issue proposal |
-| Live qualification policy | Operator-approved read-only live inventory for additional nodes | Follow-up issue proposal |
+| Tier promotion (verified) | Additional node profile classes, run participant adapter, compare smoke evidence, promote node-001 from draft | #160 |
+| Live qualification policy | Operator-approved read-only live inventory for additional nodes | #161 |
 | Competitive round execution | Real participant adapters, scoring, publication | Season-level planning |
 
 ### Closure Rule
 
-Per the tracker ratification document, #15 should not be closed just because
-source-side readiness exists. It can close only after:
+Per the tracker ratification document, #15 should not close just because
+source-side readiness exists. As of #153, its source/spec work is complete and
+the remaining live/tier work has been split into narrow follow-ups. The broad
+tracker is therefore close-ready after finalizer merge:
 
 1. ✅ Reproducible run/output evidence from the official dry-run path (framework exists, stub runs pass)
-2. 🔲 Publication bundle passes redaction, metadata, scoring, and integrity checks
-3. 🔲 Remaining live-node or performance-tier work split into narrow follow-up issues with explicit safety boundaries
+2. ✅ Publication bundle passes redaction, metadata, scoring, and integrity checks
+3. ✅ Remaining live-node or performance-tier work split into narrow follow-up issues with explicit safety boundaries (#160, #161)
 
-Items 2 and 3 are still pending. This closeout pack **splits the remaining work
-into follow-up issues** (item 3) and documents the current publication-readiness
-state (item 2).
+This closeout pack documents the current publication-readiness state and links
+the remaining operational work to #160 and #161.
 
 ---
 
@@ -190,6 +191,7 @@ state (item 2).
 
 ### Follow-Up A: Node Readiness — Tier Promotion and Additional Profiles
 
+**Issue:** #160
 **Title:** `Node Readiness: add second approved node profile and compare smoke evidence`
 **Scope:** source/docs/fixtures only
 **Tasks:**
@@ -202,6 +204,7 @@ state (item 2).
 
 ### Follow-Up B: Node Readiness — Live Qualification Policy
 
+**Issue:** #161
 **Title:** `Node Readiness: define and approve live read-only inventory policy for additional nodes`
 **Scope:** policy/docs only (no production access)
 **Tasks:**

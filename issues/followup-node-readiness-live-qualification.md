@@ -2,6 +2,7 @@
 
 > **Proposed by:** [Node Readiness #15 Closeout Pack](../docs/node-readiness-closeout-15.md)
 > **Source tracker:** [#15 (Node Readiness Events)](https://github.com/jinwon-int/agent-olympics/issues/15)
+> **Filed as:** [#161](https://github.com/jinwon-int/agent-olympics/issues/161)
 > **Created:** 2026-05-30
 > **Scope:** policy/docs only
 

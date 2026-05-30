@@ -96,14 +96,20 @@ these gaps. This round has advanced two of the three gaps:
 
 ### 1.5 Verdict
 
-**KEEP OPEN — PROVISIONAL DONE with narrow follow-up.**
+**SOURCE/SPEC COMPLETE — CLOSE BROAD TRACKER AFTER FINALIZER MERGE.**
 
 Source/spec scope is complete: schema, docs, fixture profiles, smoke pack,
 dry-run execution evidence, and readiness gates all exist. The remaining gaps
 are operational (live node execution, expanded hardware classes), not
-specification. A narrow follow-up issue should track the expansion.
+specification. Those operational gaps are now split into #160 and #161, so #15
+can close as the broad source/spec tracker once this finalizer lands.
 
-**Narrow follow-up issue text:**
+**Narrow follow-up issues created:**
+
+- #160 — Node Readiness: add second approved node profile and compare smoke evidence.
+- #161 — Node Readiness: define and approve live read-only inventory policy for additional nodes.
+
+**Original narrow follow-up issue text:**
 
 > **Title:** Node Readiness: collect additional approved node profiles (small-vps, large-vps)
 >
@@ -187,16 +193,21 @@ Reference: `docs/tracker-ratification-15-16.md` "Remaining execution gap"
 
 ### 2.5 Verdict
 
-**KEEP OPEN — PROVISIONAL DONE with narrow follow-up.**
+**SOURCE/SPEC COMPLETE — CLOSE BROAD TRACKER AFTER FINALIZER MERGE.**
 
 All five source/spec acceptance criteria are satisfied. Static and live baseline
 packets exist, the repeatable harness is documented and demonstrated, the
 conversion path is validated, raw/normalized separation is enforced by schema,
 and caveats are documented. The remaining gaps are operational (hardware
 diversity, multi-profile overlay scoring rehearsal), not specification or
-tooling gaps.
+tooling gaps. That remaining operational work is now split into #162, so #16 can
+close as the broad source/spec tracker once this finalizer lands.
 
-**Narrow follow-up issue text:**
+**Narrow follow-up issue created:**
+
+- #162 — Performance Trial: cross-hardware scoreboard publication rehearsal.
+
+**Original narrow follow-up issue text:**
 
 > **Title:** Performance Trial: run official harness-to-scoreboard publication rehearsal with ≥2 hardware classes
 >
@@ -234,21 +245,21 @@ share infrastructure:
 
 **Recommendation:** Fold the small-vps and large-vps live execution work into a
 single combined follow-up issue if the operator approves, or keep them separate
-if the operators for node readiness and performance trial are different. Both
-follow-ups are provided as separate narrow issues above so Seoseo can decide.
+if the operators for node readiness and performance trial are different. The
+current finalizer keeps them separate as #160, #161, and #162.
 
 ### 3.2 Consistency with Previous Assessments
 
 | Document | #15 Status | #16 Status | Consistent? |
 |---|---|---|---|
-| `docs/tracker-ratification-15-16.md` (baseline) | KEEP OPEN | KEEP OPEN | ✅ Baseline reference |
+| `docs/tracker-ratification-15-16.md` (baseline) | CLOSE-READY | CLOSE-READY | ✅ Updated by #153 finalizer |
 | `docs/mvp-foundation-ratification.md` (sogyo, earlier round) | N/A (implied by #17 closed) | IN PROGRESS — baseline needed | ✅ No contradictions |
-| This document (yukson, this round) | KEEP OPEN — PROVISIONAL DONE | KEEP OPEN — PROVISIONAL DONE | ✅ Follows from baseline assessment with this round's advances applied |
-| Recommended close condition | Narrow follow-up + live profiles | Narrow follow-up + live profiles | ✅ Symmetric |
+| This document (yukson, this round) | CLOSE-READY with #160/#161 | CLOSE-READY with #162 | ✅ Remaining work split into narrow follow-ups |
+| Recommended close condition | Finalizer merge + #160/#161 open | Finalizer merge + #162 open | ✅ Symmetric |
 
 Both recommendations are consistent with the closure rule in
-`docs/tracker-ratification-15-16.md`:
-> #15 and #16 should not be closed just because source-side readiness exists.
+`docs/tracker-ratification-15-16.md`: source-side readiness, publication gates,
+and explicit follow-up splits are all present.
 
 Both remain open; this round has advanced both from "source/spec exists" to
 "source/spec complete, operational gaps remain."
@@ -324,11 +335,11 @@ state is included.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Live hardware profiles remain stub-only indefinitely | Medium | #15/#16 cannot close | Narrow follow-up issues define concrete close conditions. Seoseo can drive execution. |
-| #15 and #16 close conditions conflated | Low | Unclear when to close | Separate close conditions provided for each tracker. No cross-dependency. |
+| Live hardware profiles remain stub-only indefinitely | Medium | #160/#161/#162 remain open | Narrow follow-up issues define concrete close conditions. Seoseo can drive execution. |
+| #15 and #16 close conditions conflated | Low | Unclear continuation path | Separate continuation issues provided for each tracker. No cross-dependency. |
 | Overlap between #15 and #16 live-hardware needs | Low | Duplicate execution work | Overlap documented in §3.1. Seoseo can merge or keep separate. |
 | Source-only stub outputs mistaken for real results | Low | Wrong publication decision | Every stub result packet is labeled "deterministic stub" with clear "no live participant" warning. |
-| Narrow follow-up issues not created | Low | Status quo maintained | This document provides exact issue text for both. No blocker — Seoseo can create at convenience. |
+| Narrow follow-up issues drift from source docs | Low | Closeout context gets stale | #160, #161, and #162 now exist and are referenced in this document. |
 | OpenClaw runtime files leak into branch | None | Branch contamination | Verified: no AGENTS.md, SOUL.md, USER.md, TOOLS.md, HEARTBEAT.md, IDENTITY.md, or .openclaw/ directory present in repo. |
 
 ---
@@ -363,20 +374,12 @@ state is included.
 
 | Tracker | Verdict | Close Condition |
 |---|---|---|
-| **#15 — Node Readiness Events** | **KEEP OPEN — PROVISIONAL DONE** | Close when ≥3 approved live node profiles exist with validated readiness evidence and a narrow follow-up issue tracks the operational gap. |
-| **#16 — Performance Trial** | **KEEP OPEN — PROVISIONAL DONE** | Close when ≥3 hardware classes have live validated baseline packets, a cross-hardware scoreboard snapshot exists, and a narrow follow-up issue tracks the remaining operational rehearsal. |
+| **#15 — Node Readiness Events** | **CLOSE AFTER FINALIZER MERGE** | Source/spec complete; remaining tier/live work split into #160 and #161. |
+| **#16 — Performance Trial** | **CLOSE AFTER FINALIZER MERGE** | Source/spec and publication rehearsal complete; remaining cross-hardware work split into #162. |
 
-**Neither tracker should be split** at this stage. Both have clear remaining
-gaps that fit within their existing scope. A split would only make sense if:
-
-- A future expansion (e.g., GPU tier, multi-region, real-time monitoring)
-  introduces work that is not a natural extension of the current execution gap.
-- The operator determines that the narrow follow-up issues themselves should
-  become independent parent trackers.
-
-For the current scope (Season 001 v1 release-candidate), **both keep open**
-with concrete close conditions and narrow follow-up issue text ready for
-Seoseo's review and approval.
+For the current scope (Season 001 v1 release-candidate), both broad trackers
+are ready to close after the finalizer PR lands. The continuation work is now
+tracked in narrow issues with explicit safety boundaries.
 
 ---
 
@@ -388,12 +391,11 @@ Seoseo's review and approval.
 > recommendations, narrow follow-up issue text, risk notes, and approval-sensitive
 > blockers are documented in this file.
 >
-> **Bottom line:** Both #15 and #16 should **keep open (provisional done)**.
+> **Bottom line:** Both #15 and #16 are **close-ready after finalizer merge**.
 > Source/spec scope is complete for both. The remaining gaps are operational
-> (hardware diversity, live execution), not specification or tooling. Both have
-> concrete close conditions attached. No trackers closed, no PRs merged, no
-> schema or code changed. Seoseo should review and create the narrow follow-up
-> issues (one per tracker) before recommending closure.
+> (hardware diversity, live execution), not specification or tooling, and are
+> split into #160, #161, and #162. No trackers are closed by this lane; Seoseo
+> will perform finalizer merge and tracker closeout.
 >
 > Related: `evidence/dry-run/execute/execution-summary.json` (dry-run results),
 > `docs/tracker-ratification-15-16.md` (baseline assessment),
