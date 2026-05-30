@@ -1,0 +1,204 @@
+# Agent Olympics 2026 — Official Dry-Run Execution Manifest
+#
+# Source-only execution contract for Season 001 dry-run tasks.
+# Selected tasks are run using fixture bundles and the stub adapter,
+# producing sample result packets, traces, and evidence bundles
+# without live service mutation.
+#
+# Reference: docs/dry-run-readiness.md §5 (Broker Finalizer) and §6
+#            runners-guide.md §3 (Dry-run execution)
+#
+# Constraints:
+#   - No production deploy, Gateway/broker/worker restart or reload
+#   - No live provider/Telegram canary
+#   - No production DB mutation/prune/migration
+#   - No manual Terminal Brief ACK/replay
+#   - No historical outbox replay
+#   - No release/tag/npm publish
+#   - No credential movement/change/value disclosure
+#   - Repo visibility unchanged, no history rewrite
+#   - No issue close/finalizer comment execution
+#   - No PR merge or force-push without separate operator approval
+
+schema_version: 1
+manifest_id: dry-run-execution-20260530-v1
+manifest_type: dry_run_execution
+season: season-001
+title: "Agent Olympics 2026 — Season 001 Official Dry Run"
+description: >
+  Source-only dry run executing selected Season 001 tasks through the
+  stub adapter using fixture bundles.  No live service calls, no
+  production node access, no credential exposure.  Output goes to
+  evidence/dry-run/execute/ for subsequent gate verification.
+run_id: agent-olympics-team1-official-dryrun-20260530T0902KST
+operator: sogyo
+operator_agent_id: sogyo
+execution_class: source-only
+live_mutation: false
+parent_issue: "https://github.com/jinwon-int/agent-olympics/issues/146"
+assigned_issue: "https://github.com/jinwon-int/agent-olympics/issues/147"
+created_at: "2026-05-30T09:02:00+09:00"
+
+# Execution mode: how the dry runner should process each task
+execution_mode:
+  adapter: stub-adapter
+  generator: scripts/stub-adapter.js
+  output_dir: evidence/dry-run/execute/
+  run_dir_template: evidence/dry-run/execute/{task_id}/
+  exit_on_failure: false
+  parallel: false
+  keep_intermediates: true
+
+# Readiness gates to verify before execution
+pre_execution_gates:
+  - gate: R2.1
+    description: Round manifest is schema-valid
+    required: true
+  - gate: R2.2
+    description: Task envelopes validate
+    required: true
+  - gate: R2.3
+    description: Fixture bundles exist
+    required: true
+  - gate: R2.9
+    description: Dependencies installed
+    required: true
+
+# Selected dry-run tasks — subset of Season 001 events
+# Each is run source-only via the stub adapter with its fixture bundle
+selected_tasks:
+
+  - task_id: ops-001
+    title: Telegram final reply does not appear
+    round: season-001-round-001
+    envelope_path: tasks/season-001/ops-001-telegram-final-reply-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/ops-001/
+    oracle_ref: oracle/season-001/ops-001-telegram-final-reply.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-ops-001
+
+  - task_id: ops-002
+    title: Decide whether clean reinstall is needed
+    round: season-001-round-001
+    envelope_path: tasks/season-001/ops-002-clean-reinstall-drift-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/ops-002/
+    oracle_ref: oracle/season-001/ops-002-clean-reinstall-drift.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-ops-002
+
+  - task_id: node-001
+    title: Audit node agent readiness for mission execution
+    round: season-001-round-001
+    envelope_path: tasks/season-001/node-001-agent-readiness-audit-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/node-001/
+    oracle_ref: oracle/season-001/node-001-agent-readiness-audit.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-node-001
+
+  - task_id: perf-001
+    title: Measure node throughput on a controlled mission workload
+    round: season-001-round-001
+    envelope_path: tasks/season-001/perf-001-node-throughput-baseline-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/perf-001/
+    oracle_ref: oracle/season-001/perf-001-node-throughput-baseline.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-perf-001
+
+  - task_id: code-001
+    title: TypeScript regression fix with targeted tests
+    round: season-001-round-001
+    envelope_path: tasks/season-001/code-001-typescript-regression-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/code-001/
+    oracle_ref: oracle/season-001/code-001-typescript-regression.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-code-001
+
+  - task_id: knowledge-001
+    title: Convert an incident transcript into a wiki-ready closeout
+    round: season-001-round-001
+    envelope_path: tasks/season-001/knowledge-001-wiki-closeout-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/knowledge-001/
+    oracle_ref: oracle/season-001/knowledge-001-wiki-closeout.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-knowledge-001
+
+  - task_id: coord-001
+    title: Merge contradictory node reports into a commander report
+    round: season-001-round-001
+    envelope_path: tasks/season-001/coord-001-commander-report-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/coord-001/
+    oracle_ref: oracle/season-001/coord-001-commander-report.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-coord-001
+
+  - task_id: tool-001
+    title: Precision triage with bounded tool budget
+    round: season-001-round-002
+    envelope_path: tasks/season-001/tool-001-precision-triage-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/tool-001/
+    oracle_ref: oracle/season-001/tool-001-precision-triage.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-tool-001
+
+  - task_id: ops-003
+    title: Approval gate and destructive-action discipline
+    round: season-001-round-002
+    envelope_path: tasks/season-001/ops-003-approval-gate-v2.yaml
+    fixture_bundle_ref: fixtures/season-001/ops-003/
+    oracle_ref: oracle/season-001/ops-003-approval-gate.yaml
+    judge_notes_ref: docs/judge-notes-season-001.md
+    expected_duration_minutes: 5
+    stub_seed: dry-run-sogyo-ops-003
+
+# Expected output artifacts produced by the dry-run execution
+output_structure:
+  base_dir: evidence/dry-run/execute/
+  per_task:
+    - result-packet.yaml    # v2 result packet from stub adapter
+    - trace.yaml            # v1 trace record from stub adapter
+    - evidence-bundle.yaml  # v1 evidence bundle from stub adapter
+    - run.yaml              # Run metadata (exit code, artifacts)
+    - envelope-copy.yaml    # Copy of the input envelope
+  summary:
+    path: evidence/dry-run/execute/execution-summary.json
+    format: json
+
+# Post-execution gates to verify output integrity
+post_execution_gates:
+  - gate: P3.1
+    description: All runs produced output directories
+    required: true
+  - gate: P3.3
+    description: All result packets are schema-valid
+    required: true
+  - gate: P3.11
+    description: All schemas validate repo-wide
+    required: true
+
+# Approval-sensitive blockers noted for operator
+blockers:
+  - id: B1
+    description: >
+      Bangtong is excluded from this round pending server
+      replacement/re-enrollment.  No Bangtong participants
+      are selected.
+    accepted: true
+  - id: B2
+    description: >
+      No live service mutation occurs during dry-run execution.
+      All runs use the stub adapter (scripts/stub-adapter.js)
+      with deterministic seed values.
+    accepted: true
+  - id: B3
+    description: >
+      Oracle and judge-notes files are referenced but never
+      included in participant-facing output directories.
+    accepted: true

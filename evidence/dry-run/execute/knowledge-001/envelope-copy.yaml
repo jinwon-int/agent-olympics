@@ -1,0 +1,52 @@
+allowed_actions:
+  - read_transcript
+  - inspect_linked_prs
+  - inspect_linked_issues
+  - draft_wiki_update
+  - propose_log_entry
+background: >
+  An incident occurred and was diagnosed and resolved by an agent. The full session transcript is provided by the judge.
+  The participant must extract the operational knowledge and write it up as a wiki-ready runbook-style closeout. The
+  closeout should be useful to a human operator or another agent reading it months later without access to the original
+  session.
+category: documentation
+environment:
+  incident_type: runtime-service-incident
+  transcript_length: 500-2000 tokens
+event_family: wiki-marathon
+forbidden_actions:
+  - include_secret_values
+  - paste_private_raw_logs
+  - invent_evidence
+  - overwrite_canonical_docs_directly
+judge_notes_ref: docs/judge-notes-season-001.md
+labels:
+  - wiki
+  - closeout
+  - memory
+  - season-001
+objective: >
+  Convert a long incident transcript into durable documentation with timeline, root cause, evidence, fix, validation,
+  and follow-up items.
+oracle_ref: oracle/season-001/knowledge-001-wiki-closeout.yaml
+participant_visibility: blind
+required_outputs:
+  - timeline
+  - root_cause
+  - evidence_links
+  - validation
+  - followups
+  - wiki_paths
+schema_description: Agent Olympics Task Envelope v2 — public/private separation
+schema_version: 2
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+task_id: knowledge-001
+time_limit_minutes: 45
+title: Convert an incident transcript into a wiki-ready closeout
+v1_compat:
+  migration_notes: >
+    Migrated from v1 to v2 by: (1) extracting inline hidden_judge_notes to
+    oracle/season-001/knowledge-001-wiki-closeout.yaml, (2) replacing the hidden_judge_notes field with judge_notes_ref
+    and oracle_ref, (3) adding schema_description for tooling discovery.
+  original_task_id: knowledge-001
+  schema_version_1_path: tasks/season-001/knowledge-001-wiki-closeout.yaml

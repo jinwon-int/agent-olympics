@@ -1,0 +1,20 @@
+agent_id: sogyo
+bundle_id: eb-run-ops-001-sogyo-2026-05-30T00-13-07-cbe989
+generated_at: '2026-05-30T00:13:07Z'
+items:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-stub-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Copy of the input task envelope "ops-001".
+  - content_ref: adapter.log
+    content_type: text/plain
+    id: ev-stub-run
+    kind: command_output
+    redacted: false
+    source: stub adapter
+    summary: Stub adapter execution log and exit status.
+run_id: run-ops-001-sogyo-2026-05-30T00-13-07-cbe989
+schema_version: 1

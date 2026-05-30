@@ -1,0 +1,52 @@
+agent_id: sogyo
+ended_at: '2026-05-30T00:13:13Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-stub-input
+    kind: config_snippet
+    source: task envelope
+    summary: >-
+      Input task envelope: "Measure node throughput on a controlled mission workload". Objective: Run a fixed, safe
+      workload that approximates real agent mission work and report both raw performance and configuration/r
+  - content_ref: adapter.log
+    content_type: text/plain
+    id: ev-stub-run
+    kind: command_output
+    source: stub adapter
+    summary: 'Stub adapter executed with exit code 0 (mapped status: completed). No live commands were run.'
+  - content_ref: ''
+    content_type: text/plain
+    id: ev-stub-task
+    kind: log
+    source: stub adapter
+    summary: >-
+      Task perf-001 processed. Required outputs: workload_summary, hardware_profile, configuration_profile,
+      workload_metrics, evidence, stability_assessment, tuning_recommendations. Stub adapter does not produce real
+      outputs.
+findings:
+  - claim: Stub adapter executed successfully (deterministic stub).
+    confidence: high
+    evidence:
+      - ev-stub-input
+      - ev-stub-run
+  - claim: Produced result packet for task "perf-001" with status "completed". No real work was performed.
+    confidence: medium
+    evidence:
+      - ev-stub-run
+outputs:
+  configuration_profile: '[stub] Placeholder output for "configuration_profile". Replace with real output from the participant adapter.'
+  evidence: '[stub] Placeholder output for "evidence". Replace with real output from the participant adapter.'
+  hardware_profile: '[stub] Placeholder output for "hardware_profile". Replace with real output from the participant adapter.'
+  stability_assessment: '[stub] Placeholder output for "stability_assessment". Replace with real output from the participant adapter.'
+  tuning_recommendations: '[stub] Placeholder output for "tuning_recommendations". Replace with real output from the participant adapter.'
+  workload_metrics: '[stub] Placeholder output for "workload_metrics". Replace with real output from the participant adapter.'
+  workload_summary: '[stub] Placeholder output for "workload_summary". Replace with real output from the participant adapter.'
+runtime: openclaw
+schema_version: 2
+started_at: '2026-05-30T00:13:13Z'
+status: completed
+summary: >-
+  Stub adapter run for task "perf-001". Status: completed. This is a deterministic placeholder — no live participant
+  executed.
+task_id: perf-001

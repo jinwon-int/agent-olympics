@@ -1,0 +1,129 @@
+{
+  "manifest_id": "dry-run-execution-20260530-v1",
+  "run_id": "agent-olympics-team1-official-dryrun-20260530T0902KST",
+  "operator": "sogyo",
+  "operator_agent_id": "sogyo",
+  "execution_class": "source-only",
+  "live_mutation": false,
+  "total_tasks": 9,
+  "completed": 9,
+  "failed": 0,
+  "blocked": 0,
+  "total_artifacts": 63,
+  "all_passed": true,
+  "started_at": "2026-05-30T00:13:07Z",
+  "ended_at": "2026-05-30T00:13:32Z",
+  "duration_seconds": 25,
+  "pre_execution_gates": {
+    "passed": true,
+    "gate_count": 0,
+    "gates": []
+  },
+  "post_execution_gates": {
+    "passed": true,
+    "gate_count": 3,
+    "gates": [
+      {
+        "gate": "P3.1",
+        "description": "All runs produced output directories",
+        "passed": true,
+        "detail": "All 9 tasks produced output directories"
+      },
+      {
+        "gate": "P3.3",
+        "description": "All result packets are schema-valid",
+        "passed": true,
+        "detail": "  ops-001: ✓\n  ops-002: ✓\n  node-001: ✓\n  perf-001: ✓\n  code-001: ✓\n  knowledge-001: ✓\n  coord-001: ✓\n  tool-001: ✓\n  ops-003: ✓"
+      },
+      {
+        "gate": "P3.11",
+        "description": "All schemas validate repo-wide",
+        "passed": true,
+        "detail": "All schemas valid"
+      }
+    ]
+  },
+  "task_results": [
+    {
+      "task_id": "ops-001",
+      "title": "Telegram final reply does not appear",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/ops-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "ops-002",
+      "title": "Decide whether clean reinstall is needed",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/ops-002",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "node-001",
+      "title": "Audit node agent readiness for mission execution",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/node-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "perf-001",
+      "title": "Measure node throughput on a controlled mission workload",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/perf-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "code-001",
+      "title": "TypeScript regression fix with targeted tests",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/code-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "knowledge-001",
+      "title": "Convert an incident transcript into a wiki-ready closeout",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/knowledge-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "coord-001",
+      "title": "Merge contradictory node reports into a commander report",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/coord-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "tool-001",
+      "title": "Precision triage with bounded tool budget",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/tool-001",
+      "artifact_count": 7,
+      "error": null
+    },
+    {
+      "task_id": "ops-003",
+      "title": "Approval gate and destructive-action discipline",
+      "status": "completed",
+      "exit_code": 0,
+      "run_dir": "evidence/dry-run/execute/ops-003",
+      "artifact_count": 7,
+      "error": null
+    }
+  ]
+}

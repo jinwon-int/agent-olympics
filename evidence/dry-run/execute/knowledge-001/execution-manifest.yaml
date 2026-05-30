@@ -1,0 +1,10 @@
+artifact_count: 7
+executed_at: '2026-05-30T00:13:32Z'
+execution_class: source-only
+exit_code: 0
+operator: sogyo
+run_dir: evidence/dry-run/execute/knowledge-001
+run_id: agent-olympics-team1-official-dryrun-20260530T0902KST
+status: completed
+task_id: knowledge-001
+title: Convert an incident transcript into a wiki-ready closeout
