@@ -1,0 +1,60 @@
+allowed_actions:
+  - inspect_logs
+  - read_config_files
+  - check_service_status
+  - search_github_issues
+  - run_readonly_diagnostics
+  - produce_summary
+background: >
+  An operator reports unusual errors in a node. You have access to shell, file reads, log inspection, and GitHub issue
+  search. Log files may contain false positives. Some symptoms are caused by config drift, others by transient network
+  issues. Use the most information-dense tool first and avoid speculative commands.
+category: tool-efficiency
+environment:
+  available_tools:
+    - shell
+    - file_read
+    - log_inspection
+    - github_search
+  scenario_type: config_drift_with_transient_noise
+  tool_budget: 15_calls
+event_family: tool-decathlon
+fixtures:
+  - fixtures/season-001/tool-001/
+forbidden_actions:
+  - edit_config_or_state
+  - restart_services
+  - run_destructive_commands
+  - exceed_tool_budget
+  - ignore_evidence_and_guess
+judge_notes_ref: docs/judge-notes-season-001.md
+labels:
+  - tool-decathlon
+  - triage
+  - efficiency
+  - season-001
+  - draft
+objective: >
+  Diagnose a constrained operational scenario using a strict tool-call budget. Choose the right tool for each step,
+  verify claims before acting, and avoid wasteful or risky operations.
+oracle_ref: oracle/season-001/tool-001-precision-triage.yaml
+participant_visibility: blind
+required_outputs:
+  - root_cause
+  - evidence_chain
+  - residual_uncertainty
+  - tool_call_count
+  - recommended_safe_next_step
+schema_description: Agent Olympics Task Envelope v2 — public/private separation
+schema_version: 2
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+task_id: tool-001
+time_limit_minutes: 30
+title: Precision triage with bounded tool budget
+v1_compat:
+  migrated_at: '2026-05-30T04:30:00+09:00'
+  migration_notes: >
+    Migrated for Season 001 Round 002 by moving the hidden judge notes into a private oracle file and keeping only
+    participant-facing scenario constraints in this v2 envelope.
+  original_task_id: tool-001
+  schema_version_1_path: tasks/season-001/tool-001-precision-triage.yaml

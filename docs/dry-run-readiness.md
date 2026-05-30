@@ -363,7 +363,135 @@ Once all evidence is gathered and verified, the broker records finalization by:
 
 ---
 
-## 6. Concrete Command Gates Summary
+## 6. Dry-Run Execution Contract
+
+The dry-run execution contract bridges readiness gates and publication gates.
+It defines which Season 001 tasks to run, how to run them in source-only mode
+using fixture bundles, and what output artifacts to produce.
+
+### 6.1 Execution Manifest
+
+The source of truth for a dry-run execution is the
+[execution manifest](../fixtures/dry-run-execution/manifest.yaml):
+
+```bash
+cat fixtures/dry-run-execution/manifest.yaml
+```
+
+This manifest selects the nine Season 001 tasks (ops-001 through ops-003),
+maps each to its v2 envelope and fixture bundle, and defines the execution
+mode (`source-only`, no live mutation).
+
+**Manifest invariants:**
+- `manifest_type` must be `dry_run_execution`
+- `live_mutation` must be `false`
+- Each selected task must have a valid `envelope_path`, `fixture_bundle_ref`,
+  and deterministic `stub_seed`
+
+### 6.2 Execution Runner
+
+The `scripts/dry-run-execute.js` script reads the execution manifest, runs
+pre-execution gates, executes each selected task through the stub adapter,
+and produces run artifacts:
+
+```bash
+# Full execution with pre-gates and post-validation
+node scripts/dry-run-execute.js --validate
+
+# List selected tasks without running
+node scripts/dry-run-execute.js --list
+
+# Run a single task
+node scripts/dry-run-execute.js --task code-001
+
+# Skip pre-gates for a quick re-run
+node scripts/dry-run-execute.js --skip-gates --validate
+```
+
+**Pre-execution gates** verify before running:
+1. Round manifests referenced by selected tasks are schema-valid
+2. All v2 task envelopes validate
+3. All fixture bundle directories exist
+4. `node_modules` is installed
+
+**Execution** runs the stub adapter (`scripts/stub-adapter.js`) for each
+selected task with:
+- The task's v2 envelope
+- The operator's agent_id
+- The deterministic `stub_seed` for stable output IDs
+- Output written to `evidence/dry-run/execute/<task_id>/`
+
+**Post-execution gates** verify after running:
+1. All tasks produced output directories
+2. All result packets are schema-valid
+3. All schemas validate repo-wide
+
+### 6.3 Output Structure
+
+Each executed task produces the following files under
+`evidence/dry-run/execute/<task_id>/`:
+
+```
+evidence/dry-run/execute/
+  ├── execution-summary.json          # Overall summary (all tasks)
+  ├── ops-001/
+  │   ├── result-packet.yaml          # v2 result packet
+  │   ├── trace.yaml                  # v1 trace record
+  │   ├── evidence-bundle.yaml        # v1 evidence bundle
+  │   ├── run.yaml                    # Run metadata
+  │   ├── envelope-copy.yaml          # Copy of input envelope
+  │   ├── adapter.log                 # Adapter stdout/stderr
+  │   └── execution-manifest.yaml     # Per-task execution record
+  ├── ops-002/
+  │   └── ...
+  └── ...
+```
+
+The summary file (`execution-summary.json`) captures pass/fail per task,
+pre- and post-gate results, total artifacts, and duration.
+
+### 6.4 Makefile Targets
+
+| Target | Command | Description |
+|---|---|---|
+| `dry-run-execute` | `make dry-run-execute` | Full dry-run execution with post-validate |
+| `dry-run-execute-list` | `make dry-run-execute-list` | List selected tasks |
+| `dry-run-execute-task` | `make dry-run-execute-task TASK=code-001` | Run one task |
+| `dry-run-execute-validate` | `make dry-run-execute-validate` | Validate existing outputs (skip execution) |
+| `dry-run-pipeline` | `make dry-run-pipeline` | Full pipeline: readiness → execute → validate |
+
+### 6.5 Source-Only Constraint
+
+All execution is **source-only**:
+- Uses the stub adapter (`scripts/stub-adapter.js`) — no live agent runner
+- Reads fixture bundles from `fixtures/season-001/<task_id>/` — no live nodes
+- Produces deterministic sample outputs — no service mutation
+- No network calls, no credential access, no production infrastructure
+
+### 6.6 Risk Notes
+
+| Risk | Mitigation |
+|---|---|
+| Stub adapter outputs are placeholders, not real task results | Dry-run outputs are clearly labeled as stub-generated. Real competitive runs use participant adapters. |
+| Oracle files and judge notes are referenced but not included in output | The runner verifies that `oracle_ref` and `judge_notes_ref` do not appear in participant-facing directories |
+| Fixture bundles may change between cuts | The manifest pins bundle versions (`bundle_id`). The runner validates bundle integrity before execution. |
+| Bangtong is excluded from this round pending server replacement | Manifest `blockers` section documents this exclusion |
+
+### 6.7 Approval-Sensitive Blockers
+
+The execution manifest lists known blockers that require operator acknowledgement
+before execution proceeds. Current blockers:
+
+1. **Bangtong exclusion** — Bangtong is excluded pending server
+   replacement/enrollment. No Bangtong participants are selected.
+2. **No live mutation** — All runs use the stub adapter with deterministic
+   seeds. This is by design for source-only dry runs.
+3. **No oracle/notes leakage** — Oracle and judge-notes files are referenced
+   but never included in participant-facing output.
+
+---
+
+## 7. Concrete Command Gates Summary
 
 All gates in a single quick-reference table:
 
@@ -376,6 +504,12 @@ All gates in a single quick-reference table:
 | Readiness | Plan | `node scripts/round.js plan <manifest>` | Dry-run plan succeeds |
 | Readiness | Dependencies | `ls node_modules/ajv` | Dependencies installed |
 | Readiness | **All** | `node scripts/dry-run-gates.js readiness --manifest <manifest>` | All readiness gates pass |
+| Execution | **Manifest** | `cat fixtures/dry-run-execution/manifest.yaml` | Execution contract is valid |
+| Execution | **Run** | `node scripts/dry-run-execute.js` | All selected tasks executed |
+| Execution | **Run+Validate** | `node scripts/dry-run-execute.js --validate` | All tasks executed + outputs valid |
+| Execution | List | `node scripts/dry-run-execute.js --list` | List selected tasks |
+| Execution | Single task | `node scripts/dry-run-execute.js --task <id>` | One task executed |
+| Execution | **Pipeline** | `make dry-run-pipeline` | Full pipeline: gates → run → validate |
 | Publication | Terminal | `node scripts/competition-validity.js engine-outputs <runs-dir>` | All runs terminal |
 | Publication | Validity | `node scripts/competition-validity.js all <runs-dir>` | No violations |
 | Publication | Packets | `node scripts/validate.js packets` | All packets valid |
@@ -388,7 +522,7 @@ All gates in a single quick-reference table:
 
 ---
 
-## 7. Related Documents
+## 8. Related Documents
 
 | Document | Relation |
 |---|---|
@@ -399,11 +533,16 @@ All gates in a single quick-reference table:
 | [Task Verification](task-verification.md) | Task readiness tiers and promotion workflow |
 | [Result Packet](result-packet.md) | Redaction, publication metadata, and evidence rules |
 | [Run Directory / Artifact Lifecycle](run-directory.md) | Run directory layout and lifecycle states |
-| [Issue #141](https://github.com/jinwon-int/agent-olympics/issues/141) | This lane's target issue |
-| [Issue #138](https://github.com/jinwon-int/agent-olympics/issues/138) | Parent coordination issue |
+| [Dry-Run Execution Manifest](../fixtures/dry-run-execution/manifest.yaml) | Source-only execution contract for Season 001 |
+| [Dry-Run Execute Script](../scripts/dry-run-execute.js) | Execution runner for the dry-run contract |
+| [Issue #147](https://github.com/jinwon-int/agent-olympics/issues/147) | This lane's assigned issue |
+| [Issue #146](https://github.com/jinwon-int/agent-olympics/issues/146) | Parent coordination issue (A2A dry-run) |
+| [Issue #145](https://github.com/jinwon-int/agent-olympics/issues/145) | Readiness artifacts (inspected before execution) |
+| [Task Season-001 README](../tasks/season-001/README.md) | Season 001 task pack documentation |
+| [Season-001 Fixture Guide](../fixtures/season-001/README.md) | Fixture bundle runner guide |
 
 ---
 
 *This document is part of the Agent Olympics Season Ops dry-run readiness pack.
 It defines the operator-facing go/no-go layer for running an official Season 001
-dry run. Created for lane 3/3 (yukson / team1).*
+dry run. Execution contract (§6) added for lane 1/3 (sogyo / team1).*

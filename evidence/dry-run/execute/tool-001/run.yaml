@@ -1,0 +1,22 @@
+adapter_type: stub
+agent_id: stub-adapter
+artifacts:
+  - envelope-copy.yaml
+  - result-packet.yaml
+  - trace.yaml
+  - evidence-bundle.yaml
+  - run.yaml
+  - adapter.log
+duration_seconds: 0
+ended_at: '2026-05-30T00:13:21Z'
+envelope_path: /work/repo/tasks/season-001/tool-001-precision-triage-v2.yaml
+exit_code: 0
+notes: >-
+  This is a deterministic stub adapter result. No live participant executed. Use for runner integration tests and CI
+  validation.
+run_id: run-tool-001-sogyo-2026-05-30T00-13-21-d3edd0
+runtime: cli
+schema_version: 1
+started_at: '2026-05-30T00:13:21Z'
+status: completed
+task_id: tool-001
