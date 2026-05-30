@@ -1,5 +1,5 @@
 agent_id: sogyo
-ended_at: '2026-05-30T00:13:09Z'
+ended_at: '2026-05-30T00:19:43Z'
 evidence:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -43,7 +43,7 @@ outputs:
   runtime_path: '[stub] Placeholder output for "runtime_path". Replace with real output from the participant adapter.'
 runtime: openclaw
 schema_version: 2
-started_at: '2026-05-30T00:13:09Z'
+started_at: '2026-05-30T00:19:43Z'
 status: completed
 summary: >-
   Stub adapter run for task "ops-002". Status: completed. This is a deterministic placeholder — no live participant

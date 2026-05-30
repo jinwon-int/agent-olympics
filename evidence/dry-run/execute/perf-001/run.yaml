@@ -8,15 +8,15 @@ artifacts:
   - run.yaml
   - adapter.log
 duration_seconds: 0
-ended_at: '2026-05-30T00:13:13Z'
-envelope_path: /work/repo/tasks/season-001/perf-001-node-throughput-baseline-v2.yaml
+ended_at: '2026-05-30T00:19:46Z'
+envelope_path: tasks/season-001/perf-001-node-throughput-baseline-v2.yaml
 exit_code: 0
 notes: >-
   This is a deterministic stub adapter result. No live participant executed. Use for runner integration tests and CI
   validation.
-run_id: run-perf-001-sogyo-2026-05-30T00-13-13-1ae6f6
+run_id: run-perf-001-sogyo-2026-05-30T00-19-46-1ae6f6
 runtime: cli
 schema_version: 1
-started_at: '2026-05-30T00:13:13Z'
+started_at: '2026-05-30T00:19:46Z'
 status: completed
 task_id: perf-001

@@ -11,13 +11,38 @@
   "blocked": 0,
   "total_artifacts": 63,
   "all_passed": true,
-  "started_at": "2026-05-30T00:13:07Z",
-  "ended_at": "2026-05-30T00:13:32Z",
-  "duration_seconds": 25,
+  "started_at": "2026-05-30T00:19:40Z",
+  "ended_at": "2026-05-30T00:20:00Z",
+  "duration_seconds": 20,
   "pre_execution_gates": {
     "passed": true,
-    "gate_count": 0,
-    "gates": []
+    "gate_count": 4,
+    "gates": [
+      {
+        "gate": "R2.1",
+        "description": "Round manifest is schema-valid",
+        "passed": true,
+        "detail": "  rounds/season-001-round-001.yaml: ✓\n  rounds/season-001-round-002.yaml: ✓"
+      },
+      {
+        "gate": "R2.2",
+        "description": "Task envelopes validate",
+        "passed": true,
+        "detail": "All v2 envelopes valid"
+      },
+      {
+        "gate": "R2.3",
+        "description": "Fixture bundles exist",
+        "passed": true,
+        "detail": "  fixtures/season-001/ops-001/: ✓\n  fixtures/season-001/ops-002/: ✓\n  fixtures/season-001/node-001/: ✓\n  fixtures/season-001/perf-001/: ✓\n  fixtures/season-001/code-001/: ✓\n  fixtures/season-001/knowledge-001/: ✓\n  fixtures/season-001/coord-001/: ✓\n  fixtures/season-001/tool-001/: ✓\n  fixtures/season-001/ops-003/: ✓"
+      },
+      {
+        "gate": "R2.9",
+        "description": "Dependencies installed",
+        "passed": true,
+        "detail": "node_modules exists"
+      }
+    ]
   },
   "post_execution_gates": {
     "passed": true,

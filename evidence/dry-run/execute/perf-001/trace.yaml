@@ -6,22 +6,22 @@ entries:
     seq: 0
     summary: Read task envelope "perf-001" from disk.
     target: task_envelope
-    timestamp: '2026-05-30T00:13:13Z'
+    timestamp: '2026-05-30T00:19:46Z'
   - action: think
     duration_ms: 10
     result_summary: Result packet, trace, and evidence bundle generated.
     seq: 1
     summary: 'Stub adapter: generating deterministic result artifacts. No live execution performed.'
     target: null
-    timestamp: '2026-05-30T00:13:13Z'
+    timestamp: '2026-05-30T00:19:46Z'
   - action: write
     duration_ms: 30
-    result_summary: Artifacts written for run run-perf-001-sogyo-2026-05-30T00-13-13-1ae6f6
+    result_summary: Artifacts written for run run-perf-001-sogyo-2026-05-30T00-19-46-1ae6f6
     seq: 2
     summary: Wrote result packet, trace record, and evidence bundle to run directory.
     target: result_packet
-    timestamp: '2026-05-30T00:13:13Z'
-generated_at: '2026-05-30T00:13:13Z'
-run_id: run-perf-001-sogyo-2026-05-30T00-13-13-1ae6f6
+    timestamp: '2026-05-30T00:19:46Z'
+generated_at: '2026-05-30T00:19:46Z'
+run_id: run-perf-001-sogyo-2026-05-30T00-19-46-1ae6f6
 schema_version: 1
-trace_id: tr-run-perf-001-sogyo-2026-05-30T00-13-13-1ae6f6
+trace_id: tr-run-perf-001-sogyo-2026-05-30T00-19-46-1ae6f6

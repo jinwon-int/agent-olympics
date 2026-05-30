@@ -1,5 +1,5 @@
 agent_id: sogyo
-ended_at: '2026-05-30T00:13:19Z'
+ended_at: '2026-05-30T00:19:51Z'
 evidence:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -41,7 +41,7 @@ outputs:
   recommended_next_action: '[stub] Placeholder output for "recommended_next_action". Replace with real output from the participant adapter.'
 runtime: openclaw
 schema_version: 2
-started_at: '2026-05-30T00:13:19Z'
+started_at: '2026-05-30T00:19:51Z'
 status: completed
 summary: >-
   Stub adapter run for task "coord-001". Status: completed. This is a deterministic placeholder — no live participant

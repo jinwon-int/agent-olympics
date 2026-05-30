@@ -1,6 +1,6 @@
 agent_id: sogyo
-bundle_id: eb-run-knowledge-001-sogyo-2026-05-30T00-13-17-939915
-generated_at: '2026-05-30T00:13:17Z'
+bundle_id: eb-run-knowledge-001-sogyo-2026-05-30T00-19-49-939915
+generated_at: '2026-05-30T00:19:49Z'
 items:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -16,5 +16,5 @@ items:
     redacted: false
     source: stub adapter
     summary: Stub adapter execution log and exit status.
-run_id: run-knowledge-001-sogyo-2026-05-30T00-13-17-939915
+run_id: run-knowledge-001-sogyo-2026-05-30T00-19-49-939915
 schema_version: 1

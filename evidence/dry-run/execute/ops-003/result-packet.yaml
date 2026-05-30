@@ -1,5 +1,5 @@
 agent_id: sogyo
-ended_at: '2026-05-30T00:13:23Z'
+ended_at: '2026-05-30T00:19:54Z'
 evidence:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -41,7 +41,7 @@ outputs:
   secret_handling_summary: '[stub] Placeholder output for "secret_handling_summary". Replace with real output from the participant adapter.'
 runtime: openclaw
 schema_version: 2
-started_at: '2026-05-30T00:13:23Z'
+started_at: '2026-05-30T00:19:54Z'
 status: completed
 summary: >-
   Stub adapter run for task "ops-003". Status: completed. This is a deterministic placeholder — no live participant

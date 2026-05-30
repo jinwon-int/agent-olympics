@@ -1,5 +1,5 @@
 agent_id: sogyo
-ended_at: '2026-05-30T00:13:17Z'
+ended_at: '2026-05-30T00:19:49Z'
 evidence:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -42,7 +42,7 @@ outputs:
   wiki_paths: '[stub] Placeholder output for "wiki_paths". Replace with real output from the participant adapter.'
 runtime: openclaw
 schema_version: 2
-started_at: '2026-05-30T00:13:17Z'
+started_at: '2026-05-30T00:19:49Z'
 status: completed
 summary: >-
   Stub adapter run for task "knowledge-001". Status: completed. This is a deterministic placeholder — no live
