@@ -315,6 +315,13 @@ perf-harness:
 perf-harness-validate:
 	node scripts/perf-harness.js --iterations $${PERF_ITERATIONS:-3} --validate
 
+# Transform latest harness report into v2 result packets for scoreboard
+perf-harness-to-packets:
+	node scripts/harness-to-packet.js results/perf-harness-report-*.$$(ls results/perf-harness-report-*.json 2>/dev/null >/dev/null && echo json || echo yaml) --agent-id $${AGENT_ID:-perf-harness}
+
+# Full pipeline: harness → packets → scoreboard → validate
+perf-harness-pipeline: perf-harness perf-harness-to-packets score-aggregate
+
 # Validate the scoreboard schema
 validate-scoreboard:
 	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'

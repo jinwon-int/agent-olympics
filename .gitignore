@@ -12,6 +12,9 @@ results/scoreboard.json
 results/perf-harness-report-*.json
 results/perf-harness-report-*.yaml
 
+# harness-to-packet — auto-generated v2 result packets
+results/pkt-harness-*.yaml
+
 # Web result consumer — generated output directories
 web-output/
 
