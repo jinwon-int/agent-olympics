@@ -1,0 +1,57 @@
+# Positive: Well-formed Competitor Accreditation
+#
+# A valid competitor accreditation with:
+# - All required fields present
+# - Valid accreditation class (competitor)
+# - Two granted zones (public, competition-floor)
+# - Within-class delegation scope
+# - One operating surface (filesystem)
+#
+# Expected to PASS accreditation validation.
+
+schema_version: 1
+accreditation_id: acc-positive-competitor-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: agent
+  identifier: stub-adapter
+  team: team-stub
+  display_name: "Stub CLI Adapter (Competitor)"
+
+accreditation_class: competitor
+accreditation_class_description: >
+  A stub CLI adapter participating as a competitor. Demonstrates
+  a minimal valid competitor accreditation.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Access public documentation and fixtures"
+  - zone_id: competition-floor
+    access_level: full
+    escort_required: false
+    purpose: "Execute task envelopes"
+
+operating_surfaces:
+  - surface_id: workspace
+    surface_type: filesystem
+    description: "CLI workspace for task execution"
+    allowed_actions:
+      - read
+      - write
+      - list
+      - execute
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: within_class
+  max_delegation_depth: 0
+  subjects_revocable: false
+  audit_required: true
+  approval_chain: []
+
+valid_from: "2026-05-30T00:00:00Z"
+valid_until: "2026-12-31T23:59:59Z"
+issued_by: "Team1-Governance-Committee"

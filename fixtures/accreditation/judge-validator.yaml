@@ -1,0 +1,124 @@
+# AJV Schema Validator — Judge Accreditation
+#
+# Accreditation declaration for the AJV schema validator as a Judge-class
+# participant.  Demonstrates a broad-access judge with unrestricted
+# delegation including any accredited subject, multiple operating surfaces,
+# and mandatory audit trail.
+#
+# This is the second accreditation class (Judge), satisfying the requirement
+# for at least two distinct classes/zones in the fixture set.
+#
+# Following the Olympic accreditation model from issue #42.
+
+schema_version: 1
+accreditation_id: acc-judge-validator-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: agent
+  identifier: ajv-schema-validator-v1
+  team: team-justice
+  display_name: "AJV Schema Validator (Judge)"
+
+accreditation_class: judge
+accreditation_class_description: >
+  Judge accreditation for the AJV schema validation agent.  The validator
+  judges submissions by checking them against JSON Schema definitions
+  and producing verdict records.  As a judge, it has broad zone access
+  and may delegate to any accredited subject, but all delegations must
+  be audited.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Access public schemas and documentation"
+  - zone_id: competition-floor
+    access_level: full
+    escort_required: false
+    purpose: "Collect submitted result packets and evidence bundles for validation"
+  - zone_id: judges-chamber
+    access_level: full
+    escort_required: false
+    purpose: "Produce and submit judge records with scores and verdicts"
+  - zone_id: archives-and-evidence
+    access_level: full
+    escort_required: false
+    purpose: "Access archived submissions for historical validation and re-judging"
+  - zone_id: observers-gallery
+    access_level: full
+    escort_required: false
+    purpose: "Review competition logs and monitor validation pipeline"
+
+operating_surfaces:
+  - surface_id: schema-registry
+    surface_type: filesystem
+    description: "JSON Schema definitions used for validation"
+    allowed_actions:
+      - read
+      - list
+  - surface_id: validation-pipeline
+    surface_type: api
+    description: "Validation pipeline for submitting documents and receiving verdicts"
+    allowed_actions:
+      - read
+      - write
+      - execute
+    rate_limits:
+      max_calls_per_minute: 120
+      max_concurrent: 20
+  - surface_id: judge-record-store
+    surface_type: filesystem
+    description: "Storage area for produced judge records"
+    allowed_actions:
+      - read
+      - write
+      - list
+      - modify
+  - surface_id: result-packet-inbox
+    surface_type: filesystem
+    description: "Inbox where result packets are deposited for validation"
+    allowed_actions:
+      - read
+      - list
+      - modify
+  - surface_id: score-aggregator
+    surface_type: api
+    description: "Score aggregation service for combining multiple judge verdicts"
+    allowed_actions:
+      - read
+      - write
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: any_accredited
+  max_delegation_depth: 1
+  subjects_revocable: true
+  audit_required: true
+  approval_chain:
+    - action: "delegate_beyond_depth"
+      required_approver_role: "operator"
+      notes: "Delegation chains deeper than 1 require operator approval"
+    - action: "delegate_scoring"
+      required_approver_role: "judge"
+      notes: "Scoring delegation requires consensus from another judge"
+
+restrictions:
+  - restriction_id: no-credential-access
+    description: "Judges must not access credential-related surfaces or zones"
+    applies_to:
+      - security-enclave
+      - operators-console
+  - restriction_id: no-config-mutation
+    description: "Judges must not modify competition configuration"
+    applies_to:
+      - validation-pipeline
+
+valid_from: "2026-05-30T00:00:00Z"
+valid_until: "2026-12-31T23:59:59Z"
+issued_by: "Team1-Governance-Committee"
+notes: >
+  The AJV validator operates independently as a judge.  All submissions
+  are validated deterministically against published schemas.  Delegations
+  to other judges or operators are audited.  Scoring delegation requires
+  consensus.

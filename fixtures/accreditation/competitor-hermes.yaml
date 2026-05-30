@@ -1,0 +1,101 @@
+# Hermes Adapter — Competitor Accreditation
+#
+# Accreditation declaration for the Hermes adapter as a Competitor-class
+# participant.  Demonstrates a non-trivial adapter operating on the
+# competition floor with within-class delegation and multiple operating
+# surfaces.
+#
+# Following the Olympic accreditation model from issue #42.
+
+schema_version: 1
+accreditation_id: acc-hermes-competitor-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: agent
+  identifier: hermes-adapter
+  team: team-hermes
+  display_name: "Hermes Adapter"
+
+accreditation_class: competitor
+accreditation_class_description: >
+  Competitor accreditation for the Hermes orchestration adapter.
+  Hermes competes by decomposing task envelopes into sub-workflows
+  and delegating to worker agents.  As a competitor, Hermes may
+  delegate within its class but must not delegate cross-class.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Read documentation, access public fixture data"
+  - zone_id: competition-floor
+    access_level: full
+    escort_required: false
+    purpose: "Execute task envelopes and submit result packets"
+  - zone_id: team-staging
+    access_level: limited
+    escort_required: false
+    time_restrictions: "competition-hours-only"
+    purpose: "Coordinate with worker agents during active competition windows"
+
+operating_surfaces:
+  - surface_id: workspace-filesystem
+    surface_type: filesystem
+    description: "Competition workspace directory for reading task envelopes and writing results"
+    allowed_actions:
+      - read
+      - write
+      - list
+  - surface_id: worker-delegation-api
+    surface_type: capability
+    description: "Interface for delegating subtasks to Hermes workers"
+    allowed_actions:
+      - delegate
+      - read
+    rate_limits:
+      max_calls_per_minute: 60
+      max_concurrent: 10
+  - surface_id: memory-retrieval
+    surface_type: api
+    description: "Worker memory retrieval and summarization"
+    allowed_actions:
+      - read
+      - list
+  - surface_id: evidence-staging
+    surface_type: filesystem
+    description: "Staging area for worker evidence before merging into final result packet"
+    allowed_actions:
+      - read
+      - write
+      - list
+      - modify
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: within_class
+  max_delegation_depth: 1
+  subjects_revocable: true
+  audit_required: true
+  approval_chain:
+    - action: "delegate_outside_class"
+      required_approver_role: "operator"
+      notes: "Cross-class delegation requires operator approval"
+
+restrictions:
+  - restriction_id: no-security-enclave
+    description: "Competitors must not access the security enclave"
+    applies_to:
+      - security-enclave
+  - restriction_id: no-judge-delegation
+    description: "Competitors must not delegate to judge-accredited subjects"
+    applies_to:
+      - worker-delegation-api
+
+valid_from: "2026-05-30T00:00:00Z"
+valid_until: "2026-12-31T23:59:59Z"
+issued_by: "Team1-Governance-Committee"
+notes: >
+  Hermes delegates subtasks to worker agents of the same class.
+  All delegations are audited.  Cross-class delegation requires
+  operator approval via the approval chain.

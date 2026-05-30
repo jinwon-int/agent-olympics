@@ -1,0 +1,63 @@
+# Negative: Over-Broad Access with Escort-Only Zone Violation
+#
+# This fixture tests that the validator rejects accreditation declarations
+# where an observer-class subject is granted "full" access to the
+# security-enclave zone, which requires "escorted_only" escort policy
+# and is restricted to operator-class subjects.
+#
+# This is schema-valid (passes JSON Schema validation) but
+# competition-invalid because:
+# 1. Observer class does not include security-enclave in its allowed zones
+# 2. Security enclave requires escort, but this declaration has
+#    escort_required: false with full access
+# 3. Observer cannot delegate (can_delegate: true violates class constraints)
+#
+# Expected to FAIL accreditation validation.
+
+schema_version: 1
+accreditation_id: acc-negative-overbroad-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: human
+  identifier: external-auditor-overbroad
+  display_name: "External Auditor (Over-Broad Test)"
+
+accreditation_class: observer
+accreditation_class_description: >
+  An observer that tries to claim full unescorted access to the
+  security enclave — which violates zone policy.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Access public documentation"
+  - zone_id: observers-gallery
+    access_level: full
+    escort_required: false
+    purpose: "View competition logs"
+  - zone_id: security-enclave
+    access_level: full
+    escort_required: false
+    purpose: "VIOLATION: Observer should not have full access to security enclave"
+  - zone_id: operators-console
+    access_level: full
+    escort_required: false
+    purpose: "VIOLATION: Observer should not access operators console"
+
+operating_surfaces:
+  - surface_id: secrets-vault
+    surface_type: api
+    description: "VIOLATION: Observer should not access secrets vault"
+    allowed_actions:
+      - read
+      - list
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: any
+  max_delegation_depth: 5
+  subjects_revocable: true
+  audit_required: false
+  approval_chain: []

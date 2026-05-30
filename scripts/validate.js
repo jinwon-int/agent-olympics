@@ -25,6 +25,8 @@
  *   node scripts/validate.js profiles           - validate all node profile inventory files
  *   node scripts/validate.js live-probe [path]   - validate with enhanced redaction / forbidden-field checks
  *   node scripts/validate.js qualifications    - validate qualification manifests and entry files
+ *   node scripts/validate.js accreditations      - validate all accreditation declaration files
+ *   node scripts/validate.js accreditations-validity - validate accreditation validity fixtures
  *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -129,6 +131,17 @@ try {
 } catch (e) {
   // Schema not available — skip qualification checks
 }
+
+// Load accreditation declaration schema
+// ---------------------------------------------------------------------------
+let accreditationSchema = null;
+let accreditationValidator = null;
+try {
+  accreditationSchema = loadSchema('schemas/accreditation-declaration.schema.json');
+  const accAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(accAjv);
+  accreditationValidator = accAjv.compile(accreditationSchema);
+} catch (e) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Load schemas (v2)
@@ -623,6 +636,16 @@ function detectOracle(doc) {
 }
 
 /**
+ * Detect accreditation declaration files.
+ */
+function detectAccreditation(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined && doc.accreditation_id !== undefined
+    && doc.subject !== undefined && doc.accreditation_class !== undefined
+    && doc.granted_zones !== undefined && doc.delegation_boundary !== undefined;
+}
+
+/**
  * Resolve schema version from document, defaulting to 1 if not present.
  */
 function getSchemaVersion(doc) {
@@ -1024,6 +1047,169 @@ function validateOracle(filePath) {
 
   if (!hasIssues) {
     console.log(`OK    ${rel}  (oracle)`);
+  }
+  fileCount++;
+}
+
+// ---------------------------------------------------------------------------
+// Accreditation validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Known zone registry loaded from fixtures/accreditation/access-zones.yaml.
+ * Used to validate that accreditation declarations reference only defined zones.
+ */
+let zoneRegistry = null;
+
+function loadZoneRegistry() {
+  if (zoneRegistry) return zoneRegistry;
+  const zoneFile = path.join(ROOT, 'fixtures', 'accreditation', 'access-zones.yaml');
+  if (!fs.existsSync(zoneFile)) return null;
+  try {
+    const doc = loadYaml(zoneFile);
+    if (doc && Array.isArray(doc.zones)) {
+      zoneRegistry = new Set(doc.zones.map(z => z.zone_id));
+    }
+  } catch { /* ignore */ }
+  return zoneRegistry;
+}
+
+/**
+ * Validate an accreditation declaration file against the schema and
+ * cross-field semantic rules.
+ *
+ * Accreditation rules:
+ * - Observer class must have can_delegate: false and delegation_scope: "none"
+ * - All zone references must exist in the zone registry (when available)
+ * - Delegation scope must be from the valid enum
+ * - Operating surface types must be from the approved list
+ * - Delegation_boundary is required for all classes
+ * - No secrets, credentials, or host-specific paths
+ */
+function validateAccreditation(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectAccreditation(doc)) {
+    // Check if it's the zone registry or roles file (which have different shapes)
+    if (doc.zone_registry_id || doc.role_registry_id || doc.description === 'Reference examples of delegation boundary configurations per accreditation class') {
+      console.warn(`SKIP  ${rel}  - registry/reference file, not an individual accreditation declaration`);
+      fileCount++;
+      return;
+    }
+    console.warn(`SKIP  ${rel}  - not an accreditation declaration (missing required fields)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Schema validation
+  if (accreditationValidator) {
+    const valid = accreditationValidator(doc);
+    if (!valid) {
+      for (const err of accreditationValidator.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        const extra = err.params ? JSON.stringify(err.params) : '';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg} ${extra}`.trim() });
+      }
+    }
+  }
+
+  // Cross-field semantic checks
+
+  // 1. accreditation_id must be a valid slug
+  if (doc.accreditation_id && !/^acc-[a-z0-9-]+-[a-z0-9-]+$/.test(doc.accreditation_id)) {
+    issues.push({ severity: SEVERITY.error, msg: `accreditation_id "${doc.accreditation_id}" must match pattern 'acc-<class>-<identifier>'` });
+  }
+
+  // 2. Observer class constraints
+  if (doc.accreditation_class === 'observer') {
+    if (doc.delegation_boundary && doc.delegation_boundary.can_delegate !== false) {
+      issues.push({ severity: SEVERITY.error, msg: 'Observer accreditation must have can_delegate: false' });
+    }
+    if (doc.delegation_boundary && doc.delegation_boundary.delegation_scope !== 'none') {
+      issues.push({ severity: SEVERITY.error, msg: 'Observer accreditation must have delegation_scope: "none"' });
+    }
+    if (doc.delegation_boundary && doc.delegation_boundary.max_delegation_depth !== 0 && doc.delegation_boundary.max_delegation_depth !== undefined) {
+      issues.push({ severity: SEVERITY.warn, msg: 'Observer accreditation should have max_delegation_depth: 0' });
+    }
+  }
+
+  // 3. Judge constraints: audit_required should be true when can_delegate is true
+  if (doc.accreditation_class === 'judge' && doc.delegation_boundary) {
+    if (doc.delegation_boundary.can_delegate && doc.delegation_boundary.audit_required !== true) {
+      issues.push({ severity: SEVERITY.warn, msg: 'Judge accreditation with can_delegate: true should set audit_required: true' });
+    }
+  }
+
+  // 4. Zone references must exist in the zone registry
+  const knownZones = loadZoneRegistry();
+  if (knownZones && knownZones.size > 0) {
+    for (const zone of (doc.granted_zones || [])) {
+      if (zone.zone_id && !knownZones.has(zone.zone_id)) {
+        issues.push({ severity: SEVERITY.error, msg: `granted_zones references unknown zone "${zone.zone_id}" — not defined in fixtures/accreditation/access-zones.yaml` });
+      }
+    }
+  }
+
+  // 5. Delegation scope must be from the valid enum
+  const validScopes = ['none', 'within_class', 'within_team', 'any_accredited', 'any'];
+  if (doc.delegation_boundary && doc.delegation_boundary.delegation_scope) {
+    if (!validScopes.includes(doc.delegation_boundary.delegation_scope)) {
+      issues.push({ severity: SEVERITY.error, msg: `delegation_scope "${doc.delegation_boundary.delegation_scope}" is not valid; expected one of: ${validScopes.join(', ')}` });
+    }
+  }
+
+  // 6. Operating surface types must be from the approved list
+  const validSurfaceTypes = ['api', 'filesystem', 'tool', 'network', 'capability', 'database', 'service'];
+  if (Array.isArray(doc.operating_surfaces)) {
+    for (const surface of doc.operating_surfaces) {
+      if (surface.surface_type && !validSurfaceTypes.includes(surface.surface_type)) {
+        issues.push({ severity: SEVERITY.error, msg: `operating_surfaces[${surface.surface_id}].surface_type "${surface.surface_type}" is not valid; expected one of: ${validSurfaceTypes.join(', ')}` });
+      }
+      if (!Array.isArray(surface.allowed_actions) || surface.allowed_actions.length === 0) {
+        issues.push({ severity: SEVERITY.error, msg: `operating_surfaces[${surface.surface_id}].allowed_actions must be a non-empty array` });
+      }
+    }
+  }
+
+  // 7. subject must have a display_name that is not empty
+  if (doc.subject && (!doc.subject.display_name || doc.subject.display_name.trim() === '')) {
+    issues.push({ severity: SEVERITY.warn, msg: 'subject should have a non-empty display_name' });
+  }
+
+  // 8. Check for forbidden patterns (secrets, credentials, host-specific paths)
+  detectSecrets(doc, issues);
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  - ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (accreditation)`);
   }
   fileCount++;
 }
@@ -1883,6 +2069,52 @@ function main() {
     process.exit(totalErrors > 0 ? 1 : 0);
   }
 
+  // Accreditation mode — validate all accreditation declarations
+  if (mode === 'accreditations') {
+    const accDir = path.join(ROOT, 'fixtures', 'accreditation');
+    if (!fs.existsSync(accDir)) {
+      console.log('No fixtures/accreditation directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(accDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No accreditation declaration files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} accreditation declaration file(s)...\n`);
+    for (const f of files) {
+      validateAccreditation(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Accreditation validity mode — validate accreditation validity fixtures
+  if (mode === 'accreditations-validity') {
+    const validityDir = path.join(ROOT, 'fixtures', 'accreditation-validity');
+    if (!fs.existsSync(validityDir)) {
+      console.log('No fixtures/accreditation-validity directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(validityDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No accreditation validity fixture files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} accreditation validity fixture file(s)...\n`);
+    for (const f of files) {
+      validateAccreditation(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
   // Rounds mode
   if (mode === 'rounds') {
     const roundsDir = path.join(ROOT, 'rounds');
@@ -2075,7 +2307,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|qualifications|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|qualifications|adapter-capabilities|adapter-fixtures|oracle|competition-validity|accreditations|accreditations-validity|all|all-v2|file>`);
     process.exit(1);
   }
 

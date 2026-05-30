@@ -1,0 +1,79 @@
+# Positive: Well-formed Judge Accreditation
+#
+# A valid judge accreditation with:
+# - All required fields present
+# - Valid accreditation class (judge)
+# - Wide zone access including judges-chamber and archives
+# - Broad any_accredited delegation scope with audit required
+# - Multiple operating surfaces (filesystem, api)
+#
+# Expected to PASS accreditation validation.
+
+schema_version: 1
+accreditation_id: acc-positive-judge-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: agent
+  identifier: score-aggregator-judge
+  team: team-justice
+  display_name: "Score Aggregator Judge"
+
+accreditation_class: judge
+accreditation_class_description: >
+  Automated judge responsible for aggregating scores from multiple
+  validation runs. Has broad zone access and may delegate to other
+  accredited subjects. All delegations are audited.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Access scoring schema and rubric definitions"
+  - zone_id: competition-floor
+    access_level: full
+    escort_required: false
+    purpose: "Collect result packets for scoring"
+  - zone_id: judges-chamber
+    access_level: full
+    escort_required: false
+    purpose: "Aggregate and produce final score records"
+  - zone_id: archives-and-evidence
+    access_level: full
+    escort_required: false
+    purpose: "Store and retrieve scoring evidence"
+  - zone_id: observers-gallery
+    access_level: full
+    escort_required: false
+    purpose: "Monitor scoring pipeline health"
+
+operating_surfaces:
+  - surface_id: score-store
+    surface_type: filesystem
+    description: "Score record storage"
+    allowed_actions:
+      - read
+      - write
+      - list
+  - surface_id: scoring-api
+    surface_type: api
+    description: "API for submitting aggregated scores"
+    allowed_actions:
+      - read
+      - write
+      - execute
+    rate_limits:
+      max_calls_per_minute: 60
+      max_concurrent: 5
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: any_accredited
+  max_delegation_depth: 1
+  subjects_revocable: true
+  audit_required: true
+  approval_chain: []
+
+valid_from: "2026-05-30T00:00:00Z"
+valid_until: "2026-12-31T23:59:59Z"
+issued_by: "Team1-Governance-Committee"

@@ -14,6 +14,12 @@ Every adapter must satisfy the [**Adapter Execution Contract**](adapter-executio
 This document provides a high-level overview of each adapter's responsibilities
 and useful evidence kinds. For the full contract, see the link above.
 
+Every adapter operates within an **accreditation class** and **access zone**
+framework defined in the [Accreditation & Access Zones](accreditation-access-zones.md)
+specification.  Accreditation determines which zones and operating surfaces an
+adapter may access, which delegation boundaries apply, and what pre-run access
+checks the runner must perform before dispatching tasks.
+
 ## OpenClaw Adapter
 
 See [`issues/roadmap-03-openclaw-adapter.md`](../issues/roadmap-03-openclaw-adapter.md) for the full design issue.

@@ -287,6 +287,11 @@ To add fixture data for a new adapter (e.g., `openclaw`):
 - [Platform-Neutral Adapter Fields](platform-neutral-adapter-fields.md) —
   Reference for the common fields every adapter result packet must
   contain.
+- [Accreditation & Access Zones](accreditation-access-zones.md) —
+  Defines participant accreditation classes, access zones, delegation
+  boundaries, and operating surface authorizations for all adapters.
+  Adapter capability declarations should reference their accreditation
+  class and granted zones.
 - [Hermes Adapter Issue](../issues/roadmap-04-hermes-adapter.md) —
   Design issue and open questions for the Hermes adapter.
 - [Fixtures README](../fixtures/adapters/README.md) — Entry point for
