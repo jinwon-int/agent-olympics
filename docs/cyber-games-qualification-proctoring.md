@@ -105,4 +105,3 @@ This pack is covered by:
 node scripts/validate.js qualifications
 npm test
 ```
-
