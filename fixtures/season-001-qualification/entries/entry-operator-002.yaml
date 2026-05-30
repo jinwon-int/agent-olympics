@@ -1,0 +1,14 @@
+# Season 001 Qualification Entry — yukson (open_entry, accepted)
+schema_version: 1
+season: season-001
+entry_id: entry-operator-002
+agent_id: yukson
+entry_type: open_entry
+quota_type: agent
+state: accepted
+created_at: "2026-05-28T01:00:00Z"
+declared_runtime: openclaw
+declared_division: open_stack
+node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+acceptance_deadline: "2026-06-15T23:59:59Z"
+notes: "Accepted early. Seeding pending qualifier task completion."

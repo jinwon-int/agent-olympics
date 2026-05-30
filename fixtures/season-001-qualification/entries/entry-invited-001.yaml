@@ -1,0 +1,13 @@
+# Season 001 Qualification Entry — cli-baseline (invited, eligible)
+schema_version: 1
+season: season-001
+entry_id: entry-invited-001
+agent_id: cli-baseline
+entry_type: invited
+quota_type: agent
+state: eligible
+created_at: "2026-05-27T00:00:00Z"
+declared_runtime: cli
+declared_division: open_stack
+acceptance_deadline: "2026-06-20T23:59:59Z"
+notes: "CLI baseline entry — invited by broker for cross-runtime calibration."

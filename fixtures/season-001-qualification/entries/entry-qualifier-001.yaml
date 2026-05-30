@@ -1,0 +1,27 @@
+# Season 001 Qualification Entry — qualifier-agent (qualified_entry, seeded, closed_stack)
+schema_version: 1
+season: season-001
+entry_id: entry-qualifier-001
+agent_id: qualifier-agent
+entry_type: qualified_entry
+quota_type: agent
+state: seeded
+created_at: "2026-05-25T00:00:00Z"
+declared_runtime: openclaw
+declared_division: closed_stack
+seeding_score: 7.2
+seeding_group: A
+qualifier_results:
+  - task_id: tool-001
+    packet_ref: "results/packet-tool-001-qualifier-agent-20260525.yaml"
+    score: 72.0
+  - task_id: ops-001
+    packet_ref: "results/packet-ops-001-qualifier-agent-20260525.yaml"
+    score: 85.0
+proctoring_evidence:
+  - type: result_packet
+    ref: "results/packet-tool-001-qualifier-agent-20260525.yaml"
+    description: "Validated result packet for qualifier task tool-001"
+  - type: result_packet
+    ref: "results/packet-ops-001-qualifier-agent-20260525.yaml"
+    description: "Validated result packet for qualifier task ops-001"

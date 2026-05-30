@@ -1,0 +1,15 @@
+# Season 001 Qualification Entry — nosuk (open_entry, eligible, hermes)
+schema_version: 1
+season: season-001
+entry_id: entry-operator-003
+agent_id: nosuk
+entry_type: open_entry
+quota_type: agent
+state: eligible
+created_at: "2026-05-28T02:00:00Z"
+declared_runtime: hermes
+declared_division: open_stack
+node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+adapter: hermes
+acceptance_deadline: "2026-06-15T23:59:59Z"
+notes: "Hermes adapter entry. Awaiting acceptance confirmation."

@@ -1,0 +1,13 @@
+# Negative fixture: team quota missing team_id
+schema_version: 1
+season: season-001
+entry_id: entry-negative-fail-002
+agent_id: team-lead
+entry_type: open_entry
+quota_type: team
+state: eligible
+created_at: "2026-05-28T00:00:00Z"
+declared_runtime: openclaw
+declared_division: open_stack
+acceptance_deadline: "2026-06-15T23:59:59Z"
+# Missing: team_id (required when quota_type is 'team')

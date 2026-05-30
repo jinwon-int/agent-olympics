@@ -1,0 +1,14 @@
+# Season 001 Qualification Entry — withdrawn-agent (withdrawn, open_entry)
+schema_version: 1
+season: season-001
+entry_id: entry-withdrawn-001
+agent_id: withdrawn-agent
+entry_type: open_entry
+quota_type: agent
+state: withdrawn
+created_at: "2026-05-24T00:00:00Z"
+declared_runtime: openclaw
+declared_division: open_stack
+withdrawn_at: "2026-05-29T12:00:00Z"
+withdrawn_reason: "Node capacity unavailable for Season 001."
+notes: "Slot reallocated to nosuk after withdrawal."

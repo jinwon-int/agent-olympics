@@ -24,6 +24,7 @@
  *   node scripts/validate.js rounds            - validate all round manifests
  *   node scripts/validate.js profiles           - validate all node profile inventory files
  *   node scripts/validate.js live-probe [path]   - validate with enhanced redaction / forbidden-field checks
+ *   node scripts/validate.js qualifications    - validate qualification manifests and entry files
  *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -106,6 +107,28 @@ try {
   addFormats(oracleAjv);
   oracleValidator = oracleAjv.compile(oracleSchema);
 } catch (e) { /* ignore */ }
+
+// ---------------------------------------------------------------------------
+// Load qualification entry schema
+// ---------------------------------------------------------------------------
+let qualificationSchema = null;
+let qualificationManifestValidator = null;
+let qualificationEntryValidator = null;
+try {
+  qualificationSchema = loadSchema('schemas/qualification-entry.schema.json');
+  const qAjv = new Ajv({ allErrors: true, verbose: true });
+  require('ajv-formats')(qAjv);
+  // Compile manifest validator from $defs
+  const mSchema = JSON.parse(JSON.stringify(qualificationSchema.$defs.qualification_manifest));
+  mSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-manifest';
+  qualificationManifestValidator = qAjv.compile(mSchema);
+  // Compile entry validator from $defs (standalone file mode)
+  const eSchema = JSON.parse(JSON.stringify(qualificationSchema.$defs.qualification_entry));
+  eSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-entry-file';
+  qualificationEntryValidator = qAjv.compile(eSchema);
+} catch (e) {
+  // Schema not available — skip qualification checks
+}
 
 // ---------------------------------------------------------------------------
 // Load schemas (v2)
@@ -1456,6 +1479,161 @@ function scanLiveProbeForbidden(obj, issues, objPath) {
 }
 
 /**
+ * Validate a qualification manifesto or single entry file.
+ * Entry files are validated against the $defs.qualification_entry schema.
+ * Manifest files are validated against $defs.qualification_manifest and
+ * cross-referenced against their entries array.
+ */
+function validateQualification(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  — empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  // Detect whether this is a manifest or a standalone entry
+  const isManifest = doc.manifest_id && doc.entries;
+  const isEntry = doc.entry_id && !doc.manifest_id;
+
+  if (!isManifest && !isEntry) {
+    console.warn(`SKIP  ${rel}  — not a qualification manifest or entry (needs manifest_id+entries or entry_id)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  if (isManifest) {
+    // Schema validation
+    if (qualificationManifestValidator) {
+      const valid = qualificationManifestValidator(doc);
+      if (!valid) {
+        for (const err of qualificationManifestValidator.errors) {
+          const field = err.instancePath || '(root)';
+          const msg = err.message || 'invalid';
+          issues.push({ severity: SEVERITY.error, msg: `schema: ${field}: ${msg}` });
+        }
+      }
+    }
+
+    // Check manifest_id follows convention
+    if (!/^season-\d{3}-qualification-v\d+$/.test(doc.manifest_id)) {
+      issues.push({ severity: SEVERITY.warn, msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-qualification-vN'` });
+    }
+
+    // Check for duplicate entry IDs in the manifest
+    if (doc.entries) {
+      const entryIds = doc.entries.map(e => e.entry_id);
+      const dups = entryIds.filter((id, i) => entryIds.indexOf(id) !== i);
+      if (dups.length) {
+        issues.push({ severity: SEVERITY.error, msg: `Duplicate entry IDs in manifest: ${[...new Set(dups)].join(', ')}` });
+      }
+
+      // Cross-reference checks against entries/ directory
+      const entriesDir = path.join(path.dirname(filePath), 'entries');
+      if (fs.existsSync(entriesDir)) {
+        const entryFiles = fs.readdirSync(entriesDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+        for (const entryFile of entryFiles) {
+          const entryPath = path.join(entriesDir, entryFile);
+          try {
+            const entryDoc = loadYaml(entryPath);
+            if (entryDoc && entryDoc.entry_id) {
+              const manifestEntry = doc.entries.find(e => e.entry_id === entryDoc.entry_id);
+              if (!manifestEntry) {
+                issues.push({ severity: SEVERITY.warn, msg: `Entry file "${entryFile}" (entry_id: ${entryDoc.entry_id}) not found in manifest entries array` });
+              }
+            }
+          } catch { /* skip unparseable entry files */ }
+        }
+
+        // Check manifest entries have matching files
+        for (const entry of doc.entries) {
+          const expectedFile = path.join(entriesDir, `${entry.entry_id}.yaml`);
+          if (!fs.existsSync(expectedFile)) {
+            issues.push({ severity: SEVERITY.warn, msg: `Entry "${entry.entry_id}" in manifest has no matching file: entries/${entry.entry_id}.yaml` });
+          }
+        }
+      }
+    }
+
+    // Secret scan
+    detectSecrets(doc, issues);
+  }
+
+  if (isEntry) {
+    // Schema validation
+    if (qualificationEntryValidator) {
+      const valid = qualificationEntryValidator(doc);
+      if (!valid) {
+        for (const err of qualificationEntryValidator.errors) {
+          const field = err.instancePath || '(root)';
+          const msg = err.message || 'invalid';
+          issues.push({ severity: SEVERITY.error, msg: `schema: ${field}: ${msg}` });
+        }
+      }
+    }
+
+    // Entry-specific semantic checks
+    // State transitions: seeded must have seeding_score and seeding_group
+    if (doc.state === 'seeded') {
+      if (doc.seeding_score === undefined || doc.seeding_score === null) {
+        issues.push({ severity: SEVERITY.error, msg: `seeding_score required when state is 'seeded'` });
+      }
+      if (!doc.seeding_group) {
+        issues.push({ severity: SEVERITY.error, msg: `seeding_group required when state is 'seeded'` });
+      }
+      if (typeof doc.seeding_score === 'number' && (doc.seeding_score < 0 || doc.seeding_score > 10)) {
+        issues.push({ severity: SEVERITY.error, msg: `seeding_score must be between 0 and 10, got ${doc.seeding_score}` });
+      }
+    }
+
+    // Withdrawn must have withdrawn_at
+    if (doc.state === 'withdrawn' && !doc.withdrawn_at) {
+      issues.push({ severity: SEVERITY.warn, msg: `withdrawn_at recommended when state is 'withdrawn'` });
+    }
+
+    // Qualified entry must have qualifier_results
+    if (doc.entry_type === 'qualified_entry' && (!doc.qualifier_results || doc.qualifier_results.length === 0)) {
+      issues.push({ severity: SEVERITY.error, msg: `qualifier_results required when entry_type is 'qualified_entry'` });
+    }
+
+    // Team quota must have team_id
+    if (doc.quota_type === 'team' && !doc.team_id) {
+      issues.push({ severity: SEVERITY.error, msg: `team_id required when quota_type is 'team'` });
+    }
+
+    // Secret scan
+    detectSecrets(doc, issues);
+  }
+
+  const hasErrors = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    console.error(`${prefix}  ${rel}  — ${issue.severity.toLowerCase()}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasErrors) {
+    console.log(`OK    ${rel}  (qualification ${isManifest ? 'manifest' : 'entry'})`);
+  }
+  fileCount++;
+}
+
+/**
  * Validate a node profile with live-probe (enhanced redaction) checks.
  * Reuses the standard validateNodeProfile logic then adds tier-2 scans.
  */
@@ -1754,6 +1932,44 @@ function main() {
     process.exit(totalErrors > 0 ? 1 : 0);
   }
 
+  // Qualifications mode
+  if (mode === 'qualifications') {
+    const qualDir = path.join(ROOT, 'fixtures', 'season-001-qualification');
+    if (!fs.existsSync(qualDir)) {
+      console.log('No season-001-qualification directory found.');
+      process.exit(0);
+    }
+    let files = [];
+    // Add manifest
+    const manifestPath = path.join(qualDir, 'manifest.yaml');
+    if (fs.existsSync(manifestPath)) {
+      files.push(manifestPath);
+    }
+    // Add entry files
+    const entriesDir = path.join(qualDir, 'entries');
+    if (fs.existsSync(entriesDir)) {
+      files = files.concat(findFiles(entriesDir, /\.ya?ml$/));
+    }
+    // Add negative test fixtures
+    const negativeDir = path.join(qualDir, 'negative');
+    if (fs.existsSync(negativeDir)) {
+      files = files.concat(findFiles(negativeDir, /\.ya?ml$/));
+    }
+    if (files.length === 0) {
+      console.log('No qualification files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} qualification file(s)...\n`);
+    for (const f of files) {
+      validateQualification(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
   // Live-probe enhanced redaction check mode
   if (mode === 'live-probe') {
     const targetPath = args[1];
@@ -1859,7 +2075,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|qualifications|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
     process.exit(1);
   }
 
