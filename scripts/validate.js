@@ -23,6 +23,7 @@
  *   node scripts/validate.js all-v2             - validate only v2 documents
  *   node scripts/validate.js rounds            - validate all round manifests
  *   node scripts/validate.js profiles           - validate all node profile inventory files
+ *   node scripts/validate.js live-probe [path]   - validate with enhanced redaction / forbidden-field checks
  *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -1390,6 +1391,205 @@ function validateAdapterFixtureFile(filePath) {
 }
 
 // ---------------------------------------------------------------------------
+// Live-probe (enhanced redaction) validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Tier-2 forbidden patterns for live-probe mode.
+ * These catch raw diagnostic values that might leak into a profile.
+ */
+const LIVE_PROBE_FORBIDDEN_PATTERNS = [
+  // Kernel version strings  e.g. "5.15.0-179-generic", "6.8.0-31-generic"
+  { pattern: /\b\d+\.\d+\.\d+-\d+-[a-zA-Z]+\b/, description: 'kernel version string' },
+  // CPU model numbers  e.g. "Intel(R) Xeon(R) Gold", "AMD EPYC", "Apple M1 Pro"
+  { pattern: /\bIntel\(R\)\s+[A-Za-z0-9-]+/, description: 'CPU model number (Intel)' },
+  { pattern: /\bAMD\s+[A-Z][a-z]+\s+\d+/, description: 'CPU model number (AMD)' },
+  { pattern: /\bApple\s+M\d\s+(Pro|Max|Ultra)?\b/, description: 'CPU model number (Apple Silicon)' },
+  // Cloud instance IDs  e.g. "i-0abcd1234efgh5678", "inst-12345"
+  { pattern: /\bi-[a-f0-9]{8,}\b/, description: 'cloud instance ID' },
+  { pattern: /\b(?:vpc|subnet|sg)-[a-f0-9]{8,}\b/i, description: 'cloud VPC/subnet/SG ID' },
+  // MAC addresses
+  { pattern: /\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b/, description: 'MAC address' },
+  // UUIDs that look like hardware serials
+  { pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i, description: 'UUID (possible hardware serial)' },
+  // Cloud provider region/zone names
+  { pattern: /\b(?:us|eu|ap|sa)-(?:east|west|central|north|south|southeast|northeast)-\d+\b/, description: 'cloud region name' },
+  // Exact mount paths with patterns likely from df output
+  { pattern: /\b(?:dev\/)?(?:sd[a-z]\d?|nvme\d+n\d+)\b/, description: 'raw block device name' },
+  // hostname-like patterns with hyphens and short TLD
+  { pattern: /\b[a-z][a-z0-9-]{2,20}\.(?:lan|local|internal|corp|prod|dev|staging)\b/i, description: 'internal hostname with private TLD' },
+];
+
+/**
+ * Run a deeper forbidden-field scan specifically for live-captured profiles.
+ * This checks every string value in the document against tier-2 patterns.
+ */
+function scanLiveProbeForbidden(obj, issues, objPath) {
+  if (!obj || typeof obj !== 'object') return;
+  objPath = objPath || '';
+  for (const [key, val] of Object.entries(obj)) {
+    const fp = objPath ? `${objPath}.${key}` : key;
+    if (typeof val === 'string') {
+      // Check against tier-2 forbidden patterns
+      for (const bp of LIVE_PROBE_FORBIDDEN_PATTERNS) {
+        if (bp.pattern.test(val)) {
+          issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive diagnostic pattern` });
+          break;
+        }
+      }
+      // Check for raw command output copy-paste
+      if (/^(?:\w+)@\w+/.test(val) && /\$\s+\w+/.test(val)) {
+        issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (terminal prompt / command echo) detected in "${fp}": value looks like raw terminal output` });
+      }
+      // Check for values that look like environment variable exports
+      if (/^export\s+[A-Z_]+=/.test(val)) {
+        issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (environment variable export) detected in "${fp}": value looks like credential-bearing environment capture` });
+      }
+      // Check for raw df output lines
+      if (/^\/dev\/\S+\s+\d+/.test(val)) {
+        issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (raw filesystem line from df) detected in "${fp}": value must be redacted to safe bands` });
+      }
+    } else if (typeof val === 'object' && val !== null) {
+      scanLiveProbeForbidden(val, issues, fp);
+    }
+  }
+}
+
+/**
+ * Validate a node profile with live-probe (enhanced redaction) checks.
+ * Reuses the standard validateNodeProfile logic then adds tier-2 scans.
+ */
+function validateLiveProbe(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectNodeProfile(doc)) {
+    console.error(`FAIL  ${rel}  - not a node profile (missing required fields); live-probe mode requires a schema-complete profile`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Schema validation (reuse node profile validator)
+  if (nodeProfileValidator) {
+    const valid = nodeProfileValidator(doc);
+    if (!valid) {
+      for (const err of nodeProfileValidator.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        const extra = err.params ? JSON.stringify(err.params) : '';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg} ${extra}`.trim() });
+      }
+    }
+  }
+
+  // Cross-field checks (same as validateNodeProfile)
+  if (doc.cpu) {
+    if (typeof doc.cpu.cores_min === 'number' && typeof doc.cpu.cores_max === 'number') {
+      if (doc.cpu.cores_max < doc.cpu.cores_min) {
+        issues.push({ severity: SEVERITY.error, msg: 'cpu.cores_max must be >= cpu.cores_min' });
+      }
+    }
+  }
+  if (doc.memory_gb) {
+    if (typeof doc.memory_gb.min === 'number' && typeof doc.memory_gb.max === 'number') {
+      if (doc.memory_gb.max < doc.memory_gb.min) {
+        issues.push({ severity: SEVERITY.error, msg: 'memory_gb.max must be >= memory_gb.min' });
+      }
+    }
+  }
+  if (Array.isArray(doc.capability_labels) && doc.capability_labels.length === 0) {
+    issues.push({ severity: SEVERITY.error, msg: 'capability_labels must have at least one entry' });
+  }
+
+  // profile_id safety checks (same as validateNodeProfile)
+  if (doc.profile_id) {
+    if (!/^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/.test(doc.profile_id)) {
+      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" must be a safe slug (lowercase, digits, hyphens, underscores only)` });
+    }
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(doc.profile_id)) {
+      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead` });
+    }
+  }
+
+  // Base forbidden pattern scan (reuse the existing one)
+  const FORBIDDEN_PROFILE_PATTERNS = [
+    { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
+    { pattern: /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/, description: 'potential hostname or domain' },
+    { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
+    { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
+    { pattern: /\/root\/\S+/i, description: 'root home path' },
+    { pattern: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/, description: 'private key material' },
+    { pattern: /sk-[a-zA-Z0-9]{20,}/, description: 'API key pattern' },
+  ];
+
+  function scanBaseForbidden(obj, objPath) {
+    if (!obj || typeof obj !== 'object') return;
+    objPath = objPath || '';
+    for (const [key, val] of Object.entries(obj)) {
+      const fp = objPath ? `${objPath}.${key}` : key;
+      if (typeof val === 'string') {
+        for (const bp of FORBIDDEN_PROFILE_PATTERNS) {
+          if (bp.pattern.test(val)) {
+            issues.push({ severity: SEVERITY.error, msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern` });
+            break;
+          }
+        }
+      } else if (typeof val === 'object' && val !== null) {
+        scanBaseForbidden(val, fp);
+      }
+    }
+  }
+  scanBaseForbidden(doc);
+
+  // Tier-2: live-probe enhanced forbidden scan
+  scanLiveProbeForbidden(doc, issues);
+
+  // Standard secret detection
+  detectSecrets(doc, issues);
+
+  // Check mandatory live-probe fields
+  if (!doc.notes) {
+    issues.push({ severity: SEVERITY.warn, msg: 'live-probe profile should include a notes field documenting the probe context and disposal certification' });
+  }
+  if (!doc.last_updated) {
+    issues.push({ severity: SEVERITY.warn, msg: 'live-probe profile should include last_updated timestamp' });
+  }
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  - [live-probe] ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (live-probe)`);
+  }
+  fileCount++;
+}
+
+// ---------------------------------------------------------------------------
 // Mode resolution
 // ---------------------------------------------------------------------------
 const MODES = {
@@ -1535,7 +1735,10 @@ function main() {
       console.log('No node-profiles directory found.');
       process.exit(0);
     }
-    const files = findFiles(profilesDir, /\.ya?ml$/);
+    const files = findFiles(profilesDir, /\.ya?ml$/).filter((file) => {
+      const parts = path.relative(profilesDir, file).split(path.sep);
+      return !parts.includes('validity');
+    });
     if (files.length === 0) {
       console.log('No node profile files found.');
       process.exit(0);
@@ -1543,6 +1746,49 @@ function main() {
     console.log(`Validating ${files.length} node profile file(s)...\n`);
     for (const f of files) {
       validateNodeProfile(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Live-probe enhanced redaction check mode
+  if (mode === 'live-probe') {
+    const targetPath = args[1];
+    let files = [];
+
+    if (targetPath) {
+      if (fs.existsSync(targetPath)) {
+        const stat = fs.statSync(targetPath);
+        if (stat.isDirectory()) {
+          files = findFiles(targetPath, /\.ya?ml$/);
+        } else {
+          files = [path.resolve(targetPath)];
+        }
+      } else {
+        console.error(`Path not found: ${targetPath}`);
+        process.exit(1);
+      }
+    } else {
+      // Default: validate all node profiles
+      const profilesDir = path.join(ROOT, 'fixtures', 'node-profiles');
+      if (!fs.existsSync(profilesDir)) {
+        console.log('No node-profiles directory found.');
+        process.exit(0);
+      }
+      files = findFiles(profilesDir, /\.ya?ml$/);
+    }
+
+    if (files.length === 0) {
+      console.log('No profile files matched.');
+      process.exit(0);
+    }
+
+    console.log(`Validating ${files.length} file(s) with live-probe enhanced checks...\n`);
+    for (const f of files) {
+      validateLiveProbe(f);
     }
     console.log(`\n--- Summary ---`);
     console.log(`Files:     ${fileCount}`);
@@ -1613,7 +1859,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
     process.exit(1);
   }
 

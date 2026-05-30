@@ -138,6 +138,7 @@ fixtures/node-profiles/profile-stub-small.yaml
 fixtures/node-profiles/profile-stub-medium.yaml
 fixtures/node-profiles/profile-stub-large.yaml
 fixtures/node-profiles/profile-nosuk.yaml    (a2a-runner — added lane 2/3, #124)
+fixtures/node-profiles/profile-candidate-macos-arm64.yaml    (macos-arm64 **candidate** — added lane 2/3, #160)
 ```
 
 These profiles use safe, generic values and are suitable for:
@@ -152,6 +153,14 @@ runner node with 4–6 vCPU, 8–16 GB RAM, and dedicated NVMe storage — posit
 between the medium-vps and large-vps capacity bands. See the [triple-baseline
 comparison document](perf-001-triple-baseline-comparison.md) for how this
 profile is used in cross-class performance scoring.
+
+The `profile-candidate-macos-arm64.yaml` profile (macos-arm64 candidate) was
+added as part of the second-profile smoke-comparison effort (lane 2/3, #160).
+It is the first non-Linux, non-x86-64 profile in the inventory. It has **not
+been live-validated** — it is a source fixture for pre-season planning and
+cross-class smoke comparison. See the [second-profile promotion
+checklist](node-readiness-second-profile-promotion-checklist.md) for the
+acceptance gates required before promotion to live-validated status.
 
 Result packets from node-readiness and performance events should reference
 a matching node profile via a `node_profile_ref` field, so judges can
@@ -240,6 +249,28 @@ The validator runs:
 2. Cross-field rules (cores_max >= cores_min, memory_max >= memory_min).
 3. Forbidden field scan — checks both key names and values for known secret
    patterns (hostnames, IPs, tokens, private key material).
+
+## Live Node Qualification
+
+Profiles sourced from live operator nodes (rather than static stub declarations)
+require additional safeguards defined in the
+**[Live Node Qualification Policy](live-node-qualification-policy.md)**.
+
+Key requirements:
+- Probe must use the approved read-only command chain.
+- Raw probe output must be discarded after the profile YAML is written.
+- The profile must pass `node scripts/validate.js live-probe <profile>` before
+  commit.
+- Each qualification requires explicit operator sign-off.
+
+See the [full policy](live-node-qualification-policy.md) for the approved
+procedure, forbidden fields, retained fields, approval chain, and disposal
+rules.
+
+```bash
+# Run live-probe redaction and forbidden-field validation
+node scripts/validate.js live-probe fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+```
 
 ## Compatibility
 

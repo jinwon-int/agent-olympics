@@ -11,6 +11,7 @@ for pre-season planning and validation.
 | `profile-stub-medium.yaml` | medium-vps | 2-4 | 4-8 | NVMe 20+ GB | 2 | Ops, code, knowledge, coordination |
 | `profile-stub-large.yaml` | large-vps | 8-16 | 16-32 | NVMe 100+ GB | 4 | Performance, multi-agent, throughput |
 | `profile-live-openclaw-medium-20260530.yaml` | large-vps | 8 | 16-24 | Hybrid 70+ GB | 3 | Live validated OpenClaw node-readiness and performance smoke |
+| `profile-candidate-macos-arm64.yaml` (macos-arm64 **candidate**) | darwin/arm64 | 8-12 | 8-24 unified | NVMe 30+ GB | 2 | First non-Linux, non-x86-64 candidate — see promotion checklist in docs/node-readiness-second-profile-promotion-checklist.md |
 
 ## Usage
 
@@ -32,9 +33,33 @@ follow-up issues.
 
 ## Validation
 
+### Standard profile validation
+
 ```bash
 node scripts/validate.js profiles
 ```
+
+### Live-probe enhanced redaction check
+
+Profiles sourced from live node inventory should also pass the enhanced
+redaction and forbidden-field validator:
+
+```bash
+# Validate a single profile
+node scripts/validate.js live-probe fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+
+# Validate all profiles with enhanced checks
+node scripts/validate.js live-probe
+
+# Run against the validity test fixtures
+node scripts/validate.js live-probe fixtures/node-profiles/validity/live-probe/positive-clean.yaml
+node scripts/validate.js live-probe fixtures/node-profiles/validity/live-probe/negative-forbidden-values.yaml
+```
+
+### Validity test fixtures
+
+See [`fixtures/node-profiles/validity/live-probe/README.md`](validity/live-probe/README.md)
+for positive and negative test cases exercising the live-probe validator.
 
 ## Compare with Result Metadata
 
@@ -47,5 +72,6 @@ the matching node profile via a `node_profile_ref` field. This lets judges:
 
 ## Remaining Work
 
-- [Tier promotion and additional profiles](../../issues/followup-node-readiness-tier-promotion.md)
+- [Tier promotion and additional profiles](../../issues/followup-node-readiness-tier-promotion.md) — candidate macOS/arm64 profile added; promotion gated on live validation (see [promotion checklist](../../docs/node-readiness-second-profile-promotion-checklist.md))
 - [Live qualification policy](../../issues/followup-node-readiness-live-qualification.md)
+- [Promotion checklist](../../docs/node-readiness-second-profile-promotion-checklist.md) — documents the exact blocker status for tier promotion

@@ -20,10 +20,12 @@ fixtures/node-readiness-pack/
 │   ├── node-readiness-smoke-result-packet.yaml
 │   ├── node-readiness-smoke-trace.yaml
 │   └── node-readiness-smoke-evidence-bundle.yaml
-└── cli/                                # CLI adapter samples
-    ├── node-readiness-smoke-result-packet.yaml
-    ├── node-readiness-smoke-trace.yaml
-    └── node-readiness-smoke-evidence-bundle.yaml
+├── cli/                                # CLI adapter samples
+│   ├── node-readiness-smoke-result-packet.yaml
+│   ├── node-readiness-smoke-trace.yaml
+│   └── node-readiness-smoke-evidence-bundle.yaml
+└── macos-arm64/                        # Second-profile smoke comparison (candidate, not live-probed)
+    └── SMOKE-COMPARISON-NOTES.md       # Cross-class comparison against OpenClaw Linux reference
 ```
 
 ## Adapter Execution Patterns
@@ -33,6 +35,7 @@ fixtures/node-readiness-pack/
 | OpenClaw | Direct agent session — sequential tool calls for node probe, config inspection, and report generation | 3 evidence items |
 | Hermes | Orchestrator/worker — workflow plan, 2 workers dispatched, commander report synthesized | 3 evidence items |
 | CLI | Sequential scripted commands — 6 shell commands with exit code verification | 3 evidence items |
+| macOS/arm64 (candidate) | Projected result based on candidate profile — not live-probed | Comparison notes only (see SMOKE-COMPARISON-NOTES.md) |
 
 ## Validation
 

@@ -1,0 +1,51 @@
+# Negative live-probe fixture: contains multiple forbidden patterns
+# Expected: FAIL (live-probe mode should catch all of these)
+#
+# This file is a deliberately invalid node profile that includes raw
+# diagnostic values, identifiers, and secret-like patterns. It must
+# fail the live-probe redaction check.
+
+schema_version: 1
+profile_id: live-example-leak-20260530
+profile_class: large-vps
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 8
+  cores_max: 8
+  # ERROR: contains Intel CPU model number
+  description: "Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz"
+memory_gb:
+  min: 16.0
+  max: 24.0
+  description: "shared host RAM — free -g showed Mem: 18332MB total"
+runner_limits:
+  max_concurrent: 3
+  max_task_duration_minutes: 90
+  max_total_daily_tasks: 24
+  description: "bounded foreground command work plus background validation jobs"
+storage_class:
+  type: hybrid
+  min_free_gb: 70
+  max_total_gb: 200
+  # ERROR: contains absolute mount path
+  description: "single local block storage pool at /dev/nvme0n1p2 with 200GB"
+network_class:
+  class: high
+  public_egress: true
+  # ERROR: contains raw df line
+  description: "/dev/sda1 200G 130G 70G 65% /data"
+capability_labels:
+  - ops
+  - code
+allowed_runner_types:
+  - openclaw
+  - codex
+  - cli
+notes: >
+  Collected by operator sogyo on 2026-05-30. Gateway token value was
+  sk-test12345abcdef67890ghijklmnopqrstuvwxyz. SSH key was
+  -----BEGIN OPENSSH PRIVATE KEY----- abandon all hope ye who enter here.
+  Hostname is prod-web-01.internal. Kernel is 5.15.0-179-generic.
+  Cloud instance i-0abcd1234efgh5678 in us-east-1.
+last_updated: "2026-05-30T12:00:00+09:00"

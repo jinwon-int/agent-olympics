@@ -1046,6 +1046,44 @@ async function buildScoreboard(resultsDir, blindMode) {
     entries.push(entry);
   }
 
+  // =========================================================================
+  // Round-level cross-hardware comparison caveats (lane 3/3 — yukson)
+  //
+  // After all entries are assembled, identify distinct hardware classes among
+  // perf-001 entries.  When multiple hardware classes exist, add a round-level
+  // caveat to each perf-001 entry so the publication output clearly documents
+  // the cross-hardware comparison limitation.
+  // =========================================================================
+  const perfEntries = entries.filter(e => String(e.task_id || '').startsWith('perf-'));
+  const perfHwClasses = new Set();
+  for (const e of perfEntries) {
+    const hw = e.submission_metadata && e.submission_metadata.hardware_profile;
+    if (hw && hw.cpu_class) perfHwClasses.add(hw.cpu_class);
+  }
+  const distinctClasses = [...perfHwClasses].sort();
+  if (distinctClasses.length > 1) {
+    const hwList = distinctClasses.join(', ');
+    for (const e of perfEntries) {
+      const hw = e.submission_metadata && e.submission_metadata.hardware_profile;
+      const thisClass = hw ? hw.cpu_class : null;
+      const otherClasses = distinctClasses.filter(c => c !== thisClass);
+      if (otherClasses.length > 0) {
+        e.comparability_caveats.push(
+          `Cross-hardware scoreboard: round contains entries from ${distinctClasses.length} hardware classes (${hwList}). ` +
+          `Raw measurement values are NOT directly comparable across hardware classes. ` +
+          `Use scored_values for cross-class comparison when available. ` +
+          `This entry is from "${thisClass || 'unknown'}"; other classes present: ${otherClasses.join(', ')}.`
+        );
+      }
+      e.comparable = false;
+    }
+    console.log(`\n⚠  Cross-hardware round: ${distinctClasses.length} distinct hardware classes found (${hwList}).`);
+    console.log(`   Cross-class comparison caveats added to ${perfEntries.length} perf-001 entries.`);
+    console.log(`   Comparable flag forced to false for all — direct raw comparison not valid across classes.`);
+  } else if (distinctClasses.length === 1) {
+    console.log(`\n   Single hardware class: ${distinctClasses[0]}. No cross-class caveats needed.`);
+  }
+
   // Summary stats
   const totalEntries = entries.length;
   const entriesWithJudge = entries.filter(e => e.judge_type !== 'pending').length;
@@ -1079,6 +1117,7 @@ async function buildScoreboard(resultsDir, blindMode) {
       pending_checks: pendingChecksCount,
       comparable_entries: comparableEntries,
       non_comparable_entries: nonComparableEntries,
+      distinct_hardware_classes: distinctClasses.length > 0 ? distinctClasses : undefined,
     },
   };
 
