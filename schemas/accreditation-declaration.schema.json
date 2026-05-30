@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-olympics.dev/schemas/accreditation-declaration.schema.json",
+  "title": "Accreditation Declaration",
+  "description": "Schema for participant accreditation declarations in the Agent Olympics competition framework. Defines accreditation classes, access zones, delegation boundaries, and operating surfaces for agent and human participants. Modeled after the Olympic accreditation framework defined in issue #42.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "accreditation_id",
+    "subject",
+    "accreditation_class",
+    "granted_zones",
+    "delegation_boundary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Schema version number. Must be 1 for this revision.",
+      "enum": [1]
+    },
+    "accreditation_id": {
+      "type": "string",
+      "description": "Unique identifier for this accreditation declaration, e.g. 'acc-team1-judge-001'.",
+      "pattern": "^acc-[a-z0-9-]+-[a-z0-9-]+$"
+    },
+    "subject": {
+      "type": "object",
+      "description": "The human or agent receiving this accreditation.",
+      "required": ["type", "identifier"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Subject type: 'agent', 'human', 'orchestrator', or 'committee'.",
+          "enum": ["agent", "human", "orchestrator", "committee"]
+        },
+        "identifier": {
+          "type": "string",
+          "description": "Unique identifier for the subject, e.g. 'hermes-adapter' or 'judge-panel-alpha'."
+        },
+        "team": {
+          "type": "string",
+          "description": "Optional team or organizational affiliation."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Human-readable name for the subject."
+        }
+      },
+      "additionalProperties": false
+    },
+    "accreditation_class": {
+      "type": "string",
+      "description": "Accreditation class based on the Olympic accreditation model from issue #42. Defines the overarching participant role category.",
+      "enum": ["competitor", "support", "judge", "operator", "observer"]
+    },
+    "accreditation_class_description": {
+      "type": "string",
+      "description": "Free-text explanation of what this accreditation class entails in the current context."
+    },
+    "granted_zones": {
+      "type": "array",
+      "description": "List of access zones the subject is granted entry to. Each zone represents a physical or logical boundary with specific access controls.",
+      "items": {
+        "type": "object",
+        "required": ["zone_id", "access_level", "escort_required"],
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "Zone identifier, e.g. 'competition-floor' or 'judges-chamber'."
+          },
+          "access_level": {
+            "type": "string",
+            "description": "Degree of access: 'full' = unescorted access, 'limited' = escorted or scheduled, 'supervised' = must have an accredited observer present.",
+            "enum": ["full", "limited", "supervised"]
+          },
+          "escort_required": {
+            "type": "boolean",
+            "description": "When true, the subject must be accompanied by a zone-escort-accredited entity."
+          },
+          "time_restrictions": {
+            "type": "string",
+            "description": "Optional time-based restrictions, e.g. 'competition-hours-only' or 'by-schedule'."
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Why the subject needs access to this zone."
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "operating_surfaces": {
+      "type": "array",
+      "description": "Optional list of specific operating surfaces (tools, systems, APIs, directories, or capabilities) the subject is authorized to use within the granted zones. Mirrors the Olympic 'competition surfaces' concept — the physical or logical spaces where the participant may act.",
+      "items": {
+        "type": "object",
+        "required": ["surface_id", "surface_type", "allowed_actions"],
+        "properties": {
+          "surface_id": {
+            "type": "string",
+            "description": "Unique identifier for the operating surface, e.g. 'gateway-api' or 'fixtures-tree'."
+          },
+          "surface_type": {
+            "type": "string",
+            "description": "Category of operating surface: 'api', 'filesystem', 'tool', 'network', 'capability', 'database', 'service'.",
+            "enum": ["api", "filesystem", "tool", "network", "capability", "database", "service"]
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the surface and its purpose."
+          },
+          "allowed_actions": {
+            "type": "array",
+            "description": "List of permitted action verbs on this surface.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "rate_limits": {
+            "type": "object",
+            "description": "Optional rate-limit constraints.",
+            "properties": {
+              "max_calls_per_minute": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "max_concurrent": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "delegation_boundary": {
+      "type": "object",
+      "description": "Defines what the subject may delegate to other agents/humans, and under what conditions. Critical for adapter boundary enforcement.",
+      "required": ["can_delegate", "delegation_scope"],
+      "properties": {
+        "can_delegate": {
+          "type": "boolean",
+          "description": "Whether the subject is permitted to delegate tasks to sub-agents or workers."
+        },
+        "delegation_scope": {
+          "type": "string",
+          "description": "Scope of allowed delegation: 'none' — no delegation, 'within_class' — may delegate to equally accredited subjects, 'within_team' — may delegate within own team, 'any_accredited' — may delegate to any accredited subject, 'any' — unrestricted delegation.",
+          "enum": ["none", "within_class", "within_team", "any_accredited", "any"]
+        },
+        "max_delegation_depth": {
+          "type": "integer",
+          "description": "Maximum depth of delegation chains. 0 = no sub-delegation, 1 = one level of delegation, etc.",
+          "minimum": 0,
+          "default": 0
+        },
+        "subjects_revocable": {
+          "type": "boolean",
+          "description": "Whether the subject can revoke or modify delegations it has granted."
+        },
+        "audit_required": {
+          "type": "boolean",
+          "description": "Whether delegated actions must be logged for audit review."
+        },
+        "approval_chain": {
+          "type": "array",
+          "description": "Approval steps required for delegation actions beyond the subject's default authority.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "description": "Action that triggers this approval requirement."
+              },
+              "required_approver_role": {
+                "type": "string",
+                "description": "Accreditation class or specific role that must approve."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Additional context about the approval requirement."
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "restrictions": {
+      "type": "array",
+      "description": "Optional list of additional restrictions placed on this accreditation.",
+      "items": {
+        "type": "object",
+        "required": ["restriction_id", "description"],
+        "properties": {
+          "restriction_id": {
+            "type": "string",
+            "description": "Unique identifier for the restriction."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the restriction prevents or limits."
+          },
+          "applies_to": {
+            "type": "array",
+            "description": "List of surface IDs or zone IDs this restriction applies to.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "valid_from": {
+      "type": "string",
+      "description": "ISO 8601 datetime when this accreditation becomes valid."
+    },
+    "valid_until": {
+      "type": "string",
+      "description": "ISO 8601 datetime when this accreditation expires."
+    },
+    "issued_by": {
+      "type": "string",
+      "description": "Entity that issued this accreditation, e.g. 'Team1-Governance-Committee'."
+    },
+    "parent_reference": {
+      "type": "string",
+      "description": "Optional reference to a parent accreditation or governing standard, e.g. 'issue-42-olympic-accreditation-model'."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text notes or caveats."
+    }
+  },
+  "additionalProperties": false
+}

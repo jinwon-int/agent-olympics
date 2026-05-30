@@ -518,7 +518,123 @@ All gates in a single quick-reference table:
 | Publication | Redaction | `node scripts/dry-run-gates.js redaction-check --results-dir <dir>` | No redaction violations |
 | Publication | Metadata | `node scripts/dry-run-gates.js safe-metadata --results-dir <dir>` | Metadata is safe |
 | Publication | **All** | `node scripts/dry-run-gates.js publication --results-dir <dir>` | All publication gates pass |
+| Workflow | Integrity | `node scripts/dry-run-gates.js integrity --results-dir <dir>` | Evidence chain integrity (#40) passes |
+| Workflow | Provisional | `node scripts/dry-run-gates.js provisional-scoring --results-dir <dir>` | Publishability state machine valid |
+| Workflow | Appeals | `node scripts/dry-run-gates.js appeals --results-dir <dir>` | Appeal records valid & compliant (#41) |
+| Workflow | Judge | `node scripts/dry-run-gates.js judge-workflow --results-dir <dir>` | Judge workflow transitions valid |
 | Finalizer | **Full** | `node scripts/dry-run-gates.js finalizer-ready --manifest <m> --results-dir <d> --runs-dir <r>` | All gates pass, broker can finalize |
+
+---
+
+## 9. Workflow Gates — Integrity, Provisional Scoring, Appeals, Judge (#40 / #41)
+
+These gates implement the concrete operator-facing checks mandated by issues
+[#40](https://github.com/jinwon-int/agent-olympics/issues/40) (integrity) and
+[#41](https://github.com/jinwon-int/agent-olympics/issues/41) (appeals). They
+validate the workflow state machine for scoring and dispute resolution.
+
+### 9.1 Integrity Gate (`integrity`)
+
+Validates the full evidence integrity chain across result packets:
+
+| Check | What it verifies | Method |
+|---|---|---|
+| **Cross-document consistency** | `task_id`, `agent_id`, `run_id` present in result packets | YAML field presence |
+| **Evidence ID uniqueness** | No duplicate evidence IDs | Array dedup check |
+| **Finding evidence refs** | Every finding's `evidence` array contains only IDs that exist in the packet's evidence list | Set lookup |
+| **Action evidence refs** | Every action's `evidence_id` references a known evidence item | Set lookup |
+| **Secret leak scan** | No credential patterns (API keys, tokens, private keys) in any string field | Pattern matching |
+| **Forbidden key names** | No secret-bearing field names (`token`, `password`, `secret`, `credential`, etc.) | Key pattern matching |
+| **Redaction reason hygiene** | Redaction reasons do not contain secret values | Pattern match on `redaction_reason` values |
+| **Approval boundaries** | Destructive actions (delete, destroy, reset, reinstall) reference approval evidence | Action field inspection |
+| **Judge material isolation** | No `hidden_judge_notes` in participant-facing artifacts | Field presence check |
+
+```bash
+node scripts/dry-run-gates.js integrity --results-dir results/
+```
+
+**Expected:** All checks pass (exit 0).
+**Evidence:** Terminal output captured to `evidence/dry-run/gate-integrity.txt`.
+
+### 9.2 Provisional Scoring Gate (`provisional-scoring`)
+
+Validates the publishability state machine defined in `docs/rules.md`:
+
+| Check | What it verifies | Method |
+|---|---|---|
+| **State validity** | `publishable: true` only for `valid` or `partial_valid` states | Cross-field check |
+| **Appealed/disqualified block** | `publishable: true` is rejected when `validity` is `appealed` or `disqualified` | Cross-field check |
+| **Redaction review** | `publishable: true` requires redaction evidence (redacted items or `redaction_policy`) | Evidence inspection |
+| **Pending dimensions** | Entries with `pending` human-judge dimensions that have `publishable: true` are flagged | Scoreboard inspection |
+
+```bash
+node scripts/dry-run-gates.js provisional-scoring --results-dir results/
+```
+
+**Expected:** All checks pass (exit 0).
+**Evidence:** Terminal output captured to `evidence/dry-run/gate-provisional-scoring.txt`.
+
+### 9.3 Appeals Gate (`appeals`)
+
+Validates appeal records against the rules defined in `docs/rules.md` §Appeals:
+
+| Check | What it verifies | Method |
+|---|---|---|
+| **Required fields** | `packet_id`, `statement`, `evidence_refs`, `desired_outcome`, `filed_by` are all present | Field presence |
+| **Status validity** | `status` is one of: `filed`, `under_review`, `upheld`, `denied`, `remanded`, `dismissed` | Enum check |
+| **Reviewer assignment** | Status `under_review` or beyond requires `reviewed_by` | Conditional field check |
+| **Appeal block required** | Result with `validity: appealed` must have an `appeal` block | Cross-field check |
+| **Timestamps** | `filed_at` and `reviewed_at` (when present) are valid dates | Date parse |
+| **Outcome validity** | `outcome` is one of: `upheld`, `denied`, `remanded`, `dismissed` | Enum check |
+
+```bash
+node scripts/dry-run-gates.js appeals --results-dir results/
+```
+
+**Expected:** All checks pass (exit 0).
+**Evidence:** Terminal output captured to `evidence/dry-run/gate-appeals.txt`.
+
+### 9.4 Judge Workflow Gate (`judge-workflow`)
+
+Validates the judge scoring state machine:
+
+| Check | What it verifies | Method |
+|---|---|---|
+| **Judge record ID** | `judge_record_id` is present | Field presence |
+| **Schema version** | `schema_version` is a number | Type check |
+| **Judge type** | `judge_type` is one of: `automated`, `human`, `llm-assisted`, `hybrid`, `pending` | Enum check |
+| **Score dimensions** | At least one score dimension present | Array/size check |
+| **Score bounds** | No dimension score exceeds its max or is negative | Range check |
+| **Total score** | `total_score` matches sum of dimension scores | Arithmetic check |
+| **Verdict** | `verdict` is one of: `pass`, `conditional_pass`, `fail`, `disqualification` | Enum check |
+| **Verdict/score consistency** | `pass` verdict has positive score, `fail` verdict has zero/negative score | Cross-field check |
+| **Pending dimension note** | Automated judge records document which dimensions are pending human review | Text scan |
+
+```bash
+node scripts/dry-run-gates.js judge-workflow --results-dir results/
+```
+
+**Expected:** All checks pass (exit 0).
+**Evidence:** Terminal output captured to `evidence/dry-run/gate-judge-workflow.txt`.
+
+### 9.5 Fixtures
+
+Fixture bundles for all four workflow gates are located under
+`fixtures/competition-validity/`:
+
+| Fixture | Gate | Expected |
+|---|---|---|
+| `negative-integrity-secret-leak.yaml` | integrity | FAIL (secret leak) |
+| `negative-integrity-broken-refs.yaml` | integrity | FAIL (unresolved refs) |
+| `positive-integrity-clean.yaml` | integrity | PASS |
+| `negative-provisional-publishable-appealed.yaml` | provisional-scoring | FAIL (appealed + publishable) |
+| `negative-provisional-no-redaction.yaml` | provisional-scoring | FAIL (no redaction) |
+| `positive-provisional-valid.yaml` | provisional-scoring | PASS |
+| `positive-appeal-record.yaml` | appeals | PASS |
+| `negative-appeal-missing-fields.yaml` | appeals | FAIL (missing fields) |
+| `negative-appeal-invalid-status.yaml` | appeals | FAIL (invalid status) |
+| `positive-judge-workflow.yaml` | judge-workflow | PASS |
+| `negative-judge-score-overflow.yaml` | judge-workflow | FAIL (score overflow) |
 
 ---
 

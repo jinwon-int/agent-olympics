@@ -117,3 +117,14 @@ bundles:
       budget, redacted logs, and a redacted config snapshot.
     dry_run_compatible: true
     required_for_season: true
+
+  - bundle_id: season-001-qualification-v1
+    task_id: qualification
+    path: fixtures/season-001-qualification/
+    description: >
+      Synthetic qualification entry records and manifest for Season 001.
+      Defines agent and team entries across all states and entry types
+      (open_entry, qualified_entry, invited, universality, wildcard) with
+      seeding metadata and quota reallocation examples.
+    dry_run_compatible: true
+    required_for_season: true

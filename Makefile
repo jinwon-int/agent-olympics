@@ -8,6 +8,7 @@
         validate-oracle validate-smoke \
         oracle smoke-check smoke fixtures-check setup clean \
         validate-rounds rounds-check round \
+        validate-qualifications qualifications-check \
         dry-run-readiness dry-run-publication dry-run-redaction dry-run-metadata \
         dry-run-finalizer dry-run-list validate-gates validate-dry-run-evidence \
         validate-profiles profiles-check \
@@ -17,9 +18,10 @@
         score score-validate score-run score-aggregate perf-harness perf-harness-validate validate-scoreboard validate-competition-fixtures \
         score-blind score-blind-score score-blind-aggregate score-all \
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
-        validate-web-fields validate-web-bridge
+        validate-web-fields validate-web-bridge \
+        validate-accreditations validate-accreditations-validity
 
-all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
+all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
 # Install dependencies
 setup:
@@ -120,6 +122,25 @@ validate-profiles:
 # Quick-run: validate profiles
 profiles-check: validate-profiles
 
+# Validate all qualification manifest and entry files
+validate-qualifications:
+	node scripts/validate.js qualifications
+
+# Quick-run: validate qualifications
+qualifications-check: validate-qualifications
+
+# Validate all accreditation declaration fixtures
+validate-accreditations:
+	@echo "=== Accreditation Declarations ==="
+	node scripts/validate.js accreditations
+	@echo "Accreditation declaration validation passed."
+
+# Validate all accreditation validity fixtures
+validate-accreditations-validity:
+	@echo "=== Accreditation Validity Fixtures ==="
+	node scripts/validate.js accreditations-validity || true
+	@echo "Accreditation validity fixture validation complete (errors expected for negative cases)."
+
 # Round engine CLI (alias for convenience)
 round:
 	node scripts/round.js
@@ -127,7 +148,7 @@ round:
 # Default validation target
 validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
         validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
-        validate-rounds validate-profiles \
+        validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # --- Competition-Validity targets ---

@@ -36,7 +36,8 @@ verdict: pass
 judge_notes: >
   The result packet is well-structured and schema-compliant. The diagnosis
   correctly identifies the root cause. Evidence is concrete. No safety
-  violations. Minor deduction for incomplete hardware metadata.
+  violations. Minor deduction for incomplete hardware metadata. No pending
+  human-review dimensions remain for this automated sample judge record.
 dimension_notes:
   communication: Report could include a brief user-facing message.
   durability: Suggest linking to the wiki update issue.

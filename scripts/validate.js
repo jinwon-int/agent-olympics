@@ -24,6 +24,9 @@
  *   node scripts/validate.js rounds            - validate all round manifests
  *   node scripts/validate.js profiles           - validate all node profile inventory files
  *   node scripts/validate.js live-probe [path]   - validate with enhanced redaction / forbidden-field checks
+ *   node scripts/validate.js qualifications    - validate qualification manifests and entry files
+ *   node scripts/validate.js accreditations      - validate all accreditation declaration files
+ *   node scripts/validate.js accreditations-validity - validate accreditation validity fixtures
  *   node scripts/validate.js <single-file>      - validate one file (auto-detect)
  *
  * Exit code: 0 = all valid, 1 = any validation failed.
@@ -105,6 +108,39 @@ try {
   const oracleAjv = new Ajv({ allErrors: true, verbose: true });
   addFormats(oracleAjv);
   oracleValidator = oracleAjv.compile(oracleSchema);
+} catch (e) { /* ignore */ }
+
+// ---------------------------------------------------------------------------
+// Load qualification entry schema
+// ---------------------------------------------------------------------------
+let qualificationSchema = null;
+let qualificationManifestValidator = null;
+let qualificationEntryValidator = null;
+try {
+  qualificationSchema = loadSchema('schemas/qualification-entry.schema.json');
+  const qAjv = new Ajv({ allErrors: true, verbose: true });
+  require('ajv-formats')(qAjv);
+  // Compile manifest validator from $defs
+  const mSchema = JSON.parse(JSON.stringify(qualificationSchema.$defs.qualification_manifest));
+  mSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-manifest';
+  qualificationManifestValidator = qAjv.compile(mSchema);
+  // Compile entry validator from $defs (standalone file mode)
+  const eSchema = JSON.parse(JSON.stringify(qualificationSchema.$defs.qualification_entry));
+  eSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-entry-file';
+  qualificationEntryValidator = qAjv.compile(eSchema);
+} catch (e) {
+  // Schema not available — skip qualification checks
+}
+
+// Load accreditation declaration schema
+// ---------------------------------------------------------------------------
+let accreditationSchema = null;
+let accreditationValidator = null;
+try {
+  accreditationSchema = loadSchema('schemas/accreditation-declaration.schema.json');
+  const accAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(accAjv);
+  accreditationValidator = accAjv.compile(accreditationSchema);
 } catch (e) { /* ignore */ }
 
 // ---------------------------------------------------------------------------
@@ -600,6 +636,16 @@ function detectOracle(doc) {
 }
 
 /**
+ * Detect accreditation declaration files.
+ */
+function detectAccreditation(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  return doc.schema_version !== undefined && doc.accreditation_id !== undefined
+    && doc.subject !== undefined && doc.accreditation_class !== undefined
+    && doc.granted_zones !== undefined && doc.delegation_boundary !== undefined;
+}
+
+/**
  * Resolve schema version from document, defaulting to 1 if not present.
  */
 function getSchemaVersion(doc) {
@@ -1001,6 +1047,169 @@ function validateOracle(filePath) {
 
   if (!hasIssues) {
     console.log(`OK    ${rel}  (oracle)`);
+  }
+  fileCount++;
+}
+
+// ---------------------------------------------------------------------------
+// Accreditation validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Known zone registry loaded from fixtures/accreditation/access-zones.yaml.
+ * Used to validate that accreditation declarations reference only defined zones.
+ */
+let zoneRegistry = null;
+
+function loadZoneRegistry() {
+  if (zoneRegistry) return zoneRegistry;
+  const zoneFile = path.join(ROOT, 'fixtures', 'accreditation', 'access-zones.yaml');
+  if (!fs.existsSync(zoneFile)) return null;
+  try {
+    const doc = loadYaml(zoneFile);
+    if (doc && Array.isArray(doc.zones)) {
+      zoneRegistry = new Set(doc.zones.map(z => z.zone_id));
+    }
+  } catch { /* ignore */ }
+  return zoneRegistry;
+}
+
+/**
+ * Validate an accreditation declaration file against the schema and
+ * cross-field semantic rules.
+ *
+ * Accreditation rules:
+ * - Observer class must have can_delegate: false and delegation_scope: "none"
+ * - All zone references must exist in the zone registry (when available)
+ * - Delegation scope must be from the valid enum
+ * - Operating surface types must be from the approved list
+ * - Delegation_boundary is required for all classes
+ * - No secrets, credentials, or host-specific paths
+ */
+function validateAccreditation(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  - empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!detectAccreditation(doc)) {
+    // Check if it's the zone registry or roles file (which have different shapes)
+    if (doc.zone_registry_id || doc.role_registry_id || doc.description === 'Reference examples of delegation boundary configurations per accreditation class') {
+      console.warn(`SKIP  ${rel}  - registry/reference file, not an individual accreditation declaration`);
+      fileCount++;
+      return;
+    }
+    console.warn(`SKIP  ${rel}  - not an accreditation declaration (missing required fields)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  // Schema validation
+  if (accreditationValidator) {
+    const valid = accreditationValidator(doc);
+    if (!valid) {
+      for (const err of accreditationValidator.errors) {
+        const field = err.instancePath || '(root)';
+        const msg = err.message || 'invalid';
+        const extra = err.params ? JSON.stringify(err.params) : '';
+        issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg} ${extra}`.trim() });
+      }
+    }
+  }
+
+  // Cross-field semantic checks
+
+  // 1. accreditation_id must be a valid slug
+  if (doc.accreditation_id && !/^acc-[a-z0-9-]+-[a-z0-9-]+$/.test(doc.accreditation_id)) {
+    issues.push({ severity: SEVERITY.error, msg: `accreditation_id "${doc.accreditation_id}" must match pattern 'acc-<class>-<identifier>'` });
+  }
+
+  // 2. Observer class constraints
+  if (doc.accreditation_class === 'observer') {
+    if (doc.delegation_boundary && doc.delegation_boundary.can_delegate !== false) {
+      issues.push({ severity: SEVERITY.error, msg: 'Observer accreditation must have can_delegate: false' });
+    }
+    if (doc.delegation_boundary && doc.delegation_boundary.delegation_scope !== 'none') {
+      issues.push({ severity: SEVERITY.error, msg: 'Observer accreditation must have delegation_scope: "none"' });
+    }
+    if (doc.delegation_boundary && doc.delegation_boundary.max_delegation_depth !== 0 && doc.delegation_boundary.max_delegation_depth !== undefined) {
+      issues.push({ severity: SEVERITY.warn, msg: 'Observer accreditation should have max_delegation_depth: 0' });
+    }
+  }
+
+  // 3. Judge constraints: audit_required should be true when can_delegate is true
+  if (doc.accreditation_class === 'judge' && doc.delegation_boundary) {
+    if (doc.delegation_boundary.can_delegate && doc.delegation_boundary.audit_required !== true) {
+      issues.push({ severity: SEVERITY.warn, msg: 'Judge accreditation with can_delegate: true should set audit_required: true' });
+    }
+  }
+
+  // 4. Zone references must exist in the zone registry
+  const knownZones = loadZoneRegistry();
+  if (knownZones && knownZones.size > 0) {
+    for (const zone of (doc.granted_zones || [])) {
+      if (zone.zone_id && !knownZones.has(zone.zone_id)) {
+        issues.push({ severity: SEVERITY.error, msg: `granted_zones references unknown zone "${zone.zone_id}" — not defined in fixtures/accreditation/access-zones.yaml` });
+      }
+    }
+  }
+
+  // 5. Delegation scope must be from the valid enum
+  const validScopes = ['none', 'within_class', 'within_team', 'any_accredited', 'any'];
+  if (doc.delegation_boundary && doc.delegation_boundary.delegation_scope) {
+    if (!validScopes.includes(doc.delegation_boundary.delegation_scope)) {
+      issues.push({ severity: SEVERITY.error, msg: `delegation_scope "${doc.delegation_boundary.delegation_scope}" is not valid; expected one of: ${validScopes.join(', ')}` });
+    }
+  }
+
+  // 6. Operating surface types must be from the approved list
+  const validSurfaceTypes = ['api', 'filesystem', 'tool', 'network', 'capability', 'database', 'service'];
+  if (Array.isArray(doc.operating_surfaces)) {
+    for (const surface of doc.operating_surfaces) {
+      if (surface.surface_type && !validSurfaceTypes.includes(surface.surface_type)) {
+        issues.push({ severity: SEVERITY.error, msg: `operating_surfaces[${surface.surface_id}].surface_type "${surface.surface_type}" is not valid; expected one of: ${validSurfaceTypes.join(', ')}` });
+      }
+      if (!Array.isArray(surface.allowed_actions) || surface.allowed_actions.length === 0) {
+        issues.push({ severity: SEVERITY.error, msg: `operating_surfaces[${surface.surface_id}].allowed_actions must be a non-empty array` });
+      }
+    }
+  }
+
+  // 7. subject must have a display_name that is not empty
+  if (doc.subject && (!doc.subject.display_name || doc.subject.display_name.trim() === '')) {
+    issues.push({ severity: SEVERITY.warn, msg: 'subject should have a non-empty display_name' });
+  }
+
+  // 8. Check for forbidden patterns (secrets, credentials, host-specific paths)
+  detectSecrets(doc, issues);
+
+  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
+    console.error(`${prefix}  ${rel}  - ${label}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasIssues) {
+    console.log(`OK    ${rel}  (accreditation)`);
   }
   fileCount++;
 }
@@ -1456,6 +1665,161 @@ function scanLiveProbeForbidden(obj, issues, objPath) {
 }
 
 /**
+ * Validate a qualification manifesto or single entry file.
+ * Entry files are validated against the $defs.qualification_entry schema.
+ * Manifest files are validated against $defs.qualification_manifest and
+ * cross-referenced against their entries array.
+ */
+function validateQualification(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  let doc;
+  try {
+    doc = loadYaml(filePath);
+  } catch (err) {
+    console.error(`FAIL  ${rel}  — YAML parse error: ${err.message}`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  if (!doc || typeof doc !== 'object') {
+    console.error(`FAIL  ${rel}  — empty or invalid document`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
+
+  // Detect whether this is a manifest or a standalone entry
+  const isManifest = doc.manifest_id && doc.entries;
+  const isEntry = doc.entry_id && !doc.manifest_id;
+
+  if (!isManifest && !isEntry) {
+    console.warn(`SKIP  ${rel}  — not a qualification manifest or entry (needs manifest_id+entries or entry_id)`);
+    fileCount++;
+    return;
+  }
+
+  const issues = [];
+
+  if (isManifest) {
+    // Schema validation
+    if (qualificationManifestValidator) {
+      const valid = qualificationManifestValidator(doc);
+      if (!valid) {
+        for (const err of qualificationManifestValidator.errors) {
+          const field = err.instancePath || '(root)';
+          const msg = err.message || 'invalid';
+          issues.push({ severity: SEVERITY.error, msg: `schema: ${field}: ${msg}` });
+        }
+      }
+    }
+
+    // Check manifest_id follows convention
+    if (!/^season-\d{3}-qualification-v\d+$/.test(doc.manifest_id)) {
+      issues.push({ severity: SEVERITY.warn, msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-qualification-vN'` });
+    }
+
+    // Check for duplicate entry IDs in the manifest
+    if (doc.entries) {
+      const entryIds = doc.entries.map(e => e.entry_id);
+      const dups = entryIds.filter((id, i) => entryIds.indexOf(id) !== i);
+      if (dups.length) {
+        issues.push({ severity: SEVERITY.error, msg: `Duplicate entry IDs in manifest: ${[...new Set(dups)].join(', ')}` });
+      }
+
+      // Cross-reference checks against entries/ directory
+      const entriesDir = path.join(path.dirname(filePath), 'entries');
+      if (fs.existsSync(entriesDir)) {
+        const entryFiles = fs.readdirSync(entriesDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+        for (const entryFile of entryFiles) {
+          const entryPath = path.join(entriesDir, entryFile);
+          try {
+            const entryDoc = loadYaml(entryPath);
+            if (entryDoc && entryDoc.entry_id) {
+              const manifestEntry = doc.entries.find(e => e.entry_id === entryDoc.entry_id);
+              if (!manifestEntry) {
+                issues.push({ severity: SEVERITY.warn, msg: `Entry file "${entryFile}" (entry_id: ${entryDoc.entry_id}) not found in manifest entries array` });
+              }
+            }
+          } catch { /* skip unparseable entry files */ }
+        }
+
+        // Check manifest entries have matching files
+        for (const entry of doc.entries) {
+          const expectedFile = path.join(entriesDir, `${entry.entry_id}.yaml`);
+          if (!fs.existsSync(expectedFile)) {
+            issues.push({ severity: SEVERITY.warn, msg: `Entry "${entry.entry_id}" in manifest has no matching file: entries/${entry.entry_id}.yaml` });
+          }
+        }
+      }
+    }
+
+    // Secret scan
+    detectSecrets(doc, issues);
+  }
+
+  if (isEntry) {
+    // Schema validation
+    if (qualificationEntryValidator) {
+      const valid = qualificationEntryValidator(doc);
+      if (!valid) {
+        for (const err of qualificationEntryValidator.errors) {
+          const field = err.instancePath || '(root)';
+          const msg = err.message || 'invalid';
+          issues.push({ severity: SEVERITY.error, msg: `schema: ${field}: ${msg}` });
+        }
+      }
+    }
+
+    // Entry-specific semantic checks
+    // State transitions: seeded must have seeding_score and seeding_group
+    if (doc.state === 'seeded') {
+      if (doc.seeding_score === undefined || doc.seeding_score === null) {
+        issues.push({ severity: SEVERITY.error, msg: `seeding_score required when state is 'seeded'` });
+      }
+      if (!doc.seeding_group) {
+        issues.push({ severity: SEVERITY.error, msg: `seeding_group required when state is 'seeded'` });
+      }
+      if (typeof doc.seeding_score === 'number' && (doc.seeding_score < 0 || doc.seeding_score > 10)) {
+        issues.push({ severity: SEVERITY.error, msg: `seeding_score must be between 0 and 10, got ${doc.seeding_score}` });
+      }
+    }
+
+    // Withdrawn must have withdrawn_at
+    if (doc.state === 'withdrawn' && !doc.withdrawn_at) {
+      issues.push({ severity: SEVERITY.warn, msg: `withdrawn_at recommended when state is 'withdrawn'` });
+    }
+
+    // Qualified entry must have qualifier_results
+    if (doc.entry_type === 'qualified_entry' && (!doc.qualifier_results || doc.qualifier_results.length === 0)) {
+      issues.push({ severity: SEVERITY.error, msg: `qualifier_results required when entry_type is 'qualified_entry'` });
+    }
+
+    // Team quota must have team_id
+    if (doc.quota_type === 'team' && !doc.team_id) {
+      issues.push({ severity: SEVERITY.error, msg: `team_id required when quota_type is 'team'` });
+    }
+
+    // Secret scan
+    detectSecrets(doc, issues);
+  }
+
+  const hasErrors = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+
+  for (const issue of issues) {
+    const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
+    console.error(`${prefix}  ${rel}  — ${issue.severity.toLowerCase()}: ${issue.msg}`);
+    if (issue.severity === SEVERITY.error) totalErrors++;
+    else totalWarnings++;
+  }
+
+  if (!hasErrors) {
+    console.log(`OK    ${rel}  (qualification ${isManifest ? 'manifest' : 'entry'})`);
+  }
+  fileCount++;
+}
+
+/**
  * Validate a node profile with live-probe (enhanced redaction) checks.
  * Reuses the standard validateNodeProfile logic then adds tier-2 scans.
  */
@@ -1705,6 +2069,52 @@ function main() {
     process.exit(totalErrors > 0 ? 1 : 0);
   }
 
+  // Accreditation mode — validate all accreditation declarations
+  if (mode === 'accreditations') {
+    const accDir = path.join(ROOT, 'fixtures', 'accreditation');
+    if (!fs.existsSync(accDir)) {
+      console.log('No fixtures/accreditation directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(accDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No accreditation declaration files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} accreditation declaration file(s)...\n`);
+    for (const f of files) {
+      validateAccreditation(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Accreditation validity mode — validate accreditation validity fixtures
+  if (mode === 'accreditations-validity') {
+    const validityDir = path.join(ROOT, 'fixtures', 'accreditation-validity');
+    if (!fs.existsSync(validityDir)) {
+      console.log('No fixtures/accreditation-validity directory found.');
+      process.exit(0);
+    }
+    const files = findFiles(validityDir, /\.ya?ml$/);
+    if (files.length === 0) {
+      console.log('No accreditation validity fixture files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} accreditation validity fixture file(s)...\n`);
+    for (const f of files) {
+      validateAccreditation(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
   // Rounds mode
   if (mode === 'rounds') {
     const roundsDir = path.join(ROOT, 'rounds');
@@ -1746,6 +2156,42 @@ function main() {
     console.log(`Validating ${files.length} node profile file(s)...\n`);
     for (const f of files) {
       validateNodeProfile(f);
+    }
+    console.log(`\n--- Summary ---`);
+    console.log(`Files:     ${fileCount}`);
+    console.log(`Errors:    ${totalErrors}`);
+    console.log(`Warnings:  ${totalWarnings}`);
+    process.exit(totalErrors > 0 ? 1 : 0);
+  }
+
+  // Qualifications mode
+  if (mode === 'qualifications') {
+    const qualDir = path.join(ROOT, 'fixtures', 'season-001-qualification');
+    if (!fs.existsSync(qualDir)) {
+      console.log('No season-001-qualification directory found.');
+      process.exit(0);
+    }
+    let files = [];
+    // Add manifest
+    const manifestPath = path.join(qualDir, 'manifest.yaml');
+    if (fs.existsSync(manifestPath)) {
+      files.push(manifestPath);
+    }
+    // Add entry files
+    const entriesDir = path.join(qualDir, 'entries');
+    if (fs.existsSync(entriesDir)) {
+      files = files.concat(findFiles(entriesDir, /\.ya?ml$/));
+    }
+    // Negative fixtures live under negative/ and are intentionally invalid.
+    // They remain available for targeted regression checks, but the default
+    // qualifications mode is a positive validation target used by make/all.
+    if (files.length === 0) {
+      console.log('No qualification files found.');
+      process.exit(0);
+    }
+    console.log(`Validating ${files.length} qualification file(s)...\n`);
+    for (const f of files) {
+      validateQualification(f);
     }
     console.log(`\n--- Summary ---`);
     console.log(`Files:     ${fileCount}`);
@@ -1859,7 +2305,7 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|adapter-capabilities|adapter-fixtures|oracle|competition-validity|all|all-v2|file>`);
+    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|qualifications|adapter-capabilities|adapter-fixtures|oracle|competition-validity|accreditations|accreditations-validity|all|all-v2|file>`);
     process.exit(1);
   }
 

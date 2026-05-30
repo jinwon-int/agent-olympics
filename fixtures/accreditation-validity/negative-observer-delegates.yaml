@@ -1,0 +1,38 @@
+# Negative: Observer Class with Delegation
+#
+# This fixture tests that the validator rejects accreditation declarations
+# where an observer-class subject has can_delegate: true or a non-"none"
+# delegation_scope.  Observers must not delegate.
+#
+# Expected to FAIL accreditation validation.
+
+schema_version: 1
+accreditation_id: acc-negative-observer-delegates-001
+parent_reference: "issue-42-olympic-accreditation-model"
+
+subject:
+  type: human
+  identifier: spectator-who-delegates
+  display_name: "Spectator Who Delegates"
+
+accreditation_class: observer
+accreditation_class_description: >
+  An observer that incorrectly claims delegation capabilities.
+
+granted_zones:
+  - zone_id: public
+    access_level: full
+    escort_required: false
+    purpose: "Spectate"
+  - zone_id: observers-gallery
+    access_level: full
+    escort_required: false
+    purpose: "View competition"
+
+delegation_boundary:
+  can_delegate: true
+  delegation_scope: within_class
+  max_delegation_depth: 1
+  subjects_revocable: false
+  audit_required: false
+  approval_chain: []

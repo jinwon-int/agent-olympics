@@ -673,6 +673,47 @@ function checkEvidenceIntegrity(packetDoc, traceDoc, bundleDoc, filePath) {
   }
 }
 
+function checkProvisionalPublishability(packetDoc, filePath) {
+  if (!packetDoc || typeof packetDoc !== 'object') return;
+  if (!packetDoc.packet_id) return;
+  const rel = path.relative(ROOT, filePath);
+
+  if (packetDoc.publishable === true) {
+    const validity = String(packetDoc.validity || packetDoc.status || '').toLowerCase();
+    if (['invalid', 'appealed', 'disqualified'].includes(validity)) {
+      error(`provisional-publishability:${rel}`, `publishable result cannot have validity/status "${validity}"`);
+    }
+
+    const hasRedactionEvidence = Array.isArray(packetDoc.evidence) && packetDoc.evidence.some((ev) =>
+      (ev && ev.redacted && ev.redaction_reason) ||
+      (ev && ev.id && /redact|review|sanitize/i.test(String(ev.id)))
+    );
+    const hasRedactionPolicy = !!packetDoc.redaction_policy;
+    if (!hasRedactionEvidence && !hasRedactionPolicy) {
+      error(`provisional-publishability:${rel}`, 'publishable result requires redaction evidence or redaction_policy');
+    }
+  }
+}
+
+function checkAppealRecord(packetDoc, filePath) {
+  if (!packetDoc || typeof packetDoc !== 'object' || !packetDoc.appeal) return;
+  const rel = path.relative(ROOT, filePath);
+  const appeal = packetDoc.appeal;
+  const allowedStatuses = new Set(['filed', 'under_review', 'accepted', 'rejected', 'withdrawn']);
+
+  if (!allowedStatuses.has(appeal.status)) {
+    error(`appeal:${rel}`, `appeal status "${appeal.status}" is not allowed`);
+  }
+  for (const field of ['packet_id', 'filed_at', 'filed_by', 'statement', 'desired_outcome']) {
+    if (!appeal[field]) {
+      error(`appeal:${rel}`, `appeal missing required field "${field}"`);
+    }
+  }
+  if (['under_review', 'accepted', 'rejected'].includes(appeal.status) && !appeal.reviewed_by) {
+    error(`appeal:${rel}`, `appeal status "${appeal.status}" requires reviewed_by`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Cross-document consistency
 // ---------------------------------------------------------------------------
@@ -992,6 +1033,12 @@ function cmdFixtures(fixturesDir) {
         checkForbiddenMetadata(doc, f, f);
         checkApprovalBoundaries(doc, f);
         checkHiddenJudgeMaterial(doc, f);
+        if (doc.packet_id || doc.result_packet) {
+          const packet = doc.result_packet || doc;
+          checkEvidenceIntegrity(packet, null, null, f);
+          checkProvisionalPublishability(packet, f);
+          checkAppealRecord(packet, f);
+        }
         if (doc.judge_record_id) {
           checkScoreConsistency(doc, f);
         }

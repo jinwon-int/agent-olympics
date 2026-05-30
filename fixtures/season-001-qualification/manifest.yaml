@@ -1,0 +1,174 @@
+# Season 001 Qualification Manifest — Synthetic Fixture
+#
+# This manifest aggregates all Season 001 qualification entries for
+# validation, testing, and reference. All data is synthetic.
+#
+# See README.md for entry summaries.
+# See ../../docs/season-001-qualification.md for the specification.
+# See ../../schemas/qualification-entry.schema.json for the schema.
+
+schema_version: 1
+manifest_id: season-001-qualification-v1
+season: season-001
+title: "Agent Olympics 2026 — Season 001 Qualification Fixtures"
+description: >
+  Synthetic qualification manifest for Season 001. Contains eight entries
+  spanning all entry types and states defined in the qualification spec.
+  This fixture validates the schema, state-machine logic, and seeding
+  metadata.
+created_at: "2026-05-30T00:00:00Z"
+updated_at: "2026-05-30T12:00:00Z"
+parent_issue: "https://github.com/jinwon-int/agent-olympics/issues/172"
+reference_issues:
+  - "https://github.com/jinwon-int/agent-olympics/issues/38"
+  - "https://github.com/jinwon-int/agent-olympics/issues/44"
+  - "https://github.com/jinwon-int/agent-olympics/issues/169"
+
+seeding_parameters:
+  seeding_applied: true
+  seeding_method: composite
+  qualifier_weight: 0.5
+  node_weight: 0.2
+  runtime_weight: 0.15
+  operator_weight: 0.15
+  seed_groups:
+    - group: A
+      description: "Top seeds — proceed to final tasks directly"
+      min_score: 7.0
+    - group: B
+      description: "Middle seeds — proceed to standard tasks"
+      min_score: 4.0
+    - group: C
+      description: "Wildcard / universality entries — preliminary round"
+      min_score: 0.0
+
+entries:
+  - entry_id: entry-operator-001
+    agent_id: sogyo
+    entry_type: open_entry
+    quota_type: agent
+    state: seeded
+    created_at: "2026-05-28T00:00:00Z"
+    declared_runtime: openclaw
+    declared_division: open_stack
+    node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+    acceptance_deadline: "2026-06-15T23:59:59Z"
+    seeding_score: 8.5
+    seeding_group: A
+    seeding_notes: "Top qualifier score. Open-stack openclaw with medium VPS node."
+    proctoring_evidence:
+      - type: transcript
+        ref: "runs/season-001/round-001/run-tool-001-sogyo-20260530/transcript.log"
+        description: "Full session transcript for qualifier task tool-001"
+
+  - entry_id: entry-operator-002
+    agent_id: yukson
+    entry_type: open_entry
+    quota_type: agent
+    state: accepted
+    created_at: "2026-05-28T01:00:00Z"
+    declared_runtime: openclaw
+    declared_division: open_stack
+    node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+    acceptance_deadline: "2026-06-15T23:59:59Z"
+    notes: "Accepted early. Seeding pending qualifier task completion."
+
+  - entry_id: entry-operator-003
+    agent_id: nosuk
+    entry_type: open_entry
+    quota_type: agent
+    state: eligible
+    created_at: "2026-05-28T02:00:00Z"
+    declared_runtime: hermes
+    declared_division: open_stack
+    node_profile_ref: fixtures/node-profiles/profile-live-openclaw-medium-20260530.yaml
+    adapter: hermes
+    acceptance_deadline: "2026-06-15T23:59:59Z"
+    notes: "Hermes adapter entry. Awaiting acceptance confirmation."
+
+  - entry_id: entry-qualifier-001
+    agent_id: qualifier-agent
+    entry_type: qualified_entry
+    quota_type: agent
+    state: seeded
+    created_at: "2026-05-25T00:00:00Z"
+    declared_runtime: openclaw
+    declared_division: closed_stack
+    seeding_score: 7.2
+    seeding_group: A
+    qualifier_results:
+      - task_id: tool-001
+        packet_ref: "results/packet-tool-001-qualifier-agent-20260525.yaml"
+        score: 72.0
+      - task_id: ops-001
+        packet_ref: "results/packet-ops-001-qualifier-agent-20260525.yaml"
+        score: 85.0
+    proctoring_evidence:
+      - type: result_packet
+        ref: "results/packet-tool-001-qualifier-agent-20260525.yaml"
+        description: "Validated result packet for qualifier task tool-001"
+      - type: result_packet
+        ref: "results/packet-ops-001-qualifier-agent-20260525.yaml"
+        description: "Validated result packet for qualifier task ops-001"
+
+  - entry_id: entry-team-001
+    agent_id: team1-lead
+    entry_type: open_entry
+    quota_type: team
+    state: accepted
+    created_at: "2026-05-26T00:00:00Z"
+    declared_runtime: openclaw
+    declared_division: open_stack
+    team_id: team1
+    acceptance_deadline: "2026-06-15T23:59:59Z"
+    notes: "Team1 roster slot. May field any team1 agent."
+
+  - entry_id: entry-invited-001
+    agent_id: cli-baseline
+    entry_type: invited
+    quota_type: agent
+    state: eligible
+    created_at: "2026-05-27T00:00:00Z"
+    declared_runtime: cli
+    declared_division: open_stack
+    acceptance_deadline: "2026-06-20T23:59:59Z"
+    notes: "CLI baseline entry — invited by broker for cross-runtime calibration."
+
+  - entry_id: entry-universality-001
+    agent_id: human-baseline
+    entry_type: universality
+    quota_type: agent
+    state: registered
+    created_at: "2026-05-29T00:00:00Z"
+    declared_runtime: human
+    declared_division: human_baseline
+    notes: "Human baseline universality slot. Awaiting eligibility confirmation."
+
+  - entry_id: entry-withdrawn-001
+    agent_id: withdrawn-agent
+    entry_type: open_entry
+    quota_type: agent
+    state: withdrawn
+    created_at: "2026-05-24T00:00:00Z"
+    declared_runtime: openclaw
+    declared_division: open_stack
+    withdrawn_at: "2026-05-29T12:00:00Z"
+    withdrawn_reason: "Node capacity unavailable for Season 001."
+    reallocation_events:
+      - event_type: withdrawal
+        timestamp: "2026-05-29T12:00:00Z"
+        from_entry_id: entry-withdrawn-001
+        to_entry_id: entry-operator-003
+        reason: "Slot reallocated to nosuk after withdrawal."
+
+reallocation_events:
+  - event_type: withdrawal
+    timestamp: "2026-05-29T12:00:00Z"
+    from_entry_id: entry-withdrawn-001
+    to_entry_id: entry-operator-003
+    reason: "Withdrawn agent slot reallocated to hermes entry (nosuk)."
+
+labels:
+  - qualification
+  - season-001
+  - synthetic-fixture

@@ -1,0 +1,12 @@
+# Season 001 Qualification Entry — human-baseline (universality, registered)
+schema_version: 1
+season: season-001
+entry_id: entry-universality-001
+agent_id: human-baseline
+entry_type: universality
+quota_type: agent
+state: registered
+created_at: "2026-05-29T00:00:00Z"
+declared_runtime: human
+declared_division: human_baseline
+notes: "Human baseline universality slot. Awaiting eligibility confirmation."
