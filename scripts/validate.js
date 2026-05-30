@@ -1735,7 +1735,10 @@ function main() {
       console.log('No node-profiles directory found.');
       process.exit(0);
     }
-    const files = findFiles(profilesDir, /\.ya?ml$/);
+    const files = findFiles(profilesDir, /\.ya?ml$/).filter((file) => {
+      const parts = path.relative(profilesDir, file).split(path.sep);
+      return !parts.includes('validity');
+    });
     if (files.length === 0) {
       console.log('No node profile files found.');
       process.exit(0);
