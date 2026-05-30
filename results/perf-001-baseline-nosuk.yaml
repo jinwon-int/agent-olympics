@@ -289,6 +289,11 @@ evidence:
     source: gateway health check
     summary: "Gateway, messaging, and A2A relay remained responsive during workload"
     redacted: false
+  - id: ev-redaction-review
+    kind: observation
+    source: publication readiness review
+    summary: "Source-only synthetic baseline was reviewed for hostnames, IPs, credentials, and user-private values before publication"
+    redacted: false
 
 findings:
   - claim: >

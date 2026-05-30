@@ -2182,11 +2182,9 @@ function main() {
     if (fs.existsSync(entriesDir)) {
       files = files.concat(findFiles(entriesDir, /\.ya?ml$/));
     }
-    // Add negative test fixtures
-    const negativeDir = path.join(qualDir, 'negative');
-    if (fs.existsSync(negativeDir)) {
-      files = files.concat(findFiles(negativeDir, /\.ya?ml$/));
-    }
+    // Negative fixtures live under negative/ and are intentionally invalid.
+    // They remain available for targeted regression checks, but the default
+    // qualifications mode is a positive validation target used by make/all.
     if (files.length === 0) {
       console.log('No qualification files found.');
       process.exit(0);

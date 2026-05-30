@@ -148,7 +148,7 @@ round:
 # Default validation target
 validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
         validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
-        validate-rounds validate-profiles validate-qualifications \
+        validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
 
 # --- Competition-Validity targets ---

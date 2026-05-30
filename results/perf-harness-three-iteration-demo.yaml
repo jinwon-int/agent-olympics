@@ -25,6 +25,7 @@ adapter: none
 division: source-only
 validity: valid
 publishable: true
+redaction_policy: "source-only harness demo; no live hostnames, IPs, credentials, or user-private values included"
 
 hardware_profile:
   cpu_class: a2a-runner
