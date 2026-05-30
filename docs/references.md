@@ -65,3 +65,11 @@ This page tracks related benchmarks and design influences. Each item should also
 - GitHub: https://github.com/snap-stanford/MLAgentBench
 - Relevance: language agents performing ML experimentation.
 - Agent Olympics takeaway: experiment planning and iterative improvement can become an advanced event family.
+
+## Cyber Games and cybersecurity olympiads
+
+- US Cyber Games FAQ: https://www.uscybergames.com/faq
+- International Cybersecurity Challenge: https://icc.ecsc.eu/about
+- USA Cybersecurity Olympiad contest rules: https://www.usacyo.org/contest-rules
+- Relevance: open qualifier pipelines, combine/training selection, allowed/prohibited tool rules, proctoring evidence, and dynamic scoring.
+- Agent Olympics takeaway: Season qualification records should carry explicit tool rules, proctoring evidence, and scoring-mode metadata so round manifests and judges can audit eligibility and scoring assumptions.
