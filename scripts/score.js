@@ -792,6 +792,27 @@ function assessComparability(rp, hwProfile, subMeta) {
     caveats.push('Entry status is partial — only a subset of the workload was completed; raw wall times are not comparable');
   }
 
+  // --- Source-only / harness environment caveats ---
+  const isSourceOnly = subMeta.runtime === 'source-harness' ||
+    subMeta.runtime === 'source-harness-demo' ||
+    rp.division === 'source-only';
+  if (isSourceOnly) {
+    caveats.push('Source-only harness run — probes ran sequentially, not in parallel. ' +
+      'Zero model calls. Wall times reflect local command execution, not a live agent runtime.');
+  }
+
+  // --- Container environment caveats ---
+  if (hwProfile.storage_class === 'container' || hwProfile.storage_class === 'container-shared') {
+    caveats.push('Container environment — resource limits, filesystem caching, and CPU throttling ' +
+      'may differ from dedicated host execution. Raw measurements are approximate.');
+  }
+
+  // --- Source-only adapter caveat ---
+  if (subMeta.adapter === 'cli' && isSourceOnly) {
+    caveats.push('CLI adapter with no LLM calls — scored values are computed from local ' +
+      'measurements only and may not reflect the same quality dimensions as live agent runs.');
+  }
+
   // Note: raw/scored separation warnings from extractPerformanceProfile are
   // propagated into caveats in buildScoreboard() before the performance_profile
   // is cleaned (to preserve scoreboard schema compatibility).
