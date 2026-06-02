@@ -144,6 +144,7 @@ docs/
   rubric.md
   events.md
   adapters.md
+  reproducible-submission-contract.md
   references.md
   migration-v1-to-v2.md           — Migration guide
   judge-notes-season-001.md       — Judge notes (v1 method)
@@ -169,7 +170,7 @@ Makefile                          — Build/validation targets (requires make)
    - code-001: TypeScript regression fix with targeted tests.
    - knowledge-001: Convert incident transcript into wiki-ready runbook.
    - coord-001: Merge contradictory node reports into a commander report.
-3. Implement adapters for OpenClaw, Hermes, and generic CLI agents.
+3. Implement reproducible adapters for OpenClaw, Hermes, generic CLI agents, and human baselines.
 4. Implement rule-based checks for required outputs, timing, schema validity, secret patterns, evidence references, and forbidden actions.
 5. Add human or LLM-assisted judging for correctness, risk judgment, and report quality.
 6. Publish a per-dimension leaderboard rather than only an overall rank.

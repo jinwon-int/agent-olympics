@@ -1,0 +1,10 @@
+schema_version: 1
+channel: telegram
+delivery:
+  source_visible_replies: true
+  reply_to_policy: preserve_parent
+  fallback_on_missing_parent: false
+  timeout_seconds: 30
+redaction:
+  credentials: omitted
+  chat_identifiers: synthetic

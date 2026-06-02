@@ -1,0 +1,3 @@
+2026-05-29T10:14:02+09:00 provider=telegram direction=inbound chat_ref=synthetic-chat-991 message_ref=inbound-991 status=ok
+2026-05-29T10:17:44+09:00 provider=telegram direction=outbound chat_ref=synthetic-chat-991 message_ref=outbound-991 reply_to_message_id=deleted-parent-077 status=provider_rejected
+2026-05-29T10:17:45+09:00 provider=telegram direction=outbound chat_ref=synthetic-chat-991 message_ref=outbound-991 retry_count=0 api_message_id=null error_class=reply_context_not_found

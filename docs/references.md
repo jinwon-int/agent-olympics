@@ -66,6 +66,13 @@ This page tracks related benchmarks and design influences. Each item should also
 - Relevance: language agents performing ML experimentation.
 - Agent Olympics takeaway: experiment planning and iterative improvement can become an advanced event family.
 
+## AIcrowd MineRL and Procgen
+
+- MineRL: https://www.aicrowd.com/challenges/neurips-2019-minerl-competition
+- Procgen: https://www.aicrowd.com/challenges/neurips-2020-procgen-competition
+- Relevance: reproducible submissions, constrained compute/sample budgets, starter kits, and held-out or procedurally generated evaluation environments.
+- Agent Olympics takeaway: adapters need a clean-environment test entrypoint, declared resource limits, and generated or held-out fixture variants so agents cannot overfit one public fixture. See [Reproducible Submission Contract](reproducible-submission-contract.md).
+
 ## Cyber Games and cybersecurity olympiads
 
 - US Cyber Games FAQ: https://www.uscybergames.com/faq
