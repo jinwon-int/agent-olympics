@@ -1,0 +1,4 @@
+2026-05-29T10:14:02+09:00 provider=telegram direction=inbound chat_ref=synthetic-chat-001 message_ref=inbound-001 status=ok
+2026-05-29T10:14:03+09:00 provider=telegram direction=typing chat_ref=synthetic-chat-001 status=ok ttl_seconds=5
+2026-05-29T10:18:34+09:00 provider=telegram direction=outbound chat_ref=synthetic-chat-001 message_ref=final-reply status=missing_delivery_record
+2026-05-29T10:18:35+09:00 provider=telegram direction=outbound chat_ref=synthetic-chat-001 retry_count=0 api_message_id=null

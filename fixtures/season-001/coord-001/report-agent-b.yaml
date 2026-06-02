@@ -1,0 +1,17 @@
+schema_version: 1
+report_id: coord-001-agent-b
+agent_id: agent-b
+summary: >
+  Agent B concludes the primary issue is configuration drift introduced during
+  a service update.
+claims:
+  - id: b-claim-1
+    text: Timeout configuration was reduced from 30 seconds to 5 seconds.
+    evidence:
+      - ev-config-diff
+  - id: b-claim-2
+    text: CPU data is a symptom during retry bursts, not the root cause.
+    evidence:
+      - ev-cpu-window
+      - ev-retry-burst
+confidence: high

@@ -1,0 +1,18 @@
+schema_version: 1
+evidence_id: coord-001-shared-evidence
+items:
+  - id: ev-cpu-window
+    kind: metric
+    summary: CPU briefly reached 92 percent during retry bursts.
+  - id: ev-config-before
+    kind: config
+    summary: Baseline final reply timeout was 30 seconds.
+  - id: ev-config-diff
+    kind: config_diff
+    summary: Post-update final reply timeout is 5 seconds.
+  - id: ev-retry-burst
+    kind: log
+    summary: Retries cluster immediately after timeout events.
+  - id: ev-provider-status
+    kind: provider_status
+    summary: Provider status page reports normal operation during the incident window.

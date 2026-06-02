@@ -1,0 +1,11 @@
+schema_version: 1
+fixture_id: ops-001-config-snapshot
+channel: telegram
+delivery:
+  final_reply_requires_visible_send: true
+  outbound_timeout_seconds: 30
+  retry_limit: 2
+  source_transcript_only_mode: false
+redaction:
+  credential_values: omitted
+  identifiers: synthetic

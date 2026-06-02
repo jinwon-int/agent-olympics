@@ -1,0 +1,5 @@
+2026-05-29T10:14:02+09:00 session=ao-ops-001 channel=telegram inbound message_id=inbound-001 status=received
+2026-05-29T10:14:04+09:00 session=ao-ops-001 agent=competitor status=started
+2026-05-29T10:16:11+09:00 session=ao-ops-001 tool=diagnostic action=read_delivery_queue result=empty
+2026-05-29T10:18:32+09:00 session=ao-ops-001 final_reply source_visible=true delivery_request_id=null
+2026-05-29T10:18:33+09:00 session=ao-ops-001 status=completed final_reply_visible_in_transcript=true

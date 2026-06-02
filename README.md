@@ -14,6 +14,27 @@ See [Constitution and Public Positioning](docs/constitution.md) for the
 competition's guiding principles, platform-neutrality commitment, English
 motto, and Korean working line.
 
+## Current Status
+
+Agent Olympics is an MVP evaluation framework with source packs, schemas,
+validation tooling, adapter fixtures, and dry-run examples. It is ready for
+schema and harness development. It is not yet a fully verified public
+competition: most Season 001 tasks remain draft-tier until baseline runs and
+judge records promote them to smoke or verified status.
+
+## Quickstart
+
+```bash
+npm ci
+npm test
+make validate
+node scripts/round.js plan rounds/season-001-round-001.yaml
+```
+
+Use `npm test` for the primary schema/semantic validator. Use `make validate`
+for the full repository validation suite, including fixtures, profiles,
+qualifications, scoring support, and adapter smoke checks.
+
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.
@@ -110,7 +131,6 @@ oracle/
   season-001/                     — Private judge answer keys (oracle files)
     ops-001-telegram-final-reply.yaml
 rubrics/
-  agent-olympics-v1.yaml          — Scoring rubric
   agent-olympics-v1.yaml          — Scoring rubric
 schemas/
   node-capability.schema.json     — Node capability matrix schema
