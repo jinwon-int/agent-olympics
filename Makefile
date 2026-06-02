@@ -11,6 +11,7 @@
         validate-qualifications qualifications-check \
         dry-run-readiness dry-run-publication dry-run-redaction dry-run-metadata \
         dry-run-finalizer dry-run-list validate-gates validate-dry-run-evidence \
+        participant-eligibility-check \
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
         openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
@@ -84,6 +85,12 @@ validate-adapter-fixtures:
 	node scripts/validate.js adapter-fixtures
 	@echo ""
 	@echo "Adapter fixture validation passed."
+
+# Source-only eligibility surface for independently runnable participant classes.
+# This avoids live credentials while checking Hermes, generic CLI/stub, and
+# human-baseline fixture paths plus adapter capability declarations.
+participant-eligibility-check: validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures smoke-hermes test-stub
+	@echo "Universal participant eligibility source-only checks passed."
 
 # Validate all Hermes-specific fixture files (workflow plan, worker trace,
 # memory summary) with both schema and structural checks

@@ -14,6 +14,11 @@ See [Constitution and Public Positioning](docs/constitution.md) for the
 competition's guiding principles, platform-neutrality commitment, English
 motto, and Korean working line.
 
+See [Universal Participant Eligibility](docs/participant-eligibility.md) for
+the adapter-neutral path that lets OpenClaw, Hermes, generic CLI/shell agents,
+coding agents, future runtimes, and human baselines participate through the
+same Task Envelope -> Result Packet interface.
+
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.
@@ -245,6 +250,7 @@ make validate-envelopes
 make validate-packets
 make validate-smoke  # Validate smoke suite only
 make validate-profiles  # Validate node profile inventory
+make participant-eligibility-check  # Validate source-only multi-adapter eligibility
 ```
 
 ## Smoke Suite
