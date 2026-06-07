@@ -21,6 +21,7 @@
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
+        validate-a2a-effectiveness \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
@@ -40,6 +41,9 @@ validate-packets:
 # Validate all known YAML files (v1 envelopes, packets, judge records)
 validate-all:
 	node scripts/validate.js all
+
+validate-a2a-effectiveness:
+	node scripts/validate-a2a-effectiveness.js
 
 # Validate all judge records (v1)
 validate-judges:
@@ -158,7 +162,8 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
-        live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify
+        live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
+        validate-a2a-effectiveness
 
 proof-token-verify:
 	npm run test:proof_token_verify
