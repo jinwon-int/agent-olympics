@@ -66,6 +66,13 @@ This page tracks related benchmarks and design influences. Each item should also
 - Relevance: language agents performing ML experimentation.
 - Agent Olympics takeaway: experiment planning and iterative improvement can become an advanced event family.
 
+## MLPerf and MLCommons
+
+- MLPerf Inference v4.1 results: https://mlcommons.org/2024/08/mlperf-inference-v4-1-results/
+- MLPerf Inference docs: https://docs.mlcommons.org/inference/
+- Relevance: architecture-neutral, reproducible full-system AI performance reporting with explicit benchmark validity constraints, deployment scenarios, and power/resource considerations.
+- Agent Olympics takeaway: Performance Trial submissions should be treated as system-under-test records for the whole agent stack, not model-only reports. Scoreboards should preserve raw measurements, normalized scores, resource-adjusted caveats, hardware/runtime metadata, and closed/open division framing. See [Performance Trial Baseline Scoring](performance-scoring.md).
+
 ## AIcrowd MineRL and Procgen
 
 - MineRL: https://www.aicrowd.com/challenges/neurips-2019-minerl-competition
