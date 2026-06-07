@@ -35,6 +35,11 @@ Use `npm test` for the primary schema/semantic validator. Use `make validate`
 for the full repository validation suite, including fixtures, profiles,
 qualifications, scoring support, and adapter smoke checks.
 
+See [Universal Participant Eligibility](docs/participant-eligibility.md) for
+the adapter-neutral path that lets OpenClaw, Hermes, generic CLI/shell agents,
+coding agents, future runtimes, and human baselines participate through the
+same Task Envelope -> Result Packet interface.
+
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.
@@ -266,6 +271,7 @@ make validate-envelopes
 make validate-packets
 make validate-smoke  # Validate smoke suite only
 make validate-profiles  # Validate node profile inventory
+make participant-eligibility-check  # Validate source-only multi-adapter eligibility
 ```
 
 ## Smoke Suite
