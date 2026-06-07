@@ -20,6 +20,12 @@ Every adapter must satisfy the [**Adapter Execution Contract**](adapter-executio
 This document provides a high-level overview of each adapter's responsibilities
 and useful evidence kinds. For the full contract, see the link above.
 
+For the participant-facing enrollment checklist, see
+[Universal Participant Eligibility](participant-eligibility.md). That document
+is the canonical one-page path for proving that OpenClaw, Hermes, generic
+CLI/shell agents, coding agents, human baselines, or future runtimes can
+participate without becoming OpenClaw-specific.
+
 Every adapter operates within an **accreditation class** and **access zone**
 framework defined in the [Accreditation & Access Zones](accreditation-access-zones.md)
 specification.  Accreditation determines which zones and operating surfaces an
