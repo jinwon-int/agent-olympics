@@ -75,8 +75,9 @@ This page tracks related benchmarks and design influences. Each item should also
 
 ## Cyber Games and cybersecurity olympiads
 
+- CyberPatriot: https://www.uscyberpatriot.org/competition/Competition-Overview/competition-overview
 - US Cyber Games FAQ: https://www.uscybergames.com/faq
 - International Cybersecurity Challenge: https://icc.ecsc.eu/about
 - USA Cybersecurity Olympiad contest rules: https://www.usacyo.org/contest-rules
-- Relevance: open qualifier pipelines, combine/training selection, allowed/prohibited tool rules, proctoring evidence, and dynamic scoring.
-- Agent Olympics takeaway: Season qualification records should carry explicit tool rules, proctoring evidence, and scoring-mode metadata so round manifests and judges can audit eligibility and scoring assumptions.
+- Relevance: virtual-system hardening, open qualifier pipelines, combine/training selection, allowed/prohibited tool rules, proctoring evidence, and dynamic scoring.
+- Agent Olympics takeaway: Season qualification records should carry explicit tool rules, proctoring evidence, and scoring-mode metadata so round manifests and judges can audit eligibility and scoring assumptions. Node Readiness can also use image-style hardening fixtures with scored checks, distractors, official-practice material, and held-out scoring variants. See [CyberPatriot-Style Image Hardening Fixtures](cyberpatriot-image-hardening-fixtures.md).

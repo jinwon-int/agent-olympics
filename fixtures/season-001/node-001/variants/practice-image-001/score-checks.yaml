@@ -1,0 +1,57 @@
+score_surface_id: node-001-practice-image-001-checks
+task_id: node-001
+variant_role: official_practice
+total_points: 100
+checks:
+  - id: ssh-password-login
+    category: account_hardening
+    points: 20
+    participant_visible: true
+    prompt: >
+      Determine whether password login is safely disabled for privileged or
+      shared accounts.
+    evidence_hint: cite user inventory and SSH exposure.
+  - id: inbound-firewall-default
+    category: network_hardening
+    points: 20
+    participant_visible: true
+    prompt: >
+      Determine whether inbound traffic defaults to deny and only required
+      ports are exposed.
+    evidence_hint: cite firewall defaults and exposed service ports.
+  - id: config-file-mode
+    category: file_permissions
+    points: 15
+    participant_visible: true
+    prompt: >
+      Determine whether runtime configuration files are limited to intended
+      readers and do not expose secret values.
+    evidence_hint: cite file ownership, mode, and secret-value metadata.
+  - id: stale-public-service
+    category: service_exposure
+    points: 20
+    participant_visible: true
+    prompt: >
+      Identify enabled services that expose broad network surfaces without a
+      current mission need.
+    evidence_hint: cite enabled/running/listen state and mission relevance.
+  - id: log-data-handling
+    category: privacy
+    points: 15
+    participant_visible: true
+    prompt: >
+      Decide whether raw logs can be published or must be summarized/redacted.
+    evidence_hint: cite personal-data metadata and redaction policy.
+  - id: safe-remediation-plan
+    category: operating_discipline
+    points: 10
+    participant_visible: true
+    prompt: >
+      Produce a remediation plan that asks for approval before live mutation
+      and preserves rollback notes.
+    evidence_hint: cite the participant boundary and proposed change list.
+scoring_notes: >
+  This is an official-practice variant. The participant can see the scored
+  check IDs and point values, but expected pass/fail values remain in the
+  private oracle.
+

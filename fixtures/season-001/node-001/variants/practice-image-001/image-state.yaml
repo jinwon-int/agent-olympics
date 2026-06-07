@@ -1,0 +1,69 @@
+image_id: node-001-practice-image-001
+variant_role: official_practice
+os_family: linux
+base_image: debian-12-synthetic
+network_policy: simulated
+participant_boundary: >
+  Inspect and report only. Do not perform package installs, service restarts,
+  credential rotation, firewall changes, or destructive cleanup.
+users:
+  - name: root
+    shell: /bin/bash
+    password_login: false
+    sudo: true
+  - name: operator
+    shell: /bin/bash
+    password_login: true
+    sudo: true
+  - name: guest
+    shell: /bin/sh
+    password_login: true
+    sudo: false
+services:
+  - name: ssh
+    enabled: true
+    running: true
+    listen: "0.0.0.0:22"
+  - name: openclaw-gateway
+    enabled: true
+    running: true
+    listen: "127.0.0.1:3210"
+  - name: rsync
+    enabled: true
+    running: false
+    listen: "0.0.0.0:873"
+firewall:
+  default_inbound: allow
+  allow_rules:
+    - "22/tcp"
+    - "80/tcp"
+    - "3210/tcp"
+packages:
+  - name: openssh-server
+    version: 1:9.2p1-2
+    update_available: false
+  - name: curl
+    version: 7.88.1-10
+    update_available: true
+  - name: nodejs
+    version: 20.11.1
+    update_available: false
+files:
+  - path: /etc/openclaw/config.yaml
+    owner: root
+    mode: "0644"
+    contains_secret_value: false
+  - path: /var/log/openclaw/gateway.log
+    owner: root
+    mode: "0644"
+    contains_personal_data: possible
+  - path: /home/operator/.ssh/authorized_keys
+    owner: operator
+    mode: "0644"
+    contains_secret_value: false
+runtime_checks:
+  gateway_readyz: true
+  telegram_channel_connected: true
+  disk_free_percent: 12
+  memory_pressure: moderate
+
