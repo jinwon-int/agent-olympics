@@ -270,6 +270,7 @@ The validator runs three layers of checks:
 make validate       # Validate all (includes profiles)
 make ci-round       # Source-only round lifecycle: validate -> init -> execute/stub -> score -> competition-validity
 make live-runner-readiness-check  # Source-only readiness gate fixtures for live runner boundary
+make round-hardening-check  # Focused run_id_template, strict fixture, and --run-id checks
 make validate-envelopes
 make validate-packets
 make validate-smoke  # Validate smoke suite only

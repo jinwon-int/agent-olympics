@@ -94,6 +94,10 @@ Example: `run-ops-001-sogyo-20260529T1727KST`
 The timestamp uses a compact ISO-like format without colons (safe for file
 paths): `YYYYMMDDTHHmmssTZD`.
 
+Supported `run_id_template` variables are `{task_id}`, `{agent_id}`,
+`{timestamp}`, `{round_id}`, and `{season}`. Unknown variables fail validation,
+and rendered run IDs must not contain braces, slashes, or whitespace.
+
 ## Run Directory Layout
 
 ```
@@ -287,6 +291,18 @@ The validator checks:
 3. **Envelope validity** — Each referenced envelope validates against the task envelope schema.
 4. **Fixture bundle existence** — Each `fixture_bundle_ref` resolves to an existing directory.
 5. **Participant uniqueness** — No duplicate `agent_id` values.
+6. **Run ID template safety** — `run_id_template` uses only supported variables
+   and renders safe run directory names.
+
+Use strict mode for CI or pre-execution checks:
+
+```bash
+node scripts/round.js validate rounds/season-001-round-001.yaml --strict
+node scripts/round.js init rounds/season-001-round-001.yaml --strict
+```
+
+Strict mode treats missing fixture bundle paths as failures. Executing with
+`--run-id <id>` now fails explicitly when no run directory matches the filter.
 
 ### Source-Only CI Round Gate
 

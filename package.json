@@ -13,6 +13,7 @@
     "ci:round": "node scripts/ci-round.js",
     "live-runner:readiness": "node scripts/live-runner-readiness.js",
     "test:live_runner_readiness": "node scripts/live-runner-readiness.js fixtures/live-runner-readiness/blocked-missing-approval.yaml --expect blocked && node scripts/live-runner-readiness.js fixtures/live-runner-readiness/dry-run-ready.yaml --expect ready",
+    "test:round_hardening": "bash scripts/test-round-hardening.sh",
     "round": "node scripts/round.js",
     "test": "node scripts/validate.js all"
   },

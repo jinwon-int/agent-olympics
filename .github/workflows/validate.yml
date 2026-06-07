@@ -37,6 +37,9 @@ jobs:
       - name: Run live runner readiness gate fixtures
         run: make live-runner-readiness-check
 
+      - name: Run round engine hardening checks
+        run: make round-hardening-check
+
       - name: Run full validation suite
         run: make validate
 

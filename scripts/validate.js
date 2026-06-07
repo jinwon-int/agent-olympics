@@ -39,6 +39,14 @@ const Ajv = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
 
 const ROOT = path.resolve(__dirname, '..');
+const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
+const SUPPORTED_RUN_ID_TEMPLATE_VARIABLES = new Set([
+  'task_id',
+  'agent_id',
+  'timestamp',
+  'round_id',
+  'season',
+]);
 
 
 
@@ -694,6 +702,21 @@ function detectRoundManifest(doc) {
   return doc.schema_version !== undefined && doc.round_id !== undefined
     && doc.season !== undefined && doc.lifecycle !== undefined
     && Array.isArray(doc.tasks) && Array.isArray(doc.participants);
+}
+
+function runIdTemplateVariables(template) {
+  return [...String(template || '').matchAll(/\{([^{}]+)\}/g)].map((match) => match[1]);
+}
+
+function renderRunIdTemplate(template, doc, task, participant) {
+  const values = {
+    task_id: task && task.task_id,
+    agent_id: participant && participant.agent_id,
+    timestamp: '20260101T000000UTC',
+    round_id: doc && doc.round_id,
+    season: doc && doc.season,
+  };
+  return template.replace(/\{([^{}]+)\}/g, (match, key) => values[key] !== undefined ? values[key] : match);
 }
 
 /**
@@ -1393,6 +1416,19 @@ function validateRoundManifest(filePath) {
       if (!fs.existsSync(full)) {
         issues.push({ severity: SEVERITY.warn, msg: `task #${i + 1} fixture_bundle_ref "${t.fixture_bundle_ref}" not found` });
       }
+    }
+  }
+
+  const runIdTemplate = doc.run_id_template || DEFAULT_RUN_ID_TEMPLATE;
+  const unknownVariables = runIdTemplateVariables(runIdTemplate)
+    .filter((name) => !SUPPORTED_RUN_ID_TEMPLATE_VARIABLES.has(name));
+  if (unknownVariables.length > 0) {
+    issues.push({ severity: SEVERITY.error, msg: `run_id_template has unsupported variable(s): ${unknownVariables.join(', ')}` });
+  } else if ((doc.tasks || []).length > 0 && (doc.participants || []).length > 0) {
+    const participant = (doc.participants || []).find((p) => p.enabled !== false) || doc.participants[0];
+    const sampleRunId = renderRunIdTemplate(runIdTemplate, doc, doc.tasks[0], participant);
+    if (/[{}\/\s]/.test(sampleRunId) || sampleRunId.length === 0) {
+      issues.push({ severity: SEVERITY.error, msg: `run_id_template renders unsafe run id "${sampleRunId}"` });
     }
   }
 
