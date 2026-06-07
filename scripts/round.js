@@ -35,6 +35,14 @@ const path = require('path');
 const yaml = require('js-yaml');
 
 const ROOT = path.resolve(__dirname, '..');
+const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
+const SUPPORTED_RUN_ID_TEMPLATE_VARIABLES = new Set([
+  'task_id',
+  'agent_id',
+  'timestamp',
+  'round_id',
+  'season',
+]);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,6 +91,30 @@ function generateTimestamp() {
     .toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul', timeZoneName: 'short' })
     .match(/[A-Z]{3,4}$/)?.[0] || 'UTC';
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${tz}`;
+}
+
+function runIdTemplateVariables(template) {
+  return [...String(template || '').matchAll(/\{([^{}]+)\}/g)].map((match) => match[1]);
+}
+
+function renderRunId(manifest, task, participant, timestamp) {
+  const template = manifest.run_id_template || DEFAULT_RUN_ID_TEMPLATE;
+  const values = {
+    task_id: task.task_id,
+    agent_id: participant.agent_id,
+    timestamp,
+    round_id: manifest.round_id,
+    season: manifest.season,
+  };
+  return template.replace(/\{([^{}]+)\}/g, (match, key) => values[key] !== undefined ? values[key] : match);
+}
+
+function failIfStrictWarnings(strict, context) {
+  if (strict && checkWarnings > 0) {
+    printCheckResult(true);
+    console.error(`\nCannot ${context} — strict mode treats warnings as failures`);
+    process.exit(1);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +338,25 @@ function validateRoundManifest(manifestPath, strict) {
     );
   }
 
+  const runIdTemplate = manifest.run_id_template || DEFAULT_RUN_ID_TEMPLATE;
+  const templateVariables = runIdTemplateVariables(runIdTemplate);
+  const unknownVariables = templateVariables.filter((name) => !SUPPORTED_RUN_ID_TEMPLATE_VARIABLES.has(name));
+  check(
+    'run_id_template variables are supported',
+    unknownVariables.length === 0,
+    `unsupported variables: ${unknownVariables.join(', ')}`
+  );
+  if (unknownVariables.length === 0 && Array.isArray(manifest.tasks) && manifest.tasks.length > 0 &&
+      Array.isArray(manifest.participants) && manifest.participants.length > 0) {
+    const sampleParticipant = manifest.participants.find((p) => p.enabled !== false) || manifest.participants[0];
+    const sampleRunId = renderRunId(manifest, manifest.tasks[0], sampleParticipant, '20260101T000000UTC');
+    check(
+      'run_id_template renders a safe run id',
+      !/[{}\/\s]/.test(sampleRunId) && sampleRunId.length > 0,
+      `rendered "${sampleRunId}" from template "${runIdTemplate}"`
+    );
+  }
+
   return manifest;
 }
 
@@ -474,6 +525,7 @@ function cmdPlan(manifestArg, options) {
   checkWarnings = 0;
 
   const manifest = validateRoundManifest(manifestPath, options.strict);
+  failIfStrictWarnings(options.strict, 'plan');
   if (checkFailed > 0) {
     printCheckResult(true);
     console.error('\nCannot plan — manifest is invalid');
@@ -513,7 +565,7 @@ function cmdPlan(manifestArg, options) {
   console.log(`\n  Run IDs (deterministic):`);
   for (const p of enabledParticipants) {
     for (const t of manifest.tasks || []) {
-      const runId = `run-${t.task_id}-${p.agent_id}-${generateTimestamp()}`;
+      const runId = renderRunId(manifest, t, p, generateTimestamp());
       console.log(`    ${runId}`);
       console.log(`      → ${manifest.run_directory}${runId}/`);
     }
@@ -550,7 +602,7 @@ function cmdInit(manifestArg, options) {
   for (const p of enabledParticipants) {
     for (const t of tasks) {
       const ts = generateTimestamp();
-      const runId = `run-${t.task_id}-${p.agent_id}-${ts}`;
+      const runId = renderRunId(manifest, t, p, ts);
       const runPath = path.join(runDir, runId);
       mkdirp(runPath);
       mkdirp(path.join(runPath, 'fixtures'));
@@ -1044,6 +1096,7 @@ function cmdExecute(manifestArg, options) {
 
   // Validate manifest first
   const manifest = validateRoundManifest(manifestPath, options.strict);
+  failIfStrictWarnings(options.strict, 'execute');
   if (checkFailed > 0) {
     printCheckResult(true);
     console.error('\nCannot execute — manifest is invalid');
@@ -1059,6 +1112,10 @@ function cmdExecute(manifestArg, options) {
 
   // Collect runs
   const allRuns = collectRuns(manifest, options);
+  if (options.runId && allRuns.length === 0) {
+    console.error(`\nNo run found matching --run-id "${options.runId}" in ${manifest.run_directory}`);
+    process.exit(1);
+  }
   if (allRuns.length === 0) {
     console.log('\nNo runs found for this round.');
     return manifest;
