@@ -179,6 +179,7 @@ docs/
   participant-quickstart.md          — First-time participant onboarding path
   declaration-cross-checks.md       — Declaration/artifact consistency and delegation attribution
   live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
+  test-event-venue-readiness.md     — Diagnostic test-event go/no-go checklist
   cyberpatriot-image-hardening-fixtures.md — Node image hardening fixture shape
   cyber-remediation-arena.md        — Cyber service remediation task shape
   task-envelope.md

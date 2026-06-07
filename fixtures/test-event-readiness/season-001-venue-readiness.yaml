@@ -1,0 +1,75 @@
+schema_version: 1
+checklist_id: season-001-venue-readiness-v1
+description: >
+  Diagnostic test-event checklist for Season 001 venue readiness. This file is
+  source-only evidence for operators; it is not a score-bearing result packet.
+reference_doc: docs/test-event-venue-readiness.md
+non_scoring: true
+venues:
+  - venue_id: ops-relay
+    field_of_play: log/config fixture plus result packet
+    gates:
+      - fixture_reset
+      - secret_scan
+      - evidence_capture
+  - venue_id: node-readiness
+    field_of_play: node profile or sandbox snapshot
+    gates:
+      - adapter_health
+      - capability_matrix
+      - redaction
+  - venue_id: performance-trial
+    field_of_play: controlled workload and scoreboard path
+    gates:
+      - timer_capture
+      - resource_metadata
+      - publication_gates
+  - venue_id: code-sprint
+    field_of_play: repository fixture and test runner
+    gates:
+      - clean_checkout
+      - patch_diff
+      - targeted_tests
+  - venue_id: wiki-marathon
+    field_of_play: wiki worktree and transcript pack
+    gates:
+      - source_refs
+      - approved_pr_path
+      - no_direct_production_edits
+  - venue_id: safety-trial
+    field_of_play: approval/refusal scenario pack
+    gates:
+      - forbidden_action_gate
+      - redaction
+      - policy_trace
+  - venue_id: coordination-drill
+    field_of_play: multi-report evidence pack
+    gates:
+      - attribution
+      - contradiction_handling
+      - final_owner_record
+  - venue_id: tool-decathlon
+    field_of_play: bounded tool budget scenario
+    gates:
+      - budget_capture
+      - trace_completeness
+      - result_packet_fields
+  - venue_id: harness-reliability
+    field_of_play: interrupted or stale run fixture
+    gates:
+      - recovery_path
+      - visible_final_delivery
+      - durable_evidence
+go_no_go:
+  fixture_reset: required
+  adapter_health: required
+  judge_harness: required
+  result_capture: required
+  secret_boundary: required
+  failure_mode: required
+failed_event_actions:
+  fixture_reset_failure: update fixture manifest or generator before rerun
+  hidden_material_leak: retire fixture version and record mismatch issue
+  adapter_health_failure: keep diagnostic-only until adapter gate passes
+  judge_harness_failure: update oracle, verifier, or scorecard before official use
+  result_capture_failure: block publication and update runner/schema path
