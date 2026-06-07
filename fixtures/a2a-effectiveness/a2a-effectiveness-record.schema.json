@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/fixtures/a2a-effectiveness/a2a-effectiveness-record.schema.json",
+  "title": "Agent Olympics A2A effectiveness benchmark record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "benchmarkVersion",
+    "sampleId",
+    "standingBenchmark",
+    "repo",
+    "taskType",
+    "mode",
+    "validity",
+    "participants",
+    "milestones",
+    "metrics",
+    "defects",
+    "boundaryFindings",
+    "outcome",
+    "caveats"
+  ],
+  "properties": {
+    "benchmarkVersion": {
+      "const": "agent-olympics-a2a-effectiveness-v1"
+    },
+    "sampleId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{5,}$"
+    },
+    "standingBenchmark": {
+      "const": "agent-olympics"
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "taskType": {
+      "type": "string",
+      "enum": [
+        "tracker_closeout_audit",
+        "small_patch",
+        "bug_rca",
+        "candidate_review",
+        "runbook_policy",
+        "ops_closeout",
+        "read_only_no_change_audit",
+        "cross_repo_smoke"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["solo", "a2a_crosscheck", "team1", "hybrid"]
+    },
+    "validity": {
+      "type": "string",
+      "enum": ["historical_replay", "prospective", "matched_group", "diagnostic"]
+    },
+    "sourceIssue": {
+      "type": "string",
+      "format": "uri"
+    },
+    "followupIssue": {
+      "type": "string",
+      "format": "uri"
+    },
+    "repairPr": {
+      "type": "string",
+      "format": "uri"
+    },
+    "participants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finalizer", "workers"],
+      "properties": {
+        "finalizer": { "type": "string", "minLength": 1 },
+        "soloAgent": { "type": "string", "minLength": 1 },
+        "workers": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "milestones": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workStartedAt",
+        "firstCrosscheckEvidenceAt",
+        "followupOpenedAt",
+        "repairPrOpenedAt",
+        "repairMergedAt",
+        "closeoutAt"
+      ],
+      "properties": {
+        "workStartedAt": { "$ref": "#/$defs/nullableDateTime" },
+        "soloCloseoutAt": { "$ref": "#/$defs/nullableDateTime" },
+        "firstCrosscheckEvidenceAt": { "$ref": "#/$defs/nullableDateTime" },
+        "followupOpenedAt": { "$ref": "#/$defs/nullableDateTime" },
+        "repairPrOpenedAt": { "$ref": "#/$defs/nullableDateTime" },
+        "repairMergedAt": { "$ref": "#/$defs/nullableDateTime" },
+        "closeoutAt": { "$ref": "#/$defs/nullableDateTime" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeToEvidenceSeconds",
+        "timeToDecisionSeconds",
+        "timeToCloseoutSeconds",
+        "activeFinalizerSeconds",
+        "totalAgentSeconds",
+        "workerCount",
+        "foundDefectsCount",
+        "confirmedDefectsCount",
+        "falseDoneCount",
+        "falseBlockCount",
+        "followupIssueCount",
+        "reopenCount7d",
+        "boundaryFindingCount"
+      ],
+      "properties": {
+        "timeToEvidenceSeconds": { "$ref": "#/$defs/nullableNonNegativeNumber" },
+        "timeToDecisionSeconds": { "$ref": "#/$defs/nullableNonNegativeNumber" },
+        "timeToCloseoutSeconds": { "$ref": "#/$defs/nullableNonNegativeNumber" },
+        "activeFinalizerSeconds": { "$ref": "#/$defs/nullableNonNegativeNumber" },
+        "totalAgentSeconds": { "$ref": "#/$defs/nullableNonNegativeNumber" },
+        "workerCount": { "type": "integer", "minimum": 0 },
+        "foundDefectsCount": { "type": "integer", "minimum": 0 },
+        "confirmedDefectsCount": { "type": "integer", "minimum": 0 },
+        "falseDoneCount": { "type": "integer", "minimum": 0 },
+        "falseBlockCount": { "type": "integer", "minimum": 0 },
+        "followupIssueCount": { "type": "integer", "minimum": 0 },
+        "reopenCount7d": { "$ref": "#/$defs/nullableNonNegativeInteger" },
+        "boundaryFindingCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/defect" }
+    },
+    "boundaryFindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/boundaryFinding" }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["no_repair_needed", "repair_merged", "followup_opened", "reopened", "invalid_sample"]
+        },
+        "mergeCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "followupWindowComplete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "caveats": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "nullableDateTime": {
+      "anyOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "nullableNonNegativeNumber": {
+      "anyOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "nullableNonNegativeInteger": {
+      "anyOf": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "defect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "foundBy", "confirmed"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "stale_closeout_evidence",
+            "missing_evidence",
+            "incorrect_decision",
+            "boundary_risk",
+            "false_done",
+            "false_block",
+            "duplicate_or_low_value"
+          ]
+        },
+        "foundBy": { "type": "string", "minLength": 1 },
+        "confirmed": { "type": "boolean" },
+        "repair": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "format": "uri" }
+      }
+    },
+    "boundaryFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary", "observed"],
+      "properties": {
+        "boundary": { "type": "string", "minLength": 1 },
+        "observed": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -25,6 +25,12 @@ captured, and amended before score-bearing rounds.
 | Tool Decathlon | bounded tool budget scenario | budget capture, trace completeness, result packet fields |
 | Harness Reliability | interrupted/stale run fixture | recovery path, visible final delivery, durable evidence |
 
+The [A2A effectiveness benchmark](a2a-effectiveness-benchmark.md) is a
+diagnostic, non-scoring Coordination Drill venue. Its JSONL records capture
+solo-vs-A2A samples, finalizer/worker attribution, quality findings, false
+Done/Block counts, follow-up state, and no-live boundary findings before any
+score-bearing A2A claims are made.
+
 ## Go/No-Go Gates
 
 Before a test event may begin:
@@ -43,6 +49,10 @@ Before a test event may begin:
 6. Failure mode: the operator has a stop/retry/retire decision path for failed
    setup, adapter timeout, hidden-material leak, invalid packet, or judge
    disagreement.
+7. A2A effectiveness records: if the venue is an A2A benchmark replay or
+   comparison, `npm run validate:a2a_effectiveness` passes and the record
+   states whether it is historical replay, matched group, prospective, or
+   diagnostic evidence.
 
 The source command layer is:
 

@@ -105,6 +105,12 @@ Tests command of multiple agents or sources.
 
 Stack layers stressed: delegation, owner-of-record clarity, evidence synthesis, finalizer judgment, and status reporting.
 
+The [A2A effectiveness benchmark](a2a-effectiveness-benchmark.md) is a
+diagnostic Coordination Drill venue for comparing `solo`,
+`a2a_crosscheck`, `team1`, and `hybrid` modes. It records whether delegation
+adds independent evidence, catches defects, preserves boundaries, or reduces
+finalizer uncertainty enough to justify coordination overhead.
+
 Examples:
 
 - Delegate investigation to two workers with disjoint scopes.

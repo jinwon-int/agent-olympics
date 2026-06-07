@@ -10,6 +10,7 @@
     "validate:fixtures": "node scripts/validate.js fixtures",
     "validate:rounds": "node scripts/validate.js rounds",
     "validate:all": "node scripts/validate.js all",
+    "validate:a2a_effectiveness": "node scripts/validate-a2a-effectiveness.js",
     "ci:round": "node scripts/ci-round.js",
     "live-runner:readiness": "node scripts/live-runner-readiness.js",
     "test:live_runner_readiness": "node scripts/live-runner-readiness.js fixtures/live-runner-readiness/blocked-missing-approval.yaml --expect blocked && node scripts/live-runner-readiness.js fixtures/live-runner-readiness/dry-run-ready.yaml --expect ready",
@@ -17,7 +18,7 @@
     "test:declaration_cross_check": "node scripts/declaration-cross-check.js",
     "test:proof_token_verify": "node scripts/proof-token-verify.js",
     "round": "node scripts/round.js",
-    "test": "node scripts/validate.js all"
+    "test": "node scripts/validate.js all && node scripts/validate-a2a-effectiveness.js"
   },
   "dependencies": {
     "ajv": "^8.17.0",
