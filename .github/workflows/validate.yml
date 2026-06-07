@@ -43,6 +43,9 @@ jobs:
       - name: Run declaration cross-check fixtures
         run: make declaration-cross-check
 
+      - name: Run proof-token verifier fixtures
+        run: make proof-token-verify
+
       - name: Run full validation suite
         run: make validate
 

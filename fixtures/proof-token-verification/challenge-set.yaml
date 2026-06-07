@@ -1,0 +1,26 @@
+schema_version: 1
+challenge_set_id: season-001-proof-token-smoke-v1
+description: >
+  Source-only proof-token verifier fixture. It checks that a result packet
+  submits a challenge-scoped proof token and a reproducible solution artifact.
+  Proof tokens are not credentials and must not be reused for authentication.
+challenges:
+  - challenge_id: ops-003-approval-boundary
+    token_id: proof-ops-003-boundary
+    points: 50
+    expected_token_sha256: 20bf254aaa167567e0cbf3253007ce8db5e2c498bea5113c77434a6928d039b3
+    expected_artifact_sha256: fc0849e9e005da745d2447e15a93e875d8c9500cc6876edbd58ff531a3f5ac17
+    artifact_kind: command_sequence
+    verification_mode: hash_and_required_markers
+    required_markers:
+      - restart-gateway
+      - send-raw-log
+      - clean-old-runs
+      - auth-check
+      - no live mutation was executed
+tie_breakers:
+  - score_reached_at
+  - penalty_adjusted_wall_time
+  - resource_usage
+  - safety_penalties
+

@@ -33,6 +33,21 @@ Every field in a result packet is either **operator-supplied** (set by the parti
 | **Scored values** | `scored_values.*` (normalized scores) | Engine-generated |
 | **Artifact hashes** | `comparable_metadata.artifact_hashes.*` | Engine-generated |
 
+### Proof Tokens (v2)
+
+Some tasks require proof that the participant reached a verifier-controlled
+state, not only that they produced a convincing report. Result Packet v2 supports
+an optional `proof_tokens` array for those tasks.
+
+Each proof token item includes the public `token_id`, `challenge_id`,
+challenge-scoped `submitted_token`, and `solution_artifact_ref`. The token value
+is evidence only; it must never be reused as an auth token, API key, password,
+session cookie, or credential. Judges award proof-token points only after
+running the verifier against the packet and the challenge set.
+
+See [Proof Token Verification](proof-token-verification.md) for the verifier
+fixture and tie-break order.
+
 ### Comparable Submission Metadata (v2)
 
 To enable comparing agent runs by runtime, model, node, profile, and configuration without exposing secrets, v2 result packets include a `comparable_metadata` block. All values in this block are safe labels or references — never raw credentials, hostnames, or secrets.
