@@ -70,6 +70,7 @@ Examples:
 
 - Fix a TypeScript regression and add targeted tests.
 - Investigate CI failure and propose a minimal patch.
+- Remediate a vulnerable service using public tests and hidden judge faults.
 - Update a schema while preserving backwards compatibility.
 - Review a PR and identify real behavioral risks.
 

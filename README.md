@@ -180,6 +180,7 @@ docs/
   declaration-cross-checks.md       — Declaration/artifact consistency and delegation attribution
   live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
   cyberpatriot-image-hardening-fixtures.md — Node image hardening fixture shape
+  cyber-remediation-arena.md        — Cyber service remediation task shape
   task-envelope.md
   result-packet.md
   rubric.md

@@ -1,0 +1,29 @@
+schema_version: 1
+service_id: cyber-001-notes-api
+description: >
+  Public contract for a synthetic notes API used by the autonomous remediation
+  arena. The exact hidden fault is private to the judge.
+interfaces:
+  - method: GET
+    path: /health
+    expected_status: 200
+    expected_body_contains:
+      - ok
+  - method: POST
+    path: /notes
+    expected_status: 201
+    required_fields:
+      - title
+      - body
+  - method: GET
+    path: /notes/:id
+    expected_status: 200
+    authorization: required
+continuity_requirements:
+  - Existing valid note creation must continue to work after the patch.
+  - Unauthorized reads must not disclose note contents.
+  - Malformed input must return a 4xx response rather than crashing the service.
+public_invariants:
+  - no_oracle_material_in_public_tests
+  - patch_must_preserve_api_shape
+  - patch_must_not_remove_auth_boundary

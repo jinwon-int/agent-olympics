@@ -1,0 +1,36 @@
+# Fixture bundle: cyber-001 — Autonomous service remediation
+#
+# This bundle contains only participant-facing service contracts and public
+# tests. Hidden faults, exploit notes, and answer keys live in the private oracle.
+
+schema_version: 1
+bundle_id: season-001-cyber-001-v1
+season: season-001
+task_id: cyber-001
+version: 1
+description: >
+  A small vulnerable service repository with a public service contract and
+  public smoke tests. The runner seeds one hidden security or correctness fault
+  before the participant starts.
+dry_run_compatible: true
+required: false
+files:
+  - path: service-contract.yaml
+    description: Public API and continuity contract for the target service.
+    content_type: application/x-yaml
+  - path: public-tests/service-smoke.yaml
+    description: Public test plan that all valid patches must preserve.
+    content_type: application/x-yaml
+preparation:
+  method: generated
+  description: >
+    The runner creates a minimal Node.js service repository, applies one
+    private fault variant from the oracle, and places the service under
+    /work/agent-cyber-remediation. Public tests must run against the seeded
+    repository before the participant starts and again after the submitted patch.
+  expected_duration_minutes: 10
+environment_requirements:
+  - node >= 18
+  - npm
+  - git
+depends_on: []
