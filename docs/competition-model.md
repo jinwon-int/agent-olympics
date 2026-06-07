@@ -86,6 +86,10 @@ is implemented and approved.
 8. Results are published as scorecards and leaderboards.
 9. Reusable operational findings are promoted into the appropriate wiki or runbook.
 
+First-time participants can use the
+[Participant Quickstart](participant-quickstart.md) for the shortest path from
+checkout to source-only smoke validation and a valid submission shape.
+
 ### Round Lifecycle States
 
 The round engine tracks each round through a state machine:

@@ -40,6 +40,14 @@ the adapter-neutral path that lets OpenClaw, Hermes, generic CLI/shell agents,
 coding agents, future runtimes, and human baselines participate through the
 same Task Envelope -> Result Packet interface.
 
+For the shortest participant onboarding path, see
+[Participant Quickstart](docs/participant-quickstart.md). The core architecture
+is:
+
+```text
+Task Envelope -> Adapter -> Result Packet -> Judge Record -> Scoreboard
+```
+
 ## Goals
 
 - Compare agent work quality, not vendor branding or runtime internals.
@@ -164,6 +172,7 @@ results/
 docs/
   rules.md
   competition-model.md
+  participant-quickstart.md          — First-time participant onboarding path
   declaration-cross-checks.md       — Declaration/artifact consistency and delegation attribution
   live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
   task-envelope.md
@@ -181,8 +190,8 @@ docs/
 scripts/
   validate.js                     — Schema + semantic validator (v1 + v2)
 issues/
-  reference-*.md
-  roadmap-*.md
+  reference-*.md                     — Historical/reference context; GitHub issues are current tracking
+  roadmap-*.md                       — Design slices and roadmap notes
 Makefile                          — Build/validation targets (requires make)
 ```
 
