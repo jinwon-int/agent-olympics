@@ -366,6 +366,18 @@ function parseArgs() {
 function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
   mode, eventFamily, model, modelProvider, status, startedAt, endedAt, seed, publishable) {
   const taskId = envelope.task_id || 'unknown-task';
+  const division = {
+    openstack: 'open_stack',
+    closedstack: 'closed_stack',
+    human_baseline: 'human_baseline',
+  }[mode] || 'open_stack';
+  const validity = {
+    completed: 'valid',
+    partial: 'partial_valid',
+    blocked: 'partial_valid',
+    failed: 'invalid',
+    disqualified: 'disqualified',
+  }[status] || 'invalid';
 
   // Capture OpenClaw-specific raw measurements
   const rawMeasurements = {
@@ -425,9 +437,11 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     },
     config: {
       profile_ref: mode === 'closedstack' ? 'closed-stack-default' : 'open-stack-default',
-      adapter_mode: mode,
-      event_family: eventFamily,
-      timeout_seconds: ADAPTER_METADATA.timeout_handling.default_timeout_seconds,
+      details: {
+        adapter_mode: mode,
+        event_family: eventFamily,
+        timeout_seconds: ADAPTER_METADATA.timeout_handling.default_timeout_seconds,
+      },
     },
     task: {
       task_id: taskId,
@@ -467,13 +481,26 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     operating_policy: {
       approval_boundaries: 'documented',
       secret_handling: 'redacted',
+      destructive_action_rules: 'destructive_actions_forbidden_without_explicit_approval',
       progress_reporting: 'required_for_long_tasks',
       delegation_policy: mode === 'human_baseline' ? 'human_only' : 'no_subagents_used',
       timeout_handling: `timeout_after_${ADAPTER_METADATA.timeout_handling.default_timeout_seconds}s_status_${ADAPTER_METADATA.timeout_handling.timeout_status}`,
     },
+    delegation_profile: {
+      subagents_used: false,
+      background_jobs_used: false,
+      human_assistance: mode === 'human_baseline',
+      a2a_workers: [],
+      supported_by: [],
+      notes: mode === 'human_baseline'
+        ? 'Manual operator baseline recorded through the OpenClaw adapter.'
+        : 'No subagent or A2A delegation used in this adapter run.',
+    },
     started_at: startedAt,
     ended_at: endedAt,
     status: status,
+    division: division,
+    validity: validity,
     publishable: publishable,
     comparable_metadata: comparableMetadata,
     raw_measurements: rawMeasurements,
@@ -492,19 +519,22 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
 function buildToolUseProfile(mode) {
   const profiles = {
     openstack: {
-      allowed: ['all'],
-      used: ['read', 'write', 'exec', 'message', 'web_search', 'web_fetch', 'image', 'log'],
-      intentionally_avoided: [],
+      allowed: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch', 'image', 'log'],
+      used: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch', 'image', 'log'],
+      disclosure_level: 'representative',
+      notes: 'Open stack mode allows broad tool classes under the adapter safety policy.',
     },
     closedstack: {
-      allowed: ['read', 'write', 'exec', 'message', 'web_search', 'web_fetch'],
-      used: ['read', 'write', 'exec', 'message', 'web_search'],
-      intentionally_avoided: ['image', 'sessions_spawn'],
+      allowed: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch'],
+      used: ['read', 'write', 'exec', 'message', 'api_call', 'web_search'],
+      disclosure_level: 'representative',
+      notes: 'Closed stack mode excludes image generation and background session spawning.',
     },
     human_baseline: {
       allowed: ['manual'],
       used: ['manual'],
-      intentionally_avoided: ['all_automated_tools'],
+      disclosure_level: 'minimal',
+      notes: 'Human baseline mode records manual steps rather than automated tool calls.',
     },
   };
   return profiles[mode] || profiles.openstack;
