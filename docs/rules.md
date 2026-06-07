@@ -86,6 +86,11 @@ entries during validation. If tools appear in the trace that are not listed in
 no corresponding trace entries exist, the judge may reduce evidence quality or
 apply an unsupported-claim penalty.
 
+For the source-controlled pre-scoring check, see
+[Declaration Cross-Checks and Delegation Attribution](declaration-cross-checks.md).
+It defines how result-packet declarations are compared with run manifests,
+adapter capability declarations, traces, and support-worker attribution.
+
 ## Allowed And Prohibited Assistance
 
 Allowed tools are defined by each task envelope. Common tool classes include shell, browser, GitHub, Wiki, memory, local files, web search, subagents, messaging, and network access.

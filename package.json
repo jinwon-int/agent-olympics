@@ -14,6 +14,7 @@
     "live-runner:readiness": "node scripts/live-runner-readiness.js",
     "test:live_runner_readiness": "node scripts/live-runner-readiness.js fixtures/live-runner-readiness/blocked-missing-approval.yaml --expect blocked && node scripts/live-runner-readiness.js fixtures/live-runner-readiness/dry-run-ready.yaml --expect ready",
     "test:round_hardening": "bash scripts/test-round-hardening.sh",
+    "test:declaration_cross_check": "node scripts/declaration-cross-check.js",
     "round": "node scripts/round.js",
     "test": "node scripts/validate.js all"
   },
