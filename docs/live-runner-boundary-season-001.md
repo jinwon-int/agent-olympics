@@ -29,6 +29,8 @@ OpenClaw/A2A is one possible adapter and transport path, not the competition's p
 | Task and result schemas | Ready for source validation | v1/v2 schemas exist and are validated by `scripts/validate.js`. |
 | Adapter contract | Ready as source contract | The contract defines participant input/output behavior, not a complete live runner. |
 | Stub execution | Ready for dry-run checks | `scripts/stub-adapter.js` exercises result/trace/evidence generation without live credentials. |
+| Source-only CI round gate | Ready for stub lifecycle checks | `make ci-round` proves validate, init, stub execution, scoring, and competition-validity without live credentials. |
+| Live runner readiness gate | Source-defined | `scripts/live-runner-readiness.js` blocks credential-bearing live dispatch unless approval, reference-only credentials, transport, timeout/cancel, fan-in, redaction, and judge handoff are ready. |
 | OpenClaw/Hermes adapters | Reference/source implementations | They describe and simulate runtime-specific evidence, but are not an approved live connector boundary by themselves. |
 | Live A2A dispatch | Not implemented here | No transport discovery, credential handoff, live cancellation, or fan-in protocol is owned by this repo today. |
 | Automated blind judging | Partially source-defined | Judge records and oracle separation exist, but full live orchestration still needs runner handoff rules. |
@@ -141,6 +143,18 @@ Live automation requires explicit gates:
 | Artifact validation | Judge handoff |
 | Redaction check | Publication or PR attachment |
 
+The source-only readiness gate can be run with:
+
+```bash
+npm run live-runner:readiness -- fixtures/live-runner-readiness/blocked-missing-approval.yaml --expect blocked
+npm run live-runner:readiness -- fixtures/live-runner-readiness/dry-run-ready.yaml --expect ready
+```
+
+The blocked fixture proves that a credential-bearing live run stops before
+dispatch when approval or transport readiness is missing. The dry-run fixture
+proves that stub/source-only execution can be marked ready without credential
+access.
+
 ## Related Trackers
 
 | Issue | Role after this boundary decision |
@@ -148,7 +162,7 @@ Live automation requires explicit gates:
 | #180 | First verified baseline. It can proceed as manual/source-only or trusted CLI/stub baseline evidence, but it should not be treated as proof that a live automated runner exists. |
 | #182 | Universal participant adapter eligibility. It should define participant readiness and adapter smoke criteria against the neutral contract. |
 | #191 | This boundary decision: what Agent Olympics owns, what a live runner must own, and what remains source-only. |
-| #192 | Implementation tracker for the live runner boundary components required before live-runner automation is claimed. |
+| #192 | Source-only implementation tracker for live runner boundary components. The first slice is `scripts/live-runner-readiness.js`; full live dispatch remains unapproved until a separate transport runner is implemented and approved. |
 
 Issue #192 should split into implementation sub-issues when work starts for:
 

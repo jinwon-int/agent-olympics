@@ -34,6 +34,9 @@ jobs:
       - name: Run source-only round CI gate
         run: make ci-round
 
+      - name: Run live runner readiness gate fixtures
+        run: make live-runner-readiness-check
+
       - name: Run full validation suite
         run: make validate
 

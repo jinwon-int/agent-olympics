@@ -21,7 +21,7 @@
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
-        ci-round
+        ci-round live-runner-readiness-check
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -157,7 +157,8 @@ round:
 validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtures \
         validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
-        validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw
+        validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
+        live-runner-readiness-check
 
 # --- Competition-Validity targets ---
 
@@ -189,6 +190,10 @@ validate-cv:
 # validate -> init -> execute/stub -> score -> competition-validity.
 ci-round:
 	node scripts/ci-round.js
+
+# Source-only live runner readiness gate fixtures.
+live-runner-readiness-check:
+	npm run test:live_runner_readiness
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke
