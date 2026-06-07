@@ -10,6 +10,7 @@
     "validate:fixtures": "node scripts/validate.js fixtures",
     "validate:rounds": "node scripts/validate.js rounds",
     "validate:all": "node scripts/validate.js all",
+    "ci:round": "node scripts/ci-round.js",
     "round": "node scripts/round.js",
     "test": "node scripts/validate.js all"
   },

@@ -268,6 +268,7 @@ The validator runs three layers of checks:
 
 ```bash
 make validate       # Validate all (includes profiles)
+make ci-round       # Source-only round lifecycle: validate -> init -> execute/stub -> score -> competition-validity
 make validate-envelopes
 make validate-packets
 make validate-smoke  # Validate smoke suite only

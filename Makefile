@@ -20,7 +20,8 @@
         score-blind score-blind-score score-blind-aggregate score-all \
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
-        validate-accreditations validate-accreditations-validity
+        validate-accreditations validate-accreditations-validity \
+        ci-round
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -183,6 +184,11 @@ validate-consistency:
 # Validate all competition-validity checks (via validate.js wrapper)
 validate-cv:
 	node scripts/validate.js competition-validity
+
+# Source-only end-to-end round gate:
+# validate -> init -> execute/stub -> score -> competition-validity.
+ci-round:
+	node scripts/ci-round.js
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke

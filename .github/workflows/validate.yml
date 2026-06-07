@@ -31,6 +31,9 @@ jobs:
       - name: Run primary validator
         run: npm test
 
+      - name: Run source-only round CI gate
+        run: make ci-round
+
       - name: Run full validation suite
         run: make validate
 
