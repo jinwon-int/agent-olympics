@@ -1,0 +1,28 @@
+schema_version: 1
+packet_kind: agent-olympics.live-runner-readiness.input
+runner_id: season-001-live-runner-a2a
+mode: live
+round_manifest: rounds/season-001-round-001.yaml
+dispatch:
+  transport: a2a
+  status: blocked
+  discovery_ref: docs/live-runner-boundary-season-001.md
+credentials:
+  required: true
+  handling: reference_only
+  refs:
+    - id: gateway-session
+      class: gateway
+      ref_kind: secret_provider_handle
+      ref: secret-provider://agent-olympics/gateway-session
+operator_approval:
+  required: true
+  approval_ref:
+timeout_cancel:
+  status: ready
+artifact_fan_in:
+  status: ready
+redaction:
+  status: ready
+judge_handoff:
+  status: ready

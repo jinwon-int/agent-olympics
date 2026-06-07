@@ -1,0 +1,24 @@
+schema_version: 1
+packet_kind: agent-olympics.live-runner-readiness.input
+runner_id: season-001-source-only-stub-runner
+mode: dry_run
+round_manifest: rounds/season-001-round-001.yaml
+dispatch:
+  transport: stub
+  status: ready
+  discovery_ref: scripts/ci-round.js
+credentials:
+  required: false
+  handling: none
+  refs: []
+operator_approval:
+  required: false
+  approval_ref:
+timeout_cancel:
+  status: ready
+artifact_fan_in:
+  status: ready
+redaction:
+  status: ready
+judge_handoff:
+  status: ready
