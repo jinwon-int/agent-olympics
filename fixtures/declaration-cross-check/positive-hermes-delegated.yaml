@@ -1,0 +1,142 @@
+case_id: positive-hermes-delegated
+description: Hermes declares delegated worker support and the artifacts agree.
+expect: pass
+adapter_capability_ref: ../adapters/capabilities/hermes.yaml
+attribution:
+  owner_agent_id: sogyo
+  support_agents:
+    - worker-alpha
+    - worker-beta
+documents:
+  run_manifest:
+    schema_version: 1
+    run_id: run-ops-001-sogyo-delegated
+    round_id: season-001-round-001
+    task_id: ops-001
+    agent_id: sogyo
+    adapter: hermes
+    runtime: hermes
+    runtime_version: 1.0.0
+    model: gpt-5.x
+    model_provider: openai
+    node: orchestrator-node
+    lifecycle: completed
+  result_packet:
+    schema_version: 2
+    packet_id: pkt-cross-check-hermes-delegated
+    run_id: run-ops-001-sogyo-delegated
+    task_id: ops-001
+    agent_id: sogyo
+    adapter: hermes
+    runtime: hermes
+    runtime_version: 1.0.0
+    model: gpt-5.x
+    model_provider: openai
+    node: orchestrator-node
+    division: open_stack
+    validity: valid
+    publishable: false
+    tool_use_profile:
+      allowed:
+        - read
+        - plan
+        - delegate
+        - collect
+        - synthesize
+        - write
+      used:
+        - read
+        - plan
+        - delegate
+        - collect
+        - synthesize
+        - write
+    operating_policy:
+      approval_boundaries: documented
+      secret_handling: redacted
+      destructive_action_rules: approval-required
+      delegation_policy: worker_dispatched
+    delegation_profile:
+      subagents_used: true
+      background_jobs_used: true
+      human_assistance: false
+      a2a_workers: []
+      supported_by:
+        - worker-alpha
+        - worker-beta
+      notes: Sogyo owns the submission; workers provided attributed support.
+    started_at: "2026-06-07T12:00:00+09:00"
+    ended_at: "2026-06-07T12:10:00+09:00"
+    status: completed
+    summary: Delegated Hermes fixture for declaration cross-check validation.
+    comparable_metadata:
+      participant:
+        agent_id: sogyo
+        adapter: hermes
+      runtime:
+        name: hermes
+        version: 1.0.0
+      model:
+        name: gpt-5.x
+        provider: openai
+      node:
+        profile_ref: orchestrator-node
+      config:
+        profile_ref: orchestrator-default
+      task:
+        task_id: ops-001
+        task_version: v2
+    actions:
+      - id: act-001
+        type: read
+        target: task_envelope
+        command_summary: Read the task envelope.
+      - id: act-002
+        type: plan
+        target: workflow
+        command_summary: Split the task into worker-safe subtasks.
+      - id: act-003
+        type: delegate
+        target: worker_pool
+        command_summary: Dispatch worker-alpha and worker-beta.
+      - id: act-004
+        type: collect
+        target: worker_results
+        command_summary: Collect attributed worker evidence.
+      - id: act-005
+        type: synthesize
+        target: commander_report
+        command_summary: Synthesize the final owner-of-record report.
+      - id: act-006
+        type: write
+        target: result_packet
+        command_summary: Write the result packet.
+    evidence:
+      - id: ev-001
+        kind: log
+        source: hermes fixture
+        summary: Worker delegation log with secret-free worker IDs.
+        redacted: false
+    findings:
+      - claim: Delegation was disclosed and attributed.
+        evidence:
+          - ev-001
+        confidence: high
+    outputs:
+      commander_report: Delegation attribution cross-check passed.
+  trace_record:
+    schema_version: 1
+    trace_id: tr-cross-check-hermes-delegated
+    run_id: run-ops-001-sogyo-delegated
+    agent_id: sogyo
+    runtime: hermes
+    generated_at: "2026-06-07T12:10:00+09:00"
+    entries:
+      - seq: 1
+        action: delegate
+        target: worker_pool
+        summary: Dispatch worker-alpha and worker-beta.
+      - seq: 2
+        action: collect
+        target: worker_results
+        summary: Collect attributed worker evidence.

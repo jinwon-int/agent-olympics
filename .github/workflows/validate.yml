@@ -40,6 +40,9 @@ jobs:
       - name: Run round engine hardening checks
         run: make round-hardening-check
 
+      - name: Run declaration cross-check fixtures
+        run: make declaration-cross-check
+
       - name: Run full validation suite
         run: make validate
 

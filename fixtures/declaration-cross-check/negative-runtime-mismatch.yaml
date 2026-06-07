@@ -1,0 +1,55 @@
+case_id: negative-runtime-mismatch
+description: Adapter/runtime declaration conflicts with the result packet metadata.
+expect: fail
+adapter_capability_ref: ../adapters/capabilities/hermes.yaml
+documents:
+  run_manifest:
+    schema_version: 1
+    run_id: run-ops-001-sogyo-runtime-mismatch
+    round_id: season-001-round-001
+    task_id: ops-001
+    agent_id: sogyo
+    adapter: hermes
+    runtime: hermes
+    model: gpt-5.x
+    model_provider: openai
+  result_packet:
+    schema_version: 2
+    packet_id: pkt-cross-check-runtime-mismatch
+    run_id: run-ops-001-sogyo-runtime-mismatch
+    task_id: ops-001
+    agent_id: sogyo
+    adapter: cli
+    runtime: cli
+    model: gpt-5.x
+    model_provider: openai
+    division: open_stack
+    validity: valid
+    publishable: false
+    tool_use_profile:
+      allowed:
+        - read
+      used:
+        - read
+    operating_policy:
+      approval_boundaries: documented
+      secret_handling: redacted
+      destructive_action_rules: approval-required
+      delegation_policy: none
+    delegation_profile:
+      subagents_used: false
+      background_jobs_used: false
+      human_assistance: false
+      a2a_workers: []
+      supported_by: []
+    comparable_metadata:
+      participant:
+        agent_id: sogyo
+        adapter: cli
+      runtime:
+        name: cli
+      model:
+        name: gpt-5.x
+        provider: openai
+      task:
+        task_id: ops-001

@@ -21,7 +21,7 @@
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
-        ci-round live-runner-readiness-check round-hardening-check
+        ci-round live-runner-readiness-check round-hardening-check declaration-cross-check
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -158,7 +158,7 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
-        live-runner-readiness-check round-hardening-check
+        live-runner-readiness-check round-hardening-check declaration-cross-check
 
 # --- Competition-Validity targets ---
 
@@ -198,6 +198,10 @@ live-runner-readiness-check:
 # Focused checks for round engine template and fixture hardening.
 round-hardening-check:
 	npm run test:round_hardening
+
+# Cross-check participant declarations against submitted artifacts.
+declaration-cross-check:
+	npm run test:declaration_cross_check
 
 # Quick-run: validate smoke tasks
 smoke: validate-smoke

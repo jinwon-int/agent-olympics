@@ -123,6 +123,12 @@ Raw measured values (`raw_measurements`) are kept separate from normalized
 scored values (`scored_values`). This separation allows the scoreboard to
 display both instrumented data and post-processed comparison metrics.
 
+Participant declarations are cross-checked against run artifacts before final
+scoring. See
+[Declaration Cross-Checks and Delegation Attribution](declaration-cross-checks.md)
+for the source-only checker, delegation disclosure requirements, and the owner
+of record rule for delegated work.
+
 ## Blind Judging
 
 For serious comparisons, judges should score anonymized Result Packets first:

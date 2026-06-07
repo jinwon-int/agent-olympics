@@ -164,6 +164,7 @@ results/
 docs/
   rules.md
   competition-model.md
+  declaration-cross-checks.md       — Declaration/artifact consistency and delegation attribution
   live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
   task-envelope.md
   result-packet.md
@@ -271,6 +272,7 @@ make validate       # Validate all (includes profiles)
 make ci-round       # Source-only round lifecycle: validate -> init -> execute/stub -> score -> competition-validity
 make live-runner-readiness-check  # Source-only readiness gate fixtures for live runner boundary
 make round-hardening-check  # Focused run_id_template, strict fixture, and --run-id checks
+make declaration-cross-check  # Cross-check declarations, artifacts, and delegation attribution
 make validate-envelopes
 make validate-packets
 make validate-smoke  # Validate smoke suite only
