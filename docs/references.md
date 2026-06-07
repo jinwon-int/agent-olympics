@@ -81,3 +81,9 @@ This page tracks related benchmarks and design influences. Each item should also
 - USA Cybersecurity Olympiad contest rules: https://www.usacyo.org/contest-rules
 - Relevance: virtual-system hardening, open qualifier pipelines, combine/training selection, allowed/prohibited tool rules, proctoring evidence, and dynamic scoring.
 - Agent Olympics takeaway: Season qualification records should carry explicit tool rules, proctoring evidence, and scoring-mode metadata so round manifests and judges can audit eligibility and scoring assumptions. Node Readiness can also use image-style hardening fixtures with scored checks, distractors, official-practice material, and held-out scoring variants. See [CyberPatriot-Style Image Hardening Fixtures](cyberpatriot-image-hardening-fixtures.md).
+
+## Global CyberLympics
+
+- URL: https://cyberlympics.org/
+- Relevance: online elimination rounds, proof-style challenge evidence, solution verification, score timing, and tie-break pressure.
+- Agent Olympics takeaway: Result Packet v2 supports optional challenge-scoped `proof_tokens`; judges should verify the submitted proof plus solution artifact before awarding points, then apply score-time/resource/penalty tie-breakers. See [Proof Token Verification](proof-token-verification.md).

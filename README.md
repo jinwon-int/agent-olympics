@@ -35,6 +35,10 @@ Use `npm test` for the primary schema/semantic validator. Use `make validate`
 for the full repository validation suite, including fixtures, profiles,
 qualifications, scoring support, and adapter smoke checks.
 
+Use `npm run test:proof_token_verify` for CyberLympics-style proof-token
+verification fixtures that award points only when a packet submits the expected
+challenge proof and reproducible solution artifact.
+
 See [Universal Participant Eligibility](docs/participant-eligibility.md) for
 the adapter-neutral path that lets OpenClaw, Hermes, generic CLI/shell agents,
 coding agents, future runtimes, and human baselines participate through the

@@ -21,7 +21,7 @@
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
-        ci-round live-runner-readiness-check round-hardening-check declaration-cross-check
+        ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -158,7 +158,10 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures \
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
-        live-runner-readiness-check round-hardening-check declaration-cross-check
+        live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify
+
+proof-token-verify:
+	npm run test:proof_token_verify
 
 # --- Competition-Validity targets ---
 

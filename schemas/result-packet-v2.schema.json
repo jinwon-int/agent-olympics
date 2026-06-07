@@ -235,6 +235,52 @@
       "additionalProperties": true
     },
 
+    "proof_tokens": {
+      "type": "array",
+      "description": "Optional proof-token submissions for tasks that require a verifiable hidden state plus an executable or reproducible solution artifact. Proof tokens are challenge-scoped evidence, not credentials or secrets.",
+      "items": {
+        "type": "object",
+        "required": ["token_id", "challenge_id", "submitted_token", "solution_artifact_ref"],
+        "properties": {
+          "token_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Public token identifier from the task or verifier challenge set."
+          },
+          "challenge_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verifier challenge identifier."
+          },
+          "submitted_token": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Challenge-scoped proof token value. Must never be reused as an auth token, API key, password, or credential."
+          },
+          "solution_artifact_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Path to the submitted patch, script, config, query, command sequence, or report artifact."
+          },
+          "solution_artifact_sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$",
+            "description": "Optional SHA-256 hash of the submitted solution artifact."
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this proof was submitted or reached the scorer."
+          },
+          "verification_notes": {
+            "type": "string",
+            "description": "Safe, value-free notes for the judge verifier."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
     "oracle_ref": {
       "type": "string",
       "description": "Optional reference to the oracle file that was used for this task. Enables automated cross-referencing between result packets and answer keys. Operator-supplied reference; never contains credentials."
