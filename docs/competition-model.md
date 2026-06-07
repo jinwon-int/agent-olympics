@@ -70,6 +70,12 @@ Each official result should disclose, at a safe level:
 
 ## Round Lifecycle
 
+Season 001 does not yet have an approved live runner boundary. The lifecycle
+below describes the target competition flow; current source-controlled
+execution remains manual/source-only plus stub/dry-run until the live runner
+contract in [Season 001 Live Runner and A2A Boundary](live-runner-boundary-season-001.md)
+is implemented and approved.
+
 1. Curator creates a Task Envelope.
 2. A **round manifest** defines which tasks and participants are selected for a competition round.
 3. Runner invokes each participant with the task envelope.

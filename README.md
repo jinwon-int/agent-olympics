@@ -139,6 +139,7 @@ results/
 docs/
   rules.md
   competition-model.md
+  live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
   task-envelope.md
   result-packet.md
   rubric.md
@@ -292,7 +293,13 @@ node scripts/validate.js profiles
 
 ## Status
 
-This repository starts as a planning and benchmark-design repo. It should become executable only after the schema, task fixtures, and adapter contracts are stable.
+This repository starts as a planning and benchmark-design repo. It should become executable only after the schema, task fixtures, adapter contracts, and live runner boundary are stable.
+
+For Season 001, the live execution boundary is explicit: Agent Olympics owns the
+neutral task/result/judge contract and source/stub validation surface, while any
+live runner or A2A transport integration must be implemented and approved as a
+separate execution boundary. See
+[Season 001 Live Runner and A2A Boundary](docs/live-runner-boundary-season-001.md).
 
 The v1 schemas are frozen:
 - `schemas/task-envelope.schema.json` — Task Envelope v1

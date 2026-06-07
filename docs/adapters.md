@@ -2,6 +2,12 @@
 
 Adapters translate Agent Olympics Task Envelopes into runtime-specific invocations and translate runtime outputs into Result Packets.
 
+For Season 001, adapters are not the live runner boundary by themselves. The
+competition repository owns the neutral adapter contract and source/stub
+validation surface; live dispatch, credential injection, timeout/cancel control,
+artifact fan-in, and A2A transport integration require the separate boundary
+defined in [Season 001 Live Runner and A2A Boundary](live-runner-boundary-season-001.md).
+
 Every adapter must satisfy the [**Adapter Execution Contract**](adapter-execution-contract.md), which defines:
 
 - Required inputs, outputs, and artifacts.
