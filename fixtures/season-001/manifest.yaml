@@ -16,7 +16,7 @@ manifest_id: season-001-fixtures-v1
 season: season-001
 title: "Agent Olympics 2026 — Season 001 Fixture Bundles"
 description: >
-  Participant-facing fixture bundles for the nine Season 001 events.
+  Participant-facing fixture bundles for the Season 001 events.
   Each bundle describes external data the runner must prepare before
   the participant starts.  No bundle contains judge notes, answer keys,
   or oracle material — only what the participant legitimately needs
@@ -33,6 +33,16 @@ bundles:
       it at the path referenced by the task envelope.
     dry_run_compatible: true
     required_for_season: true
+
+  - bundle_id: season-001-cyber-001-v1
+    task_id: cyber-001
+    path: fixtures/season-001/cyber-001/
+    description: >
+      Autonomous service remediation fixture with a public service contract,
+      public smoke tests, and a runner-seeded hidden fault defined by the
+      private oracle.
+    dry_run_compatible: true
+    required_for_season: false
 
   - bundle_id: season-001-coord-001-v1
     task_id: coord-001

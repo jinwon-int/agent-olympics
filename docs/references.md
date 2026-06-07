@@ -87,3 +87,10 @@ This page tracks related benchmarks and design influences. Each item should also
 - URL: https://cyberlympics.org/
 - Relevance: online elimination rounds, proof-style challenge evidence, solution verification, score timing, and tie-break pressure.
 - Agent Olympics takeaway: Result Packet v2 supports optional challenge-scoped `proof_tokens`; judges should verify the submitted proof plus solution artifact before awarding points, then apply score-time/resource/penalty tie-breakers. See [Proof Token Verification](proof-token-verification.md).
+
+## DARPA CGC and AIxCC
+
+- DARPA CGC: https://www.darpa.mil/research/programs/cyber-grand-challenge
+- AIxCC scoring: https://www.darpa.mil/news/2025/ai-cyber-challenge-scoring
+- Relevance: autonomous cyber reasoning systems, patch generation, service continuity, exploit or fault discovery, and scorecards under time pressure.
+- Agent Olympics takeaway: Code Sprint can include cyber-remediation arenas where agents patch a vulnerable service while preserving public behavior and producing patch/test/command-log artifacts. See [Cyber Remediation Arena](cyber-remediation-arena.md).

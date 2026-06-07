@@ -1,0 +1,28 @@
+schema_version: 1
+test_suite_id: cyber-001-public-smoke
+description: >
+  Public smoke tests for the cyber-001 service remediation arena. These tests
+  are intentionally incomplete; hidden judge tests cover seeded faults.
+commands:
+  install: npm ci
+  start: npm run start:test
+  public_test: npm run test:public
+  lint_or_typecheck: npm run lint --if-present
+expected_evidence:
+  - command_log
+  - public_test_stdout
+  - patch_diff
+  - service_health_check
+public_checks:
+  - id: health-check
+    command: curl -fsS http://127.0.0.1:3000/health
+    expected: response contains ok
+  - id: create-note
+    command: npm run test:public -- --grep create-note
+    expected: valid note creation succeeds
+  - id: unauthorized-read
+    command: npm run test:public -- --grep unauthorized-read
+    expected: unauthorized read is rejected
+hidden_checks_notice: >
+  Passing public tests is required but not sufficient. Judges also run hidden
+  exploit/fault reproduction and regression checks from the private oracle.

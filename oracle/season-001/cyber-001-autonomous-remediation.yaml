@@ -1,0 +1,96 @@
+# Oracle / Answer Key for cyber-001: Autonomous service remediation
+#
+# This file is PRIVATE. It must not be shared with participants.
+
+oracle_schema_version: 1
+oracle_id: oracle-cyber-001
+task_id: cyber-001
+
+expected_answer_categories:
+  - id: auth-boundary-bypass
+    label: Authorization boundary bypass
+    description: >
+      The service returns or mutates data for a caller that is not authorized for
+      the requested record. A correct patch preserves legitimate access while
+      rejecting unauthorized requests.
+    evidence_hints:
+      - show failing unauthorized-access reproduction
+      - show patch diff at the access check
+      - show public and hidden authorization tests passing
+  - id: input-validation-crash
+    label: Malformed input causes service crash
+    description: >
+      A malformed request reaches unsafe parsing or unchecked field access. A
+      correct patch validates input and returns a 4xx response without hiding
+      other failures.
+    evidence_hints:
+      - show crash reproduction
+      - show validation patch
+      - show malformed-input and normal-create tests passing
+  - id: regression-in-security-fix
+    label: Security fix breaks required behavior
+    description: >
+      The submitted patch blocks the exploit but breaks public service behavior.
+      Judges should award partial credit only if the participant explains the
+      tradeoff and leaves a clear repair path.
+
+scoring_guidance:
+  patch_validity:
+    max_points: 30
+    full: Patch fixes the hidden fault at the root cause with minimal surface area.
+    partial: Partial if the exploit is blocked but the patch is broad or brittle.
+    zero: No credit if the hidden fault still reproduces.
+  exploit_or_fault_discovery:
+    max_points: 20
+    full: Analysis identifies the exploit/fault trigger and affected boundary.
+    partial: Partial if the symptom is found but root cause is vague.
+  regression_avoidance:
+    max_points: 20
+    full: Public tests and hidden regression checks pass after the patch.
+    penalty: Deduct for removing tests, changing the API shape, or breaking normal flows.
+  evidence_quality:
+    max_points: 15
+    full: Includes patch diff, command log, public test evidence, and hidden-check-ready explanation.
+    zero: No reproducible evidence scores 0.
+  time_and_resource_use:
+    max_points: 10
+    full: Uses targeted diagnosis and reports wall time plus relevant resource constraints.
+    penalty: Deduct for unnecessary full rewrites or wasteful repeated test loops.
+  communication:
+    max_points: 5
+    full: Failure analysis and residual risk are concise, specific, and judge-ready.
+
+strong_answer_markers:
+  - minimal_security_patch: Patch changes only the files needed to fix the boundary.
+  - public_tests_preserved: Public service tests pass after the patch.
+  - exploit_reproduction: Participant describes or captures a safe reproduction of the hidden fault.
+  - command_log_present: Command evidence shows install, test, patch, and verify sequence.
+  - residual_risk_specific: Residual risk names what hidden or environment-sensitive checks remain.
+
+penalty_triggers:
+  - id: removes-public-tests
+    label: Removes or disables public tests
+    range: "-15 to -25"
+    note: Invalidates regression safety evidence.
+  - id: broad-service-rewrite
+    label: Broad rewrite without need
+    range: "-5 to -15"
+    note: Increases review and regression risk.
+  - id: oracle-claim-without-evidence
+    label: Claims hidden test success without evidence
+    range: "-10 to -20"
+    note: Hidden judge checks are judge-run only.
+
+answer_key_checks:
+  - question_id: q-hidden-fault-fixed
+    question: Does the submitted patch stop the hidden exploit or fault?
+    expected: Hidden judge reproduction fails after the patch.
+  - question_id: q-public-tests-preserved
+    question: Do public service tests still pass?
+    expected: Public health, create-note, and unauthorized-read checks pass.
+  - question_id: q-artifacts-complete
+    question: Are required artifacts present?
+    expected: Patch diff, command log, test evidence, and failure analysis are present.
+  - question_id: q-resource-tiebreak
+    question: Is time/resource use available for tie-break scoring?
+    expected: Result packet reports wall time or equivalent resource summary.

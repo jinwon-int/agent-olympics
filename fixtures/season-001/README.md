@@ -16,6 +16,9 @@ fixtures/
     code-001/
       manifest.yaml            ← Bundle metadata
       ...                      ← Fixture data files
+    cyber-001/
+      manifest.yaml
+      public-tests/
     coord-001/
       manifest.yaml
       ...
