@@ -1,0 +1,5 @@
+openclaw gateway status: degraded
+systemd unit: active
+recent update: package refresh changed unit override and resource limits
+observed symptom: final replies intermittently time out after 5 seconds
+recommended evidence path: compare pre-update-config.yaml and post-update-config.yaml before proposing reinstall

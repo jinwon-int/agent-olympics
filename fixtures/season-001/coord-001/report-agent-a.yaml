@@ -1,0 +1,16 @@
+schema_version: 1
+report_id: coord-001-agent-a
+agent_id: agent-a
+summary: >
+  Agent A concludes the incident is caused by insufficient hardware capacity
+  on the participant node.
+claims:
+  - id: a-claim-1
+    text: CPU saturation caused delivery lag.
+    evidence:
+      - ev-cpu-window
+  - id: a-claim-2
+    text: No configuration drift is present.
+    evidence:
+      - ev-config-before
+confidence: medium

@@ -1,0 +1,17 @@
+schema_version: 1
+fixture_id: ops-002-post-update-config
+gateway:
+  service_manager: systemd
+  mode: native
+  restart_policy: always
+  env:
+    OPENCLAW_HOME: /opt/openclaw
+    PATH_POLICY: reset-by-package-update
+  limits:
+    memory_mb: 512
+    open_files: 1024
+delivery:
+  telegram_enabled: true
+  final_reply_timeout_seconds: 5
+redaction:
+  credential_values: omitted

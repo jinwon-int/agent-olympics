@@ -1,0 +1,17 @@
+schema_version: 1
+fixture_id: ops-002-pre-update-config
+gateway:
+  service_manager: systemd
+  mode: native
+  restart_policy: on-failure
+  env:
+    OPENCLAW_HOME: /opt/openclaw
+    PATH_POLICY: managed
+  limits:
+    memory_mb: 1024
+    open_files: 4096
+delivery:
+  telegram_enabled: true
+  final_reply_timeout_seconds: 30
+redaction:
+  credential_values: omitted

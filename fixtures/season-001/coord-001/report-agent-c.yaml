@@ -1,0 +1,12 @@
+schema_version: 1
+report_id: coord-001-agent-c
+agent_id: agent-c
+summary: >
+  Agent C raises a minority hypothesis that the Telegram provider rejected
+  outbound messages, but provides only indirect evidence.
+claims:
+  - id: c-claim-1
+    text: Provider-side rejection may explain missing final replies.
+    evidence:
+      - ev-provider-status
+confidence: low
