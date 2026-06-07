@@ -288,6 +288,32 @@ The validator checks:
 4. **Fixture bundle existence** — Each `fixture_bundle_ref` resolves to an existing directory.
 5. **Participant uniqueness** — No duplicate `agent_id` values.
 
+### Source-Only CI Round Gate
+
+Use `make ci-round` to prove that the core round lifecycle works end to end
+without live runners, providers, OpenClaw nodes, or credentials.
+
+```bash
+make ci-round
+# or
+npm run ci:round
+```
+
+The gate creates a temporary smoke copy of the Season 001 round manifest under
+`.tmp/ci-round`, narrows it to one task and one participant, then runs:
+
+1. `node scripts/validate.js all`
+2. `node scripts/round.js validate <temporary-manifest> --strict`
+3. `node scripts/round.js init <temporary-manifest> --strict`
+4. `node scripts/round.js execute <temporary-manifest> --seed ci-round-source-only`
+5. `node scripts/score.js run <temporary-run-directory>`
+6. `node scripts/competition-validity.js all <temporary-run-directory>`
+
+Successful runs remove the temporary directory. Failed runs keep `.tmp/ci-round`
+so finalizers can inspect the manifest, run directory, adapter log, result
+packet, trace, evidence bundle, auto judge record, and scoreboard produced by
+the broken stage.
+
 ## Reference
 
 - [Competition Model](../docs/competition-model.md) — Overall competition lifecycle.

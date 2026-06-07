@@ -1,5 +1,6 @@
 node_modules/
 *.tgz
+.tmp/
 
 # Round engine — auto-generated run directories
 runs/
@@ -21,4 +22,3 @@ web-output/
 # OS files
 *.DS_Store
 Thumbs.db
-
