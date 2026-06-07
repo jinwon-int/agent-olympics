@@ -1,0 +1,6 @@
+2026-05-29T10:14:02+09:00 session=ao-ops-001-heldout channel=telegram inbound message_id=inbound-991 status=received
+2026-05-29T10:14:04+09:00 session=ao-ops-001-heldout agent=competitor status=started
+2026-05-29T10:17:42+09:00 session=ao-ops-001-heldout transcript final_reply_rendered=true final_reply_position=52
+2026-05-29T10:17:43+09:00 session=ao-ops-001-heldout delivery_context reply_to_message_id=deleted-parent-077 target_ref=synthetic-chat-991
+2026-05-29T10:17:44+09:00 session=ao-ops-001-heldout final_reply source_visible=true delivery_request_id=outbound-991 status=queued
+2026-05-29T10:17:46+09:00 session=ao-ops-001-heldout status=completed final_reply_visible_in_transcript=true

@@ -1,0 +1,47 @@
+# Fixture bundle: ops-001 held-out variant 001
+#
+# This is a generated/held-out variant for the Telegram final reply diagnosis
+# task. It changes the evidence shape while preserving the same public task
+# objective. It contains no oracle or judge notes.
+
+schema_version: 1
+bundle_id: season-001-ops-001-v2
+season: season-001
+task_id: ops-001
+version: 2
+description: >
+  Held-out synthetic variant for ops-001. The transcript still contains a final
+  assistant answer, but the delivery path shows a stale reply target instead of
+  the null delivery request used by the public fixture.
+dry_run_compatible: true
+required: false
+files:
+  - path: gateway-journal.log
+    description: >
+      Synthetic gateway journal for the held-out stale reply target variant.
+    content_type: text/plain
+  - path: telegram-delivery.log
+    description: >
+      Synthetic Telegram delivery log showing an outbound reply attached to a
+      stale parent context.
+    content_type: text/plain
+  - path: config-snapshot.yaml
+    description: >
+      Redacted gateway configuration snapshot for this held-out variant.
+    content_type: text/yaml
+preparation:
+  method: generated
+  description: >
+    Generated from seed ops-001-heldout-001. The runner may regenerate this
+    variant or substitute another held-out seed with the same public objective.
+  expected_duration_minutes: 5
+environment_requirements: []
+depends_on:
+  - season-001-ops-001-v1
+changelog:
+  - version: 2
+    date: "2026-06-03"
+    change: >
+      Added held-out generated variant with seed ops-001-heldout-001 and
+      source bundle season-001-ops-001-v1.
+    author: codex

@@ -78,6 +78,16 @@ bundles:
     dry_run_compatible: true
     required_for_season: true
 
+  - bundle_id: season-001-ops-001-v2
+    task_id: ops-001
+    path: fixtures/season-001/ops-001/variants/heldout-001/
+    description: >
+      Held-out generated variant for ops-001.  The public objective stays the
+      same, but the evidence points to a stale reply-to context rather than a
+      null delivery request.
+    dry_run_compatible: true
+    required_for_season: false
+
   - bundle_id: season-001-ops-002-v1
     task_id: ops-002
     path: fixtures/season-001/ops-002/
