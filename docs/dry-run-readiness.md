@@ -26,6 +26,10 @@ A Season 001 dry run transitions through three logical phases:
 Each phase has concrete command gates that operators (workers, judges, brokers)
 run to produce evidence. No phase may advance until all its gates pass.
 
+For the venue-style test-event checklist that maps each event family to its
+field of play and failed-test-event remediation path, see
+[Test Event Venue Readiness](test-event-venue-readiness.md).
+
 ---
 
 ## 2. Qualification / Readiness Gates

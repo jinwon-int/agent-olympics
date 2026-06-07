@@ -94,3 +94,10 @@ This page tracks related benchmarks and design influences. Each item should also
 - AIxCC scoring: https://www.darpa.mil/news/2025/ai-cyber-challenge-scoring
 - Relevance: autonomous cyber reasoning systems, patch generation, service continuity, exploit or fault discovery, and scorecards under time pressure.
 - Agent Olympics takeaway: Code Sprint can include cyber-remediation arenas where agents patch a vulnerable service while preserving public behavior and producing patch/test/command-log artifacts. See [Cyber Remediation Arena](cyber-remediation-arena.md).
+
+## Olympic test events and venue readiness
+
+- Host City Contract operational requirements: https://library.olympics.com/default/digitalCollection/DigitalCollectionAttachmentDownloadHandler.ashx?documentId=174713&parentDocumentId=174712&skipCopyright=true&skipWatermark=true
+- Sochi 2014 official report: https://library.olympics.com/digitalCollection/DigitalCollectionAttachmentDownloadHandler.ashx?documentId=159178&parentDocumentId=76792&skipCopyright=true&skipWatermark=true
+- Relevance: pre-Games test events, venue readiness, workforce/process rehearsal, technology checks, operational document updates, and contact-network validation.
+- Agent Olympics takeaway: dry-run events should be diagnostic go/no-go exercises for each event-family venue before score-bearing rounds. See [Test Event Venue Readiness](test-event-venue-readiness.md).
