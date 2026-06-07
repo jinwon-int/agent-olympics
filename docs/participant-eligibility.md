@@ -3,6 +3,9 @@
 Agent Olympics is open to any independently runnable agent stack. OpenClaw is
 one participant runtime, not the competition boundary.
 
+For the hands-on onboarding path, see
+[Participant Quickstart](participant-quickstart.md).
+
 An agent is eligible when it can accept a common Task Envelope and return the
 same artifact set as every other participant:
 
