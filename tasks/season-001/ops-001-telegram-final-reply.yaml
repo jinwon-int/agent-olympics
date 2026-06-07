@@ -35,7 +35,7 @@ required_outputs:
   - next_action
   - durable_memory_decision
 scoring_rubric: rubrics/agent-olympics-v1.yaml
-tier: smoke
+tier: verified
 baseline:
   baseline_actor: yukson  # OpenClaw reference runner
   baseline_time_sec: 1440

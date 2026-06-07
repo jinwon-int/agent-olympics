@@ -49,6 +49,22 @@ required_outputs:
   - durable_memory_decision
 
 scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: verified
+baseline:
+  baseline_actor: yukson
+  baseline_time_sec: 1440
+  baseline_success: true
+  baseline_artifact_ref: results/ops-001-yukson.yaml
+  difficulty_notes: >
+    The task requires distinguishing transcript-level answer presence from
+    actual outbound delivery. The delivery-layer investigation across gateway
+    logs, Telegram delivery metadata, and session target metadata is the
+    critical step.
+  known_ambiguities: >
+    "Delivery failure" can mean Telegram API rejection, source-visible reply
+    release failure, or stale reply/thread context. The oracle accepts any
+    evidenced root-cause category that stays within the safe read-only
+    escalation path.
 
 labels:
   - telegram

@@ -143,6 +143,27 @@
       "type": "string",
       "description": "Whether and how the participant transcript should be preserved for judging."
     },
+    "tier": {
+      "type": "string",
+      "enum": ["draft", "smoke", "verified", "retired"],
+      "default": "draft",
+      "description": "Verification tier indicating readiness for competitive use. draft: exists but untested. smoke: runs through harness on at least one adapter. verified: human or trusted baseline agent completed it and the judge result matched the intended rubric. retired: withdrawn due to leakage, ambiguity, environment drift, or evaluator mismatch."
+    },
+    "baseline": {
+      "type": "object",
+      "description": "Human or trusted baseline record for this task. Populated when the task reaches smoke or verified tier.",
+      "properties": {
+        "baseline_actor": { "type": "string", "description": "Human name, adapter identifier, or reference runner who completed the baseline run." },
+        "baseline_time_sec": { "type": "integer", "minimum": 0, "description": "Baseline completion wall-clock time in seconds." },
+        "baseline_success": { "type": "boolean", "description": "Whether the baseline run was completed successfully." },
+        "baseline_block_reason": { "type": "string", "description": "Explanation of why the baseline was blocked, if not successful." },
+        "baseline_artifact_ref": { "type": "string", "description": "Path or URL to the baseline result packet, evidence bundle, or run identifier." },
+        "difficulty_notes": { "type": "string", "description": "Observations about what made the task easy or hard during baseline execution." },
+        "known_ambiguities": { "type": "string", "description": "Wording concerns, evaluator drift, or environment sensitivities discovered during baseline." },
+        "mismatch_issue_refs": { "type": "array", "items": { "type": "string" }, "description": "Links to GitHub or tracker issues recording mismatches discovered during baseline. Mismatches must be filed as issues rather than silently editing history." }
+      },
+      "additionalProperties": false
+    },
 
     "judge_notes_ref": {
       "type": "string",
