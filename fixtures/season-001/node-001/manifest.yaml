@@ -35,6 +35,18 @@ files:
       match the node profile.  Not shown to the participant.
     content_type: text/markdown
     optional: true
+  - path: variants/practice-image-001/
+    description: >
+      Official-practice image hardening variant with synthetic image state,
+      public scored checks, and non-scored distractors.
+    content_type: inode/directory
+    optional: true
+  - path: variants/hidden-image-001/
+    description: >
+      Held-out image hardening variant with the same public scoring surface as
+      the practice variant and different expected findings in the oracle.
+    content_type: inode/directory
+    optional: true
 preparation:
   method: env_dependent
   description: >

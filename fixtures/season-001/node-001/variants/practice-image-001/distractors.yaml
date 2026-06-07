@@ -1,0 +1,19 @@
+distractor_surface_id: node-001-practice-image-001-distractors
+task_id: node-001
+items:
+  - id: curl-update-available
+    observation: curl has an update available.
+    reason_non_scored: >
+      Package freshness alone is not a scored finding unless it ties to an
+      exposed mission risk or known vulnerability in the fixture.
+  - id: memory-pressure-moderate
+    observation: memory pressure is moderate.
+    reason_non_scored: >
+      The task is image hardening, not throughput tuning. Mention as a caveat
+      but do not treat it as a vulnerability.
+  - id: gateway-local-listen
+    observation: openclaw-gateway listens on 127.0.0.1.
+    reason_non_scored: >
+      Local-only listen is expected for this fixture and should not be closed
+      without additional evidence.
+

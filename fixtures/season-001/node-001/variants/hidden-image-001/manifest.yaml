@@ -1,0 +1,44 @@
+# Fixture bundle: node-001 held-out image hardening variant
+#
+# Participant-facing fixture data only. The answer key lives in
+# oracle/season-001/node-001-image-hardening.yaml.
+
+schema_version: 1
+bundle_id: season-001-node-001-v3
+season: season-001
+task_id: node-001
+version: 3
+description: >
+  Held-out scored container-image style Node Readiness fixture. The public
+  objective and scoring surface mirror the official-practice variant, but the
+  image state changes so agents must generalize instead of memorizing one
+  fixture.
+dry_run_compatible: true
+required: false
+files:
+  - path: image-state.yaml
+    description: >
+      Participant-facing synthetic held-out image inventory with users,
+      services, firewall, package, and file-permission state.
+    content_type: text/yaml
+  - path: score-checks.yaml
+    description: >
+      Public scoring surface for the held-out variant. Expected pass/fail
+      values are in the private oracle.
+    content_type: text/yaml
+  - path: distractors.yaml
+    description: >
+      Non-scored observations for the held-out variant.
+    content_type: text/yaml
+preparation:
+  method: bundled
+  description: >
+    Use the bundled synthetic YAML files directly for source-only held-out
+    scoring rehearsal. A future runner may materialize the same state inside a
+    disposable container image, but this fixture does not require Docker or
+    live mutation.
+  expected_duration_minutes: 3
+environment_requirements: []
+depends_on:
+  - season-001-node-001-v2
+

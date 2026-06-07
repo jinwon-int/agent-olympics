@@ -1,0 +1,17 @@
+distractor_surface_id: node-001-hidden-image-001-distractors
+task_id: node-001
+items:
+  - id: unattended-upgrades-present
+    observation: unattended-upgrades is installed.
+    reason_non_scored: >
+      Its presence is expected and is not a finding without evidence that it is
+      disabled or misconfigured.
+  - id: disk-free-healthy
+    observation: disk free space is 41 percent.
+    reason_non_scored: >
+      Disk pressure is not the active risk in this held-out image.
+  - id: deploy-key-mode-safe
+    observation: /home/deploy/.ssh/authorized_keys is mode 0600.
+    reason_non_scored: >
+      This is a safe state. Do not recommend changes that would broaden access.
+

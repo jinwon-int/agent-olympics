@@ -67,6 +67,25 @@ bundles:
     dry_run_compatible: true
     required_for_season: true
 
+  - bundle_id: season-001-node-001-v2
+    task_id: node-001
+    path: fixtures/season-001/node-001/variants/practice-image-001/
+    description: >
+      Official-practice container-image style hardening fixture. Includes
+      synthetic image state, public scored checks, and non-scored distractors.
+    dry_run_compatible: true
+    required_for_season: false
+
+  - bundle_id: season-001-node-001-v3
+    task_id: node-001
+    path: fixtures/season-001/node-001/variants/hidden-image-001/
+    description: >
+      Held-out scored container-image style hardening fixture with the same
+      public scoring surface as the practice variant and different expected
+      findings in the private oracle.
+    dry_run_compatible: true
+    required_for_season: false
+
   - bundle_id: season-001-ops-001-v1
     task_id: ops-001
     path: fixtures/season-001/ops-001/

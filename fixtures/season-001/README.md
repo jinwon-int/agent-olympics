@@ -24,7 +24,9 @@ fixtures/
       ...
     node-001/
       manifest.yaml
-      ...
+      variants/
+        practice-image-001/     ← official-practice image hardening fixture
+        hidden-image-001/       ← held-out image hardening fixture
     ops-001/
       manifest.yaml
       ...

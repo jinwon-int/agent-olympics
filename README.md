@@ -175,6 +175,7 @@ docs/
   participant-quickstart.md          — First-time participant onboarding path
   declaration-cross-checks.md       — Declaration/artifact consistency and delegation attribution
   live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
+  cyberpatriot-image-hardening-fixtures.md — Node image hardening fixture shape
   task-envelope.md
   result-packet.md
   rubric.md
