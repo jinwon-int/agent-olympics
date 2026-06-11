@@ -1,5 +1,5 @@
 schema_version: 1
-judge_record_id: jr-ops-001-seoseo-1781179690535
+judge_record_id: jr-ops-001-seoseo-1781190015024
 task_id: ops-001
 packet_id: ops-001-seoseo-live
 judge_type: hybrid
@@ -10,10 +10,9 @@ score_dimensions:
     score: 27
     max: 30
     reason: >-
-      Delivery-layer release/enqueue failure identified with the specific mechanism
-      (delivery_request_id=null, missing_delivery_record, api_message_id=null, no retry) — full-band
-      per oracle guidance; minor deduction for not explicitly ruling out the thread-context
-      alternative.
+      Release/dispatch failure identified with the full evidence mechanism and alternatives
+      eliminated (transcript-only mode, global outage, agent-completion failure); thread-context
+      alternative not addressed and mechanism localization less specific than peers.
   evidence_quality:
     score: 18
     max: 20
@@ -30,23 +29,23 @@ score_dimensions:
     score: 9
     max: 10
     reason: >-
-      Diagnosis, user-visible message-loss risk, and an operator-executable next action
-      (release-path fix, approved safe re-enqueue or manual resend) are clear without redoing the
-      investigation; no separate user-facing summary.
+      Invariant-based fix framing (every source-visible reply must yield a non-null
+      delivery_request_id then api_message_id or an explicit error record) gives the operator a
+      verifiable contract.
   durability:
-    score: 8
+    score: 9
     max: 10
     reason: >-
-      Proposes a durable systemic fix (completion requires delivery_request_id or confirmed
-      api_message_id), meeting the oracle's monitoring criterion; deduction for no
-      documentation/runbook record of the recovery steps.
-total_score: 88
+      Distinguishes fixture details (not persisted) from the general lesson recommended for
+      runbook/monitoring — meets the oracle criterion with appropriate scope judgment.
+total_score: 89
 penalties_applied: []
 verdict: pass
 judge_notes: >-
   Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
-  operator (seo-jin-on). Live-run-backed judge record for ops-001 (participant seoseo).
+  operator (seo-jin-on). Remote-execution-verified live judge record for ops-001 (participant
+  seoseo); supersedes the earlier record whose mission ran on the operator host.
 
   Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
   communication, durability human-scored.
-created_at: '2026-06-11T12:08:10.535Z'
+created_at: '2026-06-11T15:00:15.024Z'
