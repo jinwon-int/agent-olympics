@@ -82,13 +82,13 @@ tasks:
     order: 7
 participants:
   - agent_id: sogyo
-    runtime: openclaw
-    label: sogyo (OpenClaw A2A)
+    runtime: hermes
+    label: sogyo (Hermes A2A)
     enabled: true
   - agent_id: seoseo
-    runtime: openclaw
+    runtime: hermes
     runtime_version: broker
-    label: seoseo (OpenClaw / Team1 Broker)
+    label: seoseo (Hermes / Team1 Broker)
     enabled: true
   - agent_id: nosuk
     runtime: openclaw

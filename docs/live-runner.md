@@ -22,7 +22,8 @@ node scripts/live-runner.js run rounds/season-001-round-001.yaml \
 
 # Dispatch only (gates → dispatch → capture)
 node scripts/live-runner.js dispatch <round-manifest> --config <runner-config> \
-  [--run-directory <dir>] [--run-id <substr>] [--dry-run-only]
+  [--run-directory <dir>] [--run-id <substr>] [--dry-run-only] \
+  [--allow-runtime-mismatch]
 
 # Fan-in + judge handoff over an existing live-runner runs directory
 node scripts/live-runner.js fanin runs/live-runner/season-001-round-001/
@@ -50,9 +51,13 @@ run_directory: runs/live-runner-fixtures/round-901/   # never collide with round
 tasks: [ops-001, ops-002]                              # optional task filter
 participants:
   - participant_id: sogyo          # must match an agent_id in the round manifest
-    adapter: hermes                # adapter/runtime label for the dispatch record
+    adapter: hermes                # adapter label — MUST match the manifest
+                                   # participant's runtime (runtime_identity gate)
     transport: local_exec          # the only implemented transport
     execution_profile: dry_run     # dry_run | live
+    identify_command:              # optional runtime attestation probe (argv,
+      - hermes                     # same placeholder/no-shell rules as command)
+      - --version
     command:                       # argv array — spawned directly, NEVER a shell
       - node
       - adapters/hermes-adapter.js
@@ -68,7 +73,8 @@ participants:
 Command placeholders (substituted per argv element, no shell interpolation):
 `{envelope}` `{run_dir}` `{agent_id}` `{run_id}` `{task_id}` `{round_id}`
 `{time_limit_minutes}` `{seed}`. Shell metacharacters in command arguments are
-rejected by config validation.
+rejected by config validation. The same rules apply to the optional
+`identify_command` (runtime attestation probe, see below).
 
 A `live` participant additionally requires (all enforced as gates):
 
@@ -101,10 +107,81 @@ enforced limit came from.
 | 2. Credential injection | `live` profile only, by reference. The dispatch record stores credential class, handling, the value-free reference handle, approver + approval ref, whether the participant may read the credential, and the value-free redaction rule list. `dry_run` records `credential_class: none`. The runner never resolves, reads, or stores credential values; only the reference string is exported to the child env (`AGENT_OLYMPICS_CREDENTIAL_REF`). |
 | 3. Timeout/cancel/status | The envelope/task time limit (or override) is enforced with SIGTERM + SIGKILL grace. SIGINT cancels: the active child is terminated, in-flight runs are finalized, remaining runs are not dispatched. Mapping: exit 0 → `completed`; timeout/cancel with a usable packet → `partial`; timeout/cancel without → `failed`; unspawnable transport (ENOENT) or missing credentials → `blocked`; secret exposure / oracle leak / exit-0-without-packet → `disqualified`. |
 | 4. Artifact capture | `capture-report.yaml` per run verifies presence or explained absence of: result packet, trace record, evidence bundle, artifact manifest, envelope copy, run manifest/metadata, adapter stdout/stderr summary (`runner-transport.log`, captured by the runner and redacted before writing), and safe logs. If an adapter emits its own artifact manifest at `manifest.yaml`, the runner's lifecycle manifest moves to `run-manifest.yaml` and the capture report notes it. |
-| 5. Result fan-in | Each packet/trace/bundle is validated via `scripts/validate.js`; identity must match the dispatch record (`task_id`/`agent_id`, plus trace/bundle internal `run_id` consistency); participant-facing files are scanned for oracle references (`oracle/` paths, `oracle_ref`, `hidden_judge_notes`) and secret values/fields (`scripts/lib/secret-patterns.js`); finding/trace evidence id references must resolve. Rejects are moved to `quarantine/<run-id>/` with a `quarantine-reason.yaml`; clean runs proceed to handoff. Missing `content_ref` files are recorded as warnings (same severity competition-validity.js assigns the simulation adapters). |
+| 5. Result fan-in | Each packet/trace/bundle is validated via `scripts/validate.js`; identity must match the dispatch record (`task_id`/`agent_id`, plus the packet's `runtime`/`adapter` labels vs the dispatched adapter, plus trace/bundle internal `run_id` consistency); participant-facing files are scanned for oracle references (`oracle/` paths, `oracle_ref`, `hidden_judge_notes`) and secret values/fields (`scripts/lib/secret-patterns.js`); finding/trace evidence id references must resolve; runtime attestation and artifact-fingerprint discrepancies are surfaced as warnings (see "Runtime identity verification"). Rejects are moved to `quarantine/<run-id>/` with a `quarantine-reason.yaml`; clean runs proceed to handoff. Missing `content_ref` files are recorded as warnings (same severity competition-validity.js assigns the simulation adapters). |
 | 6. Safety redaction | Transport stdout/stderr is redacted with `SECRET_VALUE_PATTERNS` + secret-named `key: value` lines **before** anything is written to disk. `redaction-report.yaml` records rule id + reason + match count — never the original value. A secret in transport output also disqualifies the run (secret exposure). |
 | 7. Judge handoff | `judge-handoff/` per clean run: validated result packet, trace, evidence bundle (+ `evidence/` content files), `envelope-public.yaml` (hidden_judge_notes / judge_notes_ref / oracle_ref / v1_compat stripped), run metadata, redaction report, and a handoff manifest with the rubric reference. Oracle/judge-notes paths are intentionally **not** copied into run directories; judges resolve them from the round manifest task entry. The assembled package is secret-scanned; a leak removes the package and quarantines the run. |
-| 8. Lifecycle gates | Before any dispatch: round manifest schema validation (`scripts/validate.js`) and a stub smoke run per distinct task envelope. Before any `live` dispatch: operator approval present in config AND the participant's readiness declaration passes `scripts/live-runner-readiness.js` with decision `ready` — otherwise dispatch is refused before any transport is spawned (exit code 2). Artifact validation gates the judge handoff (fan-in), and the redaction check gates the handoff package. |
+| 8. Lifecycle gates | Before any dispatch: round manifest schema validation (`scripts/validate.js`), a stub smoke run per distinct task envelope, and the per-participant `runtime_identity` gate (config `adapter` must match the manifest participant's `runtime`; `--allow-runtime-mismatch` downgrades to a recorded warning). Before any `live` dispatch: operator approval present in config AND the participant's readiness declaration passes `scripts/live-runner-readiness.js` with decision `ready` — otherwise dispatch is refused before any transport is spawned (exit code 2). Artifact validation gates the judge handoff (fan-in), and the redaction check gates the handoff package. |
+
+## Runtime identity verification
+
+Runtime/adapter identity used to be declaration-only ("Operator-supplied") and
+was declared in three places that could silently disagree: the round manifest
+`participants[].runtime`, the runner config `participants[].adapter`, and the
+result packet's `runtime`/`adapter` fields. Divisions and scoreboards compare
+by runtime, so a silent disagreement is a competition-integrity gap. The
+runner now checks identity in three layers:
+
+**Layer 1 — declaration consistency (deterministic).**
+
+- Dispatch gate `runtime_identity`: for every selected participant the runner
+  config `adapter` must match the round manifest participant's `runtime`
+  (case-insensitive; the manifest registration is authoritative). A mismatch
+  refuses dispatch for that participant (exit code 2, nothing spawned).
+  `--allow-runtime-mismatch` downgrades the refusal to a recorded warning:
+  the gate records status `warn`, the dispatch record's `runtime_identity`
+  block notes the operator override, and fan-in surfaces it as a warning.
+- Fan-in: the packet's `runtime` (and `adapter`, if present) must match the
+  dispatch record's adapter label — a mismatch quarantines the run with a
+  reason, the same severity as an `agent_id` mismatch.
+
+**Layer 2 — runtime attestation probe (opt-in).**
+
+A participant may declare `identify_command` (argv array, same placeholder
+and no-shell rules as `command`). The runner runs it at dispatch, before the
+main transport, with a ~10s timeout, redacts the captured stdout with the
+shared secret patterns, and records in the dispatch record:
+
+```yaml
+runtime_attestation:
+  command_ran: true
+  exit_code: 0
+  output_excerpt: Hermes Agent v0.16.0 ...   # first ~200 chars, redacted
+  declared_adapter: hermes
+  consistent: true
+```
+
+`consistent` is a case-insensitive substring heuristic: the probe output
+should mention the declared adapter name (e.g. "Hermes Agent v0.16.0"
+contains "hermes"). An inconsistent or failed probe is a **recorded
+warning** in the dispatch and fan-in reports — never a refusal, because
+probes can be flaky. Without `identify_command` the record is
+`runtime_attestation: { command_ran: false }` and no warning is raised.
+
+**Layer 3 — artifact fingerprinting (heuristic).**
+
+`scripts/lib/runtime-fingerprint.js` exports
+`fingerprintRuntime(packet, trace) -> { detected, confidence, signals[] }`
+with `detected` in `hermes | openclaw | stub | unknown`. It looks at the
+SHAPE of the artifacts, not their labels: hermes → non-empty
+`delegation_profile.a2a_workers`, `workflow_plan`/`worker_trace`/
+`commander_report` evidence kinds, orchestrator/coordinator mode; openclaw →
+`session_id`/`gateway_*`/`tool_call_summary`/`delivery_probe` evidence
+kinds, openstack/closedstack/human_baseline mode, gateway/telegram evidence
+ids; stub → `ev-stub-*` evidence ids, the stub summary marker, stub
+agent/runtime labels. A non-unknown verdict requires at least two distinct
+signals (and strictly more than any other candidate). Fan-in runs it on
+every clean-candidate run: `detected` ≠ declared adapter (and ≠ `unknown`)
+produces a **WARNING** in the fan-in report — never a quarantine — and the
+verdict + signals are copied into the judge handoff manifest
+(`runtime_fingerprint`) so judges see the discrepancy.
+
+> **Honesty caveat:** all three layers catch *honest misconfiguration*
+> (mislabeled registrations, wrong runner-config entries, copy-pasted
+> adapter blocks) — not adversarial spoofing. A malicious wrapper can fake
+> the declaration, echo the right attestation string, and shape its
+> artifacts to any fingerprint. Cryptographically attested runtimes
+> (signed adapter builds, hardware/TEE attestation) are out of scope for
+> Season 001 and listed as future work.
 
 ## Run directory layout
 
@@ -219,18 +296,25 @@ Rules for any such extension:
 
 ## Fixtures
 
-`fixtures/live-runner/` contains the fixture round manifest, four runner
-configs, and three tiny fixture transports. `node scripts/live-runner.js
+`fixtures/live-runner/` contains the fixture round manifest, six runner
+configs, and four tiny fixture transports. `node scripts/live-runner.js
 fixtures` (Make target `live-runner-fixtures`) exercises:
 
 - dry-run dispatch → fan-in → handoff with hermes + openclaw + stub local_exec
-  transports (fixture round manifest, 6 runs) and with hermes + openclaw on
-  the committed `rounds/season-001-round-001.yaml`;
+  transports (fixture round manifest, 6 runs) and with sogyo + seoseo (both
+  hermes) on the committed `rounds/season-001-round-001.yaml`;
 - live profile without approval → gate-blocked before dispatch (CLI exit 2);
 - mismatched `agent_id` packet → quarantined with a reason file;
 - fake secret in transport stdout → redacted stored log + value-free redaction
   metadata + `disqualified`;
 - timeout with/without usable output → `partial` / `failed`;
-- unspawnable transport (ENOENT) → `blocked`.
+- unspawnable transport (ENOENT) → `blocked`;
+- config adapter ≠ manifest runtime → `runtime_identity` gate-refused (exit 2),
+  and dispatched-with-warning under `--allow-runtime-mismatch`;
+- packet runtime label ≠ dispatched adapter → quarantined at fan-in;
+- consistent and inconsistent `identify_command` attestation probes →
+  recorded attestation block / recorded warning;
+- declared stub but hermes-shaped artifacts → fan-in fingerprint WARNING
+  plus `runtime_fingerprint` metadata in the judge handoff manifest.
 
 Fixture run directories are created under a temp directory and removed.

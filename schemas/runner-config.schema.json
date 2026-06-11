@@ -71,6 +71,12 @@
             "items": { "type": "string" },
             "description": "Dispatch command as an argv array (spawned directly — never through a shell). Placeholders: {envelope} {run_dir} {agent_id} {run_id} {task_id} {round_id} {time_limit_minutes} {seed}."
           },
+          "identify_command": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "Optional runtime attestation probe as an argv array (same placeholder and no-shell rules as command). Run at dispatch with a short timeout; redacted stdout is recorded in the dispatch record's runtime_attestation block. The output should mention the declared adapter name (case-insensitive substring heuristic, e.g. 'Hermes Agent v0.16.0' contains 'hermes'). Inconsistent or failed probes are recorded warnings, never refusals — this catches honest misconfiguration, not adversarial spoofing."
+          },
           "time_limit_ms_override": {
             "type": "integer",
             "minimum": 1,

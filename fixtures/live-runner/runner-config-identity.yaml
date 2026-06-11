@@ -1,0 +1,81 @@
+# Runtime identity negative fixtures (layers 1–3) for the live runner.
+#
+# All participants are dry_run local_exec transports against ops-001 of the
+# fixture round manifest. Expected outcomes (asserted by
+# `node scripts/live-runner.js fixtures`):
+#
+#   runtime-imposter — config adapter matches the manifest registration
+#                      (stub), but the transport writes a packet whose
+#                      runtime label is "cli": fan-in quarantines the run for
+#                      a runtime mismatch against the dispatch record (same
+#                      severity as an agent_id mismatch).
+#   attest-probe     — identify_command attestation probe output does not
+#                      mention the declared adapter: the dispatch record's
+#                      runtime_attestation block is consistent: false, a
+#                      warning is recorded in the dispatch and fan-in
+#                      reports, and the run still passes fan-in (probes are
+#                      flaky — warning, never refusal).
+#   shape-shifter    — declared stub but the transport copies hermes-shaped
+#                      artifacts (relabeled hermes simulation packet): the
+#                      layer-3 artifact fingerprint flags a WARNING in the
+#                      fan-in report and judge handoff manifest without
+#                      quarantining (fingerprints are heuristic).
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-identity-negative
+description: Runtime identity negative cases (packet label, attestation, fingerprint).
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901-identity/
+tasks:
+  - ops-001
+participants:
+  - participant_id: runtime-imposter
+    adapter: stub
+    transport: local_exec
+    execution_profile: dry_run
+    notes: Packet runtime label ("cli") will not match the dispatched adapter ("stub").
+    command:
+      - node
+      - scripts/stub-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --runtime
+      - cli
+      - --seed
+      - '{seed}'
+  - participant_id: attest-probe
+    adapter: stub
+    transport: local_exec
+    execution_profile: dry_run
+    notes: Attestation probe output deliberately names a different runtime.
+    identify_command:
+      - node
+      - -e
+      - console.log('Mystery Runtime v9.9 — definitely not the declared adapter')
+    command:
+      - node
+      - scripts/stub-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --runtime
+      - stub
+      - --seed
+      - '{seed}'
+  - participant_id: shape-shifter
+    adapter: stub
+    transport: local_exec
+    execution_profile: dry_run
+    notes: Hermes-shaped artifacts relabeled as stub — only the layer-3 fingerprint can see this.
+    command:
+      - node
+      - fixtures/live-runner/transports/hermes-shaped-stub.js
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'
+      - '{seed}'

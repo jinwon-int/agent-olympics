@@ -48,6 +48,7 @@
  *   --run-directory <dir>   Override the run directory (config/manifest default)
  *   --run-id <substr>       Dispatch only runs whose run id contains <substr>
  *   --dry-run-only          Skip live-profile participants entirely
+ *   --allow-runtime-mismatch  Downgrade the runtime_identity gate to a warning
  *   --verbose, -v           Verbose output
  *   --help, -h              Show usage
  *
@@ -70,12 +71,15 @@ const {
   SECRET_VALUE_PATTERNS,
   looksLikeSecretValue,
 } = require('./lib/secret-patterns');
+const { fingerprintRuntime } = require('./lib/runtime-fingerprint');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
 const RUNNER_VERSION = '1.0.0';
 const RUNNER_CONFIG_KIND = 'agent-olympics.live-runner.config';
 const TIMEOUT_KILL_GRACE_MS = 2000;
+const ATTESTATION_TIMEOUT_MS = 10000;
+const ATTESTATION_EXCERPT_CHARS = 200;
 
 const EXIT_OK = 0;
 const EXIT_ERROR = 1;
@@ -328,19 +332,25 @@ function validateRunnerConfig(config, configPath) {
     if (p.transport !== 'local_exec') {
       errors.push(`${label}: transport "${p.transport}" is not implemented — only local_exec is available in this repository`);
     }
-    if (!Array.isArray(p.command) || p.command.length === 0 || p.command.some((a) => typeof a !== 'string')) {
-      errors.push(`${label}: command must be a non-empty argv array of strings (no shell strings)`);
-    } else {
-      for (const arg of p.command) {
+    const validateArgv = (fieldName, argv) => {
+      if (!Array.isArray(argv) || argv.length === 0 || argv.some((a) => typeof a !== 'string')) {
+        errors.push(`${label}: ${fieldName} must be a non-empty argv array of strings (no shell strings)`);
+        return;
+      }
+      for (const arg of argv) {
         for (const m of arg.matchAll(/\{([^{}]+)\}/g)) {
           if (!COMMAND_PLACEHOLDERS.has(m[1])) {
-            errors.push(`${label}: unknown command placeholder {${m[1]}} (allowed: ${[...COMMAND_PLACEHOLDERS].join(', ')})`);
+            errors.push(`${label}: unknown ${fieldName} placeholder {${m[1]}} (allowed: ${[...COMMAND_PLACEHOLDERS].join(', ')})`);
           }
         }
         if (/[;&|<>`$]/.test(arg.replace(/\{[^{}]+\}/g, ''))) {
-          errors.push(`${label}: command argument "${arg}" contains shell metacharacters — argv elements are never shell-interpreted, remove them`);
+          errors.push(`${label}: ${fieldName} argument "${arg}" contains shell metacharacters — argv elements are never shell-interpreted, remove them`);
         }
       }
+    };
+    validateArgv('command', p.command);
+    if (p.identify_command !== undefined) {
+      validateArgv('identify_command', p.identify_command);
     }
     if (p.execution_profile === 'live') {
       const creds = p.credentials || {};
@@ -472,6 +482,79 @@ function gateLiveParticipant(participant, gates) {
   });
 
   return { ok: failures.length === 0, failures };
+}
+
+/**
+ * Gate: runtime declaration consistency (identity layer 1, deterministic).
+ * The runner config `adapter` must match the round manifest participant's
+ * `runtime` (case-insensitive). The manifest `runtime` is the authoritative
+ * registration; the config adapter is what actually gets dispatched, so a
+ * disagreement means the round would record a runtime it did not run.
+ * `--allow-runtime-mismatch` downgrades the refusal to a recorded warning
+ * (operator escape hatch, noted in the dispatch record).
+ */
+function gateRuntimeIdentity(participant, gates, allowMismatch) {
+  const declaredRuntime = String(participant.manifest.runtime || '');
+  const declaredAdapter = String(participant.config.adapter || '');
+  const consistent = declaredRuntime.toLowerCase() === declaredAdapter.toLowerCase();
+
+  let status = 'pass';
+  let detail = `config adapter "${declaredAdapter}" matches manifest runtime "${declaredRuntime}"`;
+  if (!consistent) {
+    status = allowMismatch ? 'warn' : 'fail';
+    detail = `config adapter "${declaredAdapter}" does not match manifest runtime "${declaredRuntime}" (manifest registration is authoritative)`
+      + (allowMismatch ? ' — dispatched anyway via --allow-runtime-mismatch (recorded warning)' : '');
+  }
+  gates.push({ gate: 'runtime_identity', target: participant.config.participant_id, status, detail });
+  return { consistent, allowed: consistent || allowMismatch, detail, declaredRuntime, declaredAdapter };
+}
+
+/**
+ * Identity layer 2: optional runtime attestation probe. Runs the
+ * participant's `identify_command` (argv, no shell) with a short timeout
+ * before the main transport and records a value-free attestation block in
+ * the dispatch record. `consistent` is a case-insensitive substring
+ * heuristic: the probe output should mention the declared adapter name
+ * (e.g. "Hermes Agent v0.16.0" contains "hermes"). Probes can be flaky, so
+ * an inconsistent/failed probe is a recorded warning, never a refusal.
+ */
+function runRuntimeAttestation(participantConfig, substitutionValues) {
+  if (!Array.isArray(participantConfig.identify_command) || participantConfig.identify_command.length === 0) {
+    return { record: { command_ran: false }, warning: null };
+  }
+  const argv = substituteCommand(participantConfig.identify_command, substitutionValues);
+  const declaredAdapter = String(participantConfig.adapter || '');
+  let exitCode = null;
+  let rawOutput = '';
+  try {
+    const cp = spawnSync(argv[0], argv.slice(1), {
+      cwd: ROOT,
+      stdio: 'pipe',
+      encoding: 'utf8',
+      shell: false,
+      timeout: ATTESTATION_TIMEOUT_MS,
+      env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: process.env.LANG },
+    });
+    exitCode = cp.status;
+    rawOutput = cp.stdout || '';
+  } catch (err) {
+    rawOutput = '';
+  }
+  // Redact before storing anything (value-free attestation record).
+  const { text: redacted } = redactText(rawOutput);
+  const consistent = exitCode === 0
+    && redacted.toLowerCase().includes(declaredAdapter.toLowerCase());
+  const record = {
+    command_ran: true,
+    exit_code: exitCode,
+    output_excerpt: redacted.slice(0, ATTESTATION_EXCERPT_CHARS),
+    declared_adapter: declaredAdapter,
+    consistent,
+  };
+  const warning = consistent
+    ? null
+    : `runtime attestation probe ${exitCode === 0 ? 'output does not mention' : `failed (exit ${exitCode}) — could not confirm`} declared adapter "${declaredAdapter}"`;
+  return { record, warning };
 }
 
 // ---------------------------------------------------------------------------
@@ -789,6 +872,8 @@ function buildDispatchRecord(ctx) {
     adapter: participant.config.adapter,
     runtime: participant.manifest.runtime,
     runtime_version: participant.manifest.runtime_version || null,
+    runtime_identity: ctx.runtimeIdentity,
+    runtime_attestation: ctx.runtimeAttestation,
     transport: participant.config.transport,
     execution_profile: participant.config.execution_profile,
     source_revision: ctx.sourceRevision || `fixture-bundle:${task.fixture_bundle_ref || 'unknown'}`,
@@ -861,9 +946,37 @@ async function dispatchRound(manifestPath, config, options) {
   // Gate: stub smoke per distinct task envelope.
   gateStubSmoke(tasks, gates, options.verbose);
 
+  // Gate per participant (all profiles): runtime declaration consistency —
+  // the runner config adapter must match the round manifest's registered
+  // runtime for that participant (identity layer 1).
   // Gates per live participant: operator approval + runner readiness.
   const dispatchable = [];
   for (const participant of participants) {
+    const identity = gateRuntimeIdentity(participant, gates, options.allowRuntimeMismatch === true);
+    if (!identity.allowed) {
+      const failure = {
+        participant_id: participant.config.participant_id,
+        execution_profile: participant.config.execution_profile,
+        refused: true,
+        reasons: [`runtime identity mismatch: ${identity.detail} — re-register the participant or fix the runner config (override: --allow-runtime-mismatch)`],
+      };
+      gateFailures.push(failure);
+      console.error(`\nGATE BLOCKED — dispatch refused for participant "${participant.config.participant_id}" before any transport was started:`);
+      for (const reason of failure.reasons) console.error(`  - ${reason}`);
+      continue;
+    }
+    participant.runtimeIdentity = {
+      declared_runtime: identity.declaredRuntime,
+      declared_adapter: identity.declaredAdapter,
+      consistent: identity.consistent,
+      mismatch_allowed: !identity.consistent,
+      note: identity.consistent
+        ? 'runner config adapter matches the round manifest runtime registration'
+        : `OPERATOR OVERRIDE: ${identity.detail}`,
+    };
+    if (!identity.consistent) {
+      console.warn(`  ⚠ runtime identity mismatch allowed for ${participant.config.participant_id}: ${identity.detail}`);
+    }
     if (participant.config.execution_profile === 'live') {
       const result = gateLiveParticipant(participant.config, gates);
       if (!result.ok) {
@@ -923,7 +1036,7 @@ async function dispatchRound(manifestPath, config, options) {
 
       const startedAt = isoNow();
       const seed = `${runId}-live-runner`;
-      const command = substituteCommand(participant.config.command, {
+      const substitutionValues = {
         envelope: envelopeRunPath,
         run_dir: runDirAbs,
         agent_id: participant.manifest.agent_id,
@@ -932,7 +1045,17 @@ async function dispatchRound(manifestPath, config, options) {
         round_id: manifest.round_id,
         time_limit_minutes: task.time_limit_minutes,
         seed,
-      });
+      };
+      const command = substituteCommand(participant.config.command, substitutionValues);
+
+      // Identity layer 2: optional runtime attestation probe (before the
+      // main transport). Inconsistent/failed probes are recorded warnings.
+      const attestation = runRuntimeAttestation(participant.config, substitutionValues);
+      const runWarnings = [];
+      if (attestation.warning) {
+        runWarnings.push(attestation.warning);
+        console.warn(`  ⚠ ${runId}: ${attestation.warning}`);
+      }
 
       const credentials = buildCredentialRecord(participant.config);
       const dispatchRecord = buildDispatchRecord({
@@ -943,6 +1066,8 @@ async function dispatchRound(manifestPath, config, options) {
         startedAt,
         strippedFields: stripped,
         timeLimitSource,
+        runtimeIdentity: participant.runtimeIdentity,
+        runtimeAttestation: attestation.record,
       });
       writeYamlFile(path.join(runDirAbs, 'dispatch-record.yaml'), dispatchRecord);
 
@@ -1046,6 +1171,7 @@ async function dispatchRound(manifestPath, config, options) {
         exit_code: outcome.exitCode,
         timed_out: outcome.timedOut,
         note,
+        warnings: runWarnings,
       });
     }
   }
@@ -1074,7 +1200,7 @@ async function dispatchRound(manifestPath, config, options) {
   console.log(`\n=== Dispatch summary (${manifest.round_id}) ===`);
   for (const g of gates) console.log(`  gate ${g.gate.padEnd(18)} ${g.status.toUpperCase().padEnd(5)} ${g.target}`);
   for (const r of runResults) console.log(`  run  ${r.run_id} → ${r.status}`);
-  for (const f of gateFailures) console.log(`  REFUSED live dispatch for ${f.participant_id}: ${f.reasons.join('; ')}`);
+  for (const f of gateFailures) console.log(`  REFUSED ${f.execution_profile === 'live' ? 'live ' : ''}dispatch for ${f.participant_id}: ${f.reasons.join('; ')}`);
   if (cancelState.cancelled) console.log('  CANCELLED by operator — remaining runs were not dispatched.');
 
   return { manifest, report, runDirBaseAbs, gateBlocked: gateFailures.length > 0 };
@@ -1167,6 +1293,15 @@ function faninCheckRun(run) {
     if (packet.agent_id !== dispatch.agent_id) {
       reasons.push(`agent_id mismatch: packet "${packet.agent_id}" vs dispatch "${dispatch.agent_id}"`);
     }
+    // Runtime identity (same severity as agent_id): the packet's declared
+    // runtime/adapter labels must match the adapter the runner dispatched.
+    const dispatchAdapter = String(dispatch.adapter || '').toLowerCase();
+    if (packet.runtime !== undefined && String(packet.runtime).toLowerCase() !== dispatchAdapter) {
+      reasons.push(`runtime mismatch: packet runtime "${packet.runtime}" vs dispatch adapter "${dispatch.adapter}"`);
+    }
+    if (packet.adapter !== undefined && String(packet.adapter).toLowerCase() !== dispatchAdapter) {
+      reasons.push(`runtime mismatch: packet adapter "${packet.adapter}" vs dispatch adapter "${dispatch.adapter}"`);
+    }
   }
   if (trace && trace.agent_id !== dispatch.agent_id) {
     reasons.push(`agent_id mismatch: trace "${trace.agent_id}" vs dispatch "${dispatch.agent_id}"`);
@@ -1248,7 +1383,28 @@ function faninCheckRun(run) {
     }
   }
 
-  return { reasons, warnings, escalateDisqualified, packet };
+  // 7. Runtime identity warnings (layers 1–3 surfaced at fan-in):
+  //    - an operator-allowed declaration mismatch recorded at dispatch,
+  //    - an inconsistent/failed runtime attestation probe,
+  //    - a heuristic artifact fingerprint that disagrees with the declared
+  //      adapter (warning, never quarantine — fingerprints are heuristic).
+  if (dispatch.runtime_identity && dispatch.runtime_identity.consistent === false) {
+    warnings.push(`runtime declaration mismatch was operator-allowed at dispatch: config adapter "${dispatch.runtime_identity.declared_adapter}" vs manifest runtime "${dispatch.runtime_identity.declared_runtime}"`);
+  }
+  const attestation = dispatch.runtime_attestation;
+  if (attestation && attestation.command_ran === true && attestation.consistent !== true) {
+    warnings.push(`runtime attestation probe did not confirm the declared adapter "${attestation.declared_adapter}" (exit ${attestation.exit_code}; excerpt: ${JSON.stringify(String(attestation.output_excerpt || '').slice(0, 120))})`);
+  }
+  let fingerprint = null;
+  if (packet) {
+    fingerprint = fingerprintRuntime(packet, trace);
+    const declaredAdapter = String(dispatch.adapter || '').toLowerCase();
+    if (fingerprint.detected !== 'unknown' && fingerprint.detected !== declaredAdapter) {
+      warnings.push(`runtime fingerprint mismatch: artifacts look ${fingerprint.detected}-shaped (confidence ${fingerprint.confidence}) but the declared adapter is "${dispatch.adapter}" — heuristic, flagged for judge review`);
+    }
+  }
+
+  return { reasons, warnings, escalateDisqualified, packet, fingerprint };
 }
 
 function lastStatusNote(dispatch) {
@@ -1274,7 +1430,7 @@ function quarantineRun(run, runDirBaseAbs, reasons) {
 }
 
 /** §7: assemble the judge handoff package for a clean run. */
-function buildJudgeHandoff(run, packet, warnings = []) {
+function buildJudgeHandoff(run, packet, warnings = [], fingerprint = null) {
   const { dirAbs, dispatch } = run;
   const handoffDir = path.join(dirAbs, 'judge-handoff');
   fs.rmSync(handoffDir, { recursive: true, force: true });
@@ -1343,6 +1499,15 @@ function buildJudgeHandoff(run, packet, warnings = []) {
     dispatch_record_ref: '../dispatch-record.yaml',
     capture_report_ref: '../capture-report.yaml',
     fanin_warnings: warnings,
+    runtime_fingerprint: fingerprint
+      ? {
+          detected: fingerprint.detected,
+          confidence: fingerprint.confidence,
+          signals: fingerprint.signals,
+          declared_adapter: dispatch.adapter,
+          note: 'Heuristic artifact-shape fingerprint (layer 3). Catches honest misconfiguration only — a malicious wrapper can fake these signals.',
+        }
+      : null,
     contents: [...contents, 'handoff-manifest.yaml'],
   };
   writeYamlFile(path.join(handoffDir, 'handoff-manifest.yaml'), handoffManifest);
@@ -1377,7 +1542,7 @@ function faninRound(runDirBaseAbs, options = {}) {
   const results = [];
 
   for (const run of runs) {
-    const { reasons, warnings, escalateDisqualified, packet } = faninCheckRun(run);
+    const { reasons, warnings, escalateDisqualified, packet, fingerprint } = faninCheckRun(run);
 
     if (escalateDisqualified && run.dispatch.status !== 'disqualified') {
       run.dispatch.status = 'disqualified';
@@ -1402,25 +1567,29 @@ function faninRound(runDirBaseAbs, options = {}) {
       } catch { /* manifest replaced by adapter artifact manifest */ }
     }
 
+    const fingerprintSummary = fingerprint
+      ? { detected: fingerprint.detected, confidence: fingerprint.confidence, declared_adapter: run.dispatch.adapter }
+      : null;
+
     if (reasons.length > 0) {
       const dest = quarantineRun(run, runDirBaseAbs, reasons);
       console.log(`  ✘ ${run.runId} → QUARANTINED (${dest})`);
       for (const r of reasons) console.log(`      - ${r}`);
-      results.push({ run_id: run.runId, decision: 'quarantined', status: run.dispatch.status, reasons, warnings, quarantine_path: dest });
+      results.push({ run_id: run.runId, decision: 'quarantined', status: run.dispatch.status, reasons, warnings, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
       continue;
     }
 
-    const handoff = buildJudgeHandoff(run, packet, warnings);
+    const handoff = buildJudgeHandoff(run, packet, warnings, fingerprint);
     if (!handoff.ok) {
       const dest = quarantineRun(run, runDirBaseAbs, handoff.leaks.map((l) => `secret detected while assembling judge handoff: ${l}`));
       console.log(`  ✘ ${run.runId} → QUARANTINED at handoff (${dest})`);
-      results.push({ run_id: run.runId, decision: 'quarantined', status: run.dispatch.status, reasons: handoff.leaks, warnings, quarantine_path: dest });
+      results.push({ run_id: run.runId, decision: 'quarantined', status: run.dispatch.status, reasons: handoff.leaks, warnings, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
       continue;
     }
 
     console.log(`  ✓ ${run.runId} → clean (judge handoff: ${handoff.handoffDir})`);
     for (const w of warnings) console.log(`      ⚠ ${w}`);
-    results.push({ run_id: run.runId, decision: 'clean', status: run.dispatch.status, reasons: [], warnings, handoff: handoff.handoffDir });
+    results.push({ run_id: run.runId, decision: 'clean', status: run.dispatch.status, reasons: [], warnings, runtime_fingerprint: fingerprintSummary, handoff: handoff.handoffDir });
   }
 
   const clean = results.filter((r) => r.decision === 'clean').length;
@@ -1465,6 +1634,10 @@ Options:
   --run-directory <dir>  Override the run directory from config/manifest
   --run-id <substr>      Dispatch only runs whose generated run id contains <substr>
   --dry-run-only         Skip live-profile participants entirely
+  --allow-runtime-mismatch
+                         Downgrade the runtime_identity gate (config adapter must
+                         match the manifest participant's runtime) from refusal to
+                         a recorded warning. Operator escape hatch only.
   --verbose, -v          Verbose output
   --help, -h             Show this help
 
@@ -1493,6 +1666,7 @@ function parseCliArgs(argv) {
     runDirectory: null,
     runIdFilter: null,
     dryRunOnly: false,
+    allowRuntimeMismatch: false,
     verbose: false,
     help: false,
   };
@@ -1503,6 +1677,7 @@ function parseCliArgs(argv) {
       case '--run-directory': options.runDirectory = argv[++i]; break;
       case '--run-id': options.runIdFilter = argv[++i]; break;
       case '--dry-run-only': options.dryRunOnly = true; break;
+      case '--allow-runtime-mismatch': options.allowRuntimeMismatch = true; break;
       case '--verbose': case '-v': options.verbose = true; break;
       case '--help': case '-h': options.help = true; break;
       default:
@@ -1605,6 +1780,22 @@ async function runFixtures() {
           && record.credentials.redaction_rules.every((r) => r.rule_id && r.reason && !r.value),
         'dry_run dispatch record: credential_class none + value-free redaction rules');
 
+      // Runtime identity layers 1 + 2 on the happy path: declarations agree
+      // and sogyo's identify_command probe attests the declared adapter.
+      report(
+        record.runtime_identity && record.runtime_identity.consistent === true
+          && record.runtime_attestation && record.runtime_attestation.command_ran === true
+          && record.runtime_attestation.exit_code === 0
+          && record.runtime_attestation.consistent === true
+          && /hermes/i.test(record.runtime_attestation.output_excerpt || ''),
+        'dispatch record carries a consistent runtime_identity block and a consistent runtime attestation (identify_command)');
+      const nosukRun = dispatch.report.runs.find((r) => r.participant_id === 'nosuk');
+      const nosukRecord = yaml.load(fs.readFileSync(path.join(ROOT, nosukRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
+      report(
+        nosukRecord.runtime_attestation && nosukRecord.runtime_attestation.command_ran === false
+          && (nosukRun.warnings || []).length === 0,
+        'participant without identify_command records runtime_attestation.command_ran: false and no warning (opt-in)');
+
       // Capture report (contract §4).
       const capture = yaml.load(fs.readFileSync(path.join(ROOT, firstRun.run_dir, 'capture-report.yaml'), 'utf8'));
       const expectedKinds = ['result_packet', 'trace_record', 'evidence_bundle', 'artifact_manifest',
@@ -1654,8 +1845,12 @@ async function runFixtures() {
       report(
         dispatch.report.runs.length === 2 && dispatch.report.runs.every((r) => r.status === 'completed')
           && fanin.clean === 2 && fanin.quarantined === 0,
-        'committed manifest: dispatch → fan-in → handoff clean for hermes + openclaw',
+        'committed manifest: dispatch → fan-in → handoff clean for sogyo + seoseo (both hermes)',
         `runs: ${dispatch.report.runs.map((r) => `${r.run_id}=${r.status}`).join(', ')}`);
+      report(
+        dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').length === 2
+          && dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').every((g) => g.status === 'pass'),
+        'committed manifest: runtime_identity gate passes for both participants (config adapters match manifest runtimes)');
     }
 
     // -----------------------------------------------------------------
@@ -1775,6 +1970,143 @@ async function runFixtures() {
       report(!!blockedDecision && blockedDecision.decision === 'quarantined'
           && blockedDecision.reasons.some((r) => /missing result packet/.test(r)),
         'fan-in rejects the unreachable-transport run (no packet, explained)');
+    }
+
+    // -----------------------------------------------------------------
+    // 5. Runtime identity layer 1: config adapter ≠ manifest runtime →
+    //    runtime_identity gate refuses dispatch (exit 2); the operator
+    //    escape hatch --allow-runtime-mismatch downgrades to a recorded
+    //    warning and the run completes with the mismatch noted everywhere.
+    // -----------------------------------------------------------------
+    console.log('\n--- fixture: runtime declaration mismatch (gate-refused / operator override) ---');
+    {
+      const runDir = path.join(tmpBase, 'runtime-mismatch');
+      const cp = spawnSync(
+        process.execPath,
+        [
+          __filename, 'dispatch', 'fixtures/live-runner/round-live-runner-fixture.yaml',
+          '--config', 'fixtures/live-runner/runner-config-runtime-mismatch.yaml',
+          '--run-directory', runDir,
+        ],
+        { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 120000 }
+      );
+      const out = `${cp.stdout || ''}${cp.stderr || ''}`;
+      report(cp.status === EXIT_GATE_BLOCKED, 'adapter ≠ manifest runtime is gate-refused with exit code 2', `exit=${cp.status}`);
+      report(/GATE BLOCKED/.test(out) && /runtime identity mismatch/.test(out),
+        'gate failure message names the runtime identity mismatch');
+      const dispatched = fs.existsSync(runDir) ? fs.readdirSync(runDir).filter((e) => e.startsWith('run-')) : [];
+      report(dispatched.length === 0, 'no run was dispatched for the runtime-mismatched participant', `run dirs: ${dispatched.length}`);
+      const blockedReport = yaml.load(fs.readFileSync(path.join(runDir, 'dispatch-report.yaml'), 'utf8'));
+      report(
+        blockedReport.gates.some((g) => g.gate === 'runtime_identity' && g.status === 'fail')
+          && blockedReport.gate_failures.length === 1
+          && blockedReport.gate_failures[0].refused === true
+          && blockedReport.gate_failures[0].reasons.some((r) => /runtime identity mismatch/.test(r)),
+        'dispatch report records the failed runtime_identity gate and the refused participant');
+
+      // Operator escape hatch: same config, --allow-runtime-mismatch.
+      const overrideDir = path.join(tmpBase, 'runtime-mismatch-allowed');
+      const cp2 = spawnSync(
+        process.execPath,
+        [
+          __filename, 'run', 'fixtures/live-runner/round-live-runner-fixture.yaml',
+          '--config', 'fixtures/live-runner/runner-config-runtime-mismatch.yaml',
+          '--run-directory', overrideDir,
+          '--allow-runtime-mismatch',
+        ],
+        { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 120000 }
+      );
+      report(cp2.status === EXIT_OK, '--allow-runtime-mismatch downgrades the refusal and the run proceeds', `exit=${cp2.status}`);
+      const overrideReport = yaml.load(fs.readFileSync(path.join(overrideDir, 'dispatch-report.yaml'), 'utf8'));
+      report(
+        overrideReport.gates.some((g) => g.gate === 'runtime_identity' && g.status === 'warn')
+          && overrideReport.gate_failures.length === 0
+          && overrideReport.runs.length === 1 && overrideReport.runs[0].status === 'completed',
+        'override run: runtime_identity gate records status warn, no gate failures, run completed');
+      const overrideRunDir = path.join(ROOT, overrideReport.runs[0].run_dir);
+      const overrideRecord = yaml.load(fs.readFileSync(path.join(overrideRunDir, 'dispatch-record.yaml'), 'utf8'));
+      report(
+        overrideRecord.runtime_identity && overrideRecord.runtime_identity.consistent === false
+          && overrideRecord.runtime_identity.mismatch_allowed === true
+          && /OPERATOR OVERRIDE/.test(overrideRecord.runtime_identity.note || ''),
+        'override dispatch record notes the operator-allowed runtime mismatch');
+      const overrideFanin = yaml.load(fs.readFileSync(path.join(overrideDir, 'fanin-report.yaml'), 'utf8'));
+      report(
+        overrideFanin.runs.length === 1 && overrideFanin.runs[0].decision === 'clean'
+          && overrideFanin.runs[0].warnings.some((w) => /runtime declaration mismatch was operator-allowed/.test(w)),
+        'fan-in keeps the override run clean but surfaces the allowed mismatch as a warning');
+    }
+
+    // -----------------------------------------------------------------
+    // 6. Runtime identity layers 1–3 at fan-in: packet runtime label
+    //    mismatch (quarantine), inconsistent attestation probe (warning),
+    //    hermes-shaped artifacts declared as stub (fingerprint warning).
+    // -----------------------------------------------------------------
+    console.log('\n--- fixture: runtime identity fan-in (packet label / attestation / fingerprint) ---');
+    {
+      const runDir = path.join(tmpBase, 'identity');
+      const config = validateRunnerConfig(
+        loadYamlFile('fixtures/live-runner/runner-config-identity.yaml'),
+        'fixtures/live-runner/runner-config-identity.yaml'
+      );
+      const dispatch = await dispatchRound('fixtures/live-runner/round-live-runner-fixture.yaml', config, {
+        runDirectory: runDir, dryRunOnly: false, verbose: false,
+      });
+      const byParticipant = new Map(dispatch.report.runs.map((r) => [r.participant_id, r]));
+      report(
+        dispatch.report.runs.length === 3 && dispatch.report.runs.every((r) => r.status === 'completed') && !dispatch.gateBlocked,
+        'identity fixtures: all 3 transports complete at dispatch time',
+        `statuses: ${dispatch.report.runs.map((r) => r.status).join(', ')}`);
+
+      // (c) inconsistent attestation probe → recorded warning, not refusal.
+      const attestRun = byParticipant.get('attest-probe');
+      const attestRecord = yaml.load(fs.readFileSync(path.join(ROOT, attestRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
+      report(
+        attestRecord.runtime_attestation && attestRecord.runtime_attestation.command_ran === true
+          && attestRecord.runtime_attestation.consistent === false
+          && attestRecord.runtime_attestation.declared_adapter === 'stub'
+          && (attestRun.warnings || []).some((w) => /runtime attestation/.test(w)),
+        'inconsistent identify_command probe is recorded in the dispatch record + dispatch report warning (no refusal)');
+
+      const fanin = faninRound(dispatch.runDirBaseAbs);
+      const decisions = new Map(fanin.runs.map((r) => [r.run_id, r]));
+      const findDecision = (participantId) => {
+        const run = byParticipant.get(participantId);
+        return run ? decisions.get(run.run_id) : null;
+      };
+
+      // (b) packet runtime label ≠ dispatched adapter → quarantined.
+      const imposterDecision = findDecision('runtime-imposter');
+      report(!!imposterDecision && imposterDecision.decision === 'quarantined'
+          && imposterDecision.reasons.some((r) => /runtime mismatch: packet runtime "cli" vs dispatch adapter "stub"/.test(r)),
+        'fan-in quarantines a packet whose runtime label differs from the dispatched adapter (identity severity)',
+        imposterDecision ? imposterDecision.reasons.join('; ') : 'missing');
+
+      // (c) attestation warning surfaces in the fan-in report; run stays clean.
+      const attestDecision = findDecision('attest-probe');
+      report(!!attestDecision && attestDecision.decision === 'clean'
+          && attestDecision.warnings.some((w) => /runtime attestation probe did not confirm/.test(w)),
+        'fan-in surfaces the inconsistent attestation as a warning on a clean run',
+        attestDecision ? attestDecision.warnings.join('; ') : 'missing');
+
+      // (d) hermes-shaped artifacts declared as stub → fingerprint WARNING
+      //     (clean, not quarantined) + judge handoff metadata.
+      const shifterDecision = findDecision('shape-shifter');
+      report(!!shifterDecision && shifterDecision.decision === 'clean'
+          && shifterDecision.warnings.some((w) => /runtime fingerprint mismatch: artifacts look hermes-shaped/.test(w))
+          && shifterDecision.runtime_fingerprint && shifterDecision.runtime_fingerprint.detected === 'hermes',
+        'fingerprint mismatch (declared stub, hermes-shaped artifacts) is a fan-in warning, not a quarantine',
+        shifterDecision ? `${JSON.stringify(shifterDecision.runtime_fingerprint)} ${shifterDecision.warnings.join('; ')}` : 'missing');
+      if (shifterDecision) {
+        const handoffManifest = yaml.load(fs.readFileSync(path.join(ROOT, shifterDecision.handoff, 'handoff-manifest.yaml'), 'utf8'));
+        report(
+          handoffManifest.runtime_fingerprint && handoffManifest.runtime_fingerprint.detected === 'hermes'
+            && handoffManifest.runtime_fingerprint.declared_adapter === 'stub'
+            && Array.isArray(handoffManifest.runtime_fingerprint.signals)
+            && handoffManifest.runtime_fingerprint.signals.length >= 2
+            && handoffManifest.fanin_warnings.some((w) => /fingerprint/.test(w)),
+          'judge handoff manifest carries the fingerprint verdict + signals so judges see the discrepancy');
+      }
     }
   } finally {
     fs.rmSync(tmpBase, { recursive: true, force: true });

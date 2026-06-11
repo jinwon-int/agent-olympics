@@ -41,7 +41,7 @@ participants:
       - --agent-id
       - imposter-mismatch
       - --runtime
-      - cli
+      - stub
       - --seed
       - '{seed}'
   - participant_id: secret-echo

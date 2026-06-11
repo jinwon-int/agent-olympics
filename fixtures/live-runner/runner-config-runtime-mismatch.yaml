@@ -1,0 +1,38 @@
+# Negative fixture: runtime declaration mismatch (identity layer 1).
+#
+# mismatch-target is registered in the fixture round manifest with
+# runtime: stub, but this config declares adapter: cli. The runtime_identity
+# gate must refuse the dispatch (exit code 2, nothing spawned) unless the
+# operator passes --allow-runtime-mismatch, in which case the dispatch
+# proceeds with a recorded warning (gate status "warn", dispatch record
+# runtime_identity.mismatch_allowed: true, fan-in warning).
+#
+# The transport itself labels its packet runtime as "cli" so that, when the
+# override is used, the packet matches the dispatched adapter label and the
+# run stays clean apart from the recorded mismatch warning.
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-runtime-mismatch
+description: Runner config adapter disagrees with the manifest runtime registration.
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901-runtime-mismatch/
+tasks:
+  - ops-001
+participants:
+  - participant_id: mismatch-target
+    adapter: cli
+    transport: local_exec
+    execution_profile: dry_run
+    notes: Manifest registers this participant as runtime stub — adapter cli is the mismatch under test.
+    command:
+      - node
+      - scripts/stub-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --runtime
+      - cli
+      - --seed
+      - '{seed}'

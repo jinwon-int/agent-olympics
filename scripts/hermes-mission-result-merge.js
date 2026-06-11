@@ -5,6 +5,52 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const yaml = require('js-yaml');
+const {
+  SECRET_KEY_PATTERNS,
+  SECRET_VALUE_PATTERNS,
+  looksLikeSecretValue,
+} = require('./lib/secret-patterns');
+
+// Value-free redaction of captured Hermes CLI output, applied BEFORE any of
+// it is persisted (mission-result.raw.txt, evidence/worker-traces.yaml
+// output_excerpt). Mirrors the live runner's redaction: shared
+// SECRET_VALUE_PATTERNS plus secret-named "key: value" / "KEY=value" lines.
+// Only rule ids are recorded — original values are never preserved.
+const VALUE_RULE_IDS = [
+  'rv-openai-style-key',
+  'rv-github-pat',
+  'rv-github-pat-org',
+  'rv-github-finegrained-pat',
+  'rv-slack-token',
+  'rv-pem-private-key',
+  'rv-jwt',
+];
+const KEY_RULE_ID = 'rk-secret-named-field';
+
+function redactSecrets(rawText) {
+  let text = String(rawText);
+  const appliedRuleIds = [];
+  SECRET_VALUE_PATTERNS.forEach((pattern, i) => {
+    const ruleId = VALUE_RULE_IDS[i] || `rv-${i}`;
+    const global = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
+    let count = 0;
+    text = text.replace(global, () => {
+      count += 1;
+      return `[REDACTED:${ruleId}]`;
+    });
+    if (count > 0) appliedRuleIds.push(ruleId);
+  });
+  let keyCount = 0;
+  text = text.replace(/^(\s*"?([A-Za-z0-9_-]+)"?\s*[:=]\s*)(\S.*)$/gm, (line, prefix, key, value) => {
+    if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(value.trim())) {
+      keyCount += 1;
+      return `${prefix}[REDACTED:${KEY_RULE_ID}]`;
+    }
+    return line;
+  });
+  if (keyCount > 0) appliedRuleIds.push(KEY_RULE_ID);
+  return { text, appliedRuleIds };
+}
 
 function usage() {
   console.error('Usage: node scripts/hermes-mission-result-merge.js <envelope> <run_dir> <mission_output> <hermes_exit>');
@@ -75,6 +121,8 @@ const resultPacketPath = path.join(runDir, 'result-packet.yaml');
 const evidenceBundlePath = path.join(runDir, 'evidence-bundle.yaml');
 const tracePath = path.join(runDir, 'trace.yaml');
 const raw = readText(outputPath);
+// Redact BEFORE anything derived from the raw output is written to disk.
+const { text: redactedRaw, appliedRuleIds: redactionRuleIds } = redactSecrets(raw);
 const parsed = extractMissionJson(raw);
 const hermesExit = Number.parseInt(hermesExitRaw || '0', 10);
 const taskId = envelope.task_id || 'unknown-task';
@@ -126,7 +174,7 @@ rp.findings = findings.slice(0, 8).map((f) => {
 for (const item of rp.evidence || []) {
   if (item.id === 'ev-commander-report') item.summary = `Actual Hermes CLI mission report: ${oneLine(mission.summary || mission.diagnosis, 220)}`;
   if (item.id === 'ev-worker-traces') item.summary = `Nested Hermes CLI execution captured with exit code ${hermesExit}; parsed_json=${Boolean(parsed)}`;
-  if (item.id === 'ev-probe-result') item.summary = `Hermes CLI invoked locally by wrapper; exit code ${hermesExit}; output_sha256=${sha256(raw).slice(0, 16)}`;
+  if (item.id === 'ev-probe-result') item.summary = `Hermes CLI invoked locally by wrapper; exit code ${hermesExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output)`;
 }
 
 writeYaml(resultPacketPath, rp);
@@ -156,8 +204,13 @@ const workerTrace = {
   command: 'hermes chat -Q -q <generated mission prompt> --toolsets file',
   exit_code: hermesExit,
   parsed_result_json: Boolean(parsed),
-  output_sha256: sha256(raw),
-  output_excerpt: truncate(raw, 12000),
+  output_sha256: sha256(redactedRaw),
+  output_excerpt: truncate(redactedRaw, 12000),
+  redaction: {
+    applied: redactionRuleIds.length > 0,
+    rules: redactionRuleIds,
+    note: 'output_excerpt and output_sha256 are computed from the redacted Hermes CLI output (shared secret-patterns; rule ids only, values never preserved).',
+  },
 };
 writeYaml(path.join(runDir, 'evidence', 'worker-traces.yaml'), workerTrace);
 
@@ -187,7 +240,12 @@ writeYaml(path.join(runDir, 'evidence', 'memory-summary.yaml'), {
 });
 
 writeYaml(path.join(runDir, 'mission-result.json'), mission);
-writeText(path.join(runDir, 'mission-result.raw.txt'), raw);
+const rawHeader = [
+  '# mission-result.raw.txt — raw Hermes CLI output, secret-redacted before writing.',
+  `# redaction applied: ${redactionRuleIds.length > 0 ? `yes (rules: ${redactionRuleIds.join(', ')})` : 'no matches'} — rule ids only, original values never preserved.`,
+  '',
+].join('\n');
+writeText(path.join(runDir, 'mission-result.raw.txt'), rawHeader + redactedRaw);
 
 try {
   const eb = yaml.load(readText(evidenceBundlePath));
@@ -219,4 +277,4 @@ try {
 }
 
 console.log(`Merged Hermes mission output into ${resultPacketPath}`);
-console.log(`parsed_json=${Boolean(parsed)} hermes_exit=${hermesExit} output_sha256=${sha256(raw)}`);
+console.log(`parsed_json=${Boolean(parsed)} hermes_exit=${hermesExit} output_sha256=${sha256(redactedRaw)} redaction_rules=${redactionRuleIds.join(',') || 'none'}`);
