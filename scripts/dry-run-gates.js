@@ -296,6 +296,29 @@ function publicationGates(runner, options) {
   // Gate 3.1 — All runs terminal (if runs dir provided)
   if (runsDir && dirExists(runsDir)) {
     runner.run('P3.1', 'All runs in terminal state', () => {
+      const terminal = new Set(['completed', 'partial', 'failed', 'blocked', 'disqualified']);
+      const runDirs = fs.readdirSync(runsDir, { withFileTypes: true })
+        .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+        .map(e => e.name);
+      const nonTerminal = [];
+      for (const dirName of runDirs) {
+        let manifest = {};
+        try {
+          manifest = loadYaml(path.join(runsDir, dirName, 'manifest.yaml')) || {};
+        } catch {
+          nonTerminal.push(`${dirName}: manifest unreadable`);
+          continue;
+        }
+        const lifecycle = manifest.lifecycle || manifest.status;
+        if (!terminal.has(lifecycle)) nonTerminal.push(`${dirName}: ${lifecycle || 'missing'}`);
+      }
+      if (nonTerminal.length > 0) {
+        return { ok: false, output: `Non-terminal runs: ${nonTerminal.join(', ')}` };
+      }
+      return { ok: true, output: `All ${runDirs.length} runs in terminal state` };
+    });
+
+    runner.run('P3.1a', 'Engine outputs present and well-formed', () => {
       return runScript('scripts/competition-validity.js', `engine-outputs ${runsDir}`);
     });
   } else {

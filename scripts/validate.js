@@ -475,7 +475,7 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     // keeps v1 envelopes as private historical/judge material, while v2
     // envelopes are the participant-facing files used for new runs.
     const pubVis = doc.participant_visibility === 'visible' || doc.participant_visibility === 'blind';
-    const participantFacingFile = schemaVersion === 2 || file.includes('/public/') || /-v2\.ya?ml$/.test(file);
+    const participantFacingFile = schemaVersion === 2 || file.split(/[\\/]/).includes('public') || /-v2\.ya?ml$/.test(file);
     if (participantFacingFile && pubVis && doc.hidden_judge_notes) {
       issues.push({
         severity: SEVERITY.error,
@@ -568,7 +568,9 @@ function detectSecrets(obj, issues, path = '') {
 // ---------------------------------------------------------------------------
 const FORBIDDEN_PROFILE_PATTERNS = [
   { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
-  { pattern: /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/, description: 'potential hostname or domain' },
+  // Restricted to TLD-ish suffixes so dotted tokens like "Node.js" or
+  // "manifest.yaml" in ordinary prose do not trip the scan.
+  { pattern: /\b(?:[a-zA-Z0-9-]+\.)+(?:com|org|net|io|dev|app|cloud|local|internal|corp|lan|prod|staging)\b/i, description: 'potential hostname or domain' },
   { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
   { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
   { pattern: /\/root\/\S+/i, description: 'root home path' },
@@ -1661,7 +1663,7 @@ const LIVE_PROBE_FORBIDDEN_PATTERNS = [
   // CPU model numbers  e.g. "Intel(R) Xeon(R) Gold", "AMD EPYC", "Apple M1 Pro"
   { pattern: /\bIntel\(R\)\s+[A-Za-z0-9-]+/, description: 'CPU model number (Intel)' },
   { pattern: /\bAMD\s+[A-Z][a-z]+\s+\d+/, description: 'CPU model number (AMD)' },
-  { pattern: /\bApple\s+M\d\s+(Pro|Max|Ultra)?\b/, description: 'CPU model number (Apple Silicon)' },
+  { pattern: /\bApple\s+M\d+(?:\s+(?:Pro|Max|Ultra))?\b/, description: 'CPU model number (Apple Silicon)' },
   // Cloud instance IDs  e.g. "i-0abcd1234efgh5678", "inst-12345"
   { pattern: /\bi-[a-f0-9]{8,}\b/, description: 'cloud instance ID' },
   { pattern: /\b(?:vpc|subnet|sg)-[a-f0-9]{8,}\b/i, description: 'cloud VPC/subnet/SG ID' },
@@ -1672,7 +1674,8 @@ const LIVE_PROBE_FORBIDDEN_PATTERNS = [
   // Cloud provider region/zone names
   { pattern: /\b(?:us|eu|ap|sa)-(?:east|west|central|north|south|southeast|northeast)-\d+\b/, description: 'cloud region name' },
   // Exact mount paths with patterns likely from df output
-  { pattern: /\b(?:dev\/)?(?:sd[a-z]\d?|nvme\d+n\d+)\b/, description: 'raw block device name' },
+  // Requires the /dev/ prefix so ordinary words like "sdk" do not match.
+  { pattern: /\/dev\/(?:sd[a-z]\d*|nvme\d+n\d+)\b/, description: 'raw block device name' },
   // hostname-like patterns with hyphens and short TLD
   { pattern: /\b[a-z][a-z0-9-]{2,20}\.(?:lan|local|internal|corp|prod|dev|staging)\b/i, description: 'internal hostname with private TLD' },
 ];
