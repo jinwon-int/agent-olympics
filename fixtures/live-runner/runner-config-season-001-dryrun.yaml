@@ -1,10 +1,10 @@
 # Live runner dry-run config for the COMMITTED Season 001 round manifest
 # (rounds/season-001-round-001.yaml).
 #
-# Dispatches sogyo AND seoseo via the Hermes simulation adapter against
-# ops-001 (v2 envelope): both nodes are Hermes in reality and are registered
-# as runtime hermes in the round manifest, and the runtime_identity gate
-# requires the config adapter to match that registration. The stub adapter
+# Dispatches sogyo, seoseo, AND nosuk via the Hermes simulation adapter against
+# ops-001 (v2 envelope): all three nodes are Hermes in reality and are
+# registered as runtime hermes in the round manifest, and the runtime_identity
+# gate requires the config adapter to match that registration. The stub adapter
 # is exercised against the fixture round manifest instead because it emits
 # v1-shaped result packets, which do not satisfy the v2 packet schema that
 # the committed round's v2 envelopes imply.
@@ -43,6 +43,24 @@ participants:
       - --seed
       - '{seed}'
   - participant_id: seoseo
+    adapter: hermes
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - node
+      - adapters/hermes-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - simulation
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'
+  - participant_id: nosuk
     adapter: hermes
     transport: local_exec
     execution_profile: dry_run

@@ -91,10 +91,10 @@ participants:
     label: seoseo (Hermes / Team1 Broker)
     enabled: true
   - agent_id: nosuk
-    runtime: openclaw
-    label: nosuk (OpenClaw A2A)
+    runtime: hermes
+    label: nosuk (Hermes A2A)
     enabled: true
-    node: default
+    node: vps2
 run_directory: runs/season-001/round-001/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}
 parent_issue: https://github.com/jinwon-int/agent-olympics/issues/61
