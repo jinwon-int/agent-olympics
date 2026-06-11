@@ -1,0 +1,301 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "ops" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: sogyo
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:82845a82845a82845a82845a82845a82845a82845a82845a82845a82845a8284
+    result_packet: sha256:8282b98282b98282b98282b98282b98282b98282b98282b98282b98282b98282
+    trace_record: sha256:8282798282798282798282798282798282798282798282798282798282798282
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: ops
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: orchestrator-node
+  participant:
+    adapter: hermes
+    agent_id: sogyo
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: ops-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: ops
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 3
+delegation_profile:
+  a2a_workers:
+    - stub-small-vps
+    - stub-medium-vps
+  background_jobs_used: false
+  human_assistance: false
+  notes: Hermes orchestrator dispatched 3 workers across 4 workflow steps.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-11T08:51:15Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "ops"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=3b218dfbe07d5155 (redacted output)
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: The session transcript did contain a completed final assistant reply,
+      but the Telegram user did not receive it because the reply was never successfully released into the
+      outbound Telegram delivery path.
+findings:
+  - claim: >-
+      The assistant final answer existed in the transcript. Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:5
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The final reply was not handed off to the outbound delivery pipeline. Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:4; fixtures/season-001/ops-001/telegram-delivery.log:3
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Telegram did not accept or assign an API message id for the final reply. Sources:
+      fixtures/season-001/ops-001/telegram-delivery.log:4
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The behavior contradicts the channel configuration, which requires visible final replies to be sent and
+      is not transcript-only mode. Sources: fixtures/season-001/ops-001/config-snapshot.yaml:4-8
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: gpt-5.x
+model_provider: openai
+node: orchestrator-node
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  diagnosis: >-
+    Root cause is a source-visible reply release failure: the gateway recorded the final reply as visible in
+    the transcript, but its delivery_request_id was null, and the Telegram delivery log shows no valid
+    outbound delivery record or Telegram API message id for the final reply.
+  durable_memory_decision: >-
+    Do not persist as durable memory because this is a synthetic Agent Olympics fixture diagnosis, not a
+    stable user preference or production operational fact.
+  evidence: >-
+    fixtures/season-001/ops-001/gateway-journal.log:4: Final reply was marked source_visible=true but
+    delivery_request_id=null.
+
+    fixtures/season-001/ops-001/gateway-journal.log:5: Session was marked completed with
+    final_reply_visible_in_transcript=true.
+
+    fixtures/season-001/ops-001/telegram-delivery.log:3: Telegram outbound entry for message_ref=final-reply
+    has status=missing_delivery_record.
+
+    fixtures/season-001/ops-001/telegram-delivery.log:4: Outbound retry_count=0 and api_message_id=null,
+    showing no Telegram API delivery occurred.
+
+    fixtures/season-001/ops-001/config-snapshot.yaml:4-8: Configuration requires visible final replies to be
+    sent, with source_transcript_only_mode=false.
+  next_action: >-
+    Add a delivery gate/reconciliation check so a session cannot be treated as delivered-complete unless the
+    final visible reply has a non-null delivery_request_id and a successful Telegram api_message_id; then
+    safely replay or resend the affected final reply after operator approval.
+  risk_assessment: >-
+    No evidence suggests credential compromise or a global Telegram outage; the main risk is silent message
+    loss where sessions are marked complete even though no outbound delivery request or Telegram message id
+    exists. Investigation stayed read-only and used only participant-facing fixture files.
+  workflow:
+    step_count: 4
+    worker_count: 3
+    worker_profiles:
+      - stub-small-vps
+      - stub-medium-vps
+    workflow_id: wf-ops-001-sogyo-2026-06-11T08-51-15-f7b0cc
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 0
+  worker_count: 3
+  workers_completed: 3
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-11T08:51:15Z'
+status: completed
+summary: >-
+  The session transcript did contain a completed final assistant reply, but the Telegram user did not receive
+  it because the reply was never successfully released into the outbound Telegram delivery path.
+task_id: ops-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid
