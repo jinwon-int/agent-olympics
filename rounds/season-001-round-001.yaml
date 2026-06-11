@@ -105,43 +105,62 @@ participants:
     node: vps2
     model: deepseek-v4-pro
     model_provider: deepseek
-  # Registered fleet members pending SSH verification. Disabled until
-  # runtime/model/node are confirmed on the node itself: the identity gates
-  # require accurate registrations, and recording a guess would defeat them.
-  # Promote each by filling the verified values and setting enabled: true.
   - agent_id: dungae
-    runtime: unknown
-    label: dungae (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: dungae (Hermes A2A)
+    enabled: true
+    node: vps0
+    model: deepseek-v4-pro
+    model_provider: deepseek
   - agent_id: bangtong
-    runtime: unknown
-    label: bangtong (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: bangtong (Hermes A2A)
+    enabled: true
+    node: vps3
+    model: deepseek-v4-pro
+    model_provider: deepseek
   - agent_id: yukson
-    runtime: unknown
-    label: yukson (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: yukson (Hermes A2A)
+    enabled: true
     node: vps5
+    model: gpt-5.5
+    model_provider: openai-codex
   - agent_id: soonwook
-    runtime: unknown
-    label: soonwook (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: soonwook (Hermes A2A)
+    enabled: true
+    node: vps6
+    model: gpt-5.5
+    model_provider: openai-codex
   - agent_id: gwakga
-    runtime: unknown
-    label: gwakga (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: gwakga (Hermes A2A)
+    enabled: true
+    node: vps7
+    model: gpt-5.5
+    model_provider: openai-codex
   - agent_id: jingun
-    runtime: unknown
-    label: jingun (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: jingun (Hermes A2A)
+    enabled: true
+    node: vps8
+    model: deepseek-v4-pro
+    model_provider: deepseek
   - agent_id: gongyung
-    runtime: unknown
-    label: gongyung (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: gongyung (Hermes A2A)
+    enabled: true
+    node: android-gongyung
+    model: deepseek-v4-flash
+    model_provider: deepseek
   - agent_id: daegyo
-    runtime: unknown
-    label: daegyo (unverified — pending SSH confirmation)
-    enabled: false
+    runtime: hermes
+    label: daegyo (Hermes A2A)
+    enabled: true
+    node: android-daegyo
+    model: deepseek-v4-flash
+    model_provider: deepseek
 run_directory: runs/season-001/round-001/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}
 parent_issue: https://github.com/jinwon-int/agent-olympics/issues/61
