@@ -144,6 +144,14 @@ const now = new Date().toISOString();
 const rp = yaml.load(readText(resultPacketPath));
 rp.summary = oneLine(mission.summary || mission.diagnosis || fallbackSummary, 900);
 rp.outputs = rp.outputs || {};
+// A fallback packet is not a real mission answer: mark it machine-readably
+// and downgrade the packet status so it cannot pass as a clean completed
+// run into judging (the wrapper exits 2 → the runner maps the run to
+// partial, keeping run status and packet status consistent).
+rp.outputs.mission_parse_fallback = !parsed;
+if (!parsed && rp.status === 'completed') {
+  rp.status = 'partial';
+}
 rp.outputs.diagnosis = String(mission.diagnosis || mission.summary || fallbackSummary);
 rp.outputs.evidence = evidenceItems.map((e) => `${e.source || e.id}: ${e.summary}`).join('\n');
 rp.outputs.risk_assessment = String(mission.risk_assessment || 'No additional risk assessment returned by Hermes.');

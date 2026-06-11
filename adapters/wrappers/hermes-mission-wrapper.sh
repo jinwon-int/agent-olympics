@@ -152,8 +152,21 @@ if [[ $VALIDATE_STATUS -ne 0 ]]; then
   exit 1
 fi
 
-printf 'adapter_status=%s\nhermes_status=%s\nmerge_status=%s\nvalidate_status=%s\n' \
-  "$ADAPTER_STATUS" "$HERMES_STATUS" "$MERGE_STATUS" "$VALIDATE_STATUS" \
+# A parse-fallback packet is a partial result, not a completed mission:
+# exit 2 so the live runner maps the run to "partial" (matching the packet
+# status the merge script downgraded) instead of a clean completed run.
+PARSE_FALLBACK=0
+if grep -q 'parsed_json=false' "$RUN_DIR/mission-merge.log" 2>/dev/null; then
+  PARSE_FALLBACK=1
+fi
+
+printf 'adapter_status=%s\nhermes_status=%s\nmerge_status=%s\nvalidate_status=%s\nparse_fallback=%s\n' \
+  "$ADAPTER_STATUS" "$HERMES_STATUS" "$MERGE_STATUS" "$VALIDATE_STATUS" "$PARSE_FALLBACK" \
   > "$RUN_DIR/wrapper-status.env"
+
+if [[ "$PARSE_FALLBACK" -eq 1 ]]; then
+  echo "WARNING: mission output was not parseable JSON — packet downgraded to partial (exit 2)." >&2
+  exit 2
+fi
 
 exit 0
