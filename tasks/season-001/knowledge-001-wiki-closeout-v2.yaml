@@ -50,6 +50,16 @@ required_outputs:
   - wiki_paths
 
 scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: smoke
+baseline:
+  baseline_actor: baseline-openclaw-sim
+  baseline_time_sec: 0
+  baseline_success: true
+  baseline_artifact_ref: results/knowledge-001-baseline.yaml
+  difficulty_notes: >
+    Simulated OpenClaw adapter baseline (openstack mode, wiki event
+    family) run through the harness for smoke-tier promotion. This is a
+    stub adapter run, not a live mission baseline.
 
 labels:
   - wiki

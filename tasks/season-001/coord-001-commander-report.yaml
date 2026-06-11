@@ -38,6 +38,16 @@ required_outputs:
   - recommended_next_action
   - owner_assignments
 scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: smoke
+baseline:
+  baseline_actor: baseline-hermes-sim
+  baseline_time_sec: 0
+  baseline_success: true
+  baseline_artifact_ref: results/coord-001-baseline.yaml
+  difficulty_notes: >
+    Simulated Hermes adapter baseline (orchestrator mode, coord event
+    family) run through the harness for smoke-tier promotion. This is a
+    stub adapter run, not a live mission baseline.
 labels:
   - coordination
   - commander
