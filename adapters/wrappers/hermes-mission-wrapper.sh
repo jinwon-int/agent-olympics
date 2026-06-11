@@ -55,8 +55,8 @@ $ENVELOPE
 Repository root:
 $REPO
 
-Expected participant-facing fixture paths are declared in the envelope; for ops-001 they are under:
-$REPO/fixtures/season-001/ops-001/
+Participant-facing fixture references are declared inside the task envelope
+(fixtures / fixture refs fields). Resolve them relative to the repository root.
 
 Return ONLY this marker-wrapped JSON, with no commentary outside the markers:
 AGENT_OLYMPICS_RESULT_JSON_BEGIN
