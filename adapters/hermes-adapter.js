@@ -38,9 +38,27 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+
+const {
+  STATUS_MAP,
+  RUNTIME_ADAPTER_OPTIONS,
+  isoNow,
+  generatePrefixedId,
+  generateRunId,
+  pseudoHash,
+  parseAdapterArgs,
+  loadEnvelope,
+  validateModeAndFamily,
+  ensureRunDir,
+  captureConsole,
+  writeAdapterLog,
+  makeWriteYaml,
+  buildOutputs: buildCommonOutputs,
+  generateRunMetadata: generateCommonRunMetadata,
+  validateOutput: validateCommonOutput,
+  printAdapterMetadataSummary,
+} = require('./lib/adapter-common');
 
 // ---------------------------------------------------------------------------
 // ADAPTER METADATA
@@ -257,21 +275,8 @@ const CAPABILITY_MATRIX = Object.freeze({
 // ---------------------------------------------------------------------------
 // STATUS MAPPING
 // ---------------------------------------------------------------------------
-// Maps adapter exit codes and runtime states to result packet statuses.
-
-const STATUS_MAP = Object.freeze({
-  0: 'completed',
-  1: 'failed',
-  2: 'partial',
-  3: 'blocked',
-});
-
-const RUNNER_EXIT_MAP = Object.freeze({
-  completed: 0,
-  failed: 1,
-  partial: 2,
-  blocked: 3,
-});
+// Exit-code → status and status → exit-code maps (STATUS_MAP,
+// RUNNER_EXIT_MAP) are shared scaffolding in adapters/lib/adapter-common.js.
 
 // ---------------------------------------------------------------------------
 // HERMES INTERNAL STATUS MAPPING
@@ -293,92 +298,42 @@ const HERMES_STATUS_MAP = Object.freeze({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function shortId(seed) {
-  if (seed) {
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      const chr = seed.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
-      hash |= 0;
-    }
-    return (Math.abs(hash) % 0xFFFFFF).toString(16).padStart(6, '0');
-  }
-  return Math.random().toString(16).slice(2, 8);
-}
-
-function generateRunId(taskId, agentId, seed, timestamp) {
-  const ts = (timestamp || isoNow()).replace(/[:.]/g, '-').slice(0, 19);
-  const id = seed ? shortId(seed) : shortId(`${taskId}-${agentId}-${ts}`);
-  return `run-${taskId}-${agentId}-${ts}-${id}`;
-}
+// isoNow / shortId / generateRunId live in adapters/lib/adapter-common.js.
 
 function generateWorkflowId(taskId, agentId, seed, timestamp) {
-  const ts = (timestamp || isoNow()).replace(/[:.]/g, '-').slice(0, 19);
-  const id = seed ? shortId(seed) : shortId(`${taskId}-${agentId}-${ts}`);
-  return `wf-${taskId}-${agentId}-${ts}-${id}`;
+  return generatePrefixedId('wf', taskId, agentId, seed, timestamp);
 }
 
 function parseArgs() {
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
-    console.error('Usage: node adapters/hermes-adapter.js <envelope-path> [options]');
-    console.error('');
-    console.error('Options:');
-    console.error('  --run-dir <path>          Output directory (default: auto-created)');
-    console.error('  --agent-id <string>       Agent identifier (default: sogyo)');
-    console.error('  --runtime <string>        Runtime identifier (default: hermes)');
-    console.error('  --runtime-version <str>   Hermes runtime version (default: 1.0.0)');
-    console.error('  --mode <mode>             Adapter mode: orchestrator, coordinator, simulation');
-    console.error('  --event-family <family>   Event family: ops, code, smoke, node, wiki, general, coord');
-    console.error('  --model <name>            Model name (default: gpt-5.x)');
-    console.error('  --model-provider <name>   Model provider (default: openai)');
-    console.error('  --exit <code>             Simulated exit code: 0|1|2|3 (default: 0)');
-    console.error('  --seed <string>           Deterministic seed for stable output IDs');
-    console.error('  --timestamp <time>        ISO timestamp override');
-    console.error('  --publishable             Mark result as publishable (default: false)');
-    console.error('  --contradictory           Simulate contradictory worker evidence (default: false)');
-    process.exit(3);
-  }
-
-  const envelopePath = path.resolve(args[0]);
-  const opts = {
-    exitCode: 0, agentId: 'sogyo', runtime: 'hermes', runtimeVersion: '1.0.0',
-    mode: 'orchestrator', eventFamily: 'ops', model: 'gpt-5.x', modelProvider: 'openai',
-    seed: null, timestamp: null, runDir: null, publishable: false, contradictory: false,
-  };
-
-  for (let i = 1; i < args.length; i++) {
-    switch (args[i]) {
-      case '--run-dir':        opts.runDir        = path.resolve(args[++i]); break;
-      case '--agent-id':       opts.agentId       = args[++i]; break;
-      case '--runtime':        opts.runtime       = args[++i]; break;
-      case '--runtime-version': opts.runtimeVersion = args[++i]; break;
-      case '--mode':           opts.mode          = args[++i]; break;
-      case '--event-family':   opts.eventFamily   = args[++i]; break;
-      case '--model':          opts.model         = args[++i]; break;
-      case '--model-provider': opts.modelProvider = args[++i]; break;
-      case '--exit':           opts.exitCode      = parseInt(args[++i], 10); break;
-      case '--seed':           opts.seed          = args[++i]; break;
-      case '--timestamp':      opts.timestamp     = args[++i]; break;
-      case '--publishable':    opts.publishable   = true; break;
-      case '--contradictory':  opts.contradictory = true; break;
-      default:
-        console.error(`Unknown option: ${args[i]}`);
-        process.exit(3);
-    }
-  }
-
-  if (!Number.isInteger(opts.exitCode) || STATUS_MAP[opts.exitCode] === undefined) {
-    console.error(`Invalid --exit value: must be one of ${Object.keys(STATUS_MAP).join(', ')}`);
-    process.exit(3);
-  }
-
-  return { envelopePath, opts };
+  return parseAdapterArgs({
+    usage: [
+      'Usage: node adapters/hermes-adapter.js <envelope-path> [options]',
+      '',
+      'Options:',
+      '  --run-dir <path>          Output directory (default: auto-created)',
+      '  --agent-id <string>       Agent identifier (default: sogyo)',
+      '  --runtime <string>        Runtime identifier (default: hermes)',
+      '  --runtime-version <str>   Hermes runtime version (default: 1.0.0)',
+      '  --mode <mode>             Adapter mode: orchestrator, coordinator, simulation',
+      '  --event-family <family>   Event family: ops, code, smoke, node, wiki, general, coord',
+      '  --model <name>            Model name (default: gpt-5.x)',
+      '  --model-provider <name>   Model provider (default: openai)',
+      '  --exit <code>             Simulated exit code: 0|1|2|3 (default: 0)',
+      '  --seed <string>           Deterministic seed for stable output IDs',
+      '  --timestamp <time>        ISO timestamp override',
+      '  --publishable             Mark result as publishable (default: false)',
+      '  --contradictory           Simulate contradictory worker evidence (default: false)',
+    ],
+    defaults: {
+      exitCode: 0, agentId: 'sogyo', runtime: 'hermes', runtimeVersion: '1.0.0',
+      mode: 'orchestrator', eventFamily: 'ops', model: 'gpt-5.x', modelProvider: 'openai',
+      seed: null, timestamp: null, runDir: null, publishable: false, contradictory: false,
+    },
+    options: {
+      ...RUNTIME_ADAPTER_OPTIONS,
+      '--contradictory': { key: 'contradictory', kind: 'flag' },
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -445,7 +400,7 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     retries: contradictory ? 1 : 0,
     errors: contradictory ? 1 : 0,
     contradictions_detected: contradictory ? 2 : 0,
-    contradictions_resolved: contradictory ? 0 : 0,
+    contradictions_resolved: 0,
     delivery_probes_attempted: 1,
     delivery_probes_succeeded: 1,
   };
@@ -508,12 +463,12 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     },
     task: {
       task_id: taskId,
-      task_version: `v${envelope.schema_version || 1}`,
+      task_version: `v${envelope.schema_version || 2}`,
     },
     artifact_hashes: {
-      result_packet: `sha256:${shortId(`${runId}-rp`).repeat(8).slice(0, 64)}`,
-      trace_record: `sha256:${shortId(`${runId}-tr`).repeat(8).slice(0, 64)}`,
-      evidence_bundle: `sha256:${shortId(`${runId}-eb`).repeat(8).slice(0, 64)}`,
+      result_packet: `sha256:${pseudoHash(`${runId}-rp`)}`,
+      trace_record: `sha256:${pseudoHash(`${runId}-tr`)}`,
+      evidence_bundle: `sha256:${pseudoHash(`${runId}-eb`)}`,
     },
   };
 
@@ -833,10 +788,8 @@ function buildFindings(taskId, workflowId, status, eventFamily, contradictory) {
 }
 
 function buildOutputs(envelope, mode, eventFamily, status) {
-  const outputs = {};
-  for (const key of (envelope.required_outputs || [])) {
-    outputs[key] = `[hermes-adapter:${mode}/${eventFamily}] Output for ${key}. Status: ${status}. Commander report synthesized.`;
-  }
+  const outputs = buildCommonOutputs(envelope, 'hermes', mode, eventFamily, status,
+    ' Commander report synthesized.');
   if (Object.keys(outputs).length === 0) {
     outputs.commander_report = `[hermes-adapter:${mode}/${eventFamily}] Commander report. Status: ${status}.`;
   }
@@ -1040,7 +993,7 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       size_bytes: 2048,
       checksum: {
         algorithm: 'sha256',
-        value: `aaa${shortId(`${runId}-ev0`).repeat(16).slice(0, 61)}`,
+        value: `aaa${pseudoHash(`${runId}-ev0`, 61)}`,
       },
       redacted: false,
     },
@@ -1054,7 +1007,7 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       size_bytes: 2560,
       checksum: {
         algorithm: 'sha256',
-        value: `bbb${shortId(`${runId}-ev1`).repeat(16).slice(0, 61)}`,
+        value: `bbb${pseudoHash(`${runId}-ev1`, 61)}`,
       },
       redacted: false,
     },
@@ -1068,7 +1021,7 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       size_bytes: 4096,
       checksum: {
         algorithm: 'sha256',
-        value: `ccc${shortId(`${runId}-ev2`).repeat(16).slice(0, 61)}`,
+        value: `ccc${pseudoHash(`${runId}-ev2`, 61)}`,
       },
       redacted: false,
     },
@@ -1082,7 +1035,7 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       size_bytes: 2048,
       checksum: {
         algorithm: 'sha256',
-        value: `ddd${shortId(`${runId}-ev3`).repeat(16).slice(0, 61)}`,
+        value: `ddd${pseudoHash(`${runId}-ev3`, 61)}`,
       },
       redacted: true,
       redaction_rule: 'hermes_memory_content',
@@ -1105,7 +1058,7 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       size_bytes: 1024,
       checksum: {
         algorithm: 'sha256',
-        value: `eee${shortId(`${runId}-ev4`).repeat(16).slice(0, 61)}`,
+        value: `eee${pseudoHash(`${runId}-ev4`, 61)}`,
       },
       redacted: false,
     });
@@ -1122,7 +1075,7 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       size_bytes: 3072,
       checksum: {
         algorithm: 'sha256',
-        value: `fff${shortId(`${runId}-ev5`).repeat(16).slice(0, 61)}`,
+        value: `fff${pseudoHash(`${runId}-ev5`, 61)}`,
       },
       redacted: false,
     });
@@ -1175,7 +1128,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'result_packet',
         content_type: 'text/yaml',
         size_bytes: 5120,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-rp`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-rp`)}` },
         retention: 'season',
         redacted: false,
         generated_by: 'agent',
@@ -1185,7 +1138,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'trace',
         content_type: 'text/yaml',
         size_bytes: 6144,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-tr`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-tr`)}` },
         retention: 'season',
         redacted: false,
         generated_by: 'agent',
@@ -1195,7 +1148,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'evidence_bundle',
         content_type: 'text/yaml',
         size_bytes: 4096,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-eb`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-eb`)}` },
         retention: 'permanent',
         redacted: false,
         generated_by: 'agent',
@@ -1205,7 +1158,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'run_manifest',
         content_type: 'text/yaml',
         size_bytes: 2400,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-mf`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-mf`)}` },
         retention: 'season',
         redacted: false,
         generated_by: 'agent',
@@ -1215,7 +1168,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'evidence_file',
         content_type: 'text/yaml',
         size_bytes: 2560,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-ev1`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-ev1`)}` },
         retention: 'round',
         redacted: false,
         generated_by: 'agent',
@@ -1225,7 +1178,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'evidence_file',
         content_type: 'text/yaml',
         size_bytes: 4096,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-ev2`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-ev2`)}` },
         retention: 'round',
         redacted: false,
         generated_by: 'agent',
@@ -1235,7 +1188,7 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
         kind: 'evidence_file',
         content_type: 'text/yaml',
         size_bytes: 2048,
-        checksum: { algorithm: 'sha256', value: `${shortId(`${runId}-ev3`).repeat(16).slice(0, 64)}` },
+        checksum: { algorithm: 'sha256', value: `${pseudoHash(`${runId}-ev3`)}` },
         retention: 'round',
         redacted: true,
         generated_by: 'agent',
@@ -1266,26 +1219,12 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
 
 function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
   startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths) {
-  return {
-    schema_version: 1,
-    run_id: runId,
-    task_id: envelope.task_id || 'unknown',
-    envelope_path: envelopePath,
-    agent_id: agentId,
-    runtime: runtime,
-    runtime_version: runtimeVersion,
-    adapter_mode: mode,
-    event_family: eventFamily,
-    status: status,
-    exit_code: exitCode,
-    started_at: startedAt,
-    ended_at: endedAt,
-    duration_seconds: Math.round((new Date(endedAt) - new Date(startedAt)) / 1000),
-    artifacts: artifactPaths.map(p => path.basename(p)),
-    adapter_type: 'hermes-orchestrator',
-    adapter_version: ADAPTER_METADATA.adapter_version,
-    notes: `Hermes adapter run for lane 1/3 (sogyo). Adapter metadata, artifact mapping, capabilities, workflow plan, and validation examples. Mode: ${mode}, Event family: ${eventFamily}.`,
-  };
+  return generateCommonRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
+    startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths, {
+      adapterType: 'hermes-orchestrator',
+      adapterVersion: ADAPTER_METADATA.adapter_version,
+      notes: `Hermes adapter run for lane 1/3 (sogyo). Adapter metadata, artifact mapping, capabilities, workflow plan, and validation examples. Mode: ${mode}, Event family: ${eventFamily}.`,
+    });
 }
 
 /**
@@ -1420,7 +1359,7 @@ function generateCommanderReport(eventFamily, workerCount, contradictory) {
     synthesized_at: isoNow(),
     workers_contributing: workerCount,
     contradictions_detected: contradictory ? 2 : 0,
-    contradictions_resolved: contradictory ? 0 : 0,
+    contradictions_resolved: 0,
     summary: `Commander synthesis for ${eventFamily} task. ${contradictory ? 'Contradictions detected and logged for human resolution.' : 'All worker results merged cleanly.'}`,
     merged_findings: [
       { finding_id: 'f-001', source_worker: 'all', description: 'Task-level analysis complete across all workers', confidence: contradictory ? 'medium' : 'high' },
@@ -1437,39 +1376,7 @@ function generateCommanderReport(eventFamily, workerCount, contradictory) {
 // ---------------------------------------------------------------------------
 
 function validateOutput(runDir) {
-  const validateScript = path.resolve(__dirname, '..', 'scripts', 'validate.js');
-  const files = ['result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'manifest.yaml'];
-
-  let allPassed = true;
-  for (const file of files) {
-    const filePath = path.join(runDir, file);
-    if (!fs.existsSync(filePath)) {
-      console.warn(`[hermes-adapter] WARNING: ${file} not found — skipping validation.`);
-      continue;
-    }
-    try {
-      const result = require('child_process').spawnSync(
-        process.execPath,
-        [validateScript, filePath],
-        { cwd: path.resolve(__dirname, '..'), stdio: 'pipe', encoding: 'utf8' }
-      );
-      if (result.status !== 0) {
-        console.warn(`[hermes-adapter] WARNING: ${file} failed schema validation:`);
-        if (result.stdout) console.warn(result.stdout.slice(0, 500));
-        if (result.stderr) console.warn(result.stderr.slice(0, 500));
-        allPassed = false;
-      } else {
-        console.log(`[hermes-adapter] ${file} — validation OK`);
-      }
-    } catch (err) {
-      console.warn(`[hermes-adapter] WARNING: Could not validate ${file}: ${err.message}`);
-    }
-  }
-
-  if (!allPassed) {
-    console.warn('[hermes-adapter] WARNING: Some output files failed validation. See warnings above.');
-  }
-  return allPassed;
+  return validateCommonOutput(runDir, { logPrefix: 'hermes-adapter' });
 }
 
 // ---------------------------------------------------------------------------
@@ -1480,24 +1387,7 @@ function main() {
   const { envelopePath, opts } = parseArgs();
 
   // --- Validate input ---
-  if (!fs.existsSync(envelopePath)) {
-    console.error(`ERROR: Envelope not found: ${envelopePath}`);
-    process.exit(3);
-  }
-
-  let envelope;
-  try {
-    const raw = fs.readFileSync(envelopePath, 'utf8');
-    envelope = yaml.load(raw);
-  } catch (err) {
-    console.error(`ERROR: Failed to parse envelope: ${err.message}`);
-    process.exit(3);
-  }
-
-  if (!envelope || !envelope.task_id) {
-    console.error('ERROR: Invalid envelope: missing task_id');
-    process.exit(3);
-  }
+  const envelope = loadEnvelope(envelopePath);
 
   const taskId = envelope.task_id;
   const agentId = opts.agentId;
@@ -1513,46 +1403,19 @@ function main() {
   const publishable = opts.publishable;
   const contradictory = opts.contradictory;
 
-  // Validate mode
-  if (!ADAPTER_METADATA.modes[mode]) {
-    console.error(`ERROR: Unknown adapter mode "${mode}". Supported modes: ${Object.keys(ADAPTER_METADATA.modes).join(', ')}`);
-    process.exit(3);
-  }
-
-  // Validate event family
-  if (!CAPABILITY_MATRIX[eventFamily]) {
-    console.error(`ERROR: Unknown event family "${eventFamily}". Supported families: ${Object.keys(CAPABILITY_MATRIX).join(', ')}`);
-    process.exit(3);
-  }
-
-  // Validate that this mode supports this event family
-  const capEntry = CAPABILITY_MATRIX[eventFamily];
-  if (!capEntry.supported_modes.includes(mode)) {
-    console.error(`ERROR: Mode "${mode}" does not support event family "${eventFamily}". Supported modes for this family: ${capEntry.supported_modes.join(', ')}`);
-    process.exit(3);
-  }
+  // Validate mode / event family / mode-family combination
+  validateModeAndFamily(mode, eventFamily, ADAPTER_METADATA, CAPABILITY_MATRIX);
 
   const startedAt = overrideTimestamp || isoNow();
   const runId = generateRunId(taskId, agentId, seed, startedAt);
   const workflowId = generateWorkflowId(taskId, agentId, seed, startedAt);
 
-  // --- Determine output directory ---
+  // --- Determine output directory (with evidence subdirectory) ---
   const runDir = opts.runDir || path.resolve(__dirname, '..', 'results', `hermes-${taskId}-${runId}`);
-  if (!fs.existsSync(runDir)) {
-    fs.mkdirSync(runDir, { recursive: true });
-  }
-  // Create evidence subdirectory
-  const evidenceDir = path.join(runDir, 'evidence');
-  if (!fs.existsSync(evidenceDir)) {
-    fs.mkdirSync(evidenceDir, { recursive: true });
-  }
+  ensureRunDir(runDir, true);
 
   // --- Capture stdout/stderr ---
-  const logLines = [];
-  const origLog = console.log;
-  const origError = console.error;
-  console.log = (...args) => { logLines.push(['STDOUT', ...args].join(' ')); origLog(...args); };
-  console.error = (...args) => { logLines.push(['STDERR', ...args].join(' ')); origError(...args); };
+  const capture = captureConsole();
 
   // Determine status from exit code
   const status = STATUS_MAP[exitCode] || 'blocked';
@@ -1587,11 +1450,7 @@ function main() {
   const memorySummaryContent = generateMemorySummaryContent(workerCount);
 
   // --- Write artifacts ---
-  const writeYaml = (filename, data) => {
-    fs.writeFileSync(path.join(runDir, filename),
-      yaml.dump(data, { indent: 2, lineWidth: 120, noRefs: true, sortKeys: true }),
-      'utf8');
-  };
+  const writeYaml = makeWriteYaml(runDir);
 
   // Write evidence sub-files
   writeYaml('evidence/workflow-plan.yaml', workflowPlanContent);
@@ -1638,22 +1497,10 @@ function main() {
   console.log(`  Adapter version:   ${ADAPTER_METADATA.adapter_version}`);
   console.log(`  Publishable:       ${publishable}`);
   console.log('');
-  console.log('=== Adapter Metadata ===');
-  console.log(`  Adapter:           ${ADAPTER_METADATA.adapter}`);
-  console.log(`  Envelope versions: ${ADAPTER_METADATA.supported_envelope_versions.join(', ')}`);
-  console.log(`  Event families:    ${ADAPTER_METADATA.supported_event_families.join(', ')}`);
-  console.log(`  Modes:             ${Object.keys(ADAPTER_METADATA.modes).join(', ')}`);
-  console.log(`  Redaction rules:   ${ADAPTER_METADATA.redaction_rules.length}`);
-  console.log(`  Evidence kinds:    ${ADAPTER_METADATA.evidence_capabilities.length}`);
-  console.log(`  Default timeout:   ${ADAPTER_METADATA.timeout_handling.default_timeout_seconds}s`);
-  console.log('');
+  printAdapterMetadataSummary(ADAPTER_METADATA);
 
   // Restore console and write the adapter log (now that all output happened)
-  console.log = origLog;
-  console.error = origError;
-  fs.writeFileSync(path.join(runDir, 'adapter.log'),
-    logLines.join('\n') + '\n',
-    'utf8');
+  writeAdapterLog(runDir, capture);
 
   // Exit with the requested code
   process.exit(exitCode);
