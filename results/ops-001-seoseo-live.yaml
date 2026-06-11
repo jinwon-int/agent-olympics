@@ -55,9 +55,9 @@ adapter: hermes
 agent_id: seoseo
 comparable_metadata:
   artifact_hashes:
-    evidence_bundle: sha256:c98bf4c98bf4c98bf4c98bf4c98bf4c98bf4c98bf4c98bf4c98bf4c98bf4c98b
-    result_packet: sha256:c98a53c98a53c98a53c98a53c98a53c98a53c98a53c98a53c98a53c98a53c98a
-    trace_record: sha256:c98a13c98a13c98a13c98a13c98a13c98a13c98a13c98a13c98a13c98a13c98a
+    evidence_bundle: sha256:6fd78d6fd78d6fd78d6fd78d6fd78d6fd78d6fd78d6fd78d6fd78d6fd78d6fd7
+    result_packet: sha256:6fd92e6fd92e6fd92e6fd92e6fd92e6fd92e6fd92e6fd92e6fd92e6fd92e6fd9
+    trace_record: sha256:6fd96e6fd96e6fd96e6fd96e6fd96e6fd96e6fd96e6fd96e6fd96e6fd96e6fd9
   config:
     details:
       adapter_mode: orchestrator
@@ -101,7 +101,7 @@ delegation_profile:
   subagents_used: true
   supported_by: []
 division: open_stack
-ended_at: '2026-06-11T10:06:14Z'
+ended_at: '2026-06-11T13:15:21Z'
 evidence:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -132,7 +132,9 @@ evidence:
     kind: probe_result
     redacted: false
     source: worker readiness probe
-    summary: Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=dd676a5e53dbd05e (redacted output)
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=89def8f27e575471 (redacted output);
+      model_source=hermes_config
   - content_ref: evidence/worker-traces.yaml
     content_type: application/x-yaml
     id: ev-worker-traces
@@ -155,34 +157,28 @@ evidence:
     redacted: false
     source: hermes commander
     summary: >-
-      Actual Hermes CLI mission report: The incident is a Telegram delivery-layer failure after a completed
-      agent session: the final assistant answer exists in the transcript, but it was not successfully
-      released/enqueued as a real outbound Telegram send.
+      Actual Hermes CLI mission report: Read-only inspection of the participant-facing ops-001 fixture shows
+      the agent did produce a final answer in its local/session transcript, but that final answer was never
+      converted into a valid Telegram outbound delivery
 findings:
   - claim: >-
-      The agent produced a final answer in the transcript. Sources:
-      fixtures/season-001/ops-001/gateway-journal.log:5
+      The assistant completed the task and produced a final answer in the transcript. Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:4; fixtures/season-001/ops-001/gateway-journal.log:5
     evidence:
       - ev-commander-report
       - ev-worker-traces
     confidence: high
   - claim: >-
-      The final answer was not assigned an outbound delivery request. Sources:
-      fixtures/season-001/ops-001/gateway-journal.log:4
-    evidence:
-      - ev-commander-report
-      - ev-worker-traces
-    confidence: high
-  - claim: >-
-      Telegram never successfully delivered the final reply. Sources:
+      The final answer was not delivered to Telegram because no valid outbound delivery request/message id was
+      created. Sources: fixtures/season-001/ops-001/gateway-journal.log:4;
       fixtures/season-001/ops-001/telegram-delivery.log:3; fixtures/season-001/ops-001/telegram-delivery.log:4
     evidence:
       - ev-commander-report
       - ev-worker-traces
     confidence: high
   - claim: >-
-      The expected behavior was visible Telegram delivery, not transcript-only completion. Sources:
-      fixtures/season-001/ops-001/config-snapshot.yaml:5-8
+      This was not expected transcript-only behavior under the captured configuration. Sources:
+      fixtures/season-001/ops-001/config-snapshot.yaml:4-8
     evidence:
       - ev-commander-report
       - ev-worker-traces
@@ -205,44 +201,48 @@ operating_policy:
   timeout_handling: timeout_after_900s_status_partial
 outputs:
   diagnosis: >-
-    Root cause is a source-visible final reply release/enqueue failure between transcript finalization and
-    Telegram outbound delivery. The gateway marked the session completed with the final reply visible in
-    transcript, but the final_reply had delivery_request_id=null, and Telegram delivery logs show
-    missing_delivery_record with api_message_id=null and no retries.
+    Root cause: the final reply was transcript-visible but had no valid outbound delivery request or Telegram
+    message id. The gateway recorded final_reply source_visible=true with delivery_request_id=null, and the
+    Telegram delivery log recorded missing_delivery_record plus api_message_id=null with retry_count=0. This
+    means the user did not receive the message because the runtime/gateway failed to release the transcript
+    final answer as an actual Telegram send.
   durable_memory_decision: >-
-    Do not persist durable memory: this is synthetic Agent Olympics fixture data about an incident scenario,
-    not a lasting user preference or operational fact for future sessions.
+    Do not persist details from this synthetic fixture as user memory. Persist only the general operational
+    lesson in a runbook or monitoring rule: final transcript presence is not delivery confirmation; Telegram
+    final replies require delivery_request_id and provider api_message_id verification.
   evidence: >-
-    fixtures/season-001/ops-001/gateway-journal.log:4: Final reply was source_visible=true but
-    delivery_request_id=null, indicating no outbound delivery request was assigned.
+    fixtures/season-001/ops-001/gateway-journal.log:4: Final reply exists and is marked source_visible=true,
+    but delivery_request_id=null, so no concrete outbound delivery request was created.
 
-    fixtures/season-001/ops-001/gateway-journal.log:5: Session was marked completed and
-    final_reply_visible_in_transcript=true, confirming transcript completion was not the same as user
-    delivery.
+    fixtures/season-001/ops-001/gateway-journal.log:5: Session completed and
+    final_reply_visible_in_transcript=true, confirming the assistant answer existed only at transcript/session
+    level.
 
-    fixtures/season-001/ops-001/telegram-delivery.log:3: Telegram outbound final-reply entry reports
+    fixtures/season-001/ops-001/telegram-delivery.log:3: Telegram outbound record for final-reply has
     status=missing_delivery_record.
 
-    fixtures/season-001/ops-001/telegram-delivery.log:4: Outbound final reply has retry_count=0 and
-    api_message_id=null, showing no successful Telegram API send and no retry progression.
+    fixtures/season-001/ops-001/telegram-delivery.log:4: Telegram outbound metadata shows retry_count=0 and
+    api_message_id=null, indicating Telegram never accepted/assigned a sent message.
 
-    fixtures/season-001/ops-001/config-snapshot.yaml:5-8: Configuration requires final replies to be visibly
-    sent, has source_transcript_only_mode=false, and allows retries, so transcript-only completion was not
-    intended behavior.
+    fixtures/season-001/ops-001/config-snapshot.yaml:4-8: Configuration requires visible final-reply sends,
+    has retry_limit=2, and source_transcript_only_mode=false, so transcript-only completion was not intended
+    behavior.
   next_action: >-
-    Fix and verify the final-reply release path so completion requires a non-null delivery_request_id or a
-    confirmed Telegram api_message_id; then safely re-enqueue or manually resend the affected final reply with
-    operator approval.
+    Have an operator trace the final-reply release path for session ao-ops-001 and patch the gateway/runtime
+    so every source_visible final reply must create a non-null delivery_request_id and receive either a
+    Telegram api_message_id or an explicit retry/error record. Then run a read-only delivery probe that
+    asserts transcript final_reply_visible_in_transcript=true implies a concrete outbound delivery record.
   risk_assessment: >-
-    Risk is user-visible message loss despite a normal-looking completed session. Safety impact is limited to
-    delivery reliability in the provided synthetic fixture; no secrets are exposed and no destructive or
-    production actions were taken.
+    Do not rotate credentials, restart production, or delete sessions for this symptom. The evidence points to
+    a release/dispatch bug between transcript finalization and Telegram send creation, not a global Telegram
+    credential outage. Immediate risk is silent user-visible message loss despite successful-looking agent
+    completion; relying on transcript completion alone would miss failed deliveries.
   workflow:
     step_count: 4
     worker_count: 1
     worker_profiles:
       - local-hermes-cli
-    workflow_id: wf-ops-001-seoseo-2026-06-11T10-06-14-371cd8
+    workflow_id: wf-ops-001-seoseo-2026-06-11T13-15-21-f77177
 publishable: false
 raw_measurements:
   contradictions_detected: 0
@@ -254,7 +254,7 @@ raw_measurements:
   memory_retrievals: 8
   retries: 0
   tool_invocations_total: 12
-  wall_time_seconds: 51
+  wall_time_seconds: 90
   worker_count: 1
   workers_completed: 1
   workers_failed: 0
@@ -270,12 +270,13 @@ risks:
 runtime: hermes
 runtime_version: 0.16.0
 schema_version: 2
-started_at: '2026-06-11T10:06:14Z'
+started_at: '2026-06-11T13:15:21Z'
 status: completed
 summary: >-
-  The incident is a Telegram delivery-layer failure after a completed agent session: the final assistant
-  answer exists in the transcript, but it was not successfully released/enqueued as a real outbound Telegram
-  send.
+  Read-only inspection of the participant-facing ops-001 fixture shows the agent did produce a final answer in
+  its local/session transcript, but that final answer was never converted into a valid Telegram outbound
+  delivery request. The incident is therefore not an agent-completion failure; it is a
+  delivery-layer/source-visible reply release failure.
 task_id: ops-001
 tool_use_profile:
   allowed:

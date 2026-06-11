@@ -55,9 +55,9 @@ adapter: hermes
 agent_id: sogyo
 comparable_metadata:
   artifact_hashes:
-    evidence_bundle: sha256:82845a82845a82845a82845a82845a82845a82845a82845a82845a82845a8284
-    result_packet: sha256:8282b98282b98282b98282b98282b98282b98282b98282b98282b98282b98282
-    trace_record: sha256:8282798282798282798282798282798282798282798282798282798282798282
+    evidence_bundle: sha256:f5a96af5a96af5a96af5a96af5a96af5a96af5a96af5a96af5a96af5a96af5a9
+    result_packet: sha256:f5a7c9f5a7c9f5a7c9f5a7c9f5a7c9f5a7c9f5a7c9f5a7c9f5a7c9f5a7c9f5a7
+    trace_record: sha256:f5a789f5a789f5a789f5a789f5a789f5a789f5a789f5a789f5a789f5a789f5a7
   config:
     details:
       adapter_mode: orchestrator
@@ -91,18 +91,17 @@ configuration_profile:
   max_concurrent_workers: 3
   model_routing: documented
   resource_limits: configured
-  worker_count: 3
+  worker_count: 1
 delegation_profile:
   a2a_workers:
-    - stub-small-vps
-    - stub-medium-vps
+    - local-hermes-cli
   background_jobs_used: false
   human_assistance: false
-  notes: Hermes orchestrator dispatched 3 workers across 4 workflow steps.
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
   subagents_used: true
   supported_by: []
 division: open_stack
-ended_at: '2026-06-11T08:51:15Z'
+ended_at: '2026-06-11T13:13:11Z'
 evidence:
   - content_ref: envelope-copy.yaml
     content_type: application/x-yaml
@@ -133,7 +132,9 @@ evidence:
     kind: probe_result
     redacted: false
     source: worker readiness probe
-    summary: Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=3b218dfbe07d5155 (redacted output)
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=6b8465b6ae62cb63 (redacted output);
+      model_source=hermes_config
   - content_ref: evidence/worker-traces.yaml
     content_type: application/x-yaml
     id: ev-worker-traces
@@ -156,34 +157,33 @@ evidence:
     redacted: false
     source: hermes commander
     summary: >-
-      Actual Hermes CLI mission report: The session transcript did contain a completed final assistant reply,
-      but the Telegram user did not receive it because the reply was never successfully released into the
-      outbound Telegram delivery path.
+      Actual Hermes CLI mission report: agent가 multi-step task 완료 후 session transcript에 최종 응답을
+      기록했으나(source_visible=true, final_reply_visible_in_transcript=true), Telegram 사용자에게 실제 메시지가 전달되지 않은
+      incident. gateway-journal.log에서 delivery_request_id=null로 확인되며, te
 findings:
   - claim: >-
-      The assistant final answer existed in the transcript. Sources:
-      fixtures/season-001/ops-001/gateway-journal.log:5
+      agent transcript에는 최종 응답이 정상 기록되었으나 Telegram 사용자에게 전달되지 않음 Sources: gateway-journal.log:4-5;
+      telegram-delivery.log:3
     evidence:
       - ev-commander-report
       - ev-worker-traces
     confidence: high
   - claim: >-
-      The final reply was not handed off to the outbound delivery pipeline. Sources:
-      fixtures/season-001/ops-001/gateway-journal.log:4; fixtures/season-001/ops-001/telegram-delivery.log:3
+      root cause는 source-visible reply release failure: runtime이 delivery request를 생성하지 않음 Sources:
+      gateway-journal.log:4 delivery_request_id=null; telegram-delivery.log:4 api_message_id=null
+      retry_count=0; config-snapshot.yaml:5 final_reply_requires_visible_send=true
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: 'delivery pipeline 자체는 정상이며 inbound/typing indicator는 정상 처리됨 Sources: telegram-delivery.log:1-2 status=ok'
     evidence:
       - ev-commander-report
       - ev-worker-traces
     confidence: high
   - claim: >-
-      Telegram did not accept or assign an API message id for the final reply. Sources:
-      fixtures/season-001/ops-001/telegram-delivery.log:4
-    evidence:
-      - ev-commander-report
-      - ev-worker-traces
-    confidence: high
-  - claim: >-
-      The behavior contradicts the channel configuration, which requires visible final replies to be sent and
-      is not transcript-only mode. Sources: fixtures/season-001/ops-001/config-snapshot.yaml:4-8
+      retry mechanism이 작동하지 않은 이유는 delivery request 자체가 queue에 enqueue되지 않았기 때문 Sources: gateway-journal.log:4
+      delivery_request_id=null; telegram-delivery.log:4 retry_count=0; config-snapshot.yaml:7 retry_limit=2
     evidence:
       - ev-commander-report
       - ev-worker-traces
@@ -206,42 +206,45 @@ operating_policy:
   timeout_handling: timeout_after_900s_status_partial
 outputs:
   diagnosis: >-
-    Root cause is a source-visible reply release failure: the gateway recorded the final reply as visible in
-    the transcript, but its delivery_request_id was null, and the Telegram delivery log shows no valid
-    outbound delivery record or Telegram API message id for the final reply.
+    source-visible reply release failure. runtime이 session transcript에 최종 응답을 source-visible로 기록했지만, Telegram
+    outbound delivery request를 생성하지 않음(delivery_request_id=null). config-snapshot.yaml의
+    final_reply_requires_visible_send: true 설정상 명시적 delivery trigger가 필요하나, session closeout handler가
+    emitDelivery() 또는 equivalent를 호출하지 않은 것으로 판단됨. retry_limit=2로 설정되어 있으나 retry_count=0인 점에서 delivery attempt
+    자체가 queue에 진입하지 못했음을 재확인.
   durable_memory_decision: >-
-    Do not persist as durable memory because this is a synthetic Agent Olympics fixture diagnosis, not a
-    stable user preference or production operational fact.
+    persist. source_visible과 delivered의 구분은 운영에서 반복 발생 가능한 패턴. 'transcript presence ≠ user delivery' 원칙과
+    delivery_request_id=null 체크를 durable memory에 기록하여 향후 유사 incident에서 빠른 triage 가능하도록 함. delivery-probe
+    monitoring check를 infrastructure runbook에 추가 제안.
   evidence: >-
-    fixtures/season-001/ops-001/gateway-journal.log:4: Final reply was marked source_visible=true but
-    delivery_request_id=null.
+    fixtures/season-001/ops-001/gateway-journal.log:4: final_reply source_visible=true
+    delivery_request_id=null — 최종 응답이 transcript에는 존재하나 delivery request가 생성되지 않음
 
-    fixtures/season-001/ops-001/gateway-journal.log:5: Session was marked completed with
-    final_reply_visible_in_transcript=true.
+    fixtures/season-001/ops-001/telegram-delivery.log:3: status=missing_delivery_record — Telegram outbound
+    delivery log에 최종 응답의 delivery record가 존재하지 않음
 
-    fixtures/season-001/ops-001/telegram-delivery.log:3: Telegram outbound entry for message_ref=final-reply
-    has status=missing_delivery_record.
+    fixtures/season-001/ops-001/telegram-delivery.log:4: retry_count=0 api_message_id=null — delivery attempt가
+    단 한 번도 시도되지 않았으며 Telegram API message ID가 할당되지 않음
 
-    fixtures/season-001/ops-001/telegram-delivery.log:4: Outbound retry_count=0 and api_message_id=null,
-    showing no Telegram API delivery occurred.
+    fixtures/season-001/ops-001/config-snapshot.yaml:5-6: final_reply_requires_visible_send: true,
+    retry_limit: 2 — 명시적 delivery trigger가 필요한 구성임에도 retry가 전혀 발생하지 않음
 
-    fixtures/season-001/ops-001/config-snapshot.yaml:4-8: Configuration requires visible final replies to be
-    sent, with source_transcript_only_mode=false.
+    fixtures/season-001/ops-001/manifest.yaml:16-19: manifest 자체가 'source-visible reply release failure'로 시나리오
+    설명 — transcript에는 있지만 실제 outbound delivery evidence는 없음
   next_action: >-
-    Add a delivery gate/reconciliation check so a session cannot be treated as delivered-complete unless the
-    final visible reply has a non-null delivery_request_id and a successful Telegram api_message_id; then
-    safely replay or resend the affected final reply after operator approval.
+    runtime session closeout handler 코드 감사. final reply가 transcript에 write된 후 delivery pipeline으로 emit되는 code
+    path 확인 필요. 구체적으로: (1) session 완료 시 final_reply 객체 생성 후 emitDelivery() 또는 outbound queue enqueue 호출 여부 확인,
+    (2) delivery_request_id가 null로 남는 조건 추적, (3) 수정 후 dry-run으로 delivery_request_id != null 및 api_message_id
+    할당 확인. monitoring으로 delivery-probe check 추가 권장.
   risk_assessment: >-
-    No evidence suggests credential compromise or a global Telegram outage; the main risk is silent message
-    loss where sessions are marked complete even though no outbound delivery request or Telegram message id
-    exists. Investigation stayed read-only and used only participant-facing fixture files.
+    low risk. credential 손상이나 infrastructure 장애가 아닌 runtime code path 버그. delivery pipeline 자체는 정상(gateway
+    status no global errors, inbound/typing 정상 처리). session transcript 데이터 손실 없음. fix는 read-verify-then-patch
+    접근으로 충분. 현재 incident로 인한 추가 cascading failure 가능성 낮음.
   workflow:
     step_count: 4
-    worker_count: 3
+    worker_count: 1
     worker_profiles:
-      - stub-small-vps
-      - stub-medium-vps
-    workflow_id: wf-ops-001-sogyo-2026-06-11T08-51-15-f7b0cc
+      - local-hermes-cli
+    workflow_id: wf-ops-001-sogyo-2026-06-11T13-13-11-cd211d
 publishable: false
 raw_measurements:
   contradictions_detected: 0
@@ -253,9 +256,9 @@ raw_measurements:
   memory_retrievals: 8
   retries: 0
   tool_invocations_total: 12
-  wall_time_seconds: 0
-  worker_count: 3
-  workers_completed: 3
+  wall_time_seconds: 119
+  worker_count: 1
+  workers_completed: 1
   workers_failed: 0
   workflow_step_count: 4
 risks:
@@ -269,11 +272,13 @@ risks:
 runtime: hermes
 runtime_version: 0.16.0
 schema_version: 2
-started_at: '2026-06-11T08:51:15Z'
+started_at: '2026-06-11T13:13:11Z'
 status: completed
 summary: >-
-  The session transcript did contain a completed final assistant reply, but the Telegram user did not receive
-  it because the reply was never successfully released into the outbound Telegram delivery path.
+  agent가 multi-step task 완료 후 session transcript에 최종 응답을 기록했으나(source_visible=true,
+  final_reply_visible_in_transcript=true), Telegram 사용자에게 실제 메시지가 전달되지 않은 incident. gateway-journal.log에서
+  delivery_request_id=null로 확인되며, telegram-delivery.log에서 status=missing_delivery_record, api_message_id=null,
+  retry_count=0으로 확인. transcript에는 응답이 존재하지만 outbound delivery pipeline이 전혀 작동하지 않음.
 task_id: ops-001
 tool_use_profile:
   allowed:

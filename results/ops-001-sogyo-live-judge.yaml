@@ -1,5 +1,5 @@
 schema_version: 1
-judge_record_id: jr-ops-001-sogyo-1781169746252
+judge_record_id: jr-ops-001-sogyo-1781190014725
 task_id: ops-001
 packet_id: ops-001-sogyo-live
 judge_type: hybrid
@@ -7,13 +7,13 @@ judge_identity: seo-jin-on
 scoring_rubric: rubrics/agent-olympics-v1.yaml
 score_dimensions:
   correctness:
-    score: 27
+    score: 28
     max: 30
     reason: >-
-      Delivery-layer release/enqueue failure correctly identified with the specific mechanism
-      (delivery_request_id=null, missing_delivery_record, api_message_id=null, retry_count=0) —
-      full-band per oracle guidance; minor deduction for not explicitly ruling out the
-      thread-context alternative.
+      Delivery-layer release/enqueue failure with the specific mechanism (delivery_request_id=null,
+      api_message_id=null) plus differential reasoning — retry_count=0 despite retry_limit=2 places
+      the failure before queue entry, ruling out Telegram API and pipeline-wide causes;
+      thread-context alternative not addressed.
   evidence_quality:
     score: 18
     max: 20
@@ -30,23 +30,22 @@ score_dimensions:
     score: 9
     max: 10
     reason: >-
-      Diagnosis, risk assessment, and a concrete operator-executable next action (delivery
-      gate/reconciliation, approved replay) are clear without redoing the investigation; no separate
-      user-facing summary message.
+      Code-audit next action with concrete verification steps (trace null delivery_request_id,
+      dry-run assert non-null ids) is operator-executable without redoing the diagnosis.
   durability:
-    score: 8
+    score: 9
     max: 10
     reason: >-
-      Proposes a durable systemic fix (delivery gate/reconciliation check), meeting the oracle's
-      monitoring criterion; deduction for declining a durable documentation/runbook record of the
-      recovery steps.
-total_score: 88
+      Recommends persisting the transcript-vs-delivery distinction and a delivery_request_id=null
+      check to runbook/monitoring — meets both oracle durability criteria; no drafted runbook entry.
+total_score: 90
 penalties_applied: []
 verdict: pass
 judge_notes: >-
   Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
-  operator (seo-jin-on). First live-run-backed judge record for ops-001.
+  operator (seo-jin-on). Remote-execution-verified live judge record for ops-001 (participant
+  sogyo); supersedes the earlier record whose mission ran on the operator host.
 
   Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
   communication, durability human-scored.
-created_at: '2026-06-11T09:22:26.252Z'
+created_at: '2026-06-11T15:00:14.725Z'
