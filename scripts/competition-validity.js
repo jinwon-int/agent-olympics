@@ -65,7 +65,7 @@ const SEVERITY_ERROR = 'ERROR';
 const SEVERITY_WARN = 'WARN';
 
 const VALID_RUN_STATUSES = new Set([
-  'pending', 'running', 'completed', 'failed', 'scored', 'archived',
+  'pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified',
 ]);
 
 const VALID_PACKET_STATUSES = new Set([
@@ -410,12 +410,18 @@ function checkForbiddenMetadata(doc, context, filePath) {
     for (const [key, val] of Object.entries(obj)) {
       const fullPath = pathStr ? `${pathStr}.${key}` : key;
 
-      if (typeof val === 'string') {
-        // Check for secret-bearing key names
-        if (FORBIDDEN_SECRET_KEY_PATTERNS.some(r => r.test(key))) {
+      // Check for secret-bearing key names (any value type). String values keep
+      // the historical error severity; non-string values (e.g. api_key: 12345,
+      // or structured credential-handling metadata) are flagged as warnings.
+      if (FORBIDDEN_SECRET_KEY_PATTERNS.some(r => r.test(key))) {
+        if (typeof val === 'string') {
           error(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" found in participant-facing artifact`);
+        } else {
+          warn(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" (non-string value) found in participant-facing artifact`);
         }
+      }
 
+      if (typeof val === 'string') {
         // Check for actual secret values leaked
         if (FORBIDDEN_VALUE_PATTERNS.some(r => r.test(val))) {
           error(`forbidden:${filePath}`, `Secret value pattern detected in "${fullPath}" — credential leak`);
@@ -478,7 +484,7 @@ function checkApprovalBoundaries(doc, filePath) {
     const hasDestructive = actions.some(a => {
       if (!a || typeof a !== 'object') return false;
       return DESTRUCTIVE_ACTION_PATTERNS.some(r =>
-        r.test(a.type || '') || r.test(a.command_summary || '')
+        r.test(a.type || '') || r.test(a.command_summary || a.summary || '')
       );
     });
 
@@ -699,7 +705,7 @@ function checkAppealRecord(packetDoc, filePath) {
   if (!packetDoc || typeof packetDoc !== 'object' || !packetDoc.appeal) return;
   const rel = path.relative(ROOT, filePath);
   const appeal = packetDoc.appeal;
-  const allowedStatuses = new Set(['filed', 'under_review', 'accepted', 'rejected', 'withdrawn']);
+  const allowedStatuses = new Set(['filed', 'under_review', 'upheld', 'denied', 'remanded', 'dismissed']);
 
   if (!allowedStatuses.has(appeal.status)) {
     error(`appeal:${rel}`, `appeal status "${appeal.status}" is not allowed`);
@@ -709,7 +715,7 @@ function checkAppealRecord(packetDoc, filePath) {
       error(`appeal:${rel}`, `appeal missing required field "${field}"`);
     }
   }
-  if (['under_review', 'accepted', 'rejected'].includes(appeal.status) && !appeal.reviewed_by) {
+  if (['under_review', 'upheld', 'denied', 'remanded', 'dismissed'].includes(appeal.status) && !appeal.reviewed_by) {
     error(`appeal:${rel}`, `appeal status "${appeal.status}" requires reviewed_by`);
   }
 }
@@ -726,15 +732,18 @@ function checkCrossDocumentConsistency(runDir, manifest) {
   const packetPath = path.join(runDir, 'result-packet.yaml');
   const tracePath = path.join(runDir, 'trace.yaml');
   const judgePath = path.join(runDir, 'judge-record.yaml');
+  const bundlePath = path.join(runDir, 'evidence-bundle.yaml');
 
   let packet = null;
   let trace = null;
   let judge = null;
+  let bundle = null;
 
   try {
     if (fs.existsSync(packetPath)) packet = loadYaml(packetPath);
     if (fs.existsSync(tracePath)) trace = loadYaml(tracePath);
     if (fs.existsSync(judgePath)) judge = loadYaml(judgePath);
+    if (fs.existsSync(bundlePath)) bundle = loadYaml(bundlePath);
   } catch (e) {
     error(`consistency:${rel}`, `Error loading documents: ${e.message}`);
     return;
@@ -805,7 +814,7 @@ function checkCrossDocumentConsistency(runDir, manifest) {
 
   // Evidence reference integrity
   if (packet) {
-    checkEvidenceIntegrity(packet, trace, null, packetPath);
+    checkEvidenceIntegrity(packet, trace, bundle, packetPath);
   }
 
   // Forbidden metadata checks on all documents
@@ -839,7 +848,7 @@ function cmdRunManifests(roundDir) {
       if (fs.existsSync(manifestPath)) {
         runDirs.push({ dir: path.join(fullPath, entry.name), manifestPath });
       } else {
-        warn('run-manifests', `Run dir "${entry.name}" is missing manifest.yaml`);
+        error('run-manifests', `Run dir "${entry.name}" is missing manifest.yaml`);
       }
     }
   }

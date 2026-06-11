@@ -72,7 +72,7 @@ function parseArgs() {
     console.error('  --run-dir <path>     Output directory (default: auto-created in results/)');
     console.error('  --agent-id <string>  Agent identifier (default: stub-adapter)');
     console.error('  --runtime <string>   Runtime identifier (default: cli)');
-    console.error('  --exit <code>        Simulate exit code: 0=success, 1=fail, 2=timeout (default: 0)');
+    console.error('  --exit <code>        Simulate exit code: 0=success, 1=fail, 2=timeout, 3=blocked (default: 0)');
     console.error('  --seed <string>      Deterministic seed for stable output ids');
     console.error('  --timestamp <time>   ISO timestamp override for all timestamps');
     process.exit(3);
@@ -93,6 +93,11 @@ function parseArgs() {
         console.error(`Unknown option: ${args[i]}`);
         process.exit(3);
     }
+  }
+
+  if (!Number.isInteger(opts.exitCode) || opts.exitCode < 0 || opts.exitCode > 3) {
+    console.error('Invalid --exit value: must be one of 0, 1, 2, 3');
+    process.exit(3);
   }
 
   return { envelopePath, opts };
@@ -254,14 +259,14 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt) {
   };
 }
 
-function generateRunMetadata(envelopePath, envelope, runId, status, exitCode, startedAt, endedAt, artifactPaths) {
+function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode, startedAt, endedAt, artifactPaths) {
   return {
     schema_version: 1,
     run_id: runId,
     task_id: envelope.task_id || 'unknown',
     envelope_path: repoRelative(envelopePath),
-    agent_id: 'stub-adapter',
-    runtime: 'cli',
+    agent_id: agentId,
+    runtime: runtime,
     status: status,
     exit_code: exitCode,
     started_at: startedAt,
@@ -371,7 +376,7 @@ function main() {
   const resultPacket = generateResultPacket(envelope, runId, agentId, runtime, status, startedAt, endedAt, seed);
   const traceRecord = generateTraceRecord(envelope, runId, agentId, startedAt, endedAt);
   const evidenceBundle = generateEvidenceBundle(envelope, runId, agentId, endedAt);
-  const runMeta = generateRunMetadata(envelopePath, envelope, runId, status, exitCode, startedAt, endedAt,
+  const runMeta = generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode, startedAt, endedAt,
     ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'run.yaml', 'adapter.log']);
 
   // --- Write artifacts ---
@@ -387,15 +392,7 @@ function main() {
   writeYaml('evidence-bundle.yaml', evidenceBundle);
   writeYaml('run.yaml', runMeta);
 
-  // Write the adapter log
-  fs.writeFileSync(path.join(runDir, 'adapter.log'),
-    logLines.join('\n') + '\n',
-    'utf8');
-
-  // --- Self-validate ---
-  console.log = origLog;
-  console.error = origError;
-
+  // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
 
   // --- Summary ---
@@ -411,6 +408,13 @@ function main() {
   console.log(`  Duration:    ${runMeta.duration_seconds}s`);
   console.log(`  Validate:    ${validatePassed ? 'PASSED' : 'WARNINGS'}`);
   console.log('');
+
+  // Restore console and write the adapter log (now that all output happened)
+  console.log = origLog;
+  console.error = origError;
+  fs.writeFileSync(path.join(runDir, 'adapter.log'),
+    logLines.join('\n') + '\n',
+    'utf8');
 
   // Exit with the requested code so the runner can observe the mapping
   process.exit(exitCode);

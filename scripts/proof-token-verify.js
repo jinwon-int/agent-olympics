@@ -34,9 +34,16 @@ function sha256Text(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
 
+function repoPath(relPath) {
+  const resolved = path.resolve(ROOT, relPath);
+  if (!resolved.startsWith(ROOT + path.sep) && resolved !== ROOT) {
+    throw new Error(`path escapes repository root: ${relPath}`);
+  }
+  return resolved;
+}
+
 function sha256File(relPath) {
-  const full = path.resolve(ROOT, relPath);
-  return crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex');
+  return crypto.createHash('sha256').update(fs.readFileSync(repoPath(relPath))).digest('hex');
 }
 
 function verify(packetPath, challengeSetPath) {
@@ -44,11 +51,19 @@ function verify(packetPath, challengeSetPath) {
   const challengeSet = loadYaml(challengeSetPath);
   const challengeById = new Map((challengeSet.challenges || []).map((c) => [c.challenge_id, c]));
   const results = [];
+  const seenChallengeIds = new Set();
 
   for (const proof of packet.proof_tokens || []) {
     const challenge = challengeById.get(proof.challenge_id);
     const errors = [];
     let points = 0;
+
+    if (seenChallengeIds.has(proof.challenge_id)) {
+      errors.push(`duplicate proof token for ${proof.challenge_id}`);
+      results.push({ proof, passed: false, points, errors });
+      continue;
+    }
+    seenChallengeIds.add(proof.challenge_id);
 
     if (!challenge) {
       errors.push(`unknown challenge_id ${proof.challenge_id}`);
@@ -68,19 +83,23 @@ function verify(packetPath, challengeSetPath) {
     if (!proof.solution_artifact_ref) {
       errors.push('missing solution_artifact_ref');
     } else {
-      const artifactHash = sha256File(proof.solution_artifact_ref);
-      if (proof.solution_artifact_sha256 && proof.solution_artifact_sha256 !== artifactHash) {
-        errors.push(`declared artifact hash mismatch for ${proof.solution_artifact_ref}`);
-      }
-      if (artifactHash !== challenge.expected_artifact_sha256) {
-        errors.push(`artifact hash mismatch for ${proof.solution_artifact_ref}`);
-      }
-
-      const artifactText = fs.readFileSync(path.resolve(ROOT, proof.solution_artifact_ref), 'utf8');
-      for (const marker of challenge.required_markers || []) {
-        if (!artifactText.includes(marker)) {
-          errors.push(`solution artifact missing marker: ${marker}`);
+      try {
+        const artifactHash = sha256File(proof.solution_artifact_ref);
+        if (proof.solution_artifact_sha256 && proof.solution_artifact_sha256 !== artifactHash) {
+          errors.push(`declared artifact hash mismatch for ${proof.solution_artifact_ref}`);
         }
+        if (artifactHash !== challenge.expected_artifact_sha256) {
+          errors.push(`artifact hash mismatch for ${proof.solution_artifact_ref}`);
+        }
+
+        const artifactText = fs.readFileSync(repoPath(proof.solution_artifact_ref), 'utf8');
+        for (const marker of challenge.required_markers || []) {
+          if (!artifactText.includes(marker)) {
+            errors.push(`solution artifact missing marker: ${marker}`);
+          }
+        }
+      } catch (artifactError) {
+        errors.push(`solution artifact unreadable: ${artifactError.message}`);
       }
     }
 

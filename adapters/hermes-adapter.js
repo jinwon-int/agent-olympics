@@ -373,6 +373,11 @@ function parseArgs() {
     }
   }
 
+  if (!Number.isInteger(opts.exitCode) || STATUS_MAP[opts.exitCode] === undefined) {
+    console.error(`Invalid --exit value: must be one of ${Object.keys(STATUS_MAP).join(', ')}`);
+    process.exit(3);
+  }
+
   return { envelopePath, opts };
 }
 
@@ -390,10 +395,10 @@ function parseArgs() {
  *
  * Hermes runtime data              → Result Packet field
  * ────────────────────────────────────────────────────────
- * Workflow ID                      → comparable_metadata.workflow_id
+ * Workflow ID                      → outputs.workflow.workflow_id
  * Runtime release version          → runtime_version
  * Worker count and profiles        → raw_measurements.worker_count
- * Workflow plan steps              → comparable_metadata.workflow_summary
+ * Workflow plan steps              → outputs.workflow.step_count
  * Orchestrator started at          → started_at
  * Orchestrator ended at            → ended_at
  * Worker readiness probe           → raw_measurements.worker_ready_seconds
@@ -410,6 +415,18 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
 
   const taskId = envelope.task_id || 'unknown-task';
   const workflowId = generateWorkflowId(taskId, agentId, seed, startedAt);
+  const division = {
+    orchestrator: 'open_stack',
+    coordinator: 'closed_stack',
+    simulation: 'open_stack',
+  }[mode] || 'open_stack';
+  const validity = {
+    completed: 'valid',
+    partial: 'partial_valid',
+    blocked: 'partial_valid',
+    failed: 'invalid',
+    disqualified: 'disqualified',
+  }[status] || 'invalid';
 
   // Build workflow plan summary
   const stepCount = getStepCountForFamily(eventFamily);
@@ -448,6 +465,15 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
   // Build outputs
   const outputs = buildOutputs(envelope, mode, eventFamily, status);
 
+  // Workflow orchestration summary lives in outputs — the v2 result packet
+  // schema does not allow extra blocks inside comparable_metadata.
+  outputs.workflow = {
+    workflow_id: workflowId,
+    step_count: stepCount,
+    worker_count: workerCount,
+    worker_profiles: getWorkerProfilesForMode(mode),
+  };
+
   // Build comparable metadata
   const comparableMetadata = {
     participant: {
@@ -473,20 +499,16 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     },
     config: {
       profile_ref: mode === 'coordinator' ? 'coordinator-default' : 'orchestrator-default',
-      adapter_mode: mode,
-      event_family: eventFamily,
-      timeout_seconds: ADAPTER_METADATA.timeout_handling.default_timeout_seconds,
-      max_concurrent_workers: ADAPTER_METADATA.modes[mode].default_worker_count,
+      details: {
+        adapter_mode: mode,
+        event_family: eventFamily,
+        timeout_seconds: ADAPTER_METADATA.timeout_handling.default_timeout_seconds,
+        max_concurrent_workers: ADAPTER_METADATA.modes[mode].default_worker_count,
+      },
     },
     task: {
       task_id: taskId,
       task_version: `v${envelope.schema_version || 1}`,
-    },
-    workflow: {
-      workflow_id: workflowId,
-      step_count: stepCount,
-      worker_count: workerCount,
-      worker_profiles: getWorkerProfilesForMode(mode),
     },
     artifact_hashes: {
       result_packet: `sha256:${shortId(`${runId}-rp`).repeat(8).slice(0, 64)}`,
@@ -524,14 +546,25 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     operating_policy: {
       approval_boundaries: 'documented',
       secret_handling: 'redacted',
+      destructive_action_rules: 'destructive_actions_forbidden_without_explicit_approval',
       progress_reporting: 'required_for_long_tasks',
       delegation_policy: 'worker_dispatched',
       timeout_handling: `timeout_after_${ADAPTER_METADATA.timeout_handling.default_timeout_seconds}s_status_${ADAPTER_METADATA.timeout_handling.timeout_status}`,
       contradiction_resolution: contradictory ? 'requires_human_in_loop' : 'automated_resolved',
     },
+    delegation_profile: {
+      subagents_used: true,
+      background_jobs_used: false,
+      human_assistance: false,
+      a2a_workers: getWorkerProfilesForMode(mode),
+      supported_by: [],
+      notes: `Hermes orchestrator dispatched ${workerCount} workers across ${stepCount} workflow steps.`,
+    },
     started_at: startedAt,
     ended_at: endedAt,
     status: status,
+    division: division,
+    validity: validity,
     publishable: publishable,
     comparable_metadata: comparableMetadata,
     raw_measurements: rawMeasurements,
@@ -567,19 +600,19 @@ function getWorkerProfilesForMode(mode) {
 function buildToolUseProfile(mode) {
   const profiles = {
     orchestrator: {
-      allowed: ['all'],
+      allowed: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch', 'delegate', 'sessions_spawn'],
       used: ['read', 'write', 'exec', 'message', 'web_search', 'web_fetch', 'delegate', 'sessions_spawn'],
-      intentionally_avoided: ['manual'],
+      notes: 'Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided: manual.',
     },
     coordinator: {
       allowed: ['read', 'write', 'message', 'delegate'],
       used: ['read', 'write', 'message', 'delegate'],
-      intentionally_avoided: ['exec', 'image', 'web_search'],
+      notes: 'Coordinator mode. Intentionally avoided: exec, image, web_search.',
     },
     simulation: {
       allowed: ['read', 'write'],
       used: ['read', 'write'],
-      intentionally_avoided: ['all_real_execution_tools'],
+      notes: 'Simulation mode. Intentionally avoided: all real execution tools.',
     },
   };
   return profiles[mode] || profiles.simulation;
@@ -1231,15 +1264,15 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
   };
 }
 
-function generateRunMetadata(envelopePath, envelope, runId, status, exitCode,
+function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
   startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths) {
   return {
     schema_version: 1,
     run_id: runId,
     task_id: envelope.task_id || 'unknown',
     envelope_path: envelopePath,
-    agent_id: 'sogyo',
-    runtime: 'hermes',
+    agent_id: agentId,
+    runtime: runtime,
     runtime_version: runtimeVersion,
     adapter_mode: mode,
     event_family: eventFamily,
@@ -1535,7 +1568,7 @@ function main() {
     mode, eventFamily, status, contradictory, workflowId);
   const manifest = generateManifest(runId, taskId, agentId, envelope, status, startedAt, endedAt,
     mode, eventFamily);
-  const runMeta = generateRunMetadata(envelopePath, envelope, runId, status, exitCode,
+  const runMeta = generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
     startedAt, endedAt, mode, eventFamily, runtimeVersion,
     ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml',
       'manifest.yaml', 'run.yaml', 'adapter.log']);
@@ -1580,16 +1613,7 @@ function main() {
   writeYaml('manifest.yaml', manifest);
   writeYaml('run.yaml', runMeta);
 
-  // Write the adapter log
-  fs.writeFileSync(path.join(runDir, 'adapter.log'),
-    logLines.join('\n') + '\n',
-    'utf8');
-
-  // Restore console
-  console.log = origLog;
-  console.error = origError;
-
-  // --- Self-validate ---
+  // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
 
   // --- Summary ---
@@ -1623,6 +1647,13 @@ function main() {
   console.log(`  Evidence kinds:    ${ADAPTER_METADATA.evidence_capabilities.length}`);
   console.log(`  Default timeout:   ${ADAPTER_METADATA.timeout_handling.default_timeout_seconds}s`);
   console.log('');
+
+  // Restore console and write the adapter log (now that all output happened)
+  console.log = origLog;
+  console.error = origError;
+  fs.writeFileSync(path.join(runDir, 'adapter.log'),
+    logLines.join('\n') + '\n',
+    'utf8');
 
   // Exit with the requested code
   process.exit(exitCode);

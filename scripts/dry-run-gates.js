@@ -64,6 +64,7 @@ const FORBIDDEN_VALUE_PATTERNS = [
   /^gho_[a-zA-Z0-9]{36}/,
   /^github_pat_[a-zA-Z0-9_]{4,}/,
   /^xox[baprs]-/,
+  /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
   /^eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+/,
 ];
 
@@ -456,12 +457,12 @@ function redactionCheck(runner, options) {
         if (!obj || typeof obj !== 'object') return;
         for (const [key, value] of Object.entries(obj)) {
           const fullPath = path ? `${path}.${key}` : key;
+          if (FORBIDDEN_KEY_PATTERNS.some(p => p.test(key))) {
+            issues.push(`${fullPath}: potentially secret-bearing field name`);
+          }
           if (typeof value === 'string') {
             if (FORBIDDEN_VALUE_PATTERNS.some(p => p.test(value))) {
               issues.push(`${fullPath}: contains credential pattern`);
-            }
-            if (FORBIDDEN_KEY_PATTERNS.some(p => p.test(key))) {
-              issues.push(`${fullPath}: potentially secret-bearing field name`);
             }
           } else if (typeof value === 'object' && value !== null) {
             scanStrings(value, fullPath);
@@ -591,7 +592,7 @@ function integrityGate(runner, options) {
     runner.require(`INTEGRITY-AGENT-${rel}`, `agent_id present: ${rel}`, () => !!rp.agent_id);
 
     // 2. Evidence IDs unique
-    const evIds = (rp.evidence || []).map(e => e.id).filter(Boolean);
+    const evIds = (rp.evidence || []).map(e => e && e.id).filter(Boolean);
     const dupIds = evIds.filter((id, i) => evIds.indexOf(id) !== i);
     runner.require(`INTEGRITY-EVID-UNIQUE-${rel}`, `Evidence IDs unique: ${rel}`, () => dupIds.length === 0);
     if (dupIds.length > 0) {
@@ -602,6 +603,7 @@ function integrityGate(runner, options) {
     const validEvIds = new Set(evIds);
     let unresolvedRefs = 0;
     for (const finding of rp.findings || []) {
+      if (!finding || typeof finding !== 'object') continue;
       for (const ref of finding.evidence || []) {
         if (!validEvIds.has(ref)) unresolvedRefs++;
       }
@@ -622,14 +624,6 @@ function integrityGate(runner, options) {
     }
 
     // 5. No forbidden metadata / secret leaks
-    const secretPatterns = [
-      /^sk-[a-zA-Z0-9]{20,}/, /^ghp_[a-zA-Z0-9]{36}/,
-      /^gho_[a-zA-Z0-9]{36}/, /^github_pat_[a-zA-Z0-9_]{4,}/,
-      /^xox[baprs]-/, /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
-    ];
-    const forbiddenKeys = [/^api[_-]?key$/i, /^token$/i, /^password$/i, /^secret$/i,
-      /^credential/i, /^auth[_-]?token/i, /^private[_-]?key/i];
-
     let secretCount = 0;
     let forbiddenKeyCount = 0;
     let redactionReasonLeak = 0;
@@ -637,11 +631,11 @@ function integrityGate(runner, options) {
     function scanForSecrets(obj, path) {
       if (!obj || typeof obj !== 'object') return;
       for (const [key, val] of Object.entries(obj)) {
+        if (FORBIDDEN_KEY_PATTERNS.some(p => p.test(key))) forbiddenKeyCount++;
         if (typeof val === 'string') {
-          if (secretPatterns.some(p => p.test(val))) secretCount++;
-          if (forbiddenKeys.some(p => p.test(key))) forbiddenKeyCount++;
+          if (FORBIDDEN_VALUE_PATTERNS.some(p => p.test(val))) secretCount++;
           // redaction_reason containing a secret is a double leak
-          if (key === 'redaction_reason' && secretPatterns.some(p => p.test(val))) {
+          if (key === 'redaction_reason' && FORBIDDEN_VALUE_PATTERNS.some(p => p.test(val))) {
             redactionReasonLeak++;
           }
         } else if (val && typeof val === 'object') {
@@ -722,7 +716,11 @@ function provisionalScoringGate(runner, options) {
     const rp = doc && doc.result_packet ? doc.result_packet : doc;
     if (!rp || typeof rp !== 'object') continue;
 
-    const validity = rp.validity || rp.status || 'unknown';
+    // validity may be the object form supported by appealsGate; use its state field
+    const validityRaw = (rp.validity && typeof rp.validity === 'object')
+      ? rp.validity.state
+      : rp.validity;
+    const validity = String(validityRaw || rp.status || 'unknown');
     const publishable = rp.publishable;
 
     // 1. publishable: true requires valid/partial_valid validity
@@ -1092,9 +1090,7 @@ function finalizerReady(runner, options) {
   appealsGate(runner, options);
   judgeWorkflowGate(runner, options);
 
-  if (options['runs-dir'] || options['results-dir']) {
-    publicationGates(runner, options);
-  }
+  publicationGates(runner, options);
 
   return runner;
 }

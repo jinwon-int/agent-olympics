@@ -192,6 +192,103 @@ function randClass(rank) {
 }
 
 // ---------------------------------------------------------------------------
+// Blind-mode anonymization
+// ---------------------------------------------------------------------------
+
+function participantLabel(index) {
+  let label = '';
+  let n = index;
+  do {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return label;
+}
+
+/**
+ * Return a copy of the scoreboard with participant identities anonymized.
+ * Each distinct agent_id (in order of first appearance in entries) maps to
+ * "Participant A", "Participant B", ...  Model/node/hardware-identifying
+ * metadata is withheld, and file refs named after participants are dropped.
+ */
+function anonymizeScoreboard(scoreboard) {
+  const aliases = new Map();
+  const aliasFor = (agentId) => {
+    const key = String(agentId == null ? '' : agentId);
+    if (!aliases.has(key)) aliases.set(key, `Participant ${participantLabel(aliases.size)}`);
+    return aliases.get(key);
+  };
+  const slugFor = (agentId) => aliasFor(agentId).toLowerCase().replace(/\s+/g, '-');
+  const scrubId = (value, agentId, slug) =>
+    typeof value === 'string' && agentId ? value.split(agentId).join(slug) : value;
+
+  // Collect identifying metadata values (node names, models, hardware
+  // classes, ...) so they can be scrubbed out of free-text fields too.
+  const GENERIC_VALUES = new Set(['none', 'linux', 'windows', 'macos', 'darwin', 'unknown']);
+  const sensitiveTokens = new Set();
+  const collectMeta = (meta) => {
+    if (!meta) return;
+    for (const field of ['model', 'model_provider', 'node', 'config_profile']) {
+      if (typeof meta[field] === 'string') sensitiveTokens.add(meta[field]);
+    }
+    for (const value of Object.values(meta.hardware_profile || {})) {
+      if (typeof value === 'string') sensitiveTokens.add(value);
+    }
+  };
+  for (const entry of scoreboard.entries || []) collectMeta(entry.submission_metadata);
+  for (const participant of scoreboard.participants || []) collectMeta(participant);
+  const scrubTokens = [...sensitiveTokens]
+    .filter((t) => t.length >= 4 && !GENERIC_VALUES.has(t.toLowerCase()))
+    .sort((a, b) => b.length - a.length);
+  const scrubText = (value) => {
+    if (typeof value !== 'string') return value;
+    let out = value;
+    for (const token of scrubTokens) out = out.split(token).join('withheld');
+    return out;
+  };
+
+  const entries = (scoreboard.entries || []).map((entry) => {
+    const anon = JSON.parse(JSON.stringify(entry));
+    const realId = entry.agent_id;
+    const slug = slugFor(realId);
+    anon.agent_id = aliasFor(realId);
+    // IDs derived from the agent_id (entry/run/packet ids) keep their task
+    // association but have the participant name replaced by the alias slug.
+    anon.entry_id = scrubId(anon.entry_id, realId, slug);
+    anon.run_id = scrubId(anon.run_id, realId, slug);
+    anon.packet_id = scrubId(anon.packet_id, realId, slug);
+    // File refs are participant-named paths — withhold them entirely
+    anon.packet_ref = null;
+    anon.judge_record_ref = null;
+    const subMeta = anon.submission_metadata;
+    if (subMeta) {
+      for (const field of ['model', 'model_provider', 'node', 'config_profile']) {
+        if (subMeta[field] != null) subMeta[field] = 'withheld';
+      }
+      if (subMeta.hardware_profile) {
+        const withheld = {};
+        for (const [key, value] of Object.entries(subMeta.hardware_profile)) {
+          withheld[key] = typeof value === 'number' ? null : 'withheld';
+        }
+        subMeta.hardware_profile = withheld;
+      }
+    }
+    // Free-text fields may mention identifying metadata (e.g. hardware
+    // classes in comparability caveats) — scrub those values too.
+    for (const field of ['comparability_caveats', 'warnings', 'errors']) {
+      if (Array.isArray(anon[field])) {
+        anon[field] = anon[field].map((text) => scrubText(scrubId(text, realId, slug)));
+      }
+    }
+    return anon;
+  });
+
+  const participants = (scoreboard.participants || []).map((p) => ({ agent_id: aliasFor(p.agent_id) }));
+
+  return { ...scoreboard, entries, participants };
+}
+
+// ---------------------------------------------------------------------------
 // Rank computation (per web-result-data-bridge.md §2.1)
 // ---------------------------------------------------------------------------
 
@@ -225,6 +322,7 @@ function pageHeader(navHtml, blindMode) {
   const blindNote = blindMode
     ? '<div class="blind-banner">⚠ Blind scoring mode — participant identities are anonymized. Identifying metadata is withheld.</div>'
     : '';
+  const nav = navHtml || '<a href="index.html" style="margin-right:20px;" class="nav-title">🏆 Agent Olympics</a>';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -235,7 +333,7 @@ function pageHeader(navHtml, blindMode) {
 </head>
 <body>
 <div class="nav-bar"><div class="container">
-<a href="index.html" style="margin-right:20px;" class="nav-title">🏆 Agent Olympics</a>
+${nav}
 </div></div>
 <div class="container">
 ${blindNote}
@@ -622,6 +720,9 @@ function main() {
     process.exit(1);
   }
 
+  // Apply blind display rules before any rendering
+  const displayBoard = blindMode ? anonymizeScoreboard(scoreboard) : scoreboard;
+
   // Create output directories
   const detailDir = path.join(outputDir, 'detail');
   const compareDir = path.join(outputDir, 'compare');
@@ -629,14 +730,14 @@ function main() {
   fs.mkdirSync(compareDir, { recursive: true });
 
   // --- Leaderboard ---
-  const leaderboardHtml = renderLeaderboard(scoreboard, blindMode, title);
+  const leaderboardHtml = renderLeaderboard(displayBoard, blindMode, title);
   const indexPath = path.join(outputDir, 'index.html');
   fs.writeFileSync(indexPath, leaderboardHtml);
   console.log(`✓ Leaderboard: ${indexPath}`);
 
   // --- Detail pages ---
   let detailCount = 0;
-  for (const entry of scoreboard.entries) {
+  for (const entry of displayBoard.entries) {
     const detailHtml = renderDetail(entry, blindMode);
     const detailPath = path.join(detailDir, `${entry.entry_id}.html`);
     fs.writeFileSync(detailPath, detailHtml);
@@ -646,7 +747,7 @@ function main() {
 
   // --- Comparison views ---
   const byTask = new Map();
-  for (const entry of scoreboard.entries) {
+  for (const entry of displayBoard.entries) {
     const taskId = entry.task_id || 'unknown';
     if (!byTask.has(taskId)) byTask.set(taskId, []);
     byTask.get(taskId).push(entry);
