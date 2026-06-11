@@ -29,7 +29,7 @@
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        judge-fixtures judge-template promotion-check
+        judge-fixtures judge-template promotion-check live-runner-fixtures
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -216,6 +216,11 @@ ci-round:
 # Source-only live runner readiness gate fixtures.
 live-runner-readiness-check:
 	npm run test:live_runner_readiness
+
+# Live runner (local_exec) fixture suite: dry-run dispatch/fan-in/handoff plus
+# gate-blocked, quarantine, redaction, and timeout-mapping negative cases.
+live-runner-fixtures:
+	npm run test:live_runner_fixtures
 
 # Focused checks for round engine template and fixture hardening.
 round-hardening-check:

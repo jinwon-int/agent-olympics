@@ -67,6 +67,9 @@ jobs:
       - name: Run judge harness fixtures
         run: make judge-fixtures
 
+      - name: Run live runner fixtures
+        run: make live-runner-fixtures
+
       - name: Report task tier promotion status
         run: make promotion-check
 
