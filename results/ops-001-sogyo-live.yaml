@@ -66,15 +66,15 @@ comparable_metadata:
       timeout_seconds: 900
     profile_ref: orchestrator-default
   model:
-    name: gpt-5.x
-    provider: openai
+    name: deepseek-v4-pro
+    provider: deepseek
   node:
     hardware_profile:
       cpu_class: medium-vps
       memory_gb: 4
       os_family: linux
       storage_class: nvme-shared
-    profile_ref: orchestrator-node
+    profile_ref: vps1
   participant:
     adapter: hermes
     agent_id: sogyo
@@ -193,9 +193,9 @@ hardware_profile:
   memory_gb: 4
   os_family: linux
   storage_class: nvme-shared
-model: gpt-5.x
-model_provider: openai
-node: orchestrator-node
+model: deepseek-v4-pro
+model_provider: deepseek
+node: vps1
 operating_policy:
   approval_boundaries: documented
   contradiction_resolution: automated_resolved
