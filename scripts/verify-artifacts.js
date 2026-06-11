@@ -95,6 +95,10 @@ async function verifyRunDir(runDir) {
   const rel = path.relative(ROOT, runDir);
   console.log(`\n=== ${rel === '' ? runDir : rel} ===`);
 
+  // Snapshot global counters so the per-directory summary reports deltas
+  const errorsBefore = errors;
+  const warningsBefore = warnings;
+
   // 1. Check manifest.yaml exists
   const manifestPath = path.join(runDir, 'manifest.yaml');
   if (!fs.existsSync(manifestPath)) {
@@ -123,6 +127,7 @@ async function verifyRunDir(runDir) {
 
   // 4. Verify each artifact in the manifest
   const manifestPaths = new Set();
+  let checksumsUpdated = false;
   for (const artifact of manifest.artifacts) {
     if (!artifact.path) {
       err('Artifact entry missing "path" field');
@@ -188,6 +193,7 @@ async function verifyRunDir(runDir) {
           if (fixChecksums) {
             // Update manifest
             artifact.checksum.value = actualHash;
+            checksumsUpdated = true;
             warn(`Checksum mismatch for "${artifact.path}" — UPDATED to match disk`);
           } else {
             err(`Checksum mismatch for "${artifact.path}": expected ${value}, got ${actualHash}`);
@@ -204,6 +210,12 @@ async function verifyRunDir(runDir) {
         warn(`Artifact "${artifact.path}" (kind: ${artifact.kind}) has no checksum`);
       }
     }
+  }
+
+  // 4b. Write updated checksums back to the manifest on disk
+  if (fixChecksums && checksumsUpdated) {
+    fs.writeFileSync(manifestPath, yaml.dump(manifest, { indent: 2, lineWidth: 120, noRefs: true }));
+    ok(`manifest.yaml written back with updated checksums`);
   }
 
   // 5. Check for files on disk not in manifest
@@ -253,7 +265,7 @@ async function verifyRunDir(runDir) {
     }
   }
 
-  console.log(`  --- ${errors} error(s), ${warnings} warning(s) ---`);
+  console.log(`  --- ${errors - errorsBefore} error(s), ${warnings - warningsBefore} warning(s) ---`);
 }
 
 // ---------------------------------------------------------------------------

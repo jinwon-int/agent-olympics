@@ -359,6 +359,23 @@ function generateSummary(manifest, preGateResult, taskResults, postGateResult, s
 }
 
 // ---------------------------------------------------------------------------
+// List mode
+// ---------------------------------------------------------------------------
+
+function listTasks(manifest) {
+  const tasks = manifest.selected_tasks || [];
+  console.log(`\nSelected tasks in ${manifest.manifest_id} (${tasks.length}):\n`);
+  console.log('  ' + 'Task ID'.padEnd(15) + 'Title'.padEnd(50) + 'Envelope');
+  console.log('  ' + '-'.repeat(110));
+  for (const task of tasks) {
+    const title = task.title || '—';
+    const shortTitle = title.length > 47 ? title.slice(0, 44) + '...' : title;
+    console.log(`  ${(task.task_id || '—').padEnd(15)}${shortTitle.padEnd(50)}${task.envelope_path || '—'}`);
+  }
+  console.log('');
+}
+
+// ---------------------------------------------------------------------------
 // CLI Entrypoint
 // ---------------------------------------------------------------------------
 
@@ -460,7 +477,7 @@ Exit: 0 = all tasks passed, 1 = any task or gate failed, 2 = usage error
   // ---- List mode ----
   if (listOnly) {
     listTasks(manifest);
-    return; // unreachable
+    return;
   }
 
   // ---- Select tasks ----
