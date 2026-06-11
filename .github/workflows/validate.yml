@@ -49,5 +49,17 @@ jobs:
       - name: Run full validation suite
         run: make validate
 
+      - name: Run competition-validity full scan
+        run: make validate-competition
+
+      - name: Run dry-run finalizer gates
+        run: make dry-run-finalizer
+
+      - name: Run stub adapter test suite
+        run: bash scripts/test-stub-adapter.sh
+
+      - name: Run web result consumer test suite
+        run: bash scripts/test-web-consumer.sh
+
       - name: Check whitespace
         run: git diff --check

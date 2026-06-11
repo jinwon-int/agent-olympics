@@ -22,3 +22,6 @@ web-output/
 # OS files
 *.DS_Store
 Thumbs.db
+
+# dry-run-gates — auto-generated finalizer evidence
+evidence/dry-run/finalizer-evidence.json
