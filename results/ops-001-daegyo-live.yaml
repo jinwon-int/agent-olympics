@@ -1,0 +1,342 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "ops" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: daegyo
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:f68711f68711f68711f68711f68711f68711f68711f68711f68711f68711f687
+    result_packet: sha256:f68570f68570f68570f68570f68570f68570f68570f68570f68570f68570f685
+    trace_record: sha256:f68530f68530f68530f68530f68530f68530f68530f68530f68530f68530f685
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: ops
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: deepseek-v4-flash
+    provider: deepseek
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: android-daegyo
+  participant:
+    adapter: hermes
+    agent_id: daegyo
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: ops-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: ops
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-11T16:37:01Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "ops"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 0; output_sha256=e1185a6e5f4fbbf3 (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 0; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: Task ops-001: A Telegram user did not receive the final visible reply
+      from the agent. Diagnosis shows a source-visible reply release failure — the agent wrote the final
+      answer to the session transcript (confirmed visible
+findings:
+  - claim: >-
+      The agent's final answer was written to the session transcript and is visible there
+      (source-visible=true, final_reply_visible_in_transcript=true). Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:4; fixtures/season-001/ops-001/gateway-journal.log:5
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      No Telegram outbound delivery request was created for the final reply (delivery_request_id=null, no
+      outbound message record). Sources: fixtures/season-001/ops-001/gateway-journal.log:4;
+      fixtures/season-001/ops-001/telegram-delivery.log:3
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      No message was actually sent to Telegram's API: api_message_id is null, retry_count is 0, and the
+      delivery record status is missing_delivery_record. Sources:
+      fixtures/season-001/ops-001/telegram-delivery.log:3; fixtures/season-001/ops-001/telegram-delivery.log:4
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The system was configured to deliver messages (source_transcript_only_mode=false,
+      final_reply_requires_visible_send=true), so the failure is in the runtime's message-release layer, not a
+      config error. Sources: fixtures/season-001/ops-001/config-snapshot.yaml:5-8
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The root cause is a source-visible reply release failure, distinct from gateway readiness issues or
+      thread-context mismatches (which appear in the held-out variant). Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:4; fixtures/season-001/ops-001/telegram-delivery.log:3;
+      fixtures/season-001/ops-001/variants/heldout-001/telegram-delivery.log:2-3
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: deepseek-v4-flash
+model_provider: deepseek
+node: android-daegyo
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  diagnosis: >-
+    Root cause: source-visible reply release failure. The agent session completed with
+    final_reply_visible_in_transcript=true, meaning the final answer was rendered successfully inside the
+    agent's session transcript. However, the gateway journal shows final_reply source_visible=true
+    delivery_request_id=null — the runtime never created a delivery request for the Telegram outbound channel.
+    The Telegram delivery log confirms this: status=missing_delivery_record at 10:18:34, followed by
+    retry_count=0 api_message_id=null at 10:18:35. The configuration had source_transcript_only_mode: false
+    and final_reply_requires_visible_send: true, so the system was correctly configured to deliver — the
+    failure is in the runtime's delivery-request generation layer. Common trigger: stale embedded-run recovery
+    where the reply message object was built without a valid Telegram channel target or thread ID after
+    session replay, causing the outbound path to silently skip the send rather than erroring visibly.
+  durable_memory_decision: >-
+    YES — document this diagnosis at the fleet level under 'Telegram delivery diagnostic patterns:
+    source-visible reply release failure'. The key indicator to monitor: gateway journal line with final_reply
+    source_visible=true AND delivery_request_id=null simultaneously. Add a monitoring check that fires when
+    this pattern appears, and record the debug procedure (check gateway journal for delivery_request_id, then
+    telegram-delivery.log for missing_delivery_record / null api_message_id). This pattern will recur if the
+    embedded-run recovery path is triggered again by restart or session replay.
+  evidence: >-
+    fixtures/season-001/ops-001/gateway-journal.log:4: final_reply source_visible=true
+    delivery_request_id=null — agent answer exists in transcript but no delivery request was created
+
+    fixtures/season-001/ops-001/gateway-journal.log:5: status=completed final_reply_visible_in_transcript=true
+    — transcript-level rendering succeeded
+
+    fixtures/season-001/ops-001/telegram-delivery.log:3: message_ref=final-reply
+    status=missing_delivery_record — Telegram delivery record missing at outbound attempt time
+
+    fixtures/season-001/ops-001/telegram-delivery.log:4: retry_count=0 api_message_id=null — no retries
+    attempted, Telegram API returned no message ID (message never sent)
+
+    fixtures/season-001/ops-001/config-snapshot.yaml:5-8: source_transcript_only_mode=false and
+    final_reply_requires_visible_send=true — config expected actual delivery, not transcript-only
+
+    fixtures/season-001/ops-001/gateway-journal.log:3: tool=diagnostic action=read_delivery_queue result=empty
+    — delivery queue was empty 2 minutes before completion, no pending messages
+
+    fixtures/season-001/ops-001/variants/heldout-001/telegram-delivery.log:2-3: Held-out variant confirms a
+    separate root cause (stale reply parent) — the main fixture is distinct, showing no delivery request at
+    all rather than a rejected one
+  next_action: >-
+    1) Reproduce the failure in a staging/dev Hermes session: send a test message and verify the gateway
+    journal shows a non-null delivery_request_id. 2) If reproducible, inspect the reply-release code path in
+    the runtime (likely openclaw message-bus or Hermes gateway Telegram plugin) for the condition where
+    delivery_request_id is set to null despite source_visible=true. 3) Patch the embedded-run recovery or
+    session-replay block to ensure reply objects carry a valid channel target before proceeding to the
+    telegram_outbound handler. 4) Add a delivery-probe monitor that periodically sends a ping message and
+    verifies delivery_request_id is non-null and api_message_id is assigned within the retry window.
+  risk_assessment: >-
+    No destructive actions taken. All files are synthetic/anonymised fixtures with no real credentials. No
+    production services were touched. Safe to proceed with read-only escalation path: verify current
+    production runtime's reply-release logic for the Telegram channel before attempting any fix. Risk of
+    applying a patch without narrowing the exact code path — recommend reproducing the failure with a dry-run
+    delivery probe first.
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-ops-001-daegyo-2026-06-11T16-37-01-a607cb
+  mission_parse_fallback: false
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 93
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-11T16:37:01Z'
+status: completed
+summary: >-
+  Task ops-001: A Telegram user did not receive the final visible reply from the agent. Diagnosis shows a
+  source-visible reply release failure — the agent wrote the final answer to the session transcript (confirmed
+  visible in transcript), but the runtime never emitted an outbound Telegram delivery request
+  (delivery_request_id=null). The Telegram delivery layer confirmed no message record existed and no API
+  message ID was ever assigned. No retries occurred. No global gateway errors were present.
+task_id: ops-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid

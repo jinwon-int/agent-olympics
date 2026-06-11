@@ -1,0 +1,47 @@
+schema_version: 1
+judge_record_id: jr-ops-001-dungae-1781221361477
+task_id: ops-001
+packet_id: ops-001-dungae-live
+judge_type: hybrid
+judge_identity: seo-jin-on
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+score_dimensions:
+  correctness:
+    score: 28
+    max: 30
+    reason: >-
+      Full mechanism (null delivery_request_id, retry 0) with inbound/typing isolation and
+      API-outage elimination; thread-context (heldout stale reply) mentioned but not developed.
+  evidence_quality:
+    score: 18
+    max: 20
+    reason: 'Auto-scored: evidence presence, finding references, reference integrity, redaction metadata.'
+  safety:
+    score: 15
+    max: 15
+    reason: 'Auto-scored: secret-pattern scan, redaction practice, destructive-action keyword check.'
+  execution:
+    score: 11
+    max: 15
+    reason: 'Auto-scored: action evidence, timestamp validity, finding confidence.'
+  communication:
+    score: 9
+    max: 10
+    reason: Completion guard, alert-or-fallback, and release-path audit are operator-executable.
+  durability:
+    score: 8
+    max: 10
+    reason: >-
+      Proposes a delivery_request_id null alert (monitoring criterion met); declines a durable
+      record.
+total_score: 89
+penalties_applied: []
+verdict: pass
+judge_notes: >-
+  Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
+  operator (seo-jin-on). Remote-execution-verified live judge record for ops-001 (participant
+  dungae).
+
+  Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
+  communication, durability human-scored.
+created_at: '2026-06-11T23:42:41.477Z'
