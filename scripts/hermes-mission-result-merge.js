@@ -177,6 +177,43 @@ for (const item of rp.evidence || []) {
   if (item.id === 'ev-probe-result') item.summary = `Hermes CLI invoked locally by wrapper; exit code ${hermesExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output)`;
 }
 
+// Replace adapter-skeleton comparable metadata with real values. The model is
+// operator-supplied via env (the wrapper cannot detect which model the local
+// Hermes routes to); "unknown" is recorded instead of a fabricated default.
+const realModel = process.env.HERMES_MODEL || 'unknown';
+const realProvider = process.env.HERMES_MODEL_PROVIDER || 'unknown';
+const wallSeconds = Number.parseInt(process.env.HERMES_WALL_SECONDS || '', 10);
+
+rp.model = realModel;
+rp.model_provider = realProvider;
+if (rp.comparable_metadata && rp.comparable_metadata.model) {
+  rp.comparable_metadata.model.name = realModel;
+  rp.comparable_metadata.model.provider = realProvider;
+}
+if (rp.raw_measurements && Number.isInteger(wallSeconds) && wallSeconds >= 0) {
+  rp.raw_measurements.wall_time_seconds = wallSeconds;
+}
+
+// The wrapper's real execution shape is a single nested Hermes CLI session,
+// not the skeleton's three simulated A2A workers.
+if (rp.delegation_profile) {
+  rp.delegation_profile.a2a_workers = ['local-hermes-cli'];
+  rp.delegation_profile.notes =
+    'Mission executed by a single nested local Hermes CLI session invoked by the wrapper.';
+}
+if (rp.raw_measurements) {
+  rp.raw_measurements.worker_count = 1;
+  if ('workers_completed' in rp.raw_measurements) rp.raw_measurements.workers_completed = hermesExit === 0 || parsed ? 1 : 0;
+  if ('workers_failed' in rp.raw_measurements) rp.raw_measurements.workers_failed = hermesExit === 0 || parsed ? 0 : 1;
+}
+if (rp.outputs.workflow) {
+  rp.outputs.workflow.worker_count = 1;
+  rp.outputs.workflow.worker_profiles = ['local-hermes-cli'];
+}
+if (rp.configuration_profile && 'worker_count' in rp.configuration_profile) {
+  rp.configuration_profile.worker_count = 1;
+}
+
 writeYaml(resultPacketPath, rp);
 
 const commanderReport = {
