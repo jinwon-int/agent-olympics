@@ -1843,14 +1843,14 @@ async function runFixtures() {
       });
       const fanin = faninRound(dispatch.runDirBaseAbs);
       report(
-        dispatch.report.runs.length === 2 && dispatch.report.runs.every((r) => r.status === 'completed')
-          && fanin.clean === 2 && fanin.quarantined === 0,
-        'committed manifest: dispatch → fan-in → handoff clean for sogyo + seoseo (both hermes)',
+        dispatch.report.runs.length === 3 && dispatch.report.runs.every((r) => r.status === 'completed')
+          && fanin.clean === 3 && fanin.quarantined === 0,
+        'committed manifest: dispatch → fan-in → handoff clean for sogyo + seoseo + nosuk (all hermes)',
         `runs: ${dispatch.report.runs.map((r) => `${r.run_id}=${r.status}`).join(', ')}`);
       report(
-        dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').length === 2
+        dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').length === 3
           && dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').every((g) => g.status === 'pass'),
-        'committed manifest: runtime_identity gate passes for both participants (config adapters match manifest runtimes)');
+        'committed manifest: runtime_identity gate passes for all three participants (config adapters match manifest runtimes)');
     }
 
     // -----------------------------------------------------------------
