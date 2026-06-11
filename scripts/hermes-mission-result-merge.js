@@ -174,15 +174,18 @@ rp.findings = findings.slice(0, 8).map((f) => {
 for (const item of rp.evidence || []) {
   if (item.id === 'ev-commander-report') item.summary = `Actual Hermes CLI mission report: ${oneLine(mission.summary || mission.diagnosis, 220)}`;
   if (item.id === 'ev-worker-traces') item.summary = `Nested Hermes CLI execution captured with exit code ${hermesExit}; parsed_json=${Boolean(parsed)}`;
-  if (item.id === 'ev-probe-result') item.summary = `Hermes CLI invoked locally by wrapper; exit code ${hermesExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output)`;
+  if (item.id === 'ev-probe-result') item.summary = `Hermes CLI invoked locally by wrapper; exit code ${hermesExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output); model_source=${process.env.HERMES_MODEL_SOURCE || 'unknown'}`;
 }
 
-// Replace adapter-skeleton comparable metadata with real values. The model is
-// operator-supplied via env (the wrapper cannot detect which model the local
-// Hermes routes to); "unknown" is recorded instead of a fabricated default.
+// Replace adapter-skeleton comparable metadata with real values. The model
+// label comes from the wrapper's attestation probe (detected from the Hermes
+// config) with the operator env as fallback; "unknown" is recorded instead
+// of a fabricated default. HERMES_MODEL_SOURCE records which path won:
+// hermes_config | operator_env | unknown.
 const realModel = process.env.HERMES_MODEL || 'unknown';
 const realProvider = process.env.HERMES_MODEL_PROVIDER || 'unknown';
 const realNode = process.env.HERMES_NODE || 'unknown';
+const modelSource = process.env.HERMES_MODEL_SOURCE || 'unknown';
 const wallSeconds = Number.parseInt(process.env.HERMES_WALL_SECONDS || '', 10);
 
 rp.model = realModel;
@@ -228,6 +231,7 @@ const commanderReport = {
   source: 'nested hermes chat -q invocation',
   parsed_json: Boolean(parsed),
   hermes_exit_code: hermesExit,
+  model_attestation: { model: realModel, provider: realProvider, source: modelSource },
   summary: mission.summary || fallbackSummary,
   diagnosis: mission.diagnosis || mission.summary || fallbackSummary,
   risk_assessment: mission.risk_assessment || null,

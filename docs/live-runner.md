@@ -248,11 +248,19 @@ Useful environment overrides for the wrapper:
   on `PATH`.
 - `HERMES_EVENT_FAMILY` / `HERMES_MODE` to override the adapter bootstrap's
   event family and mode (defaults `ops` / `orchestrator`).
-- `HERMES_MODEL` / `HERMES_MODEL_PROVIDER` / `HERMES_NODE` to record the
-  model and node identity the local Hermes actually routes to in the packet's
-  comparable metadata. When unset, the merge script records `unknown` — never
-  a fabricated skeleton default — so scoreboard model/node comparisons stay
-  honest.
+- `HERMES_NODE` to record the node identity in the packet's comparable
+  metadata (operator-supplied; `unknown` when unset).
+- `HERMES_INFO_ARGS` to override the model-attestation probe's info
+  invocation when the local Hermes prints its `Model:` line under a
+  different subcommand.
+- `HERMES_MODEL` / `HERMES_MODEL_PROVIDER` as a **fallback only**: the
+  wrapper now detects the routed model directly from the Hermes config
+  (`scripts/hermes-model-detect.js` parses the `Model:` line from candidate
+  info commands). A successful detection wins over the env — a real fleet
+  run shipped a wrong env label — and a mismatch between the two prints a
+  warning. The packet's probe evidence records `model_source`
+  (`hermes_config` / `operator_env` / `unknown`), and unresolved values are
+  recorded as `unknown`, never a fabricated skeleton default.
 
 The merge script also overwrites the skeleton's simulated workflow metadata
 with the wrapper's real execution shape: a single nested Hermes CLI session
