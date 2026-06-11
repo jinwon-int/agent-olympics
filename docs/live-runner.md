@@ -248,10 +248,11 @@ Useful environment overrides for the wrapper:
   on `PATH`.
 - `HERMES_EVENT_FAMILY` / `HERMES_MODE` to override the adapter bootstrap's
   event family and mode (defaults `ops` / `orchestrator`).
-- `HERMES_MODEL` / `HERMES_MODEL_PROVIDER` to record the model the local
-  Hermes actually routes to in the packet's comparable metadata. When unset,
-  the merge script records `unknown` — never a fabricated skeleton default —
-  so scoreboard model comparisons stay honest.
+- `HERMES_MODEL` / `HERMES_MODEL_PROVIDER` / `HERMES_NODE` to record the
+  model and node identity the local Hermes actually routes to in the packet's
+  comparable metadata. When unset, the merge script records `unknown` — never
+  a fabricated skeleton default — so scoreboard model/node comparisons stay
+  honest.
 
 The merge script also overwrites the skeleton's simulated workflow metadata
 with the wrapper's real execution shape: a single nested Hermes CLI session
@@ -312,8 +313,8 @@ configs, and four tiny fixture transports. `node scripts/live-runner.js
 fixtures` (Make target `live-runner-fixtures`) exercises:
 
 - dry-run dispatch → fan-in → handoff with hermes + openclaw + stub local_exec
-  transports (fixture round manifest, 6 runs) and with sogyo + seoseo (both
-  hermes) on the committed `rounds/season-001-round-001.yaml`;
+  transports (fixture round manifest, 6 runs) and with sogyo + seoseo + nosuk
+  (all hermes) on the committed `rounds/season-001-round-001.yaml`;
 - live profile without approval → gate-blocked before dispatch (CLI exit 2);
 - mismatched `agent_id` packet → quarantined with a reason file;
 - fake secret in transport stdout → redacted stored log + value-free redaction

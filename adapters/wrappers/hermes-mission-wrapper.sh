@@ -104,12 +104,13 @@ HERMES_WALL_SECONDS=$(( $(date +%s) - HERMES_T0 ))
 
 # 3) Merge actual mission output into the schema-valid artifacts and validate.
 #    Real comparable metadata is passed through env: HERMES_MODEL /
-#    HERMES_MODEL_PROVIDER are operator-supplied (the wrapper cannot detect
-#    which model the local Hermes routes to); when unset the merge script
-#    records "unknown" instead of a fabricated skeleton default.
+#    HERMES_MODEL_PROVIDER / HERMES_NODE are operator-supplied (the wrapper
+#    cannot detect which model the local Hermes routes to); when unset the
+#    merge script records "unknown" instead of a fabricated skeleton default.
 HERMES_WALL_SECONDS="$HERMES_WALL_SECONDS" \
 HERMES_MODEL="${HERMES_MODEL:-}" \
 HERMES_MODEL_PROVIDER="${HERMES_MODEL_PROVIDER:-}" \
+HERMES_NODE="${HERMES_NODE:-}" \
 node "$REPO/scripts/hermes-mission-result-merge.js" "$ENVELOPE" "$RUN_DIR" "$MISSION_OUTPUT" "$HERMES_STATUS" \
   > "$RUN_DIR/mission-merge.log" 2>&1
 MERGE_STATUS=$?

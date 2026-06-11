@@ -182,13 +182,18 @@ for (const item of rp.evidence || []) {
 // Hermes routes to); "unknown" is recorded instead of a fabricated default.
 const realModel = process.env.HERMES_MODEL || 'unknown';
 const realProvider = process.env.HERMES_MODEL_PROVIDER || 'unknown';
+const realNode = process.env.HERMES_NODE || 'unknown';
 const wallSeconds = Number.parseInt(process.env.HERMES_WALL_SECONDS || '', 10);
 
 rp.model = realModel;
 rp.model_provider = realProvider;
+rp.node = realNode;
 if (rp.comparable_metadata && rp.comparable_metadata.model) {
   rp.comparable_metadata.model.name = realModel;
   rp.comparable_metadata.model.provider = realProvider;
+}
+if (rp.comparable_metadata && rp.comparable_metadata.node) {
+  rp.comparable_metadata.node.profile_ref = realNode;
 }
 if (rp.raw_measurements && Number.isInteger(wallSeconds) && wallSeconds >= 0) {
   rp.raw_measurements.wall_time_seconds = wallSeconds;
