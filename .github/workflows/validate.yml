@@ -52,6 +52,9 @@ jobs:
       - name: Run competition-validity full scan
         run: make validate-competition
 
+      - name: Generate scoreboard for publication gates
+        run: make score
+
       - name: Run dry-run finalizer gates
         run: make dry-run-finalizer
 
