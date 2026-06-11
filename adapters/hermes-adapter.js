@@ -57,6 +57,7 @@ const {
   buildOutputs: buildCommonOutputs,
   generateRunMetadata: generateCommonRunMetadata,
   validateOutput: validateCommonOutput,
+  checkRequiredEvidence,
   printAdapterMetadataSummary,
 } = require('./lib/adapter-common');
 
@@ -1470,10 +1471,19 @@ function main() {
   writeYaml('trace.yaml', traceRecord);
   writeYaml('evidence-bundle.yaml', evidenceBundle);
   writeYaml('manifest.yaml', manifest);
-  writeYaml('run.yaml', runMeta);
 
   // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
+  const missingEvidence = checkRequiredEvidence(
+    resultPacket, CAPABILITY_MATRIX[eventFamily], status, 'hermes-adapter');
+
+  // run.yaml is written after validation so the outcome can be recorded
+  // alongside the run metadata (run.yaml itself is not schema-validated).
+  runMeta.validation_passed = validatePassed;
+  if (missingEvidence.length > 0) {
+    runMeta.missing_required_evidence = missingEvidence;
+  }
+  writeYaml('run.yaml', runMeta);
 
   // --- Summary ---
   console.log('');

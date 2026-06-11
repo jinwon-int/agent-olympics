@@ -1354,14 +1354,27 @@ async function main() {
   if (mode === 'validate') {
     // Validate result packets and adapter capability declarations
     console.log(`\nFound ${resultPacketFiles.length} result packet file(s). Running validate.js...\n`);
-    const { execSync } = require('child_process');
+    const { execSync, spawnSync } = require('child_process');
 
-    // Validate result packets
+    // Validate result packets. The repo-wide `packets` mode only scans the
+    // default results/ root, so a custom results-dir is validated per file.
     try {
-      execSync(`node "${path.join(ROOT, 'scripts', 'validate.js')}" packets`, {
-        cwd: ROOT,
-        stdio: 'inherit',
-      });
+      if (resultsDir === DEFAULT_RESULTS) {
+        execSync(`node "${path.join(ROOT, 'scripts', 'validate.js')}" packets`, {
+          cwd: ROOT,
+          stdio: 'inherit',
+        });
+      } else {
+        let failed = false;
+        for (const file of resultPacketFiles) {
+          const res = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'validate.js'), file], {
+            cwd: ROOT,
+            stdio: 'inherit',
+          });
+          if (res.status !== 0) failed = true;
+        }
+        if (failed) throw new Error('validation failed');
+      }
       console.log('\n✓ Result packet validation complete.');
     } catch {
       console.error('\n✗ Result packet validation found errors.');

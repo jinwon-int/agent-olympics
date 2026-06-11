@@ -245,13 +245,16 @@ function ensureRunDir(runDir, withEvidenceDir) {
 function captureConsole() {
   const logLines = [];
   const origLog = console.log;
+  const origWarn = console.warn;
   const origError = console.error;
   console.log = (...args) => { logLines.push(['STDOUT', ...args].join(' ')); origLog(...args); };
+  console.warn = (...args) => { logLines.push(['STDERR', ...args].join(' ')); origWarn(...args); };
   console.error = (...args) => { logLines.push(['STDERR', ...args].join(' ')); origError(...args); };
   return {
     logLines,
     restore() {
       console.log = origLog;
+      console.warn = origWarn;
       console.error = origError;
     },
   };
@@ -380,6 +383,27 @@ function validateOutput(runDir, options) {
   return allPassed;
 }
 
+/**
+ * Compare the result packet's evidence kinds against the capability matrix's
+ * required_evidence_per_status declaration for the run's status. Missing
+ * kinds are reported as warnings (the matrices declare the target contract;
+ * generators do not yet emit every kind in every status path).
+ * Returns the array of missing kinds.
+ */
+function checkRequiredEvidence(resultPacket, capabilityEntry, status, logPrefix) {
+  const required = capabilityEntry
+    && capabilityEntry.required_evidence_per_status
+    && capabilityEntry.required_evidence_per_status[status];
+  if (!required) return [];
+
+  const presentKinds = new Set((resultPacket.evidence || []).map(e => e && e.kind).filter(Boolean));
+  const missing = required.filter(kind => !presentKinds.has(kind));
+  for (const kind of missing) {
+    console.warn(`[${logPrefix}] WARNING: capability matrix requires evidence kind "${kind}" for status "${status}" but the packet does not include it.`);
+  }
+  return missing;
+}
+
 // ---------------------------------------------------------------------------
 // Run summary helpers
 // ---------------------------------------------------------------------------
@@ -417,5 +441,6 @@ module.exports = {
   buildOutputs,
   generateRunMetadata,
   validateOutput,
+  checkRequiredEvidence,
   printAdapterMetadataSummary,
 };

@@ -293,10 +293,14 @@ function main() {
   writeYaml('result-packet.yaml', resultPacket);
   writeYaml('trace.yaml', traceRecord);
   writeYaml('evidence-bundle.yaml', evidenceBundle);
-  writeYaml('run.yaml', runMeta);
 
   // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
+
+  // run.yaml is written after validation so the outcome can be recorded
+  // alongside the run metadata (run.yaml itself is not schema-validated).
+  runMeta.validation_passed = validatePassed;
+  writeYaml('run.yaml', runMeta);
 
   // --- Summary ---
   console.log('');
