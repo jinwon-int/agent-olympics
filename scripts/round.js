@@ -87,10 +87,7 @@ function mkdirp(p) {
 function generateTimestamp() {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
-  const tz = now
-    .toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul', timeZoneName: 'short' })
-    .match(/[A-Z]{3,4}$/)?.[0] || 'UTC';
-  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${tz}`;
+  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}UTC`;
 }
 
 function runIdTemplateVariables(template) {
@@ -197,7 +194,7 @@ function check(label, condition, detail) {
 }
 
 function warn(label, condition, detail) {
-  CHECKS.push({ label, condition: true, detail, warning: true });
+  CHECKS.push({ label, condition, detail, warning: true });
   if (!condition) {
     checkWarnings++;
   }
@@ -553,7 +550,7 @@ function cmdPlan(manifestArg, options) {
   for (const t of manifest.tasks || []) {
     const envOk = fileExists(t.envelope_path) ? '✓' : '⚠ missing';
     const fixOk = dirExists(t.fixture_bundle_ref) ? '✓' : '⚠ missing';
-    console.log(`    ${t.task_id.padEnd(12)} ${t.title.slice(0, 50).padEnd(52)} ${envOk} env  ${fixOk} fixtures`);
+    console.log(`    ${t.task_id.padEnd(12)} ${(t.title || '').slice(0, 50).padEnd(52)} ${envOk} env  ${fixOk} fixtures`);
   }
 
   console.log(`\n  Participants:`);
@@ -1189,8 +1186,10 @@ function cmdExecute(manifestArg, options) {
   // Reload manifest to get latest state
   const updatedManifest = loadYaml(manifestPath);
 
-  // Determine if all runs are now in terminal states
-  const allRunsUpdated = collectRuns(updatedManifest, options);
+  // Determine if all runs are now in terminal states.
+  // Drop the runId filter here: completion must consider ALL runs in the
+  // round, not just the one selected via --run-id.
+  const allRunsUpdated = collectRuns(updatedManifest, { ...options, runId: null });
   const allTerminal = allRunsUpdated.every(r => isTerminalRunState(r.manifest.lifecycle));
 
   if (allTerminal) {
@@ -1270,6 +1269,10 @@ function main() {
         break;
       case '--exit':
         exitOverride = parseInt(args[++i], 10);
+        if (!Number.isInteger(exitOverride)) {
+          console.error(`Invalid --exit value: "${args[i]}" — expected an integer exit code`);
+          process.exit(1);
+        }
         break;
       case '--seed':
         seed = args[++i];
