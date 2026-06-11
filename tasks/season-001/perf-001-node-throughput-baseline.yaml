@@ -51,6 +51,17 @@ required_outputs:
   - stability_assessment
   - tuning_recommendations
 scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: smoke
+baseline:
+  baseline_actor: nosuk
+  baseline_time_sec: 1920
+  baseline_success: true
+  baseline_artifact_ref: results/perf-001-baseline-nosuk.yaml
+  difficulty_notes: >
+    Source-only sample baseline packet for the nosuk a2a-runner profile
+    (committed under results/). Demonstrates raw-vs-normalized metric
+    reporting; this is a simulated adapter-style baseline, not a live
+    mission run.
 labels:
   - performance-trial
   - hardware

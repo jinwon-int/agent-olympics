@@ -6,7 +6,6 @@ event_family: code-sprint
 category: cyber-remediation
 time_limit_minutes: 90
 participant_visibility: blind
-tier: draft
 
 objective: >
   Inspect a vulnerable service repository, identify the hidden fault or
@@ -74,6 +73,16 @@ expected_artifacts:
     description: Root-cause analysis of the hidden fault or vulnerability and why the patch is sufficient.
 
 scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: smoke
+baseline:
+  baseline_actor: baseline-openclaw-sim
+  baseline_time_sec: 0
+  baseline_success: true
+  baseline_artifact_ref: results/cyber-001-baseline.yaml
+  difficulty_notes: >
+    Simulated OpenClaw adapter baseline (closedstack mode, code event
+    family) run through the harness for smoke-tier promotion. This is a
+    stub adapter run, not a live mission baseline.
 
 labels:
   - cyber
