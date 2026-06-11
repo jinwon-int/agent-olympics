@@ -221,6 +221,7 @@ live-runner-readiness-check:
 # gate-blocked, quarantine, redaction, and timeout-mapping negative cases.
 live-runner-fixtures:
 	npm run test:live_runner_fixtures
+	node scripts/hermes-model-detect.js --self-test
 
 # Focused checks for round engine template and fixture hardening.
 round-hardening-check:

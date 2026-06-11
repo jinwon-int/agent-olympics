@@ -102,14 +102,40 @@ HERMES_STATUS=$?
 set -e
 HERMES_WALL_SECONDS=$(( $(date +%s) - HERMES_T0 ))
 
-# 3) Merge actual mission output into the schema-valid artifacts and validate.
-#    Real comparable metadata is passed through env: HERMES_MODEL /
-#    HERMES_MODEL_PROVIDER / HERMES_NODE are operator-supplied (the wrapper
-#    cannot detect which model the local Hermes routes to); when unset the
-#    merge script records "unknown" instead of a fabricated skeleton default.
+# 3a) Model attestation: detect the routed model from the local Hermes config
+#     instead of trusting the operator env (a real fleet run shipped a wrong
+#     env label). Precedence: detected > operator env fallback > unknown.
+#     HERMES_INFO_ARGS overrides the candidate info invocations when the
+#     local Hermes prints its Model line under a different subcommand.
+DETECT_OUT="$(node "$REPO/scripts/hermes-model-detect.js" --bin "$HERMES_BIN" ${HERMES_INFO_ARGS:+--args "$HERMES_INFO_ARGS"} 2>/dev/null)" || DETECT_OUT=""
+IFS=$'\t' read -r DETECTED_MODEL DETECTED_PROVIDER <<< "$(printf '%s' "$DETECT_OUT" | python3 -c '
+import json, sys
+try:
+    j = json.load(sys.stdin)
+    print((j.get("model") or "") + "\t" + (j.get("provider") or "") if j.get("detected") else "\t")
+except Exception:
+    print("\t")
+')"
+HERMES_MODEL_SOURCE="unknown"
+if [[ -n "$DETECTED_MODEL" ]]; then
+  if [[ -n "${HERMES_MODEL:-}" && "$HERMES_MODEL" != "$DETECTED_MODEL" ]]; then
+    echo "WARNING: HERMES_MODEL env (\"$HERMES_MODEL\") differs from the model detected in the Hermes config (\"$DETECTED_MODEL\") — using the detected value." >&2
+  fi
+  HERMES_MODEL="$DETECTED_MODEL"
+  HERMES_MODEL_PROVIDER="${DETECTED_PROVIDER:-unknown}"
+  HERMES_MODEL_SOURCE="hermes_config"
+elif [[ -n "${HERMES_MODEL:-}" ]]; then
+  HERMES_MODEL_SOURCE="operator_env"
+fi
+
+# 3b) Merge actual mission output into the schema-valid artifacts and
+#     validate. Real comparable metadata is passed through env; HERMES_NODE
+#     is operator-supplied; model identity comes from the attestation above.
+#     Unset values are recorded as "unknown" — never a fabricated default.
 HERMES_WALL_SECONDS="$HERMES_WALL_SECONDS" \
 HERMES_MODEL="${HERMES_MODEL:-}" \
 HERMES_MODEL_PROVIDER="${HERMES_MODEL_PROVIDER:-}" \
+HERMES_MODEL_SOURCE="$HERMES_MODEL_SOURCE" \
 HERMES_NODE="${HERMES_NODE:-}" \
 node "$REPO/scripts/hermes-mission-result-merge.js" "$ENVELOPE" "$RUN_DIR" "$MISSION_OUTPUT" "$HERMES_STATUS" \
   > "$RUN_DIR/mission-merge.log" 2>&1
