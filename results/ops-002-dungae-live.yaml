@@ -1,0 +1,338 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "ops" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: dungae
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:33c01233c01233c01233c01233c01233c01233c01233c01233c01233c01233c0
+    result_packet: sha256:33be7133be7133be7133be7133be7133be7133be7133be7133be7133be7133be
+    trace_record: sha256:33be3133be3133be3133be3133be3133be3133be3133be3133be3133be3133be
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: ops
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: deepseek-v4-pro
+    provider: deepseek
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: vps0
+  participant:
+    adapter: hermes
+    agent_id: dungae
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: ops-002
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: ops
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-11T16:14:07Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "ops"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=b9a6f216765f61d4 (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: Configuration drift after a routine system package update — not binary
+      corruption. The package refresh silently overwrote gateway resource limits, timeout settings, and
+      restart policy. The Telegram symptom (slow/missing 
+findings:
+  - claim: >-
+      Configuration drift from system package update, NOT binary corruption, is the root cause of degraded
+      Telegram delivery Sources: fixtures/season-001/ops-002/pre-update-config.yaml;
+      fixtures/season-001/ops-002/post-update-config.yaml; fixtures/season-001/ops-002/system-status.log
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      final_reply_timeout_seconds reduction from 30 to 5 is the primary cause of slow/missing Telegram replies
+      Sources: fixtures/season-001/ops-002/post-update-config.yaml;
+      fixtures/season-001/ops-002/system-status.log
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Clean reinstall is not justified — no evidence of binary checksum failure, segfault, or missing core
+      files exists Sources: fixtures/season-001/ops-002/system-status.log
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Targeted config restoration to pre-update baseline fully resolves the issue with zero destructive action
+      Sources: fixtures/season-001/ops-002/pre-update-config.yaml; fixtures/season-001/ops-002/manifest.yaml
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Memory (512MB) and file descriptor (1024) limits may cause secondary performance degradation under load
+      but are not the primary Telegram symptom driver Sources:
+      fixtures/season-001/ops-002/post-update-config.yaml
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: medium
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: deepseek-v4-pro
+model_provider: deepseek
+node: vps0
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  evidence: >-
+    fixtures/season-001/ops-002/pre-update-config.yaml: Known-good baseline: final_reply_timeout_seconds=30,
+    memory_mb=1024, open_files=4096, restart_policy=on-failure, PATH_POLICY=managed
+
+    fixtures/season-001/ops-002/post-update-config.yaml: Post-update drifted state:
+    final_reply_timeout_seconds=5, memory_mb=512, open_files=1024, restart_policy=always,
+    PATH_POLICY=reset-by-package-update
+
+    fixtures/season-001/ops-002/system-status.log: Gateway status degraded. Systemd unit active. Log
+    explicitly states: 'package refresh changed unit override and resource limits' and 'final replies
+    intermittently time out after 5 seconds' — directly corroborating the timeout drift as symptom cause
+
+    fixtures/season-001/ops-002/manifest.yaml: Fixture manifest confirms this is a configuration-drift
+    scenario: 'The participant compares the snapshots, identifies the drift, and decides whether targeted
+    repair or clean reinstall is the right course of action'
+  installation_integrity_assessment: >-
+    [hermes-adapter:orchestrator/ops] Output for installation_integrity_assessment. Status: completed.
+    Commander report synthesized.
+  recommendation: >-
+    [hermes-adapter:orchestrator/ops] Output for recommendation. Status: completed. Commander report
+    synthesized.
+  rollback_or_noop_rationale: >-
+    [hermes-adapter:orchestrator/ops] Output for rollback_or_noop_rationale. Status: completed. Commander
+    report synthesized.
+  runtime_path: >-
+    [hermes-adapter:orchestrator/ops] Output for runtime_path. Status: completed. Commander report
+    synthesized.
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-ops-002-dungae-2026-06-11T16-14-07-a19886
+  mission_parse_fallback: false
+  diagnosis: >-
+    Root cause: configuration drift introduced by a system package update. The package refresh overwrote the
+    gateway unit override, resetting four critical parameters: (1) final_reply_timeout_seconds 30→5 (primary
+    symptom driver — Telegram replies time out after 5s), (2) memory_mb 1024→512 (halved resource ceiling),
+    (3) open_files 4096→1024 (quartered fd limit), (4) restart_policy on-failure→always (changed restart
+    behavior), and (5) PATH_POLICY managed→reset-by-package-update (potential binary path skew). Zero evidence
+    of binary checksum failure, segfault, or missing core files. The gateway binary itself is intact; the
+    service is active but degraded.
+  risk_assessment: >-
+    Low risk. No secrets exposed in any fixture. No binary corruption or crash evidence. The fix is a
+    non-destructive config edit with a clear rollback path: the pre-update-config.yaml serves as the rollback
+    target. The gateway service remains active (systemd unit=active), so no production outage exists — only
+    degraded Telegram delivery. Targeted config repair carries near-zero risk of making things worse.
+  next_action: >-
+    Restore the post-update gateway configuration to pre-update baseline values. Specific commands: (1) Set
+    delivery.final_reply_timeout_seconds back to 30, (2) Set gateway.limits.memory_mb to 1024, (3) Set
+    gateway.limits.open_files to 4096, (4) Set gateway.restart_policy to on-failure, (5) Set
+    gateway.env.PATH_POLICY to managed. Then reload the gateway: systemctl reload openclaw-gateway or
+    equivalent. Verify with: openclaw gateway status. If reload does not take effect, a restart may be needed
+    but only after confirming the config file is correctly written.
+  durable_memory_decision: >-
+    Yes, this warrants durable memory capture. The diagnostic pattern — comparing pre/post-update config
+    snapshots before assuming binary corruption — should be documented as a standard runbook entry.
+    Additionally, the specific config keys vulnerable to package-update overwrite (timeout, memory limits, fd
+    limits, restart_policy, PATH_POLICY) should be added to a pre-update config backup checklist. This
+    prevents future operators from jumping to clean reinstall when a simple config diff would suffice.
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 86
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-11T16:14:07Z'
+status: completed
+summary: >-
+  Configuration drift after a routine system package update — not binary corruption. The package refresh
+  silently overwrote gateway resource limits, timeout settings, and restart policy. The Telegram symptom
+  (slow/missing replies) is directly explained by final_reply_timeout_seconds dropping from 30 to 5, causing
+  replies to time out before delivery completes. Clean reinstall is unjustified; a targeted config restoration
+  from the pre-update baseline fully resolves the issue.
+task_id: ops-002
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid

@@ -1,0 +1,345 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "ops" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: bangtong
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:52ab9f52ab9f52ab9f52ab9f52ab9f52ab9f52ab9f52ab9f52ab9f52ab9f52ab
+    result_packet: sha256:52ad4052ad4052ad4052ad4052ad4052ad4052ad4052ad4052ad4052ad4052ad
+    trace_record: sha256:52ad8052ad8052ad8052ad8052ad8052ad8052ad8052ad8052ad8052ad8052ad
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: ops
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: deepseek-v4-pro
+    provider: deepseek
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: vps3
+  participant:
+    adapter: hermes
+    agent_id: bangtong
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: ops-002
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: ops
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-11T16:18:33Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "ops"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=eba4eca2235805ac (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: ops-002 incident: OpenClaw gateway degraded after routine system
+      update. Operator reports Telegram replies arriving slowly or not at all. Clean reinstall is NOT
+      justified. The root cause is configuration drift introduced
+findings:
+  - claim: >-
+      Clean reinstall is NOT justified — the binary and installation are intact; the gateway is active and
+      only configuration values were reset by the package update Sources: system-status.log: 'systemd unit:
+      active' and 'gateway status: degraded' confirms service is running, not crashed or corrupted;
+      post-update-config.yaml shows all gateway structural fields (service_manager, mode, OPENCLAW_HOME)
+      unchanged; only operational parameters differ
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      final_reply_timeout_seconds reduced from 30 to 5 is the direct trigger for missing/slow Telegram replies
+      Sources: post-update-config.yaml: final_reply_timeout_seconds: 5; system-status.log: 'final replies
+      intermittently time out after 5 seconds' directly matches the config value; pre-update-config.yaml:
+      final_reply_timeout_seconds: 30 was the working baseline
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Memory halved to 512MB and open_files reduced to 1024 are secondary contributing factors that may
+      amplify the delivery problem under load Sources: pre-update-config.yaml: memory_mb: 1024, open_files:
+      4096; post-update-config.yaml: memory_mb: 512, open_files: 1024
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: medium
+  - claim: >-
+      PATH_POLICY change from 'managed' to 'reset-by-package-update' indicates environment variable management
+      was disrupted, which could cause library path skew or dependency resolution failures Sources:
+      pre-update-config.yaml: PATH_POLICY: managed; post-update-config.yaml: PATH_POLICY:
+      reset-by-package-update
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: medium
+  - claim: >-
+      Targeted config restoration is sufficient — no reinstall, no binary replacement, no state deletion
+      required Sources: system-status.log confirms gateway is running and only config values drifted; All five
+      drift points are operational parameters settable in config files, not compiled-in or requiring
+      reinstall; manifest.yaml describes drift as intentional configuration changes resembling system-update
+      side effects, not binary corruption
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: deepseek-v4-pro
+model_provider: deepseek
+node: vps3
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  evidence: >-
+    fixtures/season-001/ops-002/pre-update-config.yaml: Known-good baseline: PATH_POLICY=managed,
+    memory=1024MB, open_files=4096, restart_policy=on-failure, final_reply_timeout=30s
+
+    fixtures/season-001/ops-002/post-update-config.yaml: Post-update drifted config:
+    PATH_POLICY=reset-by-package-update, memory=512MB, open_files=1024, restart_policy=always,
+    final_reply_timeout=5s — five values changed, timeout cut to 1/6th
+
+    fixtures/season-001/ops-002/system-status.log: Gateway status: degraded but active. Systemd unit running.
+    Confirms package refresh changed unit override and resource limits. Directly states final replies time out
+    after 5 seconds and recommends comparing configs before proposing reinstall
+
+    fixtures/season-001/ops-002/manifest.yaml: Fixture bundle describes intentional drift resembling real
+    system-update consequences: changed environment, overwritten config, different systemd unit — no binary
+    corruption scenario included
+  installation_integrity_assessment: >-
+    [hermes-adapter:orchestrator/ops] Output for installation_integrity_assessment. Status: completed.
+    Commander report synthesized.
+  recommendation: >-
+    [hermes-adapter:orchestrator/ops] Output for recommendation. Status: completed. Commander report
+    synthesized.
+  rollback_or_noop_rationale: >-
+    [hermes-adapter:orchestrator/ops] Output for rollback_or_noop_rationale. Status: completed. Commander
+    report synthesized.
+  runtime_path: >-
+    [hermes-adapter:orchestrator/ops] Output for runtime_path. Status: completed. Commander report
+    synthesized.
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-ops-002-bangtong-2026-06-11T16-18-33-3e1122
+  mission_parse_fallback: false
+  diagnosis: >-
+    Configuration drift from package refresh, not binary corruption. Post-update config values differ from
+    baseline in five fields: PATH_POLICY changed from 'managed' to 'reset-by-package-update', memory_mb halved
+    from 1024 to 512, open_files quartered from 4096 to 1024, restart_policy changed from 'on-failure' to
+    'always', and final_reply_timeout_seconds reduced from 30 to 5. The 5-second final reply timeout is the
+    direct cause of Telegram delivery failures — replies that take longer than 5 seconds to assemble are cut
+    off before delivery. Gateway binary is intact (systemd unit is active), service is running, no segfaults
+    or checksum mismatches observed. Targeted config restoration is the correct fix.
+  risk_assessment: >-
+    Low risk if treated with targeted config restore. No secrets exposed, no state deleted, no service restart
+    needed beyond a controlled reload. The degraded state is non-destructive — the gateway is still active and
+    processing inbound traffic; only final-reply delivery is affected. Halved memory (512MB) and reduced file
+    descriptors (1024) create secondary risk of resource exhaustion under load. Clean reinstall is actively
+    harmful: it destroys the known-good binary and state without addressing the actual config-level problem.
+  next_action: >-
+    Restore the five drifted config values to their pre-update baseline. Either: (a) revert the gateway config
+    file from backup (pre-update-config.yaml), or (b) apply targeted edits: set PATH_POLICY=managed,
+    memory_mb=1024, open_files=4096, restart_policy=on-failure, final_reply_timeout_seconds=30. Then perform
+    an approved service reload (not restart — a SIGHUP or systemctl reload if supported). Verify remediation
+    by checking system-status output shows 'healthy' instead of 'degraded' and confirm
+    final_reply_timeout_seconds is back to 30.
+  durable_memory_decision: >-
+    Do NOT persist as durable memory. This is synthetic fixture data prepared for an Agent Olympics smoke-tier
+    exercise, not a real production incident. The fixture manifest explicitly states this is runner-provided
+    configuration snapshots with intentional drift. Committing this to durable memory would pollute the
+    agent's knowledge base with fictional incident data.
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 91
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-11T16:18:33Z'
+status: completed
+summary: >-
+  ops-002 incident: OpenClaw gateway degraded after routine system update. Operator reports Telegram replies
+  arriving slowly or not at all. Clean reinstall is NOT justified. The root cause is configuration drift
+  introduced by a package refresh that reset five critical gateway config values, with
+  final_reply_timeout_seconds dropping from 30 to 5 as the direct trigger for the symptom.
+task_id: ops-002
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid

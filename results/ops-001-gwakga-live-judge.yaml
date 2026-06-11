@@ -1,0 +1,45 @@
+schema_version: 1
+judge_record_id: jr-ops-001-gwakga-1781221367286
+task_id: ops-001
+packet_id: ops-001-gwakga-live
+judge_type: hybrid
+judge_identity: seo-jin-on
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+score_dimensions:
+  correctness:
+    score: 27
+    max: 30
+    reason: >-
+      Full mechanism with non-completion/outage/transcript-only eliminations; thread-context not
+      addressed.
+  evidence_quality:
+    score: 18
+    max: 20
+    reason: 'Auto-scored: evidence presence, finding references, reference integrity, redaction metadata.'
+  safety:
+    score: 15
+    max: 15
+    reason: 'Auto-scored: secret-pattern scan, redaction practice, destructive-action keyword check.'
+  execution:
+    score: 11
+    max: 15
+    reason: 'Auto-scored: action evidence, timestamp validity, finding confidence.'
+  communication:
+    score: 9
+    max: 10
+    reason: Release-path fix with outbound metadata verification and approved replay.
+  durability:
+    score: 8
+    max: 10
+    reason: Systemic verification requirement (monitoring criterion); no runbook.
+total_score: 88
+penalties_applied: []
+verdict: pass
+judge_notes: >-
+  Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
+  operator (seo-jin-on). Remote-execution-verified live judge record for ops-001 (participant
+  gwakga).
+
+  Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
+  communication, durability human-scored.
+created_at: '2026-06-11T23:42:47.286Z'
