@@ -81,20 +81,67 @@ tasks:
     scoring_rubric: rubrics/agent-olympics-v1.yaml
     order: 7
 participants:
+  # SSH-verified fleet registrations: Hermes Agent v0.16.0 confirmed on each
+  # node, model labels read from the node's Hermes config.
   - agent_id: sogyo
     runtime: hermes
     label: sogyo (Hermes A2A)
     enabled: true
+    node: vps1
+    model: deepseek-v4-pro
+    model_provider: deepseek
   - agent_id: seoseo
     runtime: hermes
     runtime_version: broker
     label: seoseo (Hermes / Team1 Broker)
     enabled: true
+    node: vps4
+    model: gpt-5.5
+    model_provider: openai-codex
   - agent_id: nosuk
     runtime: hermes
     label: nosuk (Hermes A2A)
     enabled: true
     node: vps2
+    model: deepseek-v4-pro
+    model_provider: deepseek
+  # Registered fleet members pending SSH verification. Disabled until
+  # runtime/model/node are confirmed on the node itself: the identity gates
+  # require accurate registrations, and recording a guess would defeat them.
+  # Promote each by filling the verified values and setting enabled: true.
+  - agent_id: dungae
+    runtime: unknown
+    label: dungae (unverified — pending SSH confirmation)
+    enabled: false
+  - agent_id: bangtong
+    runtime: unknown
+    label: bangtong (unverified — pending SSH confirmation)
+    enabled: false
+  - agent_id: yukson
+    runtime: unknown
+    label: yukson (unverified — pending SSH confirmation)
+    enabled: false
+    node: vps5
+  - agent_id: soonwook
+    runtime: unknown
+    label: soonwook (unverified — pending SSH confirmation)
+    enabled: false
+  - agent_id: gwakga
+    runtime: unknown
+    label: gwakga (unverified — pending SSH confirmation)
+    enabled: false
+  - agent_id: jingun
+    runtime: unknown
+    label: jingun (unverified — pending SSH confirmation)
+    enabled: false
+  - agent_id: gongyung
+    runtime: unknown
+    label: gongyung (unverified — pending SSH confirmation)
+    enabled: false
+  - agent_id: daegyo
+    runtime: unknown
+    label: daegyo (unverified — pending SSH confirmation)
+    enabled: false
 run_directory: runs/season-001/round-001/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}
 parent_issue: https://github.com/jinwon-int/agent-olympics/issues/61
