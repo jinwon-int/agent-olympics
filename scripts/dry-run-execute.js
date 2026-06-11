@@ -28,7 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const yaml = require('js-yaml');
 
 // ---------------------------------------------------------------------------
@@ -86,24 +86,21 @@ function isoNow() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-function runScript(scriptPath, args, opts) {
-  const quiet = opts && opts.quiet;
-  try {
-    const cmd = `node ${scriptPath}${args ? ' ' + args : ''}`;
-    const result = execSync(cmd, {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 60000,
-    });
-    return { ok: true, output: result.trim(), stderr: '' };
-  } catch (err) {
+function runScript(scriptPath, args) {
+  const result = spawnSync(process.execPath, [path.resolve(ROOT, scriptPath), ...(args || [])], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: 60000,
+  });
+  if (result.error || result.status !== 0) {
     return {
       ok: false,
-      output: (err.stdout || '').trim(),
-      stderr: (err.stderr || err.message || '').trim(),
+      output: (result.stdout || '').trim(),
+      stderr: (result.stderr || (result.error && result.error.message) || '').trim(),
     };
   }
+  return { ok: true, output: (result.stdout || '').trim(), stderr: '' };
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +129,7 @@ function checkPreGates(manifest) {
           : fs.readdirSync(path.resolve(ROOT, 'rounds')).filter(f => f.endsWith('.yaml'));
         const roundChecks = roundFiles.map(rf => {
           if (!fileExists(rf)) return { file: rf, ok: false, error: 'not found' };
-          const res = runScript('scripts/validate.js', rf);
+          const res = runScript('scripts/validate.js', [rf]);
           return { file: rf, ok: res.ok, error: res.ok ? '' : res.stderr.slice(0, 200) };
         });
         ok = roundChecks.every(c => c.ok);
@@ -141,7 +138,7 @@ function checkPreGates(manifest) {
       }
       case 'R2.2': {
         // Task envelopes validate
-        const res = runScript('scripts/validate.js', 'envelopes-v2');
+        const res = runScript('scripts/validate.js', ['envelopes-v2']);
         ok = res.ok;
         detail = ok ? 'All v2 envelopes valid' : res.stderr.slice(0, 300);
         break;
@@ -236,6 +233,10 @@ function executeTask(task, outputDir, operatorAgentId, opts) {
 
   if (!quiet) {
     console.log(`  [${taskId}] Exit: ${result.status}, ${outputFiles.length} artifacts`);
+    if (opts.verbose) {
+      if (taskResult.stdout) console.log(`  [${taskId}] stdout: ${taskResult.stdout}`);
+      if (taskResult.stderr) console.log(`  [${taskId}] stderr: ${taskResult.stderr}`);
+    }
   }
 
   return taskResult;
@@ -271,7 +272,7 @@ function checkPostGates(results, manifest) {
         const packetResults = results.map(r => {
           const packetPath = r.run_dir ? path.join(r.run_dir, 'result-packet.yaml') : null;
           if (!packetPath || !fileExists(packetPath)) return { task_id: r.task_id, ok: false, error: 'result-packet.yaml not found' };
-          let res = runScript('scripts/validate.js', packetPath);
+          let res = runScript('scripts/validate.js', [packetPath]);
           // v2 validation may reject v1 stub packets -- accept if valid v1
           if (!res.ok) {
             try {
@@ -295,7 +296,7 @@ function checkPostGates(results, manifest) {
       }
       case 'P3.11': {
         // All schemas validate repo-wide
-        const res = runScript('scripts/validate.js', 'all', { quiet: true });
+        const res = runScript('scripts/validate.js', ['all']);
         ok = res.ok;
         detail = ok ? 'All schemas valid' : res.stderr.slice(0, 300);
         break;
@@ -382,7 +383,7 @@ function listTasks(manifest) {
 function main() {
   const args = process.argv.slice(2);
 
-  if (args.length > 0 && (args[0] === '--help' || args[0] === '-h')) {
+  if (args.includes('--help') || args.includes('-h')) {
     console.log(`
 Agent Olympics — Dry-Run Execution Runner
 
@@ -535,7 +536,7 @@ Exit: 0 = all tasks passed, 1 = any task or gate failed, 2 = usage error
 
   const taskResults = [];
   for (const task of selectedTasks) {
-    const result = executeTask(task, outputDir, manifest.operator_agent_id, { quiet });
+    const result = executeTask(task, outputDir, manifest.operator_agent_id, { quiet, verbose });
     taskResults.push(result);
   }
 

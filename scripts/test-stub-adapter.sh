@@ -23,7 +23,12 @@ fail() { FAIL=$((FAIL + 1)); echo "  ✗ $1"; ERRORS+=("$1"); }
 echo ""
 echo "=== Test 1: Success mode (exit 0 → completed) ==="
 RUN_DIR=$(mktemp -d /tmp/stub-test-success-XXXXXX)
-trap 'rm -rf "$RUN_DIR"' EXIT
+RUN_DIR2=""
+RUN_DIR3=""
+cleanup() {
+  rm -rf ${RUN_DIR:+"$RUN_DIR"} ${RUN_DIR2:+"$RUN_DIR2"} ${RUN_DIR3:+"$RUN_DIR3"}
+}
+trap cleanup EXIT
 
 node "$SCRIPT_DIR/stub-adapter.js" "$ENVELOPE" --run-dir "$RUN_DIR" --agent-id test-adapter --runtime cli-stub --exit 0 --seed test-success
 
@@ -58,7 +63,7 @@ else
 fi
 
 # Check status in result packet
-STATUS=$(grep -E '^status:' "$RUN_DIR/result-packet.yaml" | awk '{print $2}')
+STATUS=$(grep -E '^status:' "$RUN_DIR/result-packet.yaml" | awk '{print $2}' || true)
 if [ "$STATUS" = "completed" ]; then
   pass "Status is 'completed' (exit 0)"
 else
@@ -66,7 +71,7 @@ else
 fi
 
 # Check run metadata
-EXIT_CODE=$(grep -E '^exit_code:' "$RUN_DIR/run.yaml" | awk '{print $2}')
+EXIT_CODE=$(grep -E '^exit_code:' "$RUN_DIR/run.yaml" | awk '{print $2}' || true)
 if [ "$EXIT_CODE" = "0" ]; then
   pass "run.yaml exit_code is 0"
 else
@@ -91,7 +96,7 @@ else
   fail "Expected exit code 1, got $EXIT_ACTUAL"
 fi
 
-STATUS2=$(grep -E '^status:' "$RUN_DIR2/result-packet.yaml" | awk '{print $2}')
+STATUS2=$(grep -E '^status:' "$RUN_DIR2/result-packet.yaml" | awk '{print $2}' || true)
 if [ "$STATUS2" = "failed" ]; then
   pass "Status is 'failed' (exit 1)"
 else
@@ -118,7 +123,7 @@ else
   fail "Expected exit code 2, got $EXIT_ACTUAL"
 fi
 
-STATUS3=$(grep -E '^status:' "$RUN_DIR3/result-packet.yaml" | awk '{print $2}')
+STATUS3=$(grep -E '^status:' "$RUN_DIR3/result-packet.yaml" | awk '{print $2}' || true)
 if [ "$STATUS3" = "partial" ]; then
   pass "Status is 'partial' (exit 2)"
 else

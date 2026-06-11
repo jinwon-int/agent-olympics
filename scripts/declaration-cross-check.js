@@ -92,7 +92,7 @@ function actionLooksDelegated(action) {
     action.summary,
     action.result_summary,
   ].filter(Boolean).join(' ').toLowerCase();
-  return /\bdelegate|delegat|subagent|worker_pool|worker dispatch|a2a worker|sessions_spawn\b/.test(haystack);
+  return /\b(delegat\w*|subagent|worker_pool|worker dispatch|a2a worker|sessions_spawn)\b/.test(haystack);
 }
 
 function delegationPolicyDeclaresDelegation(policy) {

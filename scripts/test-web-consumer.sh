@@ -45,8 +45,7 @@ echo ""
 # Test 1: Normal run produces expected output files
 # ---------------------------------------------------------------------------
 echo "=== Test 1: Normal run ==="
-node "$CONSUMER" "$SCOREBOARD" --output-dir "$TMPDIR/out1" > /dev/null 2>&1
-if [ $? -eq 0 ] && [ -f "$TMPDIR/out1/index.html" ]; then
+if node "$CONSUMER" "$SCOREBOARD" --output-dir "$TMPDIR/out1" > /dev/null 2>&1 && [ -f "$TMPDIR/out1/index.html" ]; then
   echo "  PASS: index.html created"
   PASS=$((PASS+1))
 else
@@ -134,8 +133,7 @@ fi
 # ---------------------------------------------------------------------------
 echo ""
 echo "=== Test 3: Blind mode ==="
-node "$CONSUMER" "$SCOREBOARD" --output-dir "$TMPDIR/out3" --blind > /dev/null 2>&1
-if [ $? -eq 0 ] && [ -f "$TMPDIR/out3/index.html" ]; then
+if node "$CONSUMER" "$SCOREBOARD" --output-dir "$TMPDIR/out3" --blind > /dev/null 2>&1 && [ -f "$TMPDIR/out3/index.html" ]; then
   echo "  PASS: blind mode produces output"
   PASS=$((PASS+1))
 else
@@ -171,8 +169,7 @@ node "$CONSUMER" "$TMPDIR/nonexistent.json" --output-dir "$TMPDIR/out4" > /dev/n
 echo ""
 echo "=== Test 5: Empty entries ==="
 echo '{"schema_version":1,"entries":[],"participants":[],"summary":{}}' > "$TMPDIR/empty.json"
-node "$CONSUMER" "$TMPDIR/empty.json" --output-dir "$TMPDIR/out5" > /dev/null 2>&1
-if [ $? -eq 0 ] && [ -f "$TMPDIR/out5/index.html" ]; then
+if node "$CONSUMER" "$TMPDIR/empty.json" --output-dir "$TMPDIR/out5" > /dev/null 2>&1 && [ -f "$TMPDIR/out5/index.html" ]; then
   echo "  PASS: consumer handles empty scoreboard"
   PASS=$((PASS+1))
 else
@@ -185,8 +182,8 @@ fi
 # ---------------------------------------------------------------------------
 echo ""
 echo "=== Test 6: Custom title ==="
-node "$CONSUMER" "$SCOREBOARD" --output-dir "$TMPDIR/out6" --title "Custom Test Title" > /dev/null 2>&1
-if grep -q 'Custom Test Title' "$TMPDIR/out6/index.html"; then
+node "$CONSUMER" "$SCOREBOARD" --output-dir "$TMPDIR/out6" --title "Custom Test Title" > /dev/null 2>&1 || true
+if grep -q 'Custom Test Title' "$TMPDIR/out6/index.html" 2>/dev/null; then
   echo "  PASS: custom title rendered"
   PASS=$((PASS+1))
 else
