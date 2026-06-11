@@ -1,5 +1,5 @@
 schema_version: 1
-judge_record_id: jr-ops-001-nosuk-1781179690743
+judge_record_id: jr-ops-001-nosuk-1781190015348
 task_id: ops-001
 packet_id: ops-001-nosuk-live
 judge_type: hybrid
@@ -7,14 +7,13 @@ judge_identity: seo-jin-on
 scoring_rubric: rubrics/agent-olympics-v1.yaml
 score_dimensions:
   correctness:
-    score: 28
+    score: 29
     max: 30
     reason: >-
-      Delivery-layer release/enqueue failure identified with the specific mechanism (source-visible
-      reply with delivery_request_id=null, missing_delivery_record, api_message_id=null,
-      retry_count=0) AND differential elimination of alternatives (inbound/typing success rules out
-      a full channel outage; transcript-only mode ruled out) — full-band; minor deduction for not
-      addressing the thread-context alternative.
+      Covers all three oracle answer categories including the thread-context alternative (stale
+      embedded-run recovery building the reply without a valid channel target/thread id) with the
+      full evidence mechanism and alternatives eliminated; trigger stated as likely rather than
+      evidence-confirmed.
   evidence_quality:
     score: 18
     max: 20
@@ -31,23 +30,22 @@ score_dimensions:
     score: 9
     max: 10
     reason: >-
-      Diagnosis, operational risk (completion mistaken for delivery), and a concrete next action
-      including an idempotency/dedupe check before resend are operator-executable without redoing
-      the investigation; no separate user-facing summary.
+      Four-step operator plan (verify channel/thread context, rebuild and resend delivery request,
+      add delivery-probe monitoring, add creation-time assertions) is directly executable.
   durability:
-    score: 8
+    score: 9
     max: 10
     reason: >-
-      Proposes a durable systemic fix (completed sessions must carry a non-null delivery_request_id
-      or an explicit delivery-failure state), meeting the oracle's monitoring criterion; deduction
-      for no documentation/runbook record.
-total_score: 89
+      Recommends persisting the failure pattern with its diagnostic signature plus monitoring and an
+      assertion — meets both oracle criteria.
+total_score: 91
 penalties_applied: []
 verdict: pass
 judge_notes: >-
   Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
-  operator (seo-jin-on). Live-run-backed judge record for ops-001 (participant nosuk).
+  operator (seo-jin-on). Remote-execution-verified live judge record for ops-001 (participant
+  nosuk); supersedes the earlier record whose mission ran on the operator host.
 
   Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
   communication, durability human-scored.
-created_at: '2026-06-11T12:08:10.743Z'
+created_at: '2026-06-11T15:00:15.348Z'
