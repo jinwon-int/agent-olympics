@@ -28,7 +28,6 @@
  *   --results-dir <path> — Results directory
  *   --runs-dir <path>    — Runs directory
  *   --output <path>      — Output file for evidence JSON
- *   --verbose, -v        — Verbose output
  *   --quiet, -q          — Quiet output (JSON only)
  *
  * Exit code: 0 = all gates pass, 1 = any gate fails, 2 = usage error
@@ -38,35 +37,17 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const yaml = require('js-yaml');
+const {
+  SECRET_KEY_PATTERNS,
+  SECRET_VALUE_PATTERNS,
+  looksLikeSecretValue,
+} = require('./lib/secret-patterns');
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const ROOT = path.resolve(__dirname, '..');
-
-const FORBIDDEN_KEY_PATTERNS = [
-  /^api[_-]?key$/i,
-  /^api[_-]?secret$/i,
-  /^token$/i,
-  /^password$/i,
-  /^secret$/i,
-  /^credential/i,
-  /^auth[_-]?token/i,
-  /^private[_-]?key/i,
-  /^access[_-]?key/i,
-  /^session[_-]?cookie/i,
-];
-
-const FORBIDDEN_VALUE_PATTERNS = [
-  /^sk-[a-zA-Z0-9]{20,}/,
-  /^ghp_[a-zA-Z0-9]{36}/,
-  /^gho_[a-zA-Z0-9]{36}/,
-  /^github_pat_[a-zA-Z0-9_]{4,}/,
-  /^xox[baprs]-/,
-  /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
-  /^eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+/,
-];
 
 const UNSAFE_VALUE_PATTERNS = [
   /@[a-zA-Z0-9.-]+\.(com|org|net|io|dev|app)/,
@@ -112,20 +93,6 @@ function dirExists(dirPath) {
     return fs.existsSync(resolved) && fs.statSync(resolved).isDirectory();
   } catch {
     return false;
-  }
-}
-
-function runNode(script) {
-  try {
-    const out = execSync(`node -e ${JSON.stringify(script)}`, {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 30000,
-    });
-    return { ok: true, output: out.trim() };
-  } catch (err) {
-    return { ok: false, output: (err.stderr || err.message || '').trim() };
   }
 }
 
@@ -333,9 +300,7 @@ function publicationGates(runner, options) {
     });
   } else {
     runner.run('P3.1', 'All result packets present', () => {
-      const re = /^.*\.yaml$/;
-      const files = fs.readdirSync(path.resolve(ROOT, resultsDir))
-        .filter(f => re.test(f) && !f.includes('judge') && !f.includes('trace') && !f.includes('evidence') && !f.includes('scoreboard'));
+      const files = findResultYamls(resultsDir).map(f => path.basename(f));
       if (files.length === 0) return { ok: false, output: `No result packets found in ${resultsDir}` };
       return { ok: true, output: `Found ${files.length} result packets: ${files.slice(0, 5).join(', ')}...` };
     });
@@ -407,16 +372,15 @@ function redactionCheck(runner, options) {
   const resultsDir = options['results-dir'] || 'results/';
 
   // Check each result packet for redaction issues
-  const files = fs.readdirSync(path.resolve(ROOT, resultsDir))
-    .filter(f => /\.ya?ml$/.test(f) && !f.includes('judge') && !f.includes('trace') && !f.includes('evidence') && !f.includes('scoreboard') && !f.includes('.git'));
+  const files = findResultYamls(resultsDir);
 
   if (files.length === 0) {
     console.log('  (no result packets to check)');
     return runner;
   }
 
-  for (const file of files) {
-    const filePath = path.join(resultsDir, file);
+  for (const filePath of files) {
+    const file = path.basename(filePath);
     runner.run(`REDACT-${file}`, `Redaction check: ${file}`, () => {
       const doc = loadYaml(filePath);
       if (!doc) return { ok: false, output: `Cannot parse ${file}` };
@@ -429,7 +393,7 @@ function redactionCheck(runner, options) {
           if (ev.redacted && (!ev.redaction_reason || ev.redaction_reason.trim() === '')) {
             issues.push(`Evidence ${ev.id}: redacted but missing redaction_reason`);
           }
-          if (ev.redaction_reason && FORBIDDEN_VALUE_PATTERNS.some(p => p.test(ev.redaction_reason))) {
+          if (ev.redaction_reason && SECRET_VALUE_PATTERNS.some(p => p.test(ev.redaction_reason))) {
             issues.push(`Evidence ${ev.id}: redaction_reason contains credential pattern`);
           }
         }
@@ -457,11 +421,14 @@ function redactionCheck(runner, options) {
         if (!obj || typeof obj !== 'object') return;
         for (const [key, value] of Object.entries(obj)) {
           const fullPath = path ? `${path}.${key}` : key;
-          if (FORBIDDEN_KEY_PATTERNS.some(p => p.test(key))) {
-            issues.push(`${fullPath}: potentially secret-bearing field name`);
+          // Secret-named keys only fail when the value itself looks like a
+          // credential — policy descriptors (e.g. credential_values: omitted)
+          // are value-free statements about credential handling, not leaks.
+          if (SECRET_KEY_PATTERNS.some(p => p.test(key)) && looksLikeSecretValue(value)) {
+            issues.push(`${fullPath}: secret-bearing field name with credential-like value`);
           }
           if (typeof value === 'string') {
-            if (FORBIDDEN_VALUE_PATTERNS.some(p => p.test(value))) {
+            if (SECRET_VALUE_PATTERNS.some(p => p.test(value))) {
               issues.push(`${fullPath}: contains credential pattern`);
             }
           } else if (typeof value === 'object' && value !== null) {
@@ -490,16 +457,15 @@ function safeMetadataCheck(runner, options) {
 
   const resultsDir = options['results-dir'] || 'results/';
 
-  const files = fs.readdirSync(path.resolve(ROOT, resultsDir))
-    .filter(f => /\.ya?ml$/.test(f) && !f.includes('judge') && !f.includes('trace') && !f.includes('evidence') && !f.includes('scoreboard') && !f.includes('.git'));
+  const files = findResultYamls(resultsDir);
 
   if (files.length === 0) {
     console.log('  (no result packets to check)');
     return runner;
   }
 
-  for (const file of files) {
-    const filePath = path.join(resultsDir, file);
+  for (const filePath of files) {
+    const file = path.basename(filePath);
     runner.run(`META-${file}`, `Safe metadata: ${file}`, () => {
       const doc = loadYaml(filePath);
       if (!doc) return { ok: false, output: `Cannot parse ${file}` };
@@ -631,11 +597,15 @@ function integrityGate(runner, options) {
     function scanForSecrets(obj, path) {
       if (!obj || typeof obj !== 'object') return;
       for (const [key, val] of Object.entries(obj)) {
-        if (FORBIDDEN_KEY_PATTERNS.some(p => p.test(key))) forbiddenKeyCount++;
+        // Secret-named keys only count when the value looks credential-like;
+        // value-free policy descriptors under credential-named keys are fine.
+        if (SECRET_KEY_PATTERNS.some(p => p.test(key)) && looksLikeSecretValue(val)) {
+          forbiddenKeyCount++;
+        }
         if (typeof val === 'string') {
-          if (FORBIDDEN_VALUE_PATTERNS.some(p => p.test(val))) secretCount++;
+          if (SECRET_VALUE_PATTERNS.some(p => p.test(val))) secretCount++;
           // redaction_reason containing a secret is a double leak
-          if (key === 'redaction_reason' && FORBIDDEN_VALUE_PATTERNS.some(p => p.test(val))) {
+          if (key === 'redaction_reason' && SECRET_VALUE_PATTERNS.some(p => p.test(val))) {
             redactionReasonLeak++;
           }
         } else if (val && typeof val === 'object') {
@@ -1116,7 +1086,6 @@ function listGates() {
   console.log('  --results-dir <path> Results directory (default: results/)');
   console.log('  --runs-dir <path>    Runs directory for competition-validity checks');
   console.log('  --output <path>      Write JSON evidence to file');
-  console.log('  --verbose, -v        Verbose output');
   console.log('  --quiet, -q          Suppress stdout, emit JSON only\n');
   process.exit(0);
 }
@@ -1151,7 +1120,6 @@ Options:
   --results-dir <path> Results directory
   --runs-dir <path>    Runs directory
   --output <path>      Write JSON evidence to file
-  --verbose, -v        Verbose output
   --quiet, -q          Quiet output (JSON only)
 
 Exit: 0 = all gates pass, 1 = any gate fails, 2 = usage error
@@ -1168,7 +1136,6 @@ Exit: 0 = all gates pass, 1 = any gate fails, 2 = usage error
     else if (args[i] === '--results-dir' && i + 1 < args.length) { options['results-dir'] = args[++i]; }
     else if (args[i] === '--runs-dir' && i + 1 < args.length) { options['runs-dir'] = args[++i]; }
     else if (args[i] === '--output' && i + 1 < args.length) { options.output = args[++i]; }
-    else if (args[i] === '--verbose' || args[i] === '-v') { options.verbose = true; }
     else if (args[i] === '--quiet' || args[i] === '-q') { options.quiet = true; }
     else if (args[i] === '--manifest' && !args[i + 1]) { console.error('--manifest requires a path'); process.exit(2); }
     else if (args[i] === '--results-dir' && !args[i + 1]) { console.error('--results-dir requires a path'); process.exit(2); }

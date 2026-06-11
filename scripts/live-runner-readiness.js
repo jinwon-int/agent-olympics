@@ -11,18 +11,9 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { SECRET_VALUE_PATTERNS } = require('./lib/secret-patterns');
 
 const ROOT = path.resolve(__dirname, '..');
-
-const SECRET_VALUE_PATTERNS = [
-  /^sk-[a-zA-Z0-9]{20,}/,
-  /^ghp_[a-zA-Z0-9]{36}/,
-  /^gho_[a-zA-Z0-9]{36}/,
-  /^github_pat_[a-zA-Z0-9_]{4,}/,
-  /^xox[baprs]-/,
-  /^-----BEGIN (RSA |EC |OPENSSH |ED25519 )?PRIVATE KEY-----/,
-  /^eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+/,
-];
 
 function usage() {
   console.log(`Usage:

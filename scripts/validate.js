@@ -37,6 +37,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const Ajv = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
+const { SECRET_KEY_PATTERNS, SECRET_VALUE_PATTERNS } = require('./lib/secret-patterns');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
@@ -65,21 +66,30 @@ const v1Schemas = {
 // ---------------------------------------------------------------------------
 // Load fixture schemas
 // ---------------------------------------------------------------------------
-let fixtureBundleSchema = null;
-let seasonFixtureManifestSchema = null;
+let fixtureBundleValidator = null;
+let seasonFixtureManifestValidator = null;
 try {
-  fixtureBundleSchema = loadSchema('schemas/fixture-bundle.schema.json');
+  const fixtureBundleSchema = loadSchema('schemas/fixture-bundle.schema.json');
+  const fbAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(fbAjv);
+  fixtureBundleValidator = fbAjv.compile(fixtureBundleSchema);
 } catch { /* ignore */ }
 try {
-  seasonFixtureManifestSchema = loadSchema('schemas/season-fixture-manifest.schema.json');
+  const seasonFixtureManifestSchema = loadSchema('schemas/season-fixture-manifest.schema.json');
+  const sfAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(sfAjv);
+  seasonFixtureManifestValidator = sfAjv.compile(seasonFixtureManifestSchema);
 } catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // Load round manifest schema
 // ---------------------------------------------------------------------------
-let roundManifestSchema = null;
+let roundManifestValidator = null;
 try {
-  roundManifestSchema = loadSchema('schemas/round-manifest.schema.json');
+  const roundManifestSchema = loadSchema('schemas/round-manifest.schema.json');
+  const rmAjv = new Ajv({ allErrors: true, verbose: true });
+  addFormats(rmAjv);
+  roundManifestValidator = rmAjv.compile(roundManifestSchema);
 } catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
@@ -528,32 +538,17 @@ function semanticChecks(doc, kind, file, schemaVersion) {
 /** Rudimentary secret/heuristic scan for likely credential patterns. */
 function detectSecrets(obj, issues, path = '') {
   if (!obj || typeof obj !== 'object') return;
-  const SUSPECT_KEYS = [
-    /^api[_-]?key$/i, /^api[_-]?secret$/i,
-    /^token$/i, /^password$/i, /^secret$/i,
-    /^credential/i, /^auth[_-]?token/i,
-    /^private[_-]?key/i, /^access[_-]?key/i,
-    /^session[_-]?cookie/i,
-  ];
-  const SUSPECT_VALUES = [
-    /sk-[a-zA-Z0-9]{20,}/,   // OpenAI-style keys
-    /ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT (legacy)
-    /gho_[a-zA-Z0-9]{36}/,   // GitHub PAT (org)
-    /github_pat_[a-zA-Z0-9]{4,}/,  // GitHub fine-grained PAT
-    /xox[baprs]-/,            // Slack tokens
-    /-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
-  ];
 
   for (const [key, val] of Object.entries(obj)) {
     const fp = path ? `${path}.${key}` : key;
     // Check key names regardless of value type (flag the key itself once;
     // nested keys are evaluated on their own during recursion)
-    if (SUSPECT_KEYS.some(r => r.test(key))) {
+    if (SECRET_KEY_PATTERNS.some(r => r.test(key))) {
       issues.push({ severity: SEVERITY.warn, msg: `Potential secret exposure in "${fp}": key name suggests credentials` });
     }
     if (typeof val === 'string') {
       // Check values
-      if (SUSPECT_VALUES.some(r => r.test(val))) {
+      if (SECRET_VALUE_PATTERNS.some(r => r.test(val))) {
         issues.push({ severity: SEVERITY.error, msg: `Secret pattern detected in "${fp}"` });
       }
       // Check for redaction_reason that accidentally contains a secret
@@ -563,6 +558,37 @@ function detectSecrets(obj, issues, path = '') {
       }
     } else if (typeof val === 'object' && val !== null) {
       detectSecrets(val, issues, fp);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Node-profile forbidden pattern scan (shared by the node-profile and
+// live-probe validators — keep one list so the two paths cannot drift)
+// ---------------------------------------------------------------------------
+const FORBIDDEN_PROFILE_PATTERNS = [
+  { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
+  { pattern: /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/, description: 'potential hostname or domain' },
+  { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
+  { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
+  { pattern: /\/root\/\S+/i, description: 'root home path' },
+  { pattern: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/, description: 'private key material' },
+  { pattern: /sk-[a-zA-Z0-9]{20,}/, description: 'API key pattern' },
+];
+
+function scanForbiddenProfilePatterns(obj, issues, objPath = '') {
+  if (!obj || typeof obj !== 'object') return;
+  for (const [key, val] of Object.entries(obj)) {
+    const fp = objPath ? `${objPath}.${key}` : key;
+    if (typeof val === 'string') {
+      for (const bp of FORBIDDEN_PROFILE_PATTERNS) {
+        if (bp.pattern.test(val)) {
+          issues.push({ severity: SEVERITY.error, msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern` });
+          break;
+        }
+      }
+    } else if (typeof val === 'object' && val !== null) {
+      scanForbiddenProfilePatterns(val, issues, fp);
     }
   }
 }
@@ -825,33 +851,7 @@ function validateNodeProfile(filePath) {
   detectSecrets(doc, issues);
 
   // Additional node-profile-specific forbidden pattern detection
-  const FORBIDDEN_PROFILE_PATTERNS = [
-    { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
-    { pattern: /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/, description: 'potential hostname or domain' },
-    { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
-    { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
-    { pattern: /\/root\/\S+/i, description: 'root home path' },
-    { pattern: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/, description: 'private key material' },
-    { pattern: /sk-[a-zA-Z0-9]{20,}/, description: 'API key pattern' },
-  ];
-
-  function scanForbiddenPatterns(obj, objPath = '') {
-    if (!obj || typeof obj !== 'object') return;
-    for (const [key, val] of Object.entries(obj)) {
-      const fp = objPath ? `${objPath}.${key}` : key;
-      if (typeof val === 'string') {
-        for (const bp of FORBIDDEN_PROFILE_PATTERNS) {
-          if (bp.pattern.test(val)) {
-            issues.push({ severity: SEVERITY.error, msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern` });
-            break;
-          }
-        }
-      } else if (typeof val === 'object' && val !== null) {
-        scanForbiddenPatterns(val, fp);
-      }
-    }
-  }
-  scanForbiddenPatterns(doc);
+  scanForbiddenProfilePatterns(doc, issues);
 
   const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
 
@@ -876,11 +876,13 @@ let totalErrors = 0;
 let totalWarnings = 0;
 let fileCount = 0;
 
-function validateFile(filePath) {
+function validateFile(filePath, preParsedDoc) {
   const rel = path.relative(ROOT, filePath);
   let doc;
   try {
-    doc = loadYaml(filePath);
+    // Callers that already parsed the document (e.g. the named-mode scan)
+    // can pass it in to avoid parsing every YAML file twice.
+    doc = preParsedDoc !== undefined ? preParsedDoc : loadYaml(filePath);
   } catch (err) {
     console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
     totalErrors++;
@@ -1289,14 +1291,10 @@ function validateFixtureBundle(filePath) {
 
   const issues = [];
   const kind = isBundle ? 'fixture-bundle' : 'season-fixture-manifest';
-  const schema = isBundle ? fixtureBundleSchema : seasonFixtureManifestSchema;
+  const validate = isBundle ? fixtureBundleValidator : seasonFixtureManifestValidator;
 
-  // Schema validation
-  if (schema) {
-    const ajv = new Ajv({ allErrors: true, verbose: true });
-    const addFormats = require('ajv-formats');
-    addFormats(ajv);
-    const validate = ajv.compile(schema);
+  // Schema validation (validators are compiled once at module load)
+  if (validate) {
     const valid = validate(doc);
     if (!valid) {
       for (const err of validate.errors) {
@@ -1393,15 +1391,11 @@ function validateRoundManifest(filePath) {
 
   const issues = [];
 
-  // Schema validation
-  if (roundManifestSchema) {
-    const ajv = new Ajv({ allErrors: true, verbose: true });
-    const addFormats = require('ajv-formats');
-    addFormats(ajv);
-    const validate = ajv.compile(roundManifestSchema);
-    const valid = validate(doc);
+  // Schema validation (validator is compiled once at module load)
+  if (roundManifestValidator) {
+    const valid = roundManifestValidator(doc);
     if (!valid) {
-      for (const err of validate.errors) {
+      for (const err of roundManifestValidator.errors) {
         const field = err.instancePath || '(root)';
         const msg = err.message || 'invalid';
         issues.push({ severity: SEVERITY.error, msg: `${field}: ${msg}` });
@@ -1798,10 +1792,11 @@ function validateQualification(filePath) {
           } catch { /* skip unparseable entry files */ }
         }
 
-        // Check manifest entries have matching files
+        // Check manifest entries have matching files (.yaml or .yml)
         for (const entry of doc.entries) {
-          const expectedFile = path.join(entriesDir, `${entry.entry_id}.yaml`);
-          if (!fs.existsSync(expectedFile)) {
+          const hasFile = ['yaml', 'yml'].some(ext =>
+            fs.existsSync(path.join(entriesDir, `${entry.entry_id}.${ext}`)));
+          if (!hasFile) {
             issues.push({ severity: SEVERITY.warn, msg: `Entry "${entry.entry_id}" in manifest has no matching file: entries/${entry.entry_id}.yaml` });
           }
         }
@@ -1945,37 +1940,13 @@ function validateLiveProbe(filePath) {
     if (/^(\d{1,3}\.){3}\d{1,3}$/.test(doc.profile_id)) {
       issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead` });
     }
-  }
-
-  // Base forbidden pattern scan (reuse the existing one)
-  const FORBIDDEN_PROFILE_PATTERNS = [
-    { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
-    { pattern: /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/, description: 'potential hostname or domain' },
-    { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
-    { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
-    { pattern: /\/root\/\S+/i, description: 'root home path' },
-    { pattern: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/, description: 'private key material' },
-    { pattern: /sk-[a-zA-Z0-9]{20,}/, description: 'API key pattern' },
-  ];
-
-  function scanBaseForbidden(obj, objPath) {
-    if (!obj || typeof obj !== 'object') return;
-    objPath = objPath || '';
-    for (const [key, val] of Object.entries(obj)) {
-      const fp = objPath ? `${objPath}.${key}` : key;
-      if (typeof val === 'string') {
-        for (const bp of FORBIDDEN_PROFILE_PATTERNS) {
-          if (bp.pattern.test(val)) {
-            issues.push({ severity: SEVERITY.error, msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern` });
-            break;
-          }
-        }
-      } else if (typeof val === 'object' && val !== null) {
-        scanBaseForbidden(val, fp);
-      }
+    if (/^[a-zA-Z0-9-]+\.(com|org|net|io|dev|local|internal)$/.test(doc.profile_id)) {
+      issues.push({ severity: SEVERITY.warn, msg: `profile_id "${doc.profile_id}" looks like a hostname or domain; use a safe slug instead` });
     }
   }
-  scanBaseForbidden(doc);
+
+  // Base forbidden pattern scan (shared module-level list)
+  scanForbiddenProfilePatterns(doc, issues);
 
   // Tier-2: live-probe enhanced forbidden scan
   scanLiveProbeForbidden(doc, issues);
@@ -2407,7 +2378,7 @@ function main() {
     const kind = detectKind(doc);
     const sv = getSchemaVersion(doc);
     if (modeConfig.kinds.includes(kind) && modeConfig.versions.includes(sv)) {
-      validateFile(f);
+      validateFile(f, doc);
     } else {
       // Skip files with non-matching kind or schema version
     }
