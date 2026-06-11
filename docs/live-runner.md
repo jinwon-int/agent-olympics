@@ -246,6 +246,17 @@ Useful environment overrides for the wrapper:
   outside this checkout.
 - `HERMES_BIN=/path/to/hermes` when the desired Hermes executable is not first
   on `PATH`.
+- `HERMES_EVENT_FAMILY` / `HERMES_MODE` to override the adapter bootstrap's
+  event family and mode (defaults `ops` / `orchestrator`).
+- `HERMES_MODEL` / `HERMES_MODEL_PROVIDER` to record the model the local
+  Hermes actually routes to in the packet's comparable metadata. When unset,
+  the merge script records `unknown` — never a fabricated skeleton default —
+  so scoreboard model comparisons stay honest.
+
+The merge script also overwrites the skeleton's simulated workflow metadata
+with the wrapper's real execution shape: a single nested Hermes CLI session
+(`delegation_profile.a2a_workers: [local-hermes-cli]`, worker counts of 1) and
+the measured wall-clock duration of the Hermes invocation.
 
 The wrapper intentionally uses only participant-facing/public inputs and tells
 Hermes not to read oracle files, judge notes, hidden judge notes, or private

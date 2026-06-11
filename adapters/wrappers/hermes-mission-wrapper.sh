@@ -78,7 +78,9 @@ PROMPT
 
 # 2) Invoke the real local Hermes CLI. Capture stdout+stderr to a file so the
 #    wrapper can still preserve useful output if a local Hermes build exits
-#    non-zero after printing a complete answer.
+#    non-zero after printing a complete answer. Wall time is measured so the
+#    merge script records the real duration instead of a skeleton default.
+HERMES_T0=$(date +%s)
 set +e
 python3 - "$HERMES_BIN" "$PROMPT_FILE" "$MISSION_OUTPUT" <<'PY'
 import pathlib
@@ -98,8 +100,16 @@ sys.exit(proc.returncode)
 PY
 HERMES_STATUS=$?
 set -e
+HERMES_WALL_SECONDS=$(( $(date +%s) - HERMES_T0 ))
 
 # 3) Merge actual mission output into the schema-valid artifacts and validate.
+#    Real comparable metadata is passed through env: HERMES_MODEL /
+#    HERMES_MODEL_PROVIDER are operator-supplied (the wrapper cannot detect
+#    which model the local Hermes routes to); when unset the merge script
+#    records "unknown" instead of a fabricated skeleton default.
+HERMES_WALL_SECONDS="$HERMES_WALL_SECONDS" \
+HERMES_MODEL="${HERMES_MODEL:-}" \
+HERMES_MODEL_PROVIDER="${HERMES_MODEL_PROVIDER:-}" \
 node "$REPO/scripts/hermes-mission-result-merge.js" "$ENVELOPE" "$RUN_DIR" "$MISSION_OUTPUT" "$HERMES_STATUS" \
   > "$RUN_DIR/mission-merge.log" 2>&1
 MERGE_STATUS=$?
