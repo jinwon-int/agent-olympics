@@ -48,32 +48,48 @@ participants:
     label: seoseo (OpenClaw simulation adapter)
     enabled: true
   - agent_id: nosuk
-    runtime: cli
+    runtime: stub
     label: nosuk (stub adapter)
     enabled: true
   - agent_id: imposter-target
-    runtime: cli
+    runtime: stub
     label: negative fixture — transport emits a packet with a mismatched agent_id
     enabled: true
   - agent_id: secret-echo
-    runtime: cli
+    runtime: stub
     label: negative fixture — transport prints a fake secret to stdout
     enabled: true
   - agent_id: sleeper-partial
-    runtime: cli
+    runtime: fixture-transport
     label: negative fixture — transport writes a usable packet then exceeds the time limit
     enabled: true
   - agent_id: sleeper-failed
-    runtime: cli
+    runtime: fixture-transport
     label: negative fixture — transport exceeds the time limit with no output
     enabled: true
   - agent_id: missing-binary
-    runtime: cli
+    runtime: fixture-transport
     label: negative fixture — transport binary does not exist (ENOENT)
     enabled: true
   - agent_id: live-candidate
     runtime: openclaw
     label: negative fixture — live profile without operator approval (gate-blocked)
+    enabled: true
+  - agent_id: mismatch-target
+    runtime: stub
+    label: negative fixture — runner config declares a different adapter than this registration (runtime_identity gate)
+    enabled: true
+  - agent_id: runtime-imposter
+    runtime: stub
+    label: negative fixture — transport writes a packet whose runtime label differs from the dispatched adapter
+    enabled: true
+  - agent_id: attest-probe
+    runtime: stub
+    label: negative fixture — identify_command attestation output does not mention the declared adapter
+    enabled: true
+  - agent_id: shape-shifter
+    runtime: stub
+    label: negative fixture — declared stub but emits hermes-shaped artifacts (fingerprint warning)
     enabled: true
 run_directory: runs/live-runner-fixtures/round-901/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}

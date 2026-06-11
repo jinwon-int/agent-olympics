@@ -35,7 +35,7 @@ const result = spawnSync(
     envelope,
     '--run-dir', runDir,
     '--agent-id', agentId,
-    '--runtime', 'cli',
+    '--runtime', 'stub',
     '--seed', seed || 'secret-echo',
   ],
   { cwd: repoRoot, stdio: 'inherit' }

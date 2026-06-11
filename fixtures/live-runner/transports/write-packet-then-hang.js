@@ -39,7 +39,7 @@ writeYaml('result-packet.yaml', {
   schema_version: 1,
   task_id: taskId,
   agent_id: agentId,
-  runtime: 'cli',
+  runtime: 'fixture-transport',
   started_at: now,
   ended_at: now,
   status: 'partial',

@@ -14,6 +14,9 @@ AGENT_ID="$3"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${AGENT_OLYMPICS_REPO:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 HERMES_BIN="${HERMES_BIN:-hermes}"
+# Adapter bootstrap knobs (env overrides; defaults match the original wrapper).
+HERMES_EVENT_FAMILY="${HERMES_EVENT_FAMILY:-ops}"
+HERMES_MODE="${HERMES_MODE:-orchestrator}"
 
 mkdir -p "$RUN_DIR" "$RUN_DIR/evidence"
 
@@ -23,8 +26,8 @@ HERMES_VERSION="$($HERMES_BIN --version 2>/dev/null | head -n 1 | sed 's/^Hermes
 node "$REPO/adapters/hermes-adapter.js" "$ENVELOPE" \
   --run-dir "$RUN_DIR" \
   --agent-id "$AGENT_ID" \
-  --mode orchestrator \
-  --event-family ops \
+  --mode "$HERMES_MODE" \
+  --event-family "$HERMES_EVENT_FAMILY" \
   --runtime-version "$HERMES_VERSION" \
   > "$RUN_DIR/adapter-bootstrap.log" 2>&1
 ADAPTER_STATUS=$?

@@ -22,6 +22,12 @@ participants:
     adapter: hermes
     transport: local_exec
     execution_profile: dry_run
+    # Runtime attestation probe (identity layer 2): the probe output mentions
+    # the declared adapter name, so the recorded attestation is consistent.
+    identify_command:
+      - node
+      - -e
+      - console.log('Hermes Agent v0.16.0 simulation probe')
     command:
       - node
       - adapters/hermes-adapter.js
@@ -67,6 +73,6 @@ participants:
       - --agent-id
       - '{agent_id}'
       - --runtime
-      - cli
+      - stub
       - --seed
       - '{seed}'
