@@ -127,6 +127,55 @@ enforced limit came from.
     run-.../quarantine-reason.yaml
 ```
 
+## Reference Hermes local wrapper
+
+The repository includes a reusable reference wrapper for operators who want to
+run a participant through the local Hermes CLI while still producing the normal
+Agent Olympics artifact set:
+
+- `adapters/wrappers/hermes-mission-wrapper.sh` invokes `hermes chat -Q -q`
+  with the public task envelope and participant-facing fixture paths, captures
+  the mission answer, and returns runner-compatible exit/status behavior.
+- `scripts/hermes-mission-result-merge.js` parses the marker-wrapped mission
+  JSON and merges the actual diagnosis, findings, evidence, risk assessment,
+  next action, and durable-memory decision into the schema-valid artifacts that
+  `adapters/hermes-adapter.js` bootstraps first.
+
+Example dry-run config for one local Hermes participant:
+
+```yaml
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: hermes-instance-001
+round_manifest: rounds/season-001-round-001.yaml
+run_directory: runs/live-runner/round-001/
+tasks: [ops-001]
+participants:
+  - participant_id: sogyo
+    adapter: hermes
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - bash
+      - adapters/wrappers/hermes-mission-wrapper.sh
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'
+```
+
+Useful environment overrides for the wrapper:
+
+- `AGENT_OLYMPICS_REPO=/path/to/agent-olympics` when invoking the wrapper from
+  outside this checkout.
+- `HERMES_BIN=/path/to/hermes` when the desired Hermes executable is not first
+  on `PATH`.
+
+The wrapper intentionally uses only participant-facing/public inputs and tells
+Hermes not to read oracle files, judge notes, hidden judge notes, or private
+answer keys. If Hermes returns non-JSON text, the merge script preserves the raw
+output in `mission-result.raw.txt` and writes a fallback result that still
+validates, but flags the parse fallback for human review.
+
 ## Transport extension point (how an operator points at a real node)
 
 `local_exec` runs any argv command, so a real participant node is reached by
