@@ -298,7 +298,7 @@ function parseArgs() {
     console.error('  --event-family <family>   Event family: ops, code, smoke, node, wiki, general');
     console.error('  --model <name>            Model name (default: gpt-5.x)');
     console.error('  --model-provider <name>   Model provider (default: openai)');
-    console.error('  --exit <code>             Simulated exit code: 0|1|2 (default: 0)');
+    console.error('  --exit <code>             Simulated exit code: 0|1|2|3 (default: 0)');
     console.error('  --seed <string>           Deterministic seed for stable output IDs');
     console.error('  --timestamp <time>        ISO timestamp override');
     console.error('  --publishable             Mark result as publishable (default: false)');
@@ -330,6 +330,11 @@ function parseArgs() {
         console.error(`Unknown option: ${args[i]}`);
         process.exit(3);
     }
+  }
+
+  if (!Number.isInteger(opts.exitCode) || STATUS_MAP[opts.exitCode] === undefined) {
+    console.error(`Invalid --exit value: must be one of ${Object.keys(STATUS_MAP).join(', ')}`);
+    process.exit(3);
   }
 
   return { envelopePath, opts };
@@ -541,6 +546,65 @@ function buildToolUseProfile(mode) {
 }
 
 function buildActions(mode, eventFamily, status) {
+  // Human baseline runs record manual operator steps only — no automated
+  // tool calls, and no reference to evidence that buildEvidence omits for
+  // this mode (e.g. ev-telegram-delivery).
+  if (mode === 'human_baseline') {
+    const actions = [
+      {
+        id: 'act-001',
+        type: 'manual',
+        target: 'task_envelope',
+        command_summary: 'Operator reads task envelope and records it in the session log',
+        redacted: false,
+        duration_seconds: 30,
+        evidence_id: 'ev-session-input',
+      },
+      {
+        id: 'act-002',
+        type: 'manual',
+        target: 'session',
+        command_summary: 'Operator opens an OpenClaw session to record manual baseline steps',
+        redacted: false,
+        duration_seconds: 45,
+        evidence_id: 'ev-gateway-readiness',
+      },
+      {
+        id: 'act-003',
+        type: 'manual',
+        target: 'session',
+        command_summary: `Operator documents manual ${eventFamily} steps as session messages`,
+        redacted: false,
+        duration_seconds: 120,
+        evidence_id: 'ev-message-delivery',
+      },
+      {
+        id: 'act-004',
+        type: 'manual',
+        target: 'session',
+        command_summary: 'Operator records command transcripts in the session log',
+        redacted: true,
+        redaction_reason: 'command_output_contained_sensitive_data',
+        duration_seconds: 90,
+        evidence_id: 'ev-tool-calls',
+      },
+    ];
+
+    if (status === 'completed') {
+      actions.push({
+        id: 'act-005',
+        type: 'manual',
+        target: 'session',
+        command_summary: 'Operator composes and posts final diagnosis message',
+        redacted: false,
+        duration_seconds: 180,
+        evidence_id: 'ev-final-report',
+      });
+    }
+
+    return actions;
+  }
+
   const actions = [
     {
       id: 'act-001',
@@ -665,7 +729,7 @@ function buildEvidence(mode, eventFamily, runId, status) {
     });
   }
 
-  if (eventFamily === 'ops' && status === 'completed') {
+  if (status === 'completed') {
     evidence.push({
       id: 'ev-final-report',
       kind: 'transcript_excerpt',
@@ -729,7 +793,52 @@ function buildOutputs(envelope, mode, eventFamily, status) {
  * Duration per action             → entries[].duration_ms
  */
 function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode, eventFamily, status) {
-  const entries = [
+  // Human baseline runs record manual operator steps, mirroring buildActions:
+  // no automated tool calls and no reference to ev-telegram-delivery.
+  const entries = mode === 'human_baseline' ? [
+    {
+      seq: 0,
+      timestamp: startedAt,
+      action: 'manual',
+      target: 'task_envelope',
+      summary: `Operator reads task envelope "${envelope.task_id || 'unknown'}" and records it in the session log`,
+      duration_ms: 30000,
+      result_summary: `Envelope reviewed for event family "${eventFamily}"`,
+      evidence_ref: 'ev-session-input',
+    },
+    {
+      seq: 1,
+      timestamp: startedAt,
+      action: 'manual',
+      target: 'session',
+      summary: 'Operator opens an OpenClaw session to record manual baseline steps',
+      duration_ms: 45000,
+      result_summary: 'Session opened for manual baseline recording',
+      evidence_ref: 'ev-gateway-readiness',
+    },
+    {
+      seq: 2,
+      timestamp: startedAt,
+      action: 'manual',
+      target: 'session',
+      summary: `Operator documents manual ${eventFamily} steps as session messages`,
+      duration_ms: 120000,
+      result_summary: 'Manual steps recorded in session transcript',
+      evidence_ref: 'ev-message-delivery',
+    },
+    {
+      seq: 3,
+      timestamp: startedAt,
+      action: 'manual',
+      target: 'session',
+      summary: 'Operator records command transcripts in the session log',
+      redacted: true,
+      redaction_reason: 'command_output_contained_sensitive_data',
+      duration_ms: 90000,
+      result_summary: 'Command transcripts recorded, output redacted for secrets',
+      evidence_ref: 'ev-tool-calls',
+    },
+  ] : [
     {
       seq: 0,
       timestamp: startedAt,
@@ -809,26 +918,29 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode,
 
   if (status === 'completed') {
     entries.push({
-      seq: 7,
+      seq: entries.length,
       timestamp: endedAt,
-      action: 'message',
+      action: mode === 'human_baseline' ? 'manual' : 'message',
       target: 'session',
-      summary: 'Compose and post final diagnosis message',
+      summary: mode === 'human_baseline'
+        ? 'Operator composes and posts final diagnosis message'
+        : 'Compose and post final diagnosis message',
       duration_ms: 890,
       result_summary: 'Final report posted to session transcript',
       evidence_ref: 'ev-final-report',
     });
-
-    entries.push({
-      seq: 8,
-      timestamp: endedAt,
-      action: 'write',
-      target: 'result_packet',
-      summary: 'Write result-packet.yaml, trace.yaml, evidence-bundle.yaml, manifest.yaml',
-      duration_ms: 50,
-      result_summary: 'All output artifacts written to run directory',
-    });
   }
+
+  // Artifacts are written for every run, regardless of status.
+  entries.push({
+    seq: entries.length,
+    timestamp: endedAt,
+    action: 'write',
+    target: 'result_packet',
+    summary: 'Write result-packet.yaml, trace.yaml, evidence-bundle.yaml, manifest.yaml',
+    duration_ms: 50,
+    result_summary: 'All output artifacts written to run directory',
+  });
 
   return {
     schema_version: 1,
@@ -1090,15 +1202,15 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
   };
 }
 
-function generateRunMetadata(envelopePath, envelope, runId, status, exitCode,
+function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
   startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths) {
   return {
     schema_version: 1,
     run_id: runId,
     task_id: envelope.task_id || 'unknown',
     envelope_path: envelopePath,
-    agent_id: 'sogyo',
-    runtime: 'openclaw',
+    agent_id: agentId,
+    runtime: runtime,
     runtime_version: runtimeVersion,
     adapter_mode: mode,
     event_family: eventFamily,
@@ -1247,7 +1359,7 @@ function main() {
     mode, eventFamily, status);
   const manifest = generateManifest(runId, taskId, agentId, envelope, status, startedAt, endedAt,
     mode, eventFamily);
-  const runMeta = generateRunMetadata(envelopePath, envelope, runId, status, exitCode,
+  const runMeta = generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
     startedAt, endedAt, mode, eventFamily, runtimeVersion,
     ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml',
       'manifest.yaml', 'run.yaml', 'adapter.log']);
@@ -1286,16 +1398,7 @@ function main() {
   writeYaml('manifest.yaml', manifest);
   writeYaml('run.yaml', runMeta);
 
-  // Write the adapter log
-  fs.writeFileSync(path.join(runDir, 'adapter.log'),
-    logLines.join('\n') + '\n',
-    'utf8');
-
-  // Restore console
-  console.log = origLog;
-  console.error = origError;
-
-  // --- Self-validate ---
+  // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
 
   // --- Summary ---
@@ -1325,6 +1428,13 @@ function main() {
   console.log(`  Evidence kinds:    ${ADAPTER_METADATA.evidence_capabilities.length}`);
   console.log(`  Default timeout:   ${ADAPTER_METADATA.timeout_handling.default_timeout_seconds}s`);
   console.log('');
+
+  // Restore console and write the adapter log (now that all output happened)
+  console.log = origLog;
+  console.error = origError;
+  fs.writeFileSync(path.join(runDir, 'adapter.log'),
+    logLines.join('\n') + '\n',
+    'utf8');
 
   // Exit with the requested code
   process.exit(exitCode);
