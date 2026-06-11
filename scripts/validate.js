@@ -426,15 +426,20 @@ function semanticChecks(doc, kind, file, schemaVersion) {
   }
 
   if (kind === 'run-result') {
-    // Check run_id consistency across sub-documents
+    // Check run_id consistency across sub-documents (run_id may be absent
+    // on sub-documents, in which case it is inherited from the wrapper)
     const runId = doc.run_id;
-    if (doc.trace && doc.trace.trace_id && !doc.trace.run_id) {
-      // trace run_id should match or be absent (inherited)
+    if (doc.trace && doc.trace.run_id && doc.trace.run_id !== runId) {
+      issues.push({ severity: SEVERITY.error, msg: `trace.run_id ("${doc.trace.run_id}") does not match top-level run_id ("${runId}")` });
     }
-    if (doc.evidence_bundle && doc.evidence_bundle.bundle_id && !doc.evidence_bundle.run_id) {
-      // bundle run_id should match or be absent
+    if (doc.evidence_bundle && doc.evidence_bundle.run_id && doc.evidence_bundle.run_id !== runId) {
+      issues.push({ severity: SEVERITY.error, msg: `evidence_bundle.run_id ("${doc.evidence_bundle.run_id}") does not match top-level run_id ("${runId}")` });
     }
-    detectSecrets(doc, issues);
+    // Secret-scan the wrapper fields only; result_packet was already
+    // scanned above in the result-packet branch.
+    const wrapper = { ...doc };
+    delete wrapper.result_packet;
+    detectSecrets(wrapper, issues);
   }
 
   if (kind === 'task-envelope') {
@@ -531,21 +536,22 @@ function detectSecrets(obj, issues, path = '') {
     /^session[_-]?cookie/i,
   ];
   const SUSPECT_VALUES = [
-    /^sk-[a-zA-Z0-9]{20,}/,   // OpenAI-style keys
-    /^ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT (legacy)
-    /^gho_[a-zA-Z0-9]{36}/,   // GitHub PAT (org)
-    /^github_pat_[a-zA-Z0-9]{4,}/,  // GitHub fine-grained PAT
-    /^xox[baprs]-/,            // Slack tokens
-    /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
+    /sk-[a-zA-Z0-9]{20,}/,   // OpenAI-style keys
+    /ghp_[a-zA-Z0-9]{36}/,   // GitHub PAT (legacy)
+    /gho_[a-zA-Z0-9]{36}/,   // GitHub PAT (org)
+    /github_pat_[a-zA-Z0-9]{4,}/,  // GitHub fine-grained PAT
+    /xox[baprs]-/,            // Slack tokens
+    /-----BEGIN (RSA |EC )?PRIVATE KEY-----/,
   ];
 
   for (const [key, val] of Object.entries(obj)) {
     const fp = path ? `${path}.${key}` : key;
+    // Check key names regardless of value type (flag the key itself once;
+    // nested keys are evaluated on their own during recursion)
+    if (SUSPECT_KEYS.some(r => r.test(key))) {
+      issues.push({ severity: SEVERITY.warn, msg: `Potential secret exposure in "${fp}": key name suggests credentials` });
+    }
     if (typeof val === 'string') {
-      // Check key names
-      if (SUSPECT_KEYS.some(r => r.test(key))) {
-        issues.push({ severity: SEVERITY.warn, msg: `Potential secret exposure in "${fp}": key name suggests credentials` });
-      }
       // Check values
       if (SUSPECT_VALUES.some(r => r.test(val))) {
         issues.push({ severity: SEVERITY.error, msg: `Secret pattern detected in "${fp}"` });
@@ -901,6 +907,12 @@ function validateFile(filePath) {
     return;
   }
 
+  // Round manifests have their own dedicated validator (same path as the
+  // `rounds` mode); route there instead of falling through unvalidated.
+  if (kind === 'round-manifest') {
+    return validateRoundManifest(filePath);
+  }
+
   const schemaVersion = getSchemaVersion(doc);
 
   // Select validator based on schema version
@@ -932,17 +944,20 @@ function validateFile(filePath) {
   // Manifest-specific validation
   if (kind === 'smoke-manifest') {
     // Validate manifest structure
+    let manifestErrors = 0;
     const taskIds = doc.tasks.map(t => t.task_id);
     const dups = taskIds.filter((id, i) => taskIds.indexOf(id) !== i);
     if (dups.length) {
       console.error(`FAIL  ${rel}  - manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
       totalErrors++;
+      manifestErrors++;
     }
 
     // Check minimum task count (5 required)
     if (doc.tasks.length < 5) {
       console.error(`FAIL  ${rel}  - manifest has ${doc.tasks.length} tasks, minimum is 5`);
       totalErrors++;
+      manifestErrors++;
     }
 
     // Check each task has required fields
@@ -954,10 +969,13 @@ function validateFile(filePath) {
       if (missing.length) {
         console.error(`FAIL  ${rel}  - task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
         totalErrors++;
+        manifestErrors++;
       }
     }
 
-    console.log(`OK    ${rel}  (smoke-manifest)`);
+    if (manifestErrors === 0) {
+      console.log(`OK    ${rel}  (smoke-manifest)`);
+    }
     fileCount++;
     return;
   }
@@ -2376,7 +2394,16 @@ function main() {
   console.log(`Validating ${files.length} file(s)...\n`);
 
   for (const f of files) {
-    const doc = loadYaml(f);
+    let doc;
+    try {
+      doc = loadYaml(f);
+    } catch (err) {
+      const rel = path.relative(ROOT, f);
+      console.error(`FAIL  ${rel}  - YAML parse error: ${err.message}`);
+      totalErrors++;
+      fileCount++;
+      continue;
+    }
     const kind = detectKind(doc);
     const sv = getSchemaVersion(doc);
     if (modeConfig.kinds.includes(kind) && modeConfig.versions.includes(sv)) {
