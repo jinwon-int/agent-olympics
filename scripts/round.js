@@ -33,6 +33,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { SECRET_VALUE_PATTERNS } = require('./lib/secret-patterns');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
@@ -155,10 +156,15 @@ function exitCodeToStatus(exitCode) {
 
 /**
  * Map a run result status to a terminal (non-running) state label.
- * These are the run-level outcome states.
+ * These are the run-level outcome states (every valid lifecycle state
+ * except the in-flight ones).
  */
+const TERMINAL_RUN_STATES = VALID_RUN_LIFECYCLE_STATES.filter(
+  (s) => s !== 'pending' && s !== 'running'
+);
+
 function isTerminalRunState(state) {
-  return ['completed', 'partial', 'failed', 'blocked', 'disqualified'].includes(state);
+  return TERMINAL_RUN_STATES.includes(state);
 }
 
 /**
@@ -166,13 +172,6 @@ function isTerminalRunState(state) {
  */
 function isTerminalRoundState(status) {
   return ['completed', 'scored', 'archived'].includes(status);
-}
-
-/**
- * Generate a deterministic run ID matching the pattern used by init.
- */
-function generateRunId(taskId, agentId, timestamp) {
-  return `run-${taskId}-${agentId}-${timestamp}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,11 +245,10 @@ function validateRoundManifest(manifestPath, strict) {
 
   // Lifecycle status
   if (manifest.lifecycle) {
-    const validStatuses = ['pending', 'fixture_preparation', 'running', 'completed', 'scored', 'archived'];
     check(
       'lifecycle.status is valid',
-      validStatuses.includes(manifest.lifecycle.status),
-      `"${manifest.lifecycle.status}" is not one of ${validStatuses.join(', ')}`
+      VALID_ROUND_LIFECYCLE_STATES.includes(manifest.lifecycle.status),
+      `"${manifest.lifecycle.status}" is not one of ${VALID_ROUND_LIFECYCLE_STATES.join(', ')}`
     );
   }
 
@@ -564,7 +562,7 @@ function cmdPlan(manifestArg, options) {
     for (const t of manifest.tasks || []) {
       const runId = renderRunId(manifest, t, p, generateTimestamp());
       console.log(`    ${runId}`);
-      console.log(`      → ${manifest.run_directory}${runId}/`);
+      console.log(`      → ${path.join(manifest.run_directory, runId)}/`);
     }
   }
 
@@ -723,7 +721,7 @@ function cmdStatus(roundIdArg, options) {
           const runDirs = runs.filter((r) => r.startsWith('run-'));
           console.log(`\n  Run directories: ${runDirs.length} initialized`);
           for (const r of runDirs) {
-            console.log(`    ${manifest.run_directory}${r}/`);
+            console.log(`    ${path.join(manifest.run_directory, r)}/`);
           }
         } else {
           console.log(`\n  No run directories yet.`);
@@ -859,7 +857,7 @@ function validateRunOutput(runDir) {
       const packet = yaml.load(raw);
       if (!packet || !packet.status) {
         errors.push('result-packet.yaml missing required field: status');
-      } else if (!['completed', 'partial', 'blocked', 'failed', 'disqualified'].includes(packet.status)) {
+      } else if (!isTerminalRunState(packet.status)) {
         errors.push(`result-packet.yaml has invalid status: "${packet.status}"`);
       }
       if (packet && packet.summary === undefined) {
@@ -872,13 +870,7 @@ function validateRunOutput(runDir) {
     // Check for secret patterns in output (safety scan)
     try {
       const content = fs.readFileSync(resultPacketPath, 'utf8');
-      const secretPatterns = [
-        /sk-[a-zA-Z0-9]{20,}/g,     // OpenAI-like keys
-        /ghp_[a-zA-Z0-9]{36}/g,     // GitHub PATs
-        /xox[baprs]-[a-zA-Z0-9-]+/g, // Slack tokens
-        /-----BEGIN\s+(RSA|EC|Ed25519)\s+PRIVATE\s+KEY-----/g, // Private keys
-      ];
-      for (const pattern of secretPatterns) {
+      for (const pattern of SECRET_VALUE_PATTERNS) {
         if (pattern.test(content)) {
           errors.push('SECRET DETECTED in result-packet.yaml — potential credential exposure');
           break;

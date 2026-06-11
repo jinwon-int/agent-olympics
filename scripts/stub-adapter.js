@@ -29,31 +29,26 @@
 
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+
+const {
+  STATUS_MAP,
+  COMMON_OPTIONS,
+  isoNow,
+  generateRunId,
+  parseAdapterArgs,
+  loadEnvelope,
+  ensureRunDir,
+  captureConsole,
+  writeAdapterLog,
+  makeWriteYaml,
+  validateOutput: validateCommonOutput,
+} = require('../adapters/lib/adapter-common');
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
-
-function shortId(seed) {
-  // Deterministic suffix from seed (6 hex chars)
-  if (seed) {
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      const chr = seed.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
-      hash |= 0;
-    }
-    return (Math.abs(hash) % 0xFFFFFF).toString(16).padStart(6, '0');
-  }
-  return Math.random().toString(16).slice(2, 8);
-}
+// isoNow / shortId / generateRunId live in adapters/lib/adapter-common.js.
 
 function repoRelative(filePath) {
   const root = path.resolve(__dirname, '..');
@@ -64,63 +59,26 @@ function repoRelative(filePath) {
 }
 
 function parseArgs() {
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
-    console.error('Usage: node scripts/stub-adapter.js <envelope-path> [options]');
-    console.error('');
-    console.error('Options:');
-    console.error('  --run-dir <path>     Output directory (default: auto-created in results/)');
-    console.error('  --agent-id <string>  Agent identifier (default: stub-adapter)');
-    console.error('  --runtime <string>   Runtime identifier (default: cli)');
-    console.error('  --exit <code>        Simulate exit code: 0=success, 1=fail, 2=timeout, 3=blocked (default: 0)');
-    console.error('  --seed <string>      Deterministic seed for stable output ids');
-    console.error('  --timestamp <time>   ISO timestamp override for all timestamps');
-    process.exit(3);
-  }
-
-  const envelopePath = path.resolve(args[0]);
-  const opts = { exitCode: 0, agentId: 'stub-adapter', runtime: 'cli', seed: null, timestamp: null, runDir: null };
-
-  for (let i = 1; i < args.length; i++) {
-    switch (args[i]) {
-      case '--run-dir':    opts.runDir   = path.resolve(args[++i]); break;
-      case '--agent-id':   opts.agentId  = args[++i]; break;
-      case '--runtime':    opts.runtime  = args[++i]; break;
-      case '--exit':       opts.exitCode = parseInt(args[++i], 10); break;
-      case '--seed':       opts.seed     = args[++i]; break;
-      case '--timestamp':  opts.timestamp = args[++i]; break;
-      default:
-        console.error(`Unknown option: ${args[i]}`);
-        process.exit(3);
-    }
-  }
-
-  if (!Number.isInteger(opts.exitCode) || opts.exitCode < 0 || opts.exitCode > 3) {
-    console.error('Invalid --exit value: must be one of 0, 1, 2, 3');
-    process.exit(3);
-  }
-
-  return { envelopePath, opts };
+  return parseAdapterArgs({
+    usage: [
+      'Usage: node scripts/stub-adapter.js <envelope-path> [options]',
+      '',
+      'Options:',
+      '  --run-dir <path>     Output directory (default: auto-created in results/)',
+      '  --agent-id <string>  Agent identifier (default: stub-adapter)',
+      '  --runtime <string>   Runtime identifier (default: cli)',
+      '  --exit <code>        Simulate exit code: 0=success, 1=fail, 2=timeout, 3=blocked (default: 0)',
+      '  --seed <string>      Deterministic seed for stable output ids',
+      '  --timestamp <time>   ISO timestamp override for all timestamps',
+    ],
+    defaults: { exitCode: 0, agentId: 'stub-adapter', runtime: 'cli', seed: null, timestamp: null, runDir: null },
+    options: COMMON_OPTIONS,
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Core logic — deterministic stub generation
 // ---------------------------------------------------------------------------
-
-function determineStatus(exitCode) {
-  switch (exitCode) {
-    case 0:     return 'completed';
-    case 1:     return 'failed';
-    case 2:     return 'partial';
-    default:    return 'blocked';
-  }
-}
-
-function generateRunId(taskId, agentId, seed, timestamp) {
-  const ts = (timestamp || isoNow()).replace(/[:.]/g, '-').slice(0, 19);
-  const id = seed ? shortId(seed) : shortId(`${taskId}-${agentId}-${ts}`);
-  return `run-${taskId}-${agentId}-${ts}-${id}`;
-}
 
 function generateResultPacket(envelope, runId, agentId, runtime, status, startedAt, endedAt, seed) {
   const taskId = envelope.task_id || 'unknown-task';
@@ -283,39 +241,11 @@ function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, st
 // ---------------------------------------------------------------------------
 
 function validateOutput(runDir) {
-  const validateScript = path.resolve(__dirname, 'validate.js');
-  const files = ['result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml'];
-
-  let allPassed = true;
-  for (const file of files) {
-    const filePath = path.join(runDir, file);
-    if (!fs.existsSync(filePath)) {
-      console.warn(`[stub-adapter] WARNING: ${file} not found — skipping validation.`);
-      continue;
-    }
-    try {
-      const result = require('child_process').spawnSync(
-        process.execPath,
-        [validateScript, filePath],
-        { cwd: path.resolve(__dirname, '..'), stdio: 'pipe', encoding: 'utf8' }
-      );
-      if (result.status !== 0) {
-        console.warn(`[stub-adapter] WARNING: ${file} failed schema validation:`);
-        console.warn(result.stdout);
-        if (result.stderr) console.warn(result.stderr);
-        allPassed = false;
-      } else {
-        console.log(`[stub-adapter] ${file} — validation OK`);
-      }
-    } catch (err) {
-      console.warn(`[stub-adapter] WARNING: Could not validate ${file}: ${err.message}`);
-    }
-  }
-
-  if (!allPassed) {
-    console.warn('[stub-adapter] WARNING: Some output files failed validation. See warnings above.');
-  }
-  return allPassed;
+  return validateCommonOutput(runDir, {
+    logPrefix: 'stub-adapter',
+    files: ['result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml'],
+    truncateOutput: false,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -326,24 +256,7 @@ function main() {
   const { envelopePath, opts } = parseArgs();
 
   // --- Validate input ---
-  if (!fs.existsSync(envelopePath)) {
-    console.error(`ERROR: Envelope not found: ${envelopePath}`);
-    process.exit(3);
-  }
-
-  let envelope;
-  try {
-    const raw = fs.readFileSync(envelopePath, 'utf8');
-    envelope = yaml.load(raw);
-  } catch (err) {
-    console.error(`ERROR: Failed to parse envelope: ${err.message}`);
-    process.exit(3);
-  }
-
-  if (!envelope || !envelope.task_id) {
-    console.error('ERROR: Invalid envelope: missing task_id');
-    process.exit(3);
-  }
+  const envelope = loadEnvelope(envelopePath);
 
   const taskId = envelope.task_id;
   const agentId = opts.agentId;
@@ -357,19 +270,13 @@ function main() {
 
   // --- Determine output directory ---
   const runDir = opts.runDir || path.resolve(__dirname, '..', 'results', `stub-${taskId}-${runId}`);
-  if (!fs.existsSync(runDir)) {
-    fs.mkdirSync(runDir, { recursive: true });
-  }
+  ensureRunDir(runDir);
 
   // --- Capture stdout/stderr ---
-  const logLines = [];
-  const origLog = console.log;
-  const origError = console.error;
-  console.log = (...args) => { logLines.push(['STDOUT', ...args].join(' ')); origLog(...args); };
-  console.error = (...args) => { logLines.push(['STDERR', ...args].join(' ')); origError(...args); };
+  const capture = captureConsole();
 
   // Determine status from exit code
-  const status = determineStatus(exitCode);
+  const status = STATUS_MAP[exitCode] || 'blocked';
   const endedAt = overrideTimestamp || isoNow();
 
   // --- Generate output artifacts ---
@@ -380,11 +287,7 @@ function main() {
     ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'run.yaml', 'adapter.log']);
 
   // --- Write artifacts ---
-  const writeYaml = (filename, data) => {
-    fs.writeFileSync(path.join(runDir, filename),
-      yaml.dump(data, { indent: 2, lineWidth: 120, noRefs: true, sortKeys: true }),
-      'utf8');
-  };
+  const writeYaml = makeWriteYaml(runDir);
 
   writeYaml('envelope-copy.yaml', envelope);
   writeYaml('result-packet.yaml', resultPacket);
@@ -410,11 +313,7 @@ function main() {
   console.log('');
 
   // Restore console and write the adapter log (now that all output happened)
-  console.log = origLog;
-  console.error = origError;
-  fs.writeFileSync(path.join(runDir, 'adapter.log'),
-    logLines.join('\n') + '\n',
-    'utf8');
+  writeAdapterLog(runDir, capture);
 
   // Exit with the requested code so the runner can observe the mapping
   process.exit(exitCode);

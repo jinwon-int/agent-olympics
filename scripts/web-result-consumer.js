@@ -30,6 +30,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const ROOT = path.resolve(__dirname, '..');
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -184,11 +186,19 @@ function verdictBadge(verdict) {
   return `<span class="badge badge-${verdict}">${escapeHtml(verdict)}</span>`;
 }
 
-function randClass(rank) {
+function rankClass(rank) {
   if (rank === 1) return 'rank-1';
   if (rank === 2) return 'rank-2';
   if (rank === 3) return 'rank-3';
   return '';
+}
+
+/**
+ * Sanitize an id (entry_id, task_id, ...) for use as an output filename:
+ * strip path separators so a hostile id cannot escape the output directory.
+ */
+function safeFilename(id) {
+  return String(id == null ? '' : id).replace(/[/\\]/g, '_');
 }
 
 // ---------------------------------------------------------------------------
@@ -394,12 +404,12 @@ function renderLeaderboard(scoreboard, blindMode, title) {
   for (const entry of allEntriesSorted) {
     const rank = ranks.get(entry.entry_id);
     const rankStr = rank != null ? String(rank) : '—';
-    const rankClass = rank != null ? `rank ${randClass(rank)}` : 'rank';
+    const rankCellClass = rank != null ? `rank ${rankClass(rank)}` : 'rank';
     const subMeta = entry.submission_metadata || {};
     const sc = entry.score || {};
     const dims = sc.dimensions || {};
 
-    const detailUrl = `detail/${encodeURIComponent(entry.entry_id)}.html`;
+    const detailUrl = `detail/${encodeURIComponent(safeFilename(entry.entry_id))}.html`;
 
     const totalScore = sc.total_score != null ? sc.total_score : '—';
     const corr = dims.correctness;
@@ -408,7 +418,7 @@ function renderLeaderboard(scoreboard, blindMode, title) {
     const wallTime = subMeta.performance_profile?.raw_measurements?.wall_time_seconds;
 
     html += `<tr>
-<td class="${rankClass}">${rankStr}</td>
+<td class="${rankCellClass}">${rankStr}</td>
 <td><a href="${detailUrl}" class="agent-link">${escapeHtml(entry.agent_id)}</a></td>
 <td><code>${escapeHtml(entry.task_id)}</code></td>
 <td>${escapeHtml(subMeta.adapter || '—')}</td>
@@ -553,7 +563,7 @@ ${entry.packet_ref ? `<div class="field-label">Packet Ref</div><div class="field
     // Try to load the actual result packet for human-readable evidence
     try {
       const yaml = require('js-yaml');
-      const packetPath = path.resolve(entry.packet_ref);
+      const packetPath = path.resolve(ROOT, entry.packet_ref);
       if (fs.existsSync(packetPath)) {
         const packet = yaml.load(fs.readFileSync(packetPath, 'utf8'));
         if (packet && packet.evidence && packet.evidence.length > 0) {
@@ -642,7 +652,7 @@ function renderComparison(entries, taskId, blindMode) {
     const dims = sc.dimensions || {};
     const wallTime = entry.submission_metadata?.performance_profile?.raw_measurements?.wall_time_seconds;
     html += `<tr>
-<td><a href="../detail/${encodeURIComponent(entry.entry_id)}.html">${escapeHtml(entry.agent_id)}</a></td>
+<td><a href="../detail/${encodeURIComponent(safeFilename(entry.entry_id))}.html">${escapeHtml(entry.agent_id)}</a></td>
 <td><strong>${sc.total_score != null ? sc.total_score : '—'}</strong></td>`;
     for (const dim of allDims) {
       if (dims[dim]) {
@@ -739,7 +749,7 @@ function main() {
   let detailCount = 0;
   for (const entry of displayBoard.entries) {
     const detailHtml = renderDetail(entry, blindMode);
-    const detailPath = path.join(detailDir, `${entry.entry_id}.html`);
+    const detailPath = path.join(detailDir, `${safeFilename(entry.entry_id)}.html`);
     fs.writeFileSync(detailPath, detailHtml);
     detailCount++;
   }
@@ -757,7 +767,7 @@ function main() {
   for (const [taskId, taskEntries] of byTask.entries()) {
     if (taskEntries.length < 2) continue; // Only compare when ≥2 entries
     const compareHtml = renderComparison(taskEntries, taskId, blindMode);
-    const comparePath = path.join(compareDir, `${taskId}.html`);
+    const comparePath = path.join(compareDir, `${safeFilename(taskId)}.html`);
     fs.writeFileSync(comparePath, compareHtml);
     compareCount++;
   }

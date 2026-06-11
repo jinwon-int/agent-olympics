@@ -53,7 +53,11 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const crypto = require('crypto');
+const {
+  SECRET_KEY_PATTERNS,
+  SECRET_VALUE_PATTERNS,
+  looksLikeSecretValue,
+} = require('./lib/secret-patterns');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,8 +76,6 @@ const VALID_PACKET_STATUSES = new Set([
   'completed', 'partial', 'blocked', 'failed', 'disqualified',
 ]);
 
-const VALID_CONFIDENCE = new Set(['low', 'medium', 'high']);
-
 const VALID_JUDGE_TYPES = new Set([
   'automated', 'human', 'llm-assisted', 'hybrid', 'pending',
 ]);
@@ -82,30 +84,8 @@ const VALID_VERDICTS = new Set([
   'pass', 'conditional_pass', 'fail', 'disqualification',
 ]);
 
-// Secret-bearing field name patterns that should NOT appear in participant artifacts
-const FORBIDDEN_SECRET_KEY_PATTERNS = [
-  /^api[_-]?key$/i,
-  /^api[_-]?secret$/i,
-  /^token$/i,
-  /^password$/i,
-  /^secret$/i,
-  /^credential/i,
-  /^auth[_-]?token/i,
-  /^private[_-]?key/i,
-  /^access[_-]?key/i,
-  /^session[_-]?cookie/i,
-];
-
-// Secret value patterns — actual credential leaks
-const FORBIDDEN_VALUE_PATTERNS = [
-  /^sk-[a-zA-Z0-9]{20,}/,          // OpenAI-style keys
-  /^ghp_[a-zA-Z0-9]{36}/,          // GitHub PAT (legacy)
-  /^gho_[a-zA-Z0-9]{36}/,          // GitHub PAT (org)
-  /^github_pat_[a-zA-Z0-9_]{4,}/,  // GitHub fine-grained PAT
-  /^xox[baprs]-/,                   // Slack tokens
-  /^-----BEGIN (RSA |EC )?PRIVATE KEY-----/,  // Private keys
-  /^eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+/,   // JWT tokens
-];
+// Secret key-name and value patterns are shared across validators —
+// see scripts/lib/secret-patterns.js (SECRET_KEY_PATTERNS / SECRET_VALUE_PATTERNS).
 
 // Actions that require documented approval boundaries
 const DESTRUCTIVE_ACTION_PATTERNS = [
@@ -114,12 +94,6 @@ const DESTRUCTIVE_ACTION_PATTERNS = [
   /reinstall/i, /rollback/i, /migrate/i,
   /rotate/i, /revoke/i, /purge/i,
 ];
-
-// Action types that imply live mutation
-const LIVE_MUTATION_ACTION_TYPES = new Set([
-  'write', 'delete', 'destroy', 'reset', 'restart',
-  'reboot', 'reinstall', 'exec', 'command',
-]);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -131,15 +105,6 @@ function loadYaml(filePath) {
     return yaml.load(raw);
   } catch (err) {
     throw new Error(`YAML parse error in ${filePath}: ${err.message}`);
-  }
-}
-
-function fileExists(filePath) {
-  try {
-    fs.accessSync(path.resolve(ROOT, filePath), fs.constants.R_OK);
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -390,6 +355,9 @@ function checkEngineOutputs(runDir, manifest) {
         if (judge.verdict && !VALID_VERDICTS.has(judge.verdict)) {
           error(`engine-outputs:${rel}/judge-record.yaml`, `Invalid verdict "${judge.verdict}"; expected one of: ${[...VALID_VERDICTS].join(', ')}`);
         }
+        if (judge.judge_type && !VALID_JUDGE_TYPES.has(judge.judge_type)) {
+          warn(`engine-outputs:${rel}/judge-record.yaml`, `Unknown judge_type "${judge.judge_type}"; expected one of: ${[...VALID_JUDGE_TYPES].join(', ')}`);
+        }
       }
     } catch (e) {
       error(`engine-outputs:${rel}/judge-record.yaml`, e.message);
@@ -410,33 +378,30 @@ function checkForbiddenMetadata(doc, context, filePath) {
     for (const [key, val] of Object.entries(obj)) {
       const fullPath = pathStr ? `${pathStr}.${key}` : key;
 
-      // Check for secret-bearing key names (any value type). String values keep
-      // the historical error severity; non-string values (e.g. api_key: 12345,
-      // or structured credential-handling metadata) are flagged as warnings.
-      if (FORBIDDEN_SECRET_KEY_PATTERNS.some(r => r.test(key))) {
-        if (typeof val === 'string') {
-          error(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" found in participant-facing artifact`);
+      // Check for secret-bearing key names. A key name alone is not proof of
+      // a leak: policy descriptors like
+      // `credential_location_policy: record_locations_only_never_values` or
+      // `credential_values: omitted` describe credential *handling*, not
+      // credentials. Only error when the value itself looks like a credential
+      // (secret value pattern or token-like string); otherwise warn.
+      if (SECRET_KEY_PATTERNS.some(r => r.test(key))) {
+        if (looksLikeSecretValue(val)) {
+          error(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" with credential-like value found in participant-facing artifact`);
         } else {
-          warn(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" (non-string value) found in participant-facing artifact`);
+          warn(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" found in participant-facing artifact (value does not look credential-like)`);
         }
       }
 
       if (typeof val === 'string') {
-        // Check for actual secret values leaked
-        if (FORBIDDEN_VALUE_PATTERNS.some(r => r.test(val))) {
+        // Check for actual secret values leaked (covers redaction_reason /
+        // redaction_rule fields too — a secret in any string value errors here)
+        if (SECRET_VALUE_PATTERNS.some(r => r.test(val))) {
           error(`forbidden:${filePath}`, `Secret value pattern detected in "${fullPath}" — credential leak`);
         }
 
-        // Check redaction_reason for actual secrets instead of value-free reasons
-        if ((key === 'redaction_reason' || key === 'redaction_rule') && val.length > 0) {
-          // A redaction reason containing actual secrets is an exposure, not redaction
-          if (FORBIDDEN_VALUE_PATTERNS.some(r => r.test(val))) {
-            error(`forbidden:${filePath}`, `redaction_reason in "${fullPath}" contains a secret value — must be value-free`);
-          }
-          // Long redaction_reasons are suspicious
-          if (val.length > 200) {
-            warn(`forbidden:${filePath}`, `Unusually long redaction_reason in "${fullPath}" (${val.length} chars) — may contain secret data`);
-          }
+        // Long redaction_reasons are suspicious
+        if ((key === 'redaction_reason' || key === 'redaction_rule') && val.length > 200) {
+          warn(`forbidden:${filePath}`, `Unusually long redaction_reason in "${fullPath}" (${val.length} chars) — may contain secret data`);
         }
       }
 
@@ -666,7 +631,7 @@ function checkEvidenceIntegrity(packetDoc, traceDoc, bundleDoc, filePath) {
   if (redactionPolicy && redactionPolicy.applied_rules) {
     for (const rule of redactionPolicy.applied_rules) {
       if (rule.pattern_description) {
-        for (const pattern of FORBIDDEN_VALUE_PATTERNS) {
+        for (const pattern of SECRET_VALUE_PATTERNS) {
           if (pattern.test(rule.pattern_description)) {
             error(`evidence-integrity:${rel}`, `Redaction policy rule "${rule.rule_id}" pattern_description contains a secret value — must be value-free`);
           }
@@ -932,7 +897,10 @@ function cmdAll(roundDir) {
       console.log('No YAML files found in repository.');
       process.exit(0);
     }
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative/;
+    // fixtures/node-profiles/validity holds intentionally-invalid live-probe
+    // fixtures (deliberate secret leaks) exercised by targeted validators —
+    // exclude them from the repo-wide scan like the other negative fixtures.
+    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity/;
     for (const f of yamlFiles) {
       if (excludedDirs.test(f)) continue;
       try {
@@ -965,7 +933,10 @@ function cmdAll(roundDir) {
   if (runDirs.length === 0) {
     warn('all', 'No run directories found — checking files in directory path only');
     // Fall back to checking individual YAML files
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative/;
+    // fixtures/node-profiles/validity holds intentionally-invalid live-probe
+    // fixtures (deliberate secret leaks) exercised by targeted validators —
+    // exclude them from the repo-wide scan like the other negative fixtures.
+    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity/;
     const yamlFiles = findYamlFiles(roundDir).filter(f => !excludedDirs.test(f));
     for (const f of yamlFiles) {
       try {

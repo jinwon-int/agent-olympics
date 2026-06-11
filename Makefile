@@ -5,23 +5,29 @@
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
         validate-judges-v2 validate-fixtures validate-adapter-fixtures \
+        validate-adapter-capabilities validate-hermes-fixtures \
         validate-oracle validate-smoke \
         oracle smoke-check smoke fixtures-check setup clean \
         validate-rounds rounds-check round \
         validate-qualifications qualifications-check \
         dry-run-readiness dry-run-publication dry-run-redaction dry-run-metadata \
         dry-run-finalizer dry-run-list validate-gates validate-dry-run-evidence \
+        dry-run-execute dry-run-execute-list dry-run-execute-task \
+        dry-run-execute-validate dry-run-pipeline \
         participant-eligibility-check \
         validate-profiles profiles-check \
         stub-adapter stub-adapter-fail test-stub \
         openclaw-adapter openclaw-adapter-code openclaw-adapter-fail validate-openclaw test-openclaw \
         hermes-adapter hermes-adapter-code hermes-adapter-fail validate-hermes smoke-hermes \
         score score-validate score-run score-aggregate perf-harness perf-harness-validate validate-scoreboard validate-competition-fixtures \
+        perf-harness-to-packets perf-harness-pipeline \
         score-blind score-blind-score score-blind-aggregate score-all \
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
         validate-a2a-effectiveness \
+        validate-competition validate-run-manifests validate-engine-outputs \
+        validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
@@ -193,6 +199,13 @@ validate-consistency:
 # Validate all competition-validity checks (via validate.js wrapper)
 validate-cv:
 	node scripts/validate.js competition-validity
+
+# Verify artifact integrity (manifest checksums + cross-references) for run dirs.
+# Usage: make verify-artifacts RUN_DIR="runs/season-001/round-001"
+# RUN_DIR may name one or more run directories or a round directory; with no
+# RUN_DIR the script prints its usage (no default run directory exists yet).
+verify-artifacts:
+	node scripts/verify-artifacts.js $(RUN_DIR)
 
 # Source-only end-to-end round gate:
 # validate -> init -> execute/stub -> score -> competition-validity.
@@ -412,8 +425,8 @@ web-consumer-blind:
 
 # Generate sample output to fixtures/web-sample
 web-consumer-sample:
-	node scripts/score.js run > /dev/null 2>&1; \
-	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample --title "Agent Olympics — Sample Leaderboard"; \
+	node scripts/score.js run > /dev/null && \
+	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample --title "Agent Olympics — Sample Leaderboard" && \
 	node scripts/web-result-consumer.js results/scoreboard.json --output-dir fixtures/web-sample/blind --blind --title "Agent Olympics — Blind Sample"
 
 # Run web consumer test suite
