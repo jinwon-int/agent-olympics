@@ -1015,6 +1015,15 @@ async function buildScoreboard(resultsDir, blindMode) {
       delete subMeta._perf_warnings;
     }
 
+    // Dimensions still pending human/blind review for THIS entry: a pending
+    // dimension is resolved once the entry's judge record carries a numeric
+    // score for it (e.g. a complete record produced by scripts/judge.js
+    // finalize). Auto-generated judge records never cover them.
+    const entryPendingDims = getPendingDimensions().filter(d => {
+      const ds = judgeRecord && judgeRecord.score_dimensions && judgeRecord.score_dimensions[d];
+      return !(ds && typeof ds.score === 'number');
+    });
+
     // 6. Build scoreboard entry
     const entry = {
       entry_id: `${rp.task_id}-${rp.agent_id}`,
@@ -1039,7 +1048,7 @@ async function buildScoreboard(resultsDir, blindMode) {
       presence_checks: presenceResult,
       judge_record_ref: blindMode ? 'blinded' : judgeRecordRef,
       judge_type: judgeType,
-      pending_dimensions: getPendingDimensions(),
+      pending_dimensions: entryPendingDims,
       warnings: semWarnings.map(i => i.msg),
       errors: semErrors.map(i => i.msg),
     };
@@ -1099,15 +1108,17 @@ async function buildScoreboard(resultsDir, blindMode) {
   // Summary stats
   const totalEntries = entries.length;
   const entriesWithJudge = entries.filter(e => e.judge_type !== 'pending').length;
-  const entriesPendingJudge = entries.filter(e => e.judge_type === 'pending').length;
+  // An entry counts as pending human judge while it has no judge record at
+  // all OR its judge record leaves human/blind dimensions unscored.
+  const entriesPendingJudge = entries.filter(e =>
+    e.judge_type === 'pending' || (e.pending_dimensions && e.pending_dimensions.length > 0)).length;
   const entriesWithErrors = entries.filter(e => (!e.schema_validation.valid || !e.semantic_checks.passed)).length;
   const comparableEntries = entries.filter(e => e.comparable === true).length;
   const nonComparableEntries = entries.filter(e => e.comparable === false).length;
 
   const autoDims = getAutomaticDimensions();
-  const pendDims = getPendingDimensions();
   const automatedChecksCount = autoDims.length * totalEntries;
-  const pendingChecksCount = pendDims.length * totalEntries;
+  const pendingChecksCount = entries.reduce((s, e) => s + ((e.pending_dimensions || []).length), 0);
 
   const blindLabel = blindMode ? ' (blind — anonymized)' : '';
   const scoreboard = {
@@ -1187,7 +1198,7 @@ function findResultPackets(dir) {
     for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
       const full = path.join(d, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (/\.ya?ml$/.test(entry.name) && !entry.name.includes('-judge') && !entry.name.includes('-trace') && !entry.name.includes('-evidence') && !entry.name.includes('-auto-judge')) {
+      else if (/\.ya?ml$/.test(entry.name) && !entry.name.includes('-judge') && !entry.name.includes('-trace') && !entry.name.includes('-evidence') && !entry.name.includes('-auto-judge') && !entry.name.includes('-declaration')) {
         results.push(full);
       }
     }
@@ -1421,7 +1432,35 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
-  console.error(`Fatal error: ${err.message}`);
-  process.exit(1);
-});
+// ---------------------------------------------------------------------------
+// Module exports — scoring/validation helpers reused by scripts/judge.js.
+// The CLI only runs when score.js is invoked directly.
+// ---------------------------------------------------------------------------
+
+module.exports = {
+  SEVERITY,
+  loadSchema,
+  loadYaml,
+  getSchemaVersion,
+  detectKind,
+  validateSchema,
+  semanticPacketChecks,
+  presenceChecks,
+  getAutomaticDimensions,
+  getPendingDimensions,
+  autoScoreEvidenceQuality,
+  autoScoreSafety,
+  autoScoreExecution,
+  generateAutoJudge,
+  findResultPackets,
+  findJudgeFiles,
+  anonymisePacket,
+  resetBlindCounter,
+};
+
+if (require.main === module) {
+  main().catch(err => {
+    console.error(`Fatal error: ${err.message}`);
+    process.exit(1);
+  });
+}

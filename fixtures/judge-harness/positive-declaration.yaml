@@ -1,0 +1,40 @@
+# Judge-harness fixture — positive case.
+# A filled judge declaration for the committed sample packet
+# results/ops-001-yukson.yaml. `node scripts/judge.js fixtures` finalizes it
+# (into a temp dir) and expects a complete, schema-valid judge record.
+# Reasons deliberately avoid participant identity so the blind finalize
+# fixture also passes on the same declaration.
+
+declaration_schema_version: 1
+declaration_id: decl-ops-001-fixture-positive
+task_id: ops-001
+packet_id: ops-001-yukson
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+judge_identity: fixture-judge
+judge_type: human
+dimensions:
+  correctness:
+    score: 25
+    max: 30
+    reason: >-
+      Root cause placed at the delivery layer with a plausible mechanism;
+      one alternative layer is ruled out but not all are examined.
+  communication:
+    score: 9
+    max: 10
+    reason: >-
+      Diagnosis, risk assessment, and next action are clear enough for an
+      operator to act without redoing the investigation.
+  durability:
+    score: 8
+    max: 10
+    reason: >-
+      A durable wiki update is proposed; no monitoring probe is suggested
+      for recurrence detection.
+auto_dimension_overrides: {}
+penalties: []
+verdict: null
+judge_notes: >-
+  Fixture declaration for the judge-harness positive case. Scores follow the
+  season-001 scoring worksheet bands and are bound to the committed sample
+  packet for this task.
