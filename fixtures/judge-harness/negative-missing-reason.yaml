@@ -1,0 +1,28 @@
+# Judge-harness fixture — negative case.
+# durability has a score but an empty reason. finalize must reject this
+# declaration with "reason is required" (short reasons per dimension are a
+# roadmap-05 acceptance criterion).
+
+declaration_schema_version: 1
+declaration_id: decl-ops-001-fixture-missing-reason
+task_id: ops-001
+packet_id: ops-001-yukson
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+judge_identity: fixture-judge
+judge_type: human
+dimensions:
+  correctness:
+    score: 25
+    max: 30
+    reason: Delivery-layer diagnosis with plausible mechanism.
+  communication:
+    score: 9
+    max: 10
+    reason: Clear report.
+  durability:
+    score: 8
+    max: 10
+    reason: ""
+penalties: []
+verdict: null
+judge_notes: Fixture declaration that must fail because a dimension reason is empty.

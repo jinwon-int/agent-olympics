@@ -1,0 +1,27 @@
+# Judge-harness fixture — negative case.
+# correctness.score (35) exceeds the rubric max (30). finalize must reject
+# this declaration with "exceeds rubric max".
+
+declaration_schema_version: 1
+declaration_id: decl-ops-001-fixture-score-over-max
+task_id: ops-001
+packet_id: ops-001-yukson
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+judge_identity: fixture-judge
+judge_type: human
+dimensions:
+  correctness:
+    score: 35
+    max: 30
+    reason: Score intentionally above the rubric maximum.
+  communication:
+    score: 9
+    max: 10
+    reason: Clear report.
+  durability:
+    score: 8
+    max: 10
+    reason: Wiki update proposed.
+penalties: []
+verdict: null
+judge_notes: Fixture declaration that must fail with a score-over-max error.

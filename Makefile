@@ -28,7 +28,8 @@
         validate-a2a-effectiveness \
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
-        ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify
+        ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
+        judge-fixtures judge-template promotion-check
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -372,6 +373,22 @@ score-run:
 # Aggregate scoreboard (validate + score + scoreboard JSON)
 score-aggregate:
 	node scripts/score.js aggregate
+
+# --- Judge harness targets (scripts/judge.js — subjective scoring layer) ---
+
+# Run the judge harness fixture suite (positive + negative declarations)
+judge-fixtures:
+	npm run test:judge_fixtures
+
+# Generate a judge declaration template for a result packet (stdout by default)
+# Usage: make judge-template PACKET=results/ops-001-yukson.yaml
+judge-template:
+	node scripts/judge.js template $(PACKET)
+
+# Read-only tier evidence report: recorded tier vs what packets/judge
+# records/baseline blocks support. Never edits envelopes.
+promotion-check:
+	node scripts/judge.js promotion-check
 
 # --- perf-harness targets ---
 
