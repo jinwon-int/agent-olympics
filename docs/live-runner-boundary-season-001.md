@@ -32,12 +32,19 @@ OpenClaw/A2A is one possible adapter and transport path, not the competition's p
 | Source-only CI round gate | Ready for stub lifecycle checks | `make ci-round` proves validate, init, stub execution, scoring, and competition-validity without live credentials. |
 | Live runner readiness gate | Source-defined | `scripts/live-runner-readiness.js` blocks credential-bearing live dispatch unless approval, reference-only credentials, transport, timeout/cancel, fan-in, redaction, and judge handoff are ready. |
 | OpenClaw/Hermes adapters | Reference/source implementations | They describe and simulate runtime-specific evidence, but are not an approved live connector boundary by themselves. |
-| Live A2A dispatch | Not implemented here | No transport discovery, credential handoff, live cancellation, or fan-in protocol is owned by this repo today. |
-| Automated blind judging | Partially source-defined | Judge records and oracle separation exist, but full live orchestration still needs runner handoff rules. |
+| Dry-run dispatch / fan-in / judge handoff | Implemented via local_exec transport | `scripts/live-runner.js` implements the contract below for argv-spawned local commands: dispatch records, credential-by-reference records, timeout/cancel/status mapping, artifact capture, fan-in with quarantine, log redaction, and judge handoff packages. See `docs/live-runner.md` and `make live-runner-fixtures`. |
+| Live A2A network dispatch | Not implemented here | No network code, transport discovery, or credential handoff exists in this repo. Real nodes are reachable only as operator-configured local_exec connectors (e.g. an ssh wrapper), and credential-bearing runs stay gate-blocked without operator approval plus a `ready` readiness declaration. |
+| Automated blind judging | Partially source-defined | Judge records and oracle separation exist; the live runner now produces a judge handoff package per clean run, but judging itself remains the judge harness's manual/hybrid flow. |
 
 ## Minimum Live Runner Contract
 
 A future live runner must define these behaviors before Season 001 can be called live-runner automated.
+
+> Status note: `scripts/live-runner.js` implements sections 1–8 for the
+> **local_exec** transport (dry-run/source-only dispatch of argv commands).
+> Live A2A/network transport and credential-bearing dispatch remain
+> unimplemented/gate-blocked — Season 001 is still not "live-runner
+> automated". See `docs/live-runner.md` for the implementation mapping.
 
 ### 1. Dispatch
 

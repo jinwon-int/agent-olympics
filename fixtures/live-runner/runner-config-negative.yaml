@@ -1,0 +1,88 @@
+# Negative transport fixtures for the live runner contract tests.
+#
+# All participants are dry_run local_exec transports against ops-001 of the
+# fixture round manifest. Expected outcomes (asserted by
+# `node scripts/live-runner.js fixtures`):
+#
+#   imposter-target  — stub adapter invoked with a hard-coded wrong agent id:
+#                      dispatch completes, fan-in quarantines the run for an
+#                      agent_id mismatch against the dispatch record.
+#   secret-echo      — transport prints a runtime-constructed fake API key to
+#                      stdout: the stored transport log is redacted with rule
+#                      metadata and the run is disqualified (secret exposure).
+#   sleeper-partial  — transport writes a usable result packet then hangs past
+#                      the (overridden) time limit: mapped to partial.
+#   sleeper-failed   — transport hangs with no output: mapped to failed.
+#   missing-binary   — transport binary does not exist: spawn ENOENT is mapped
+#                      to blocked (unreachable runtime).
+#
+# time_limit_ms_override is a test/operator override of the enforced limit;
+# it is recorded in each dispatch record with its source.
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-negative-transports
+description: Negative transport cases for timeout/secret/identity/unreachable mapping.
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901-negative/
+tasks:
+  - ops-001
+participants:
+  - participant_id: imposter-target
+    adapter: stub
+    transport: local_exec
+    execution_profile: dry_run
+    notes: Emits artifacts under the wrong agent identity on purpose.
+    command:
+      - node
+      - scripts/stub-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - imposter-mismatch
+      - --runtime
+      - cli
+      - --seed
+      - '{seed}'
+  - participant_id: secret-echo
+    adapter: stub
+    transport: local_exec
+    execution_profile: dry_run
+    notes: Prints a fake sk- token to stdout (constructed at runtime, never committed).
+    command:
+      - node
+      - fixtures/live-runner/transports/secret-echo-transport.js
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'
+      - '{seed}'
+  - participant_id: sleeper-partial
+    adapter: fixture-transport
+    transport: local_exec
+    execution_profile: dry_run
+    time_limit_ms_override: 3000
+    notes: Writes a usable packet, then sleeps past the limit (timed out with usable partial output).
+    command:
+      - node
+      - fixtures/live-runner/transports/write-packet-then-hang.js
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'
+      - '{run_id}'
+  - participant_id: sleeper-failed
+    adapter: fixture-transport
+    transport: local_exec
+    execution_profile: dry_run
+    time_limit_ms_override: 800
+    notes: Sleeps past the limit without writing anything (timed out without usable output).
+    command:
+      - node
+      - fixtures/live-runner/transports/hang-forever.js
+  - participant_id: missing-binary
+    adapter: fixture-transport
+    transport: local_exec
+    execution_profile: dry_run
+    notes: The transport binary does not exist (ENOENT maps to blocked).
+    command:
+      - fixtures/live-runner/transports/no-such-binary-for-fixture
+      - '{envelope}'

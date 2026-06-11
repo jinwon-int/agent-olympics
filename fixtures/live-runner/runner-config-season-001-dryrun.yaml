@@ -1,0 +1,60 @@
+# Live runner dry-run config for the COMMITTED Season 001 round manifest
+# (rounds/season-001-round-001.yaml).
+#
+# Dispatches sogyo via the Hermes simulation adapter and seoseo via the
+# OpenClaw simulation adapter against ops-001 (v2 envelope). The stub adapter
+# is exercised against the fixture round manifest instead because it emits
+# v1-shaped result packets, which do not satisfy the v2 packet schema that
+# the committed round's v2 envelopes imply.
+#
+# The run_directory is overridden so live-runner output never collides with
+# runs/season-001/round-001/ (owned by round.js / ci-round.js).
+#
+# Run with:
+#   node scripts/live-runner.js run rounds/season-001-round-001.yaml \
+#     --config fixtures/live-runner/runner-config-season-001-dryrun.yaml
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-committed-dryrun
+description: Dry-run dispatch against the committed Season 001 round manifest.
+round_manifest: rounds/season-001-round-001.yaml
+run_directory: runs/live-runner/season-001-round-001/
+tasks:
+  - ops-001
+participants:
+  - participant_id: sogyo
+    adapter: hermes
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - node
+      - adapters/hermes-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - simulation
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'
+  - participant_id: seoseo
+    adapter: openclaw
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - node
+      - adapters/openclaw-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - openstack
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'

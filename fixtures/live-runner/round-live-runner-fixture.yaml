@@ -1,0 +1,83 @@
+# Live runner fixture round — exercised by `node scripts/live-runner.js fixtures`.
+#
+# A small round manifest (round.js / round-manifest.schema.json conventions)
+# used to test the live runner's dispatch, timeout/cancel mapping, fan-in,
+# quarantine, redaction, and judge-handoff behavior without touching the
+# committed season-001-round-001 run directory.
+#
+# Uses the v1 task envelopes so the stub adapter's v1 result packets validate.
+# The extra participants exist only as dispatch targets for the negative
+# transport fixtures in runner-config-negative.yaml.
+schema_version: 1
+round_id: season-001-round-901
+season: season-001
+title: Live runner fixture round (dry-run + negative transports)
+description: >
+  Fixture-only round for the live runner contract tests. Source-only — every
+  transport is a local_exec argv command (simulation adapters or tiny fixture
+  transports). No live nodes, no credentials.
+created_at: '2026-06-11T00:00:00Z'
+lifecycle:
+  status: pending
+  status_history:
+    - status: pending
+      timestamp: '2026-06-11T00:00:00Z'
+      note: Fixture round created for the live runner fixture suite
+tasks:
+  - task_id: ops-001
+    title: Telegram final reply does not appear
+    envelope_path: tasks/season-001/ops-001-telegram-final-reply.yaml
+    time_limit_minutes: 5
+    fixture_bundle_ref: fixtures/season-001/ops-001/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 1
+  - task_id: ops-002
+    title: Decide whether clean reinstall is needed
+    envelope_path: tasks/season-001/ops-002-clean-reinstall-drift.yaml
+    time_limit_minutes: 5
+    fixture_bundle_ref: fixtures/season-001/ops-002/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 2
+participants:
+  - agent_id: sogyo
+    runtime: hermes
+    label: sogyo (Hermes simulation adapter)
+    enabled: true
+  - agent_id: seoseo
+    runtime: openclaw
+    label: seoseo (OpenClaw simulation adapter)
+    enabled: true
+  - agent_id: nosuk
+    runtime: cli
+    label: nosuk (stub adapter)
+    enabled: true
+  - agent_id: imposter-target
+    runtime: cli
+    label: negative fixture — transport emits a packet with a mismatched agent_id
+    enabled: true
+  - agent_id: secret-echo
+    runtime: cli
+    label: negative fixture — transport prints a fake secret to stdout
+    enabled: true
+  - agent_id: sleeper-partial
+    runtime: cli
+    label: negative fixture — transport writes a usable packet then exceeds the time limit
+    enabled: true
+  - agent_id: sleeper-failed
+    runtime: cli
+    label: negative fixture — transport exceeds the time limit with no output
+    enabled: true
+  - agent_id: missing-binary
+    runtime: cli
+    label: negative fixture — transport binary does not exist (ENOENT)
+    enabled: true
+  - agent_id: live-candidate
+    runtime: openclaw
+    label: negative fixture — live profile without operator approval (gate-blocked)
+    enabled: true
+run_directory: runs/live-runner-fixtures/round-901/
+run_id_template: run-{task_id}-{agent_id}-{timestamp}
+labels:
+  - season-001
+  - live-runner
+  - fixture

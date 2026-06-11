@@ -1,0 +1,42 @@
+# Negative fixture: a credential-bearing live participant WITHOUT operator
+# approval. The live runner must refuse this dispatch at the approval +
+# readiness gates BEFORE any transport is spawned (exit code 2).
+#
+# The credential is referenced by secret-provider handle only — no value
+# appears here, matching the credential-by-reference boundary. The readiness
+# declaration reuses the committed blocked fixture, which also lacks an
+# approval_ref and declares the A2A transport blocked.
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-blocked-live
+description: Live profile without approval — must be gate-blocked before dispatch.
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901-live-blocked/
+tasks:
+  - ops-001
+participants:
+  - participant_id: live-candidate
+    adapter: openclaw
+    transport: local_exec
+    execution_profile: live
+    readiness_declaration: fixtures/live-runner-readiness/blocked-missing-approval.yaml
+    credentials:
+      credential_class: gateway_session
+      handling: reference_only
+      ref: secret-provider://agent-olympics/gateway-session
+      participant_may_read: false
+    # approval block intentionally absent — this is the gate under test.
+    command:
+      - node
+      - adapters/openclaw-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - openstack
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'

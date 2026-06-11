@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/runner-config.schema.json",
+  "title": "Agent Olympics Live Runner Config",
+  "description": "Operator-supplied per-round runner configuration for scripts/live-runner.js. Maps round-manifest participants to dispatch transports. Credentials are referenced by class/handle only — credential values must never appear in this file.",
+  "type": "object",
+  "required": ["schema_version", "config_kind", "runner_id", "participants"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Runner config schema version."
+    },
+    "config_kind": {
+      "type": "string",
+      "const": "agent-olympics.live-runner.config",
+      "description": "Document kind discriminator."
+    },
+    "runner_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier for this runner configuration."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional operator notes about this configuration."
+    },
+    "round_manifest": {
+      "type": "string",
+      "description": "Default round manifest path this config was written for (informational; the CLI argument is authoritative)."
+    },
+    "run_directory": {
+      "type": "string",
+      "description": "Override for the round manifest's run_directory. Recommended so live-runner output never collides with round.js/ci-round run directories."
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional task_id filter. When present, only these tasks from the round manifest are dispatched."
+    },
+    "participants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["participant_id", "adapter", "transport", "execution_profile", "command"],
+        "properties": {
+          "participant_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Must match an agent_id in the round manifest's participants list."
+          },
+          "adapter": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Adapter/runtime label recorded in the dispatch record (e.g. hermes, openclaw, stub, cli)."
+          },
+          "transport": {
+            "type": "string",
+            "enum": ["local_exec"],
+            "description": "Dispatch transport. Only local_exec (argv spawn, no shell) is implemented in this repository. Network transports (A2A, ssh brokers) are operator extension points configured as local_exec argv commands."
+          },
+          "execution_profile": {
+            "type": "string",
+            "enum": ["dry_run", "live"],
+            "description": "dry_run: no credentials are made available (credential_class recorded as none). live: requires credential references, operator approval, and a passing readiness declaration."
+          },
+          "command": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "Dispatch command as an argv array (spawned directly — never through a shell). Placeholders: {envelope} {run_dir} {agent_id} {run_id} {task_id} {round_id} {time_limit_minutes} {seed}."
+          },
+          "time_limit_ms_override": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Operator/test override of the enforced wall-clock limit in milliseconds. When absent the envelope/task time_limit_minutes is enforced. The override is recorded in the dispatch record."
+          },
+          "credentials": {
+            "type": "object",
+            "required": ["credential_class", "handling"],
+            "properties": {
+              "credential_class": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Class of credential made available (e.g. gateway_session). Use 'none' for dry_run."
+              },
+              "handling": {
+                "type": "string",
+                "enum": ["none", "reference_only"],
+                "description": "live profiles must use reference_only — the runner never reads or stores credential values."
+              },
+              "ref": {
+                "type": "string",
+                "description": "Value-free reference/path/secret-provider handle (e.g. secret-provider://...). Never a credential value."
+              },
+              "participant_may_read": {
+                "type": "boolean",
+                "description": "Whether the participant process is allowed to read the referenced credential."
+              }
+            },
+            "additionalProperties": false
+          },
+          "approval": {
+            "type": "object",
+            "required": ["approver", "approval_ref"],
+            "properties": {
+              "approver": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Who approved this credential-bearing run (operator handle)."
+              },
+              "approval_ref": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Reference to the approval record (issue/PR/doc link)."
+              }
+            },
+            "additionalProperties": false
+          },
+          "readiness_declaration": {
+            "type": "string",
+            "description": "Path to a live-runner-readiness input fixture. Required for live profiles; must evaluate to decision 'ready' via scripts/live-runner-readiness.js."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "If false, skip this participant."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional operator notes."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,72 @@
+# Live runner dry-run config — happy path for the fixture round manifest.
+#
+# Dispatches the three existing simulation adapters (hermes, openclaw, stub)
+# as local_exec transports. No credentials: every participant runs with the
+# dry_run execution profile, so the dispatch records carry
+# credential_class: none.
+#
+# Run with:
+#   node scripts/live-runner.js run fixtures/live-runner/round-live-runner-fixture.yaml \
+#     --config fixtures/live-runner/runner-config-dryrun.yaml
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-dryrun
+description: Dry-run dispatch of the simulation adapters via local_exec.
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901/
+tasks:
+  - ops-001
+  - ops-002
+participants:
+  - participant_id: sogyo
+    adapter: hermes
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - node
+      - adapters/hermes-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - simulation
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'
+  - participant_id: seoseo
+    adapter: openclaw
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - node
+      - adapters/openclaw-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - openstack
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'
+  - participant_id: nosuk
+    adapter: stub
+    transport: local_exec
+    execution_profile: dry_run
+    command:
+      - node
+      - scripts/stub-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --runtime
+      - cli
+      - --seed
+      - '{seed}'
