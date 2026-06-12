@@ -39,11 +39,44 @@ fi
 PROMPT_FILE="$RUN_DIR/hermes-mission-prompt.md"
 MISSION_OUTPUT="$RUN_DIR/hermes-mission-output.txt"
 
+# Toolset derivation (judge-notes §3.5 fleet fan-in follow-up): the nested
+# session was previously hardcoded to `--toolsets file`, which contradicted
+# the prompt's "run the tests" instruction on bench tasks — capping honest
+# evidence and incentivizing fabricated execution claims. Precedence:
+# HERMES_TOOLSETS operator override > envelope repo_path bench with the exec
+# toolset (default "terminal" — the fleet Hermes name, attested vps6
+# 2026-06-12; HERMES_EXEC_TOOLSET overrides) when a node probe confirms it >
+# `file` fallback. Probe order: `hermes tools list` (authoritative; help text
+# on fleet builds does not name toolsets) then `hermes chat --help`. An
+# unprobed toolset value must never be passed: the fleet build accepts it
+# with only "Warning: Unknown toolsets: ..." and runs WITHOUT the exec tool.
+# The derived list and its source are attested into the result packet by the
+# merge step.
+HERMES_TOOLS_LIST="$($HERMES_BIN tools list 2>/dev/null || true)"
+HERMES_CHAT_HELP="$($HERMES_BIN chat --help 2>&1 || true)"
+TOOLSETS_JSON="$(node "$REPO/scripts/lib/mission-toolsets.js" "$ENVELOPE" \
+  --override "${HERMES_TOOLSETS:-}" \
+  --exec-toolset "${HERMES_EXEC_TOOLSET:-terminal}" \
+  --tools-list-file <(printf '%s' "$HERMES_TOOLS_LIST") \
+  --help-text-file <(printf '%s' "$HERMES_CHAT_HELP"))" || TOOLSETS_JSON=""
+IFS=$'\t' read -r HERMES_TOOLSETS_USED HERMES_TOOLSETS_SOURCE <<< "$(printf '%s' "$TOOLSETS_JSON" | python3 -c '
+import json, sys
+try:
+    j = json.load(sys.stdin)
+    print((j.get("toolsets") or "file") + "\t" + (j.get("source") or "unknown"))
+except Exception:
+    print("file\tderivation_error_file")
+')"
+if [[ "$HERMES_TOOLSETS_SOURCE" == probe_* || "$HERMES_TOOLSETS_SOURCE" == derivation_error_file ]]; then
+  echo "WARNING: bench task fell back to file-only toolsets (source=$HERMES_TOOLSETS_SOURCE) — the §3.5 evidence ceiling applies to this run." >&2
+fi
+
 # The mission prompt is derived from the task envelope (objective, writable
 # workspace via environment.repo_path, forbidden actions, required outputs)
-# by the shared builder — see scripts/lib/mission-prompt.js for the rules.
+# and the attested toolsets — see scripts/lib/mission-prompt.js for the rules.
 node "$REPO/scripts/lib/mission-prompt.js" "$ENVELOPE" \
   --agent-id "$AGENT_ID" --repo "$REPO" --profile hermes \
+  --toolsets "$HERMES_TOOLSETS_USED" \
   > "$PROMPT_FILE"
 if [[ $? -ne 0 ]]; then
   echo "ERROR: mission prompt generation failed." >&2
@@ -56,15 +89,15 @@ fi
 #    merge script records the real duration instead of a skeleton default.
 HERMES_T0=$(date +%s)
 set +e
-python3 - "$HERMES_BIN" "$PROMPT_FILE" "$MISSION_OUTPUT" <<'PY'
+python3 - "$HERMES_BIN" "$PROMPT_FILE" "$MISSION_OUTPUT" "$HERMES_TOOLSETS_USED" <<'PY'
 import pathlib
 import subprocess
 import sys
 
-hermes_bin, prompt_file, output_file = sys.argv[1:4]
+hermes_bin, prompt_file, output_file, toolsets = sys.argv[1:5]
 prompt = pathlib.Path(prompt_file).read_text(encoding='utf-8')
 proc = subprocess.run(
-    [hermes_bin, 'chat', '-Q', '-q', prompt, '--toolsets', 'file'],
+    [hermes_bin, 'chat', '-Q', '-q', prompt, '--toolsets', toolsets],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     text=True,
@@ -111,6 +144,8 @@ HERMES_MODEL="${HERMES_MODEL:-}" \
 HERMES_MODEL_PROVIDER="${HERMES_MODEL_PROVIDER:-}" \
 HERMES_MODEL_SOURCE="$HERMES_MODEL_SOURCE" \
 HERMES_NODE="${HERMES_NODE:-}" \
+HERMES_TOOLSETS_USED="$HERMES_TOOLSETS_USED" \
+HERMES_TOOLSETS_SOURCE="$HERMES_TOOLSETS_SOURCE" \
 node "$REPO/scripts/hermes-mission-result-merge.js" "$ENVELOPE" "$RUN_DIR" "$MISSION_OUTPUT" "$HERMES_STATUS" \
   > "$RUN_DIR/mission-merge.log" 2>&1
 MERGE_STATUS=$?
@@ -134,8 +169,18 @@ if grep -q 'parsed_json=false' "$RUN_DIR/mission-merge.log" 2>/dev/null; then
   PARSE_FALLBACK=1
 fi
 
-printf 'adapter_status=%s\nhermes_status=%s\nmerge_status=%s\nvalidate_status=%s\nparse_fallback=%s\n' \
+# Known fleet quirk (vps6, 2026-06-12): the Hermes CLI can abort at shutdown
+# (exit 134, core dump) AFTER printing a complete, parseable mission result —
+# observed with the terminal toolset enabled. A parseable result is the
+# success signal here; the shutdown exit code must not fail the run. It is
+# still attested honestly (worker trace exit_code, wrapper-status.env).
+if [[ "$HERMES_STATUS" -ne 0 && "$PARSE_FALLBACK" -eq 0 ]]; then
+  echo "WARNING: Hermes exited $HERMES_STATUS after producing a parseable mission result (known shutdown abort on some fleet builds) — run kept; exit code attested in the worker trace." >&2
+fi
+
+printf 'adapter_status=%s\nhermes_status=%s\nmerge_status=%s\nvalidate_status=%s\nparse_fallback=%s\ntoolsets=%s\ntoolsets_source=%s\n' \
   "$ADAPTER_STATUS" "$HERMES_STATUS" "$MERGE_STATUS" "$VALIDATE_STATUS" "$PARSE_FALLBACK" \
+  "$HERMES_TOOLSETS_USED" "$HERMES_TOOLSETS_SOURCE" \
   > "$RUN_DIR/wrapper-status.env"
 
 if [[ "$PARSE_FALLBACK" -eq 1 ]]; then

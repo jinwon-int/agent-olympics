@@ -31,9 +31,17 @@
  * The oracle/secret/destructive-action prohibitions are universal and are
  * never relaxed by an envelope.
  *
+ * Toolset awareness (judge-notes §3.5 fleet fan-in follow-up): when the
+ * wrapper knows which toolsets the nested session actually has (--toolsets),
+ * the prompt states whether command execution is available instead of
+ * leaving a contradiction between "run the tests" and a file-only session.
+ * That contradiction was the fabrication incentive — two stage-2 packets
+ * asserted test runs a file-only session cannot perform. An explicit
+ * never-claim-unrun-commands constraint is universal regardless.
+ *
  * Usage:
  *   node scripts/lib/mission-prompt.js <envelope> --agent-id <id> \
- *     --repo <repo-root> --profile hermes|cli
+ *     --repo <repo-root> --profile hermes|cli [--toolsets <list>]
  */
 
 const fs = require('fs');
@@ -53,9 +61,17 @@ const PROFILE_BITS = {
   },
 };
 
-function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile }) {
+function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile, toolsets }) {
   const bits = PROFILE_BITS[profile];
   if (!bits) throw new Error(`unknown profile "${profile}" (expected hermes|cli)`);
+
+  // null = wrapper did not declare the session's toolsets (CLI profile /
+  // legacy callers); true/false = exec tool present/absent in the nested
+  // session. "file" is the only non-exec toolset name in use.
+  let execAvailable = null;
+  if (typeof toolsets === 'string' && toolsets.trim()) {
+    execAvailable = toolsets.split(',').map((t) => t.trim()).some((t) => t && t !== 'file');
+  }
 
   const objective = String(envelope.objective || '').replace(/\s+/g, ' ').trim();
   const repoPath = envelope.environment && envelope.environment.repo_path
@@ -71,15 +87,40 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
   ];
   if (bits.soloLine) constraints.push(bits.soloLine);
   if (repoPath) {
-    constraints.push(
-      `- Task workspace: ${repoPath} — you MAY create and edit files and run the`,
-      '  project\'s own build/test commands INSIDE this workspace. That is the',
-      '  mission. Keep changes minimal and task-relevant.',
-      '- Outside the workspace, local file inspection is read-only.',
-    );
+    if (execAvailable === false) {
+      // Do NOT tell a file-only session to "run the build/test commands" —
+      // that contradiction was the §3.5 fabrication incentive.
+      constraints.push(
+        `- Task workspace: ${repoPath} — you MAY create and edit files INSIDE`,
+        '  this workspace. Keep changes minimal and task-relevant.',
+        '- Outside the workspace, local file inspection is read-only.',
+        '- This session\'s toolset is FILE-ONLY: you cannot execute commands.',
+        '  Diagnose and edit files, and state explicitly in your outputs that',
+        '  you could not run tests in this session.',
+      );
+    } else {
+      constraints.push(
+        `- Task workspace: ${repoPath} — you MAY create and edit files and run the`,
+        '  project\'s own build/test commands INSIDE this workspace. That is the',
+        '  mission. Keep changes minimal and task-relevant.',
+        '- Outside the workspace, local file inspection is read-only.',
+      );
+      if (execAvailable === true) {
+        constraints.push(
+          '- Command execution IS available in this session: actually run the',
+          '  project\'s relevant test/build commands and include the real (trimmed)',
+          '  failing and passing output in your evidence and required outputs.',
+        );
+      }
+    }
   } else {
     constraints.push('- Read-only local file inspection is allowed.');
   }
+  constraints.push(
+    '- Report only commands you actually executed in this session. Never assert',
+    '  test/build/run results you did not produce; if a command could not be run,',
+    '  say so explicitly instead of inferring its output.',
+  );
   for (const f of forbidden) {
     constraints.push(`- Envelope forbids: ${String(f).replace(/\s+/g, ' ').trim()}.`);
   }
@@ -137,6 +178,16 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
   }
   sections.push(
     '',
+    // §3.7 follow-up: 5 of 21 stage-2 packets failed the blocking schema
+    // gate on finer-grained confidence values ("medium-high" ×4, "very-low"
+    // ×1) across three model families — models naturally want a finer scale
+    // than the 3-level enum, so the rounding rule must be stated, not
+    // assumed. The schema enum itself is unchanged.
+    'In findings, "confidence" must be EXACTLY one of: "low", "medium", "high".',
+    'Round intermediate judgments to the nearest of those three — any other',
+    'value (e.g. "medium-high", "very-low") fails schema validation and the',
+    'whole packet is rejected unscored.',
+    '',
     'Return ONLY this marker-wrapped JSON, with no commentary outside the markers:',
     'AGENT_OLYMPICS_RESULT_JSON_BEGIN',
     jsonLines.join('\n'),
@@ -151,19 +202,21 @@ function main() {
   let agentId = null;
   let repoRoot = null;
   let profile = null;
+  let toolsets = null;
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === '--agent-id') agentId = args[++i];
     else if (args[i] === '--repo') repoRoot = args[++i];
     else if (args[i] === '--profile') profile = args[++i];
+    else if (args[i] === '--toolsets') toolsets = args[++i];
     else if (!envelopePath) envelopePath = args[i];
     else { console.error(`Unknown argument: ${args[i]}`); process.exit(2); }
   }
   if (!envelopePath || !agentId || !repoRoot || !profile) {
-    console.error('Usage: mission-prompt.js <envelope> --agent-id <id> --repo <root> --profile hermes|cli');
+    console.error('Usage: mission-prompt.js <envelope> --agent-id <id> --repo <root> --profile hermes|cli [--toolsets <list>]');
     process.exit(2);
   }
   const envelope = yaml.load(fs.readFileSync(path.resolve(envelopePath), 'utf8'));
-  process.stdout.write(buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile }));
+  process.stdout.write(buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile, toolsets }));
 }
 
 if (require.main === module) main();
