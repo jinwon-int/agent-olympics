@@ -1,0 +1,149 @@
+# Agent Olympics Coordination Round — fixture (coord-001)
+#
+# A thin two-stage A2A event over the single-participant live runner. Exercised
+# offline by `node scripts/coordination-round.js fixtures` and the Makefile
+# `coordination-fixtures` target. Every transport is a local_exec argv command
+# running the Hermes simulation adapter — no network, no live nodes, no creds.
+#
+# Stage 1 (worker): 2 workers each independently run the coord-001 envelope as a
+#   probe (general event family — independent investigation of the same
+#   question) -> 2 result packets.
+# Stage 2 (finalizer): 1 finalizer runs the coord-001 merge envelope (coord
+#   event family). The orchestrator injects the workers' participant-facing
+#   findings as a public `worker_reports` field on the finalizer's envelope copy.
+# Solo baseline: 1 participant runs the coord-001 merge envelope ALONE.
+#
+# Oracle/judge material (oracle/season-001/coord-001-commander-report.yaml,
+# docs/judge-notes-season-001.md) is referenced ONLY in the season round
+# manifest for the judge harness — it never enters this file or any
+# participant-facing artifact.
+schema_version: 1
+config_kind: agent-olympics.coordination-round
+coordination_id: coord-round-coord-001-fixture
+season: season-001
+title: Coordination round — merge contradictory node reports
+description: >
+  Fixture coordination round: two worker nodes independently investigate the
+  coord-001 question, a finalizer merges their findings into a commander
+  report, and a solo baseline does the whole task alone. Scored against the
+  coord-001 rubric/oracle by the existing judge harness; the A2A-effectiveness
+  record adds the was-delegation-worth-it signal.
+round_id: season-001-round-001
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+task_type: read_only_no_change_audit
+coordination:
+  mode: team1
+  worker_probe:
+    task_id: coord-001
+    title: Probe — independently investigate the contradictory node reports
+    envelope_path: tasks/season-001/coord-001-commander-report-v2.yaml
+    time_limit_minutes: 50
+    fixture_bundle_ref: fixtures/season-001/coord-001/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+  merge:
+    task_id: coord-001
+    title: Merge worker findings into a commander report
+    envelope_path: tasks/season-001/coord-001-commander-report-v2.yaml
+    time_limit_minutes: 50
+    fixture_bundle_ref: fixtures/season-001/coord-001/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+  workers:
+    - agent_id: sogyo
+      runtime: hermes
+      adapter: hermes
+      label: sogyo (Hermes worker node)
+      model: deepseek-v4-pro
+      model_provider: deepseek
+      node: vps1
+      command:
+        - node
+        - adapters/hermes-adapter.js
+        - '{envelope}'
+        - --run-dir
+        - '{run_dir}'
+        - --agent-id
+        - '{agent_id}'
+        - --runtime
+        - hermes
+        - --mode
+        - orchestrator
+        - --event-family
+        - general
+        - --seed
+        - '{seed}'
+    - agent_id: nosuk
+      runtime: hermes
+      adapter: hermes
+      label: nosuk (Hermes worker node)
+      model: deepseek-v4-pro
+      model_provider: deepseek
+      node: vps2
+      command:
+        - node
+        - adapters/hermes-adapter.js
+        - '{envelope}'
+        - --run-dir
+        - '{run_dir}'
+        - --agent-id
+        - '{agent_id}'
+        - --runtime
+        - hermes
+        - --mode
+        - orchestrator
+        - --event-family
+        - general
+        - --seed
+        - '{seed}'
+  finalizer:
+    agent_id: seoseo
+    runtime: hermes
+    adapter: hermes
+    label: seoseo (Hermes finalizer / commander)
+    model: gpt-5.5
+    model_provider: openai-codex
+    node: vps4
+    command:
+      - node
+      - adapters/hermes-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --runtime
+      - hermes
+      - --mode
+      - orchestrator
+      - --event-family
+      - coord
+      - --seed
+      - '{seed}'
+  solo_baseline:
+    agent_id: yukson
+    runtime: hermes
+    adapter: hermes
+    label: yukson (Hermes solo baseline)
+    model: gpt-5.5
+    model_provider: openai-codex
+    node: vps5
+    command:
+      - node
+      - adapters/hermes-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --runtime
+      - hermes
+      - --mode
+      - orchestrator
+      - --event-family
+      - coord
+      - --seed
+      - '{seed}'
+labels:
+  - season-001
+  - coordination
+  - a2a-effectiveness
+  - fixture

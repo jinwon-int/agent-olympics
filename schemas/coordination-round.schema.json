@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/coordination-round.schema.json",
+  "title": "Agent Olympics Coordination Round Manifest",
+  "description": "A coordination round is a thin orchestration layer over the single-participant live runner (scripts/live-runner.js). It declares a two-stage A2A event: N worker participants each run a probe task envelope (independent investigation of the same question), then one finalizer participant runs a merge task envelope whose participant-facing input includes the workers' findings. A solo-baseline participant runs the whole task alone for comparison. The orchestrator (scripts/coordination-round.js) reuses the live runner's dispatch/capture/fan-in/redaction/identity logic per stage and emits an A2A-effectiveness record. This is a distinct artifact from schemas/round-manifest.schema.json: it is NOT a round manifest (the orchestrator synthesizes per-stage round manifests from it), so it intentionally does not carry round_id/lifecycle at the top level.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "config_kind",
+    "coordination_id",
+    "season",
+    "title",
+    "round_id",
+    "coordination"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Coordination round manifest schema version."
+    },
+    "config_kind": {
+      "const": "agent-olympics.coordination-round",
+      "description": "Discriminator. Marks this file as a coordination round manifest (not a plain round manifest)."
+    },
+    "coordination_id": {
+      "type": "string",
+      "pattern": "^coord-round-[a-z0-9-]+$",
+      "description": "Stable identifier for this coordination round, e.g. 'coord-round-coord-001-fixture'."
+    },
+    "season": {
+      "type": "string",
+      "pattern": "^season-\\d{3}$",
+      "description": "Season this coordination round belongs to."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "round_id": {
+      "type": "string",
+      "pattern": "^season-\\d{3}-round-\\d{3}$",
+      "description": "Base round id used as the round_id of the per-stage round manifests the orchestrator synthesizes (worker, finalizer, solo stages append a stage suffix to the run directory, never to round_id, so judge-handoff round attribution stays stable)."
+    },
+    "scoring_rubric": {
+      "type": "string",
+      "description": "Rubric the finalizer's commander report packet is scored against by the existing judge harness (scripts/judge.js). Defaults to the merge envelope's scoring_rubric when omitted."
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "tracker_closeout_audit",
+        "small_patch",
+        "bug_rca",
+        "candidate_review",
+        "runbook_policy",
+        "ops_closeout",
+        "read_only_no_change_audit",
+        "cross_repo_smoke"
+      ],
+      "description": "taskType used in the emitted A2A-effectiveness record. Defaults to read_only_no_change_audit (coordination drills are source-only, no change)."
+    },
+    "coordination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "worker_probe", "merge", "workers", "finalizer", "solo_baseline"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["team1", "a2a_crosscheck"],
+          "description": "A2A-effectiveness taxonomy mode. team1: workers independently produce evidence and one finalizer selects/closes. a2a_crosscheck: finalizer does the work and workers audit it."
+        },
+        "worker_probe": {
+          "$ref": "#/$defs/stageEnvelope",
+          "description": "The probe task envelope each worker runs independently (same question, no shared scratchpad). v2 envelope preferred; oracle_ref/judge_notes_ref are stripped by the live runner before any worker sees the envelope."
+        },
+        "merge": {
+          "$ref": "#/$defs/stageEnvelope",
+          "description": "The merge task envelope the finalizer runs. Its participant-facing input is augmented with a worker-reports evidence file built from worker participant-facing findings only."
+        },
+        "workers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/participant" },
+          "description": "Worker participants. Each runs the worker_probe envelope through the live runner once."
+        },
+        "finalizer": {
+          "$ref": "#/$defs/participant",
+          "description": "Finalizer participant. Runs the merge envelope once, ingesting the workers' findings as participant-facing evidence."
+        },
+        "solo_baseline": {
+          "$ref": "#/$defs/participant",
+          "description": "Solo-baseline participant. Runs the whole task (merge envelope, no injected worker findings) alone, for the was-delegation-worth-it comparison."
+        }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "stageEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "envelope_path", "time_limit_minutes", "fixture_bundle_ref"],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "pattern": "^[a-z]+-\\d{3}$",
+          "description": "Task id this stage runs. Matches a Season fixture and envelope."
+        },
+        "title": { "type": "string" },
+        "envelope_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to the task envelope YAML for this stage."
+        },
+        "time_limit_minutes": { "type": "integer", "minimum": 1 },
+        "fixture_bundle_ref": { "type": "string", "minLength": 1 },
+        "scoring_rubric": { "type": "string" }
+      }
+    },
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_id", "runtime", "adapter", "command"],
+      "properties": {
+        "agent_id": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1, "description": "Registered runtime; must equal adapter (the live runner's runtime_identity gate enforces this)." },
+        "adapter": { "type": "string", "minLength": 1, "description": "Adapter class dispatched by the live runner, e.g. 'hermes', 'stub'." },
+        "label": { "type": "string" },
+        "model": { "type": "string" },
+        "model_provider": { "type": "string" },
+        "node": { "type": "string" },
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "local_exec argv template handed to the live runner. Same placeholder set the runner allows: {envelope}, {run_dir}, {agent_id}, {run_id}, {task_id}, {round_id}, {time_limit_minutes}, {seed}. No shell strings."
+        }
+      }
+    }
+  }
+}

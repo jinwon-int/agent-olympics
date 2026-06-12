@@ -29,7 +29,8 @@
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        judge-fixtures judge-template promotion-check live-runner-fixtures
+        judge-fixtures judge-template promotion-check live-runner-fixtures \
+        coordination-fixtures
 
 all: validate-all validate-v2 validate-oracle validate-fixtures validate-adapter-capabilities validate-adapter-fixtures validate-hermes-fixtures validate-profiles validate-qualifications validate-accreditations validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw validate-gates
 
@@ -222,6 +223,13 @@ live-runner-readiness-check:
 live-runner-fixtures:
 	npm run test:live_runner_fixtures
 	node scripts/hermes-model-detect.js --self-test
+
+# Coordination-round (two-stage A2A) fixture suite: worker stage + finalizer
+# stage (with worker-findings injection) + solo baseline on coord-001 via the
+# Hermes simulation transport, emitting and validating an A2A-effectiveness
+# record. Source-only — reuses the live runner; no network, no live nodes.
+coordination-fixtures:
+	npm run test:coordination_fixtures
 
 # Focused checks for round engine template and fixture hardening.
 round-hardening-check:

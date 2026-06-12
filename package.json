@@ -16,6 +16,8 @@
     "live-runner": "node scripts/live-runner.js",
     "test:live_runner_readiness": "node scripts/live-runner-readiness.js fixtures/live-runner-readiness/blocked-missing-approval.yaml --expect blocked && node scripts/live-runner-readiness.js fixtures/live-runner-readiness/dry-run-ready.yaml --expect ready",
     "test:live_runner_fixtures": "node scripts/live-runner.js fixtures",
+    "test:coordination_fixtures": "node scripts/coordination-round.js fixtures",
+    "coordination-round": "node scripts/coordination-round.js",
     "test:round_hardening": "bash scripts/test-round-hardening.sh",
     "test:declaration_cross_check": "node scripts/declaration-cross-check.js",
     "test:proof_token_verify": "node scripts/proof-token-verify.js",
