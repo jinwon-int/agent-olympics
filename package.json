@@ -24,7 +24,9 @@
     "test:safety_trial_verify": "node scripts/safety-trial-verify.js fixtures",
     "test:judge_fixtures": "node scripts/judge.js fixtures",
     "test:appeal_fixtures": "node scripts/appeal.js fixtures",
+    "test:longitudinal_fixtures": "node scripts/longitudinal.js fixtures",
     "appeal": "node scripts/appeal.js",
+    "longitudinal": "node scripts/longitudinal.js",
     "round": "node scripts/round.js",
     "test": "node scripts/validate.js all && node scripts/validate-a2a-effectiveness.js"
   },

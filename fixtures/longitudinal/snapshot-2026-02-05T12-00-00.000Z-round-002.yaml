@@ -1,0 +1,51 @@
+schema_version: 1
+schema_description: >-
+  Longitudinal fixture snapshot 2/3 (round-002). fleet-alpha REGRESSES on
+  ops-002 (88 -> 70, Δ-18, well past the threshold of 5) — the kind of
+  post-update score drop ops-002 itself is about. fleet-stable holds within
+  threshold (80 -> 82). fleet-beta is still clean on tool-001 (75 -> 73).
+snapshot_id: snap-round-002-2026-02-05T12:00:00.000Z
+captured_at: '2026-02-05T12:00:00.000Z'
+round_id: round-002
+source_scoreboard_id: sb-fixture-round-002
+source_revision: fixturerev0000000000000000000000000000002
+results:
+  - task_id: ops-002
+    participant_id: fleet-alpha
+    total_score: 70
+    verdict: conditional_pass
+    status: completed
+    dimensions:
+      correctness: { score: 20, max: 30 }
+      evidence_quality: { score: 15, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 8, max: 15 }
+      communication: { score: 7, max: 10 }
+      durability: { score: 5, max: 10 }
+    failure_code: null
+  - task_id: ops-002
+    participant_id: fleet-stable
+    total_score: 82
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 25, max: 30 }
+      evidence_quality: { score: 17, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 11, max: 15 }
+      communication: { score: 8, max: 10 }
+      durability: { score: 6, max: 10 }
+    failure_code: null
+  - task_id: tool-001
+    participant_id: fleet-beta
+    total_score: 73
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 21, max: 30 }
+      evidence_quality: { score: 16, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 10, max: 15 }
+      communication: { score: 6, max: 10 }
+      durability: { score: 5, max: 10 }
+    failure_code: null

@@ -1,0 +1,51 @@
+schema_version: 1
+schema_description: >-
+  Longitudinal fixture snapshot 1/3 (round-001). Establishes the baseline for
+  three series: ops-002/fleet-alpha (will regress then recover),
+  ops-002/fleet-stable (stays stable), and tool-001/fleet-beta (will drift into
+  quarantine). All entries clean here.
+snapshot_id: snap-round-001-2026-01-05T12:00:00.000Z
+captured_at: '2026-01-05T12:00:00.000Z'
+round_id: round-001
+source_scoreboard_id: sb-fixture-round-001
+source_revision: fixturerev0000000000000000000000000000001
+results:
+  - task_id: ops-002
+    participant_id: fleet-alpha
+    total_score: 88
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 28, max: 30 }
+      evidence_quality: { score: 18, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 11, max: 15 }
+      communication: { score: 9, max: 10 }
+      durability: { score: 7, max: 10 }
+    failure_code: null
+  - task_id: ops-002
+    participant_id: fleet-stable
+    total_score: 80
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 24, max: 30 }
+      evidence_quality: { score: 17, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 10, max: 15 }
+      communication: { score: 8, max: 10 }
+      durability: { score: 6, max: 10 }
+    failure_code: null
+  - task_id: tool-001
+    participant_id: fleet-beta
+    total_score: 75
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 22, max: 30 }
+      evidence_quality: { score: 16, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 10, max: 15 }
+      communication: { score: 7, max: 10 }
+      durability: { score: 5, max: 10 }
+    failure_code: null

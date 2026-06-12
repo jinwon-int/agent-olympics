@@ -9,6 +9,11 @@ runs/
 results/*-auto-judge.yaml
 results/scoreboard.json
 
+# Longitudinal measurement — real round snapshots under results/longitudinal/
+# are the durable over-time record and ARE committed (not ignored). Only scratch
+# snapshots written to a tmp/scratch subdir are kept out of the tree.
+results/longitudinal/scratch/
+
 # perf-harness — auto-generated multi-iteration reports
 results/perf-harness-report-*.json
 results/perf-harness-report-*.yaml
