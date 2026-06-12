@@ -2326,6 +2326,82 @@ async function runFixtures() {
           'judge handoff manifest carries the fingerprint verdict + signals so judges see the discrepancy');
       }
     }
+
+    // -----------------------------------------------------------------
+    // 7. Heterogeneous (non-Hermes) CLI participant: a generic coding-agent
+    //    CLI runs as a live-runner participant through cli-mission-wrapper.sh
+    //    pointed at an offline fake `claude`-like binary. Validates that the
+    //    schemas/gates/scoring are runtime-neutral: a `cli` participant
+    //    dispatches, fans in clean, the packet's runtime/adapter is `cli`,
+    //    model attestation records a source, and the layer-3 fingerprint
+    //    detects `cli` (not unknown/hermes).
+    // -----------------------------------------------------------------
+    console.log('\n--- fixture: heterogeneous CLI participant (cli mission wrapper, offline) ---');
+    {
+      const runDir = path.join(tmpBase, 'cli');
+      const config = validateRunnerConfig(
+        loadYamlFile('fixtures/live-runner/runner-config-cli.yaml'),
+        'fixtures/live-runner/runner-config-cli.yaml'
+      );
+      const dispatch = await dispatchRound('fixtures/live-runner/round-live-runner-fixture.yaml', config, {
+        runDirectory: runDir, dryRunOnly: false, verbose: false,
+      });
+      report(
+        dispatch.report.runs.length === 1 && dispatch.report.runs[0].status === 'completed' && !dispatch.gateBlocked,
+        'cli participant dispatches and completes via the cli mission wrapper',
+        `statuses: ${dispatch.report.runs.map((r) => r.status).join(', ')}`);
+
+      // runtime_identity gate accepts cli as cleanly as hermes (config adapter
+      // cli == manifest runtime cli).
+      report(
+        dispatch.report.gates.some((g) => g.gate === 'runtime_identity' && g.target === 'claude-cli' && g.status === 'pass'),
+        'runtime_identity gate passes for the cli participant (config adapter cli == manifest runtime cli)');
+
+      const cliRun = dispatch.report.runs[0];
+      const record = yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
+      report(
+        record.adapter === 'cli' && record.runtime === 'cli'
+          && record.runtime_identity && record.runtime_identity.consistent === true,
+        'cli dispatch record carries adapter/runtime cli with a consistent runtime_identity block');
+
+      // The merged packet's runtime/adapter labels are cli (not hermes), and
+      // model attestation recorded a source.
+      const packet = yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'result-packet.yaml'), 'utf8'));
+      report(
+        packet.runtime === 'cli' && packet.adapter === 'cli' && packet.schema_version === 2
+          && packet.delegation_profile && packet.delegation_profile.subagents_used === false
+          && (packet.delegation_profile.a2a_workers || []).length === 0,
+        'cli packet: runtime/adapter cli, v2 shape, solo delegation_profile (subagents_used:false, no a2a_workers)',
+        `runtime=${packet.runtime} adapter=${packet.adapter} schema=${packet.schema_version}`);
+      const probeEvidence = (packet.evidence || []).find((e) => e.id === 'ev-cli-probe');
+      report(
+        !!probeEvidence && /model_source=(cli_config|operator_env|unknown)/.test(probeEvidence.summary)
+          && packet.model && packet.model !== 'unknown' && packet.model_provider !== 'unknown',
+        'cli packet records an honest model attestation source and a detected model',
+        probeEvidence ? `model=${packet.model}/${packet.model_provider}; ${probeEvidence.summary.match(/model_source=\w+/)}` : 'no probe evidence');
+
+      // Layer-3 fingerprint detects cli (not unknown/hermes).
+      const fp = fingerprintRuntime(packet, yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'trace.yaml'), 'utf8')));
+      report(
+        fp.detected === 'cli' && fp.confidence !== 'none' && fp.signals.length >= 2,
+        'layer-3 fingerprint detects cli (not unknown/hermes) for the cli participant',
+        `detected=${fp.detected} confidence=${fp.confidence} signals=${fp.signals.length}`);
+
+      const fanin = faninRound(dispatch.runDirBaseAbs);
+      report(
+        fanin.clean === 1 && fanin.quarantined === 0
+          && fanin.runs[0].runtime_fingerprint && fanin.runs[0].runtime_fingerprint.detected === 'cli',
+        'cli participant fans in clean; fan-in records the cli fingerprint, no quarantine, no fingerprint warning',
+        `clean=${fanin.clean} quarantined=${fanin.quarantined} warnings=${JSON.stringify(fanin.runs[0].warnings)}`);
+
+      // Judge handoff carries the cli fingerprint so judges see the runtime.
+      const handoffManifest = yaml.load(fs.readFileSync(path.join(ROOT, fanin.runs[0].handoff, 'handoff-manifest.yaml'), 'utf8'));
+      report(
+        handoffManifest.adapter === 'cli'
+          && handoffManifest.runtime_fingerprint && handoffManifest.runtime_fingerprint.detected === 'cli'
+          && handoffManifest.runtime_fingerprint.declared_adapter === 'cli',
+        'cli judge handoff manifest records adapter cli and a cli fingerprint verdict');
+    }
   } finally {
     fs.rmSync(tmpBase, { recursive: true, force: true });
   }

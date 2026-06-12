@@ -231,6 +231,7 @@ live-runner-readiness-check:
 live-runner-fixtures:
 	npm run test:live_runner_fixtures
 	node scripts/hermes-model-detect.js --self-test
+	node scripts/cli-model-detect.js --self-test
 
 # Coordination-round (two-stage A2A) fixture suite: worker stage + finalizer
 # stage (with worker-findings injection) + solo baseline on coord-001 via the

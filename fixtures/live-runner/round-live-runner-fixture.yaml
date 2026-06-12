@@ -91,6 +91,10 @@ participants:
     runtime: stub
     label: negative fixture — declared stub but emits hermes-shaped artifacts (fingerprint warning)
     enabled: true
+  - agent_id: claude-cli
+    runtime: cli
+    label: cli fixture — generic coding-agent CLI participant via cli-mission-wrapper (offline fake binary)
+    enabled: true
 run_directory: runs/live-runner-fixtures/round-901/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}
 labels:

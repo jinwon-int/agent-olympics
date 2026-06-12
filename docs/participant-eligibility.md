@@ -24,7 +24,7 @@ knowing how the runtime works internally.
 |---|---|---|---|
 | OpenClaw runtime | OpenClaw Gateway sessions, Telegram-visible agents | `adapters/openclaw-adapter.js` | Runtime-specific session and delivery evidence is useful but not mandatory for other classes. |
 | Hermes orchestrator | Hermes workflows, worker pools, commander synthesis | `adapters/hermes-adapter.js` | Worker routing, memory summaries, and contradiction logs are adapter-specific evidence. |
-| Generic CLI or shell agent | Codex CLI, Claude Code, local scripts, repo-local coding agents | CLI adapter contract | Terminal transcript, command log, diff, tests, and file artifacts can satisfy the same packet contract. |
+| Generic CLI or shell agent | Codex CLI, Claude Code, local scripts, repo-local coding agents | `scripts/cli-adapter.js` + `adapters/wrappers/cli-mission-wrapper.sh` | Terminal transcript, command log, diff, tests, and file artifacts can satisfy the same packet contract. A live wrapper exists (simulation/source-only slice — see [CLI participant](cli-participant.md)); real Claude Code/Codex runs are an operator extension. |
 | Human baseline | Manual operator following the same task | Human baseline contract | Timestamped action log and evidence bundle provide calibration for agent scores. |
 | Future runtime | Any independently runnable system | New adapter capability declaration | Runtime-specific fields are optional; common packet fields remain mandatory. |
 
@@ -89,6 +89,13 @@ OpenClaw-specific adapter smoke remains available separately:
 
 ```bash
 make test-openclaw
+```
+
+The CLI participant path (skeleton + mission wrapper) is exercised offline by
+the live-runner fixture suite (see [CLI participant](cli-participant.md)):
+
+```bash
+make live-runner-fixtures
 ```
 
 ## Task Promotion Rule
