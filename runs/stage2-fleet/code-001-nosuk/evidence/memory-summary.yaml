@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-12T14:52:40.373Z'
+task_id: code-001
+durable_memory_decision: >-
+  Do not persist as durable memory. This is a synthetic Agent Olympics task fixture, not a real production
+  incident or reusable operational fact. The diagnosis and fix pattern are task-specific.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true

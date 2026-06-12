@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-12T14:53:56.144Z'
+task_id: code-001
+durable_memory_decision: >-
+  Do not persist. This is a synthetic training fixture (code-001 from Agent Olympics season-001), not a real
+  production incident.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true

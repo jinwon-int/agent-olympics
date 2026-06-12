@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-12T15:14:51.281Z'
+task_id: coord-001
+durable_memory_decision: >-
+  Do not persist as durable operational memory because this is a synthetic Agent Olympics fixture, not a
+  confirmed real fleet incident. Persist only if the user explicitly asks to record benchmark lessons.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true
