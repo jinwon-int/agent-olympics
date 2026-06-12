@@ -1,0 +1,47 @@
+
+added 3 packages in 2s
+== pre npm test tail ==
+ok 3 - summarize aggregates outcomes and latency per node
+  ---
+  duration_ms: 22.473589
+  type: 'test'
+  ...
+# Subtest: renderReport prints one row per node with a header
+ok 4 - renderReport prints one row per node with a header
+  ---
+  duration_ms: 1.117848
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 162.613634
+npm-test-exit=0
+== pre npm run report ==
+
+> agent-codebench@0.3.0 report
+> tsc && node dist/src/index.js data/samples.json
+
+/work/agent-codebench/dist/src/report.js:37
+            totalRetries += s.metrics.retries;
+                                      ^
+
+TypeError: Cannot read properties of undefined (reading 'retries')
+    at summarize (/work/agent-codebench/dist/src/report.js:37:39)
+    at Object.<anonymous> (/work/agent-codebench/dist/src/index.js:11:37)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14)
+    at Object..js (node:internal/modules/cjs/loader:1838:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.22.2
+report-exit=1

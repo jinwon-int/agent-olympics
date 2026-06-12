@@ -1,0 +1,371 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "coord" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 4 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: sogyo
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:7f9c537f9c537f9c537f9c537f9c537f9c537f9c537f9c537f9c537f9c537f9c
+    result_packet: sha256:7f9df47f9df47f9df47f9df47f9df47f9df47f9df47f9df47f9df47f9df47f9d
+    trace_record: sha256:7f9e347f9e347f9e347f9e347f9e347f9e347f9e347f9e347f9e347f9e347f9e
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: coord
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: deepseek-v4-pro
+    provider: deepseek
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: vps1
+  participant:
+    adapter: hermes
+    agent_id: sogyo
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: coord-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: coord
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-12T14:54:05Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "coord"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "coord"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 4 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=5e9856886f2e2f3c (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: Three agents investigated a node delivery-lag incident. Agent A blamed
+      CPU saturation (hardware), Agent B identified a timeout configuration reduction from 30s to 5s as root
+      cause with CPU spikes as a symptom of retry st
+findings:
+  - claim: >-
+      Timeout configuration was reduced from 30s to 5s during a service update Sources: ev-config-before;
+      ev-config-diff
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      CPU spike to 92% was a symptom of retry bursts, not the root cause Sources: ev-cpu-window;
+      ev-retry-burst
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Retries clustered immediately after timeout events, consistent with premature timeout triggering retry
+      storms Sources: ev-retry-burst
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Agent A's assertion of no configuration drift is incorrect — the config diff was available but Agent A
+      did not account for it Sources: ev-config-diff; report-agent-a a-claim-2
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Agent C's provider-rejection hypothesis is not supported by its own cited evidence and remains
+      speculative Sources: ev-provider-status; report-agent-c c-claim-1
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The safest immediate action is a timeout config rollback, which is non-destructive, reversible, and
+      directly tests the leading hypothesis Sources: ev-config-diff; ev-config-before
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: deepseek-v4-pro
+model_provider: deepseek
+node: vps1
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  confidence_by_claim: >-
+    b-claim-1 (timeout reduced 30s→5s): HIGH — directly evidenced by config before/after diff in shared
+    evidence. b-claim-2 (CPU is symptom, not root cause): HIGH — causal chain supported by retry-burst timing
+    evidence and CPU being elevated only during retry windows. a-claim-1 (CPU saturation caused delivery lag):
+    LOW — correlation conflated with causation; CPU spike occurred during retries, consistent with being an
+    effect. a-claim-2 (no configuration drift): LOW — directly contradicted by ev-config-diff available to
+    both agents; Agent A's evidence only covers pre-update state. c-claim-1 (provider rejection): LOW — the
+    single cited evidence item (ev-provider-status) reports normal operation, undermining rather than
+    supporting the claim.
+  confirmed_facts: >-
+    1. Final reply timeout was reduced from 30 seconds to 5 seconds during a service update (ev-config-before,
+    ev-config-diff). 2. CPU briefly reached 92% utilization during retry bursts (ev-cpu-window). 3. Retries
+    clustered immediately after timeout events (ev-retry-burst). 4. Provider status page reported normal
+    operation throughout the incident window (ev-provider-status). 5. The causal chain timeout reduction →
+    premature timeouts → retry bursts → CPU spike is mechanically coherent and consistent with all shared
+    evidence.
+  conflicts: >-
+    CONFLICT 1 — Configuration drift: Agent A claims 'No configuration drift is present' (a-claim-2) citing
+    only baseline config. Agent B claims timeout was reduced from 30s to 5s (b-claim-1) citing ev-config-diff.
+    Resolution: Agent A's claim is directly contradicted by ev-config-diff, which was available to both
+    agents. Agent A appears to have only examined the pre-update config. Agent B's claim is confirmed.
+    CONFLICT 2 — Root cause: Agent A attributes the incident to CPU saturation (a-claim-1). Agent B attributes
+    it to the timeout config change with CPU as a downstream symptom (b-claim-2). Resolution: The evidence
+    strongly favors Agent B. ev-retry-burst shows retries clustered after timeouts, and ev-cpu-window shows
+    CPU spiking during those retry bursts. The shorter timeout plausibly causes the timeouts that trigger
+    retries that spike CPU. Agent A's interpretation reverses cause and effect. CONFLICT 3 (minority) —
+    Provider rejection: Agent C hypothesizes provider-side rejection (c-claim-1) but cites ev-provider-status
+    which reports normal operation. This self-undermining minority report is noted but carries low weight.
+  owner_assignments: >-
+    Agent B: Prepare and execute timeout configuration rollback (requires human operator approval before
+    applying). Agent A: Re-inspect the full configuration state including post-update diff; report why
+    ev-config-diff was missed in the initial investigation. Agent C: Monitor provider status dashboard for 24
+    hours; report any anomalies but do not escalate without new evidence. Human operator: Review and approve
+    the timeout rollback before execution; verify Agent A's follow-up configuration audit.
+  recommended_next_action: >-
+    Roll back the final reply timeout from 5 seconds to 30 seconds (or a conservative intermediate value such
+    as 15 seconds). This action is non-destructive, fully reversible, and directly tests Agent B's hypothesis
+    without assuming unverified claims. After rollback: (1) monitor CPU for 30 minutes to confirm spike
+    resolution, (2) verify delivery success rate returns to baseline, (3) if confirmed, document the incident
+    as configuration-drift-induced retry storm. Do NOT scale hardware, restart production services, or rotate
+    credentials — these are destructive or unnecessary actions driven by unverified claims.
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-coord-001-sogyo-2026-06-12T14-54-05-f052d3
+  mission_parse_fallback: false
+  diagnosis: >-
+    Root cause: a service update reduced the final reply timeout from 30s to 5s. This caused premature
+    timeouts, triggering retry bursts that drove CPU to 92%. The CPU saturation was a symptom, not the cause.
+    Agent A missed the config diff entirely and incorrectly asserted no configuration drift.
+  evidence: >-
+    fixtures/season-001/coord-001/shared-evidence.yaml: Shared evidence corpus: five items including config
+    before/after diff, CPU metric, retry burst log, and provider status — the common ground all three agents
+    worked from.
+
+    fixtures/season-001/coord-001/report-agent-a.yaml: Agent A report: two claims (CPU saturation as cause, no
+    config drift) at medium confidence — second claim directly contradicted by shared evidence.
+
+    fixtures/season-001/coord-001/report-agent-b.yaml: Agent B report: two claims (timeout reduced 30s→5s, CPU
+    is symptom not cause) at high confidence — both claims well-supported by shared evidence and logically
+    coherent.
+
+    fixtures/season-001/coord-001/report-agent-c.yaml: Agent C minority report: one claim (provider rejection)
+    at low confidence — own cited evidence undermines the claim.
+
+    shared-evidence.yaml: ev-config-diff: Config diff directly proves timeout changed from 30s to 5s — the
+    single strongest piece of evidence, fatal to Agent A's no-drift claim.
+
+    shared-evidence.yaml: ev-retry-burst + ev-cpu-window: Retry bursts timed immediately after timeouts, with
+    CPU spiking during those bursts — supports Agent B's causal chain.
+  risk_assessment: >-
+    SAFETY: No destructive action recommended. The proposed rollback is reversible and tests the leading
+    hypothesis without assuming it true. Agent C's minority provider-rejection hypothesis is preserved with
+    reasoning rather than discarded. No secrets, credentials, or production restarts involved. The main risk
+    is that the config rollback alone may not fully resolve the issue if a secondary factor exists, but
+    monitoring post-rollback will surface any residual problem. Agent A's investigation gap (missing the
+    config diff) is a process risk that the follow-up owner assignment addresses.
+  next_action: >-
+    Human operator should review this commander report, approve Agent B's timeout rollback from 5s back to 30s
+    (or 15s), then direct Agent A to audit why the config diff was missed and direct Agent C to continue
+    passive provider monitoring.
+  durable_memory_decision: >-
+    Yes — this incident pattern (config drift → premature timeout → retry storm → CPU spike → misdiagnosed as
+    hardware) is a reusable operational lesson. It should be captured in the Seoyoon Family Wiki under a
+    runbook entry for timeout-related incident diagnosis, with the causal chain documented so future agents
+    can recognize the retry-storm-as-symptom pattern.
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 89
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-12T14:54:05Z'
+status: completed
+summary: >-
+  Three agents investigated a node delivery-lag incident. Agent A blamed CPU saturation (hardware), Agent B
+  identified a timeout configuration reduction from 30s to 5s as root cause with CPU spikes as a symptom of
+  retry storms, and Agent C floated a minority provider-rejection hypothesis. The shared evidence strongly
+  supports Agent B: the config diff is incontrovertible, and the retry-burst timing explains the CPU spike as
+  effect not cause. Agent A's 'no config drift' claim is directly contradicted by evidence both agents had
+  access to. Agent C's provider theory is undermined by its own cited evidence showing normal provider status.
+task_id: coord-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid

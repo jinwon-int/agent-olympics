@@ -1,0 +1,353 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "coord" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 4 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: yukson
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:f0c549f0c549f0c549f0c549f0c549f0c549f0c549f0c549f0c549f0c549f0c5
+    result_packet: sha256:f0c6eaf0c6eaf0c6eaf0c6eaf0c6eaf0c6eaf0c6eaf0c6eaf0c6eaf0c6eaf0c6
+    trace_record: sha256:f0c72af0c72af0c72af0c72af0c72af0c72af0c72af0c72af0c72af0c72af0c7
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: coord
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: gpt-5.5
+    provider: openai-codex
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: vps5
+  participant:
+    adapter: hermes
+    agent_id: yukson
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: coord-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: coord
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-12T15:12:40Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "coord"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "coord"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 4 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=29309cbcde7140f3 (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: The shared evidence supports Agent B's configuration-drift diagnosis:
+      the final reply timeout was 30 seconds before the update and is 5 seconds afterward, retry bursts
+      cluster immediately after timeout events, and the ob
+findings:
+  - claim: >-
+      Timeout configuration drift from 30 seconds to 5 seconds is confirmed. Sources: ev-config-before;
+      ev-config-diff
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Retry bursts followed timeout events, making the timeout drift a likely causal driver. Sources:
+      ev-retry-burst; ev-config-diff
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      CPU saturation is confirmed as an observed symptom but not confirmed as the root cause. Sources:
+      ev-cpu-window; ev-retry-burst
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: medium
+  - claim: >-
+      Agent A's no-drift claim is contradicted by shared evidence. Sources: ev-config-before; ev-config-diff;
+      coord-001-agent-a
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Provider-side rejection remains unresolved but low confidence because provider status was normal and no
+      rejection-specific evidence was provided. Sources: ev-provider-status; coord-001-agent-c
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: low
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: gpt-5.5
+model_provider: openai-codex
+node: vps5
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  confidence_by_claim: >-
+    a-claim-1 CPU saturation caused delivery lag: low-to-medium, because CPU hit 92 percent but timing ties it
+    to retry bursts rather than proving root cause. a-claim-2 no configuration drift: very low/refuted,
+    because ev-config-diff says timeout is now 5 seconds after baseline 30 seconds. b-claim-1 timeout reduced
+    from 30s to 5s: high, directly supported by ev-config-before and ev-config-diff. b-claim-2 CPU data is
+    symptom during retry bursts: high, supported by CPU-window plus retry-burst timing. c-claim-1
+    provider-side rejection may explain missing final replies: low/unresolved, because provider status was
+    normal and no rejection log or API error evidence is provided.
+  confirmed_facts: >-
+    Baseline final reply timeout was 30 seconds; post-update final reply timeout is 5 seconds; CPU briefly
+    reached 92 percent during retry bursts; retries clustered immediately after timeout events; provider
+    status page reported normal operation during the incident window.
+  conflicts: >-
+    Agent A claims CPU saturation caused delivery lag and no configuration drift is present, but shared
+    evidence confirms a timeout config diff from 30s to 5s. Agent B claims CPU is a symptom of retry bursts
+    rather than root cause, which is consistent with retry timing evidence. Agent C claims provider-side
+    rejection may explain missing replies, but its cited evidence is provider-normal status, so the claim is
+    plausible only as an unresolved minority hypothesis and is not supported as primary cause.
+  owner_assignments: >-
+    Service/config owner: restore timeout setting to 30 seconds and record the exact config diff.
+    Incident/on-call owner: run bounded verification and monitor retries, timeout events, final replies, and
+    CPU after the change. Hardware/platform owner: keep Agent A's capacity concern open only if CPU remains
+    high after retry bursts stop. Provider/integration owner: keep Agent C's rejection hypothesis open only by
+    collecting concrete provider API error/message-id evidence if symptoms persist. Commander: preserve all
+    three reports, document why Agent B is primary, and gate destructive actions on new evidence and approval.
+  recommended_next_action: >-
+    Perform a targeted, non-destructive restoration of final_reply_timeout_seconds to the known-good 30
+    seconds, then verify with a bounded delivery test and monitor timeout count, retry rate, delivery latency,
+    and CPU. Do not order hardware replacement, credential rotation, provider escalation, or production
+    restart unless follow-up evidence shows the timeout rollback does not resolve the incident or explicit
+    approval is given.
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-coord-001-yukson-2026-06-12T15-12-40-f37ce8
+  mission_parse_fallback: false
+  diagnosis: >-
+    Most likely root cause is post-update timeout configuration drift: final reply timeout was reduced from 30
+    seconds to 5 seconds, causing premature final-reply timeouts, retry bursts, and secondary CPU spikes.
+    Hardware saturation and provider rejection are not confirmed as primary causes from the participant-facing
+    evidence.
+  evidence: >-
+    fixtures/season-001/coord-001/shared-evidence.yaml:7-12: Baseline timeout was 30 seconds and post-update
+    timeout is 5 seconds.
+
+    fixtures/season-001/coord-001/shared-evidence.yaml:4-6: CPU briefly reached 92 percent during retry
+    bursts.
+
+    fixtures/season-001/coord-001/shared-evidence.yaml:13-15: Retries clustered immediately after timeout
+    events.
+
+    fixtures/season-001/coord-001/shared-evidence.yaml:16-18: Provider status page reported normal operation
+    during the incident window.
+
+    fixtures/season-001/coord-001/report-agent-a.yaml:4-16: Agent A attributed the incident to CPU/hardware
+    capacity and claimed no configuration drift.
+
+    fixtures/season-001/coord-001/report-agent-b.yaml:4-17: Agent B attributed the incident to timeout
+    configuration drift and treated CPU as a retry-burst symptom.
+
+    fixtures/season-001/coord-001/report-agent-c.yaml:4-12: Agent C raised a low-confidence provider-rejection
+    minority hypothesis with only indirect evidence.
+  risk_assessment: >-
+    The main operational risk is acting on the wrong hypothesis: hardware replacement or broad restart would
+    be unnecessary and potentially disruptive if the timeout drift is the cause. Provider rejection should not
+    be discarded, but escalating it without concrete rejection evidence may waste time. The safest path is
+    targeted config rollback and observation, with no secret exposure, credential rotation, destructive
+    remediation, or production restart without approval.
+  next_action: >-
+    Restore final_reply_timeout_seconds to 30 seconds in the affected service configuration, then run one
+    bounded final-reply delivery verification and compare timeout/retry/CPU metrics before and after.
+  durable_memory_decision: >-
+    Do not persist this as durable operational memory; this is a synthetic Agent Olympics fixture, not a
+    confirmed real fleet incident. At most, retain the general lesson that contradictory reports should be
+    resolved against shared evidence and minority reports preserved with confidence labels.
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 79
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-12T15:12:40Z'
+status: completed
+summary: >-
+  The shared evidence supports Agent B's configuration-drift diagnosis: the final reply timeout was 30 seconds
+  before the update and is 5 seconds afterward, retry bursts cluster immediately after timeout events, and the
+  observed CPU spike occurred during those retry bursts. Agent A's hardware-capacity conclusion is not
+  confirmed because its 'no configuration drift' premise is contradicted by the config diff. Agent C's
+  provider-side rejection hypothesis remains a low-confidence minority report because the provider status
+  evidence says normal operation during the incident window.
+task_id: coord-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid

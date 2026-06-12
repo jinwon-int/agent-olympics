@@ -1,0 +1,72 @@
+adapter_mode: orchestrator
+agent_id: seoseo
+bundle_id: eb-run-coord-001-seoseo-2026-06-12T15-08-14-4a49e1
+event_family: coord
+generated_at: '2026-06-12T15:08:14Z'
+items:
+  - checksum:
+      algorithm: sha256
+      value: aaa9ca0869ca0869ca0869ca0869ca0869ca0869ca0869ca0869ca0869ca0869
+    content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    size_bytes: 2048
+    source: task envelope
+    summary: Copy of input task envelope for event family "coord"
+  - checksum:
+      algorithm: sha256
+      value: bbb9ca0859ca0859ca0859ca0859ca0859ca0859ca0859ca0859ca0859ca0859
+    content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    size_bytes: 2560
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "coord"
+  - checksum:
+      algorithm: sha256
+      value: ccc9ca0849ca0849ca0849ca0849ca0849ca0849ca0849ca0849ca0849ca0849
+    content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    size_bytes: 4096
+    source: worker execution traces
+    summary: Nested Hermes CLI output captured; parsed_json=true; exit_code=250
+  - checksum:
+      algorithm: sha256
+      value: ddd9ca0839ca0839ca0839ca0839ca0839ca0839ca0839ca0839ca0839ca0839
+    content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    metadata:
+      cache_hit_ratio: 0.5
+      total_keys_found: 2
+      total_keys_requested: 4
+    redacted: true
+    redaction_rule: hermes_memory_content
+    size_bytes: 2048
+    source: worker memory retrieval
+    summary: Durable memory decision captured without private memory content.
+  - checksum:
+      algorithm: sha256
+      value: fff9ca0819ca0819ca0819ca0819ca0819ca0819ca0819ca0819ca0819ca0819
+    content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    size_bytes: 3072
+    source: hermes commander
+    summary: >-
+      The participant-facing reports and shared evidence support configuration drift as the safest working
+      diagnosis: the final reply timeout changed from 30 seconds to 5 seconds after an update, retries cluster
+      immediately af
+run_id: run-coord-001-seoseo-2026-06-12T15-08-14-4a49e1
+runtime: hermes
+schema_version: 1

@@ -1,0 +1,14 @@
+Validating 1 file...
+
+FAIL  runs/stage2-fleet/coord-001-seoseo/result-packet.yaml  - schema errors (result-packet-v2):
+/findings/2/confidence: must be equal to one of the allowed values {"allowedValues":["low","medium","high"]}
+WARN  runs/stage2-fleet/coord-001-seoseo/result-packet.yaml  -   warn: action "act-002" type "api_call" is not declared in tool_use_profile used tools
+WARN  runs/stage2-fleet/coord-001-seoseo/result-packet.yaml  -   warn: action "act-003" type "plan" is not declared in tool_use_profile used tools
+WARN  runs/stage2-fleet/coord-001-seoseo/result-packet.yaml  -   warn: action "act-005" type "api_call" is not declared in tool_use_profile used tools
+WARN  runs/stage2-fleet/coord-001-seoseo/result-packet.yaml  -   warn: action "act-006" type "collect" is not declared in tool_use_profile used tools
+WARN  runs/stage2-fleet/coord-001-seoseo/result-packet.yaml  -   warn: action "act-008" type "synthesize" is not declared in tool_use_profile used tools
+
+--- Summary ---
+Files:     1
+Errors:    1
+Warnings:  5

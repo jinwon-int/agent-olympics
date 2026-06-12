@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-12T15:09:46.543Z'
+task_id: coord-001
+durable_memory_decision: >-
+  Do not persist durable memory from this drill: the facts are fixture-specific Agent Olympics evidence, not
+  an operational rule or stable user preference.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true

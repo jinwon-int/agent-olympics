@@ -1,0 +1,3 @@
+
+[stderr]
+mkdir: cannot create directory ‘/work’: Read-only file system
