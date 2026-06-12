@@ -360,6 +360,20 @@ are runtime-neutral rather than Hermes-specific:
   `scripts/lib/mission-result-merge.js`, which parameterizes the evidence-id set
   and execution shape so both wrappers reuse one implementation (redaction,
   hallucinated-evidence-id normalization, parse-fallback downgrade).
+- The mission prompt is also **shared and envelope-driven**:
+  `scripts/lib/mission-prompt.js` builds both wrappers' prompts from the task
+  envelope — the objective is quoted, the envelope's `forbidden_actions` are
+  echoed as constraints, and the JSON contract carries an `outputs` object with
+  one key per envelope `required_output` (the merge copies exactly those
+  declared keys into the packet, redacted). When the envelope declares
+  `environment.repo_path`, that path is a **writable workspace** (file edits
+  and the project's own build/test commands are allowed and expected); without
+  it the legacy read-only inspection rule stands. This replaced the original
+  hardcoded ops-style "read-only diagnosis" prompt, which on code-sprint tasks
+  forbade the very work the task required (the voided code-001 r2 run
+  diagnosed the planted bug precisely but never touched the workspace —
+  a harness defect, not a stack failure). The oracle/secret/destructive-action
+  prohibitions are universal and never relaxed by an envelope.
 - Model attestation generalizes the Hermes probe:
   `scripts/cli-model-detect.js` (over the shared `scripts/lib/model-detect.js`)
   detects the routed model from the CLI and records `model_source`

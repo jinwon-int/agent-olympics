@@ -342,6 +342,19 @@ making the task physically unexecutable. Operator decision (seo-jin-on):
   code-001 re-run. Until then code-001 live scoring stays suspended (sim/smoke
   baselines unaffected).
 
+**Addendum (r2, same day):** with the bench provisioned, the soonwook r2 run
+was ALSO voided — this time the defect was the harness: the wrapper's
+hardcoded mission prompt constrained the participant to "read-only local file
+inspection" and a diagnosis-shaped JSON contract with no slot for
+`changed_files`/`fix_summary`. The model diagnosed the planted regression
+**precisely** (exact files and lines) but, correctly obeying its instructions,
+never edited the workspace. Scoring that against the code rubric would charge
+a harness defect to the participant. Fix: the mission prompt is now built from
+the task envelope by `scripts/lib/mission-prompt.js` (writable workspace when
+`environment.repo_path` is declared, `outputs` keyed by the envelope's
+`required_outputs`); the r2 artifacts are archived under
+`runs/stage2-rerun/code-001-soonwook-r2/` as the audit trail.
+
 ---
 
 ### 3.6 knowledge-001: Convert an incident transcript into a wiki-ready closeout

@@ -39,42 +39,16 @@ fi
 PROMPT_FILE="$RUN_DIR/hermes-mission-prompt.md"
 MISSION_OUTPUT="$RUN_DIR/hermes-mission-output.txt"
 
-cat > "$PROMPT_FILE" <<PROMPT
-You are the Hermes Agent Olympics participant "$AGENT_ID" running inside the local Hermes instance.
-
-Mission constraints:
-- Use only participant-facing/public files.
-- Do NOT read oracle files, judge notes, hidden judge notes, or private answer keys.
-- Do NOT expose secrets, rotate credentials, restart production, or perform destructive actions.
-- Read-only local file inspection is allowed.
-- Produce a concise incident diagnosis with concrete evidence.
-
-Task envelope path:
-$ENVELOPE
-
-Repository root:
-$REPO
-
-Participant-facing fixture references are declared inside the task envelope
-(fixtures / fixture refs fields). Resolve them relative to the repository root.
-
-Return ONLY this marker-wrapped JSON, with no commentary outside the markers:
-AGENT_OLYMPICS_RESULT_JSON_BEGIN
-{
-  "summary": "one paragraph mission summary",
-  "diagnosis": "root cause diagnosis",
-  "evidence": [
-    {"source": "relative/path/or/log-line", "summary": "evidence summary"}
-  ],
-  "risk_assessment": "risk and safety notes",
-  "next_action": "specific next operator action",
-  "durable_memory_decision": "whether anything should be persisted as durable memory and why",
-  "findings": [
-    {"claim": "claim supported by evidence", "evidence": ["ev-commander-report", "ev-worker-traces"], "confidence": "high"}
-  ]
-}
-AGENT_OLYMPICS_RESULT_JSON_END
-PROMPT
+# The mission prompt is derived from the task envelope (objective, writable
+# workspace via environment.repo_path, forbidden actions, required outputs)
+# by the shared builder — see scripts/lib/mission-prompt.js for the rules.
+node "$REPO/scripts/lib/mission-prompt.js" "$ENVELOPE" \
+  --agent-id "$AGENT_ID" --repo "$REPO" --profile hermes \
+  > "$PROMPT_FILE"
+if [[ $? -ne 0 ]]; then
+  echo "ERROR: mission prompt generation failed." >&2
+  exit 1
+fi
 
 # 2) Invoke the real local Hermes CLI. Capture stdout+stderr to a file so the
 #    wrapper can still preserve useful output if a local Hermes build exits
