@@ -355,6 +355,18 @@ the task envelope by `scripts/lib/mission-prompt.js` (writable workspace when
 `required_outputs`); the r2 artifacts are archived under
 `runs/stage2-rerun/code-001-soonwook-r2/` as the audit trail.
 
+**Resolution (r3):** with the envelope-driven prompt, the soonwook r3 run
+delivered the canonical minimal fix and was **scored 85/100 (pass)** — the
+first live code-family judge record. The evidence_quality dimension was
+overridden down (machine 18 → 12) per this section's oracle hard criterion:
+the packet carries no failing/passing test output because the nested session
+ran with `--toolsets file` (no exec tool); the participant disclosed this
+honestly instead of fabricating output. Operator-side verification supplied
+the missing confirmation (pre-run 4/4 green + report crashing; post-run 6/6
+green + report rendering). Harness follow-up: an exec-capable toolset for
+code-family missions, applied fleet-wide from the change onward so the
+evidence ceiling is the same across the cohort.
+
 ---
 
 ### 3.6 knowledge-001: Convert an incident transcript into a wiki-ready closeout
