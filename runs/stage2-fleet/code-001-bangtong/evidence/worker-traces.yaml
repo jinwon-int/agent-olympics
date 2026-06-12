@@ -1,0 +1,181 @@
+schema_version: 1
+generated_at: '2026-06-12T14:59:56.216Z'
+task_id: code-001
+worker: local-hermes-cli
+command: hermes chat -Q -q <generated mission prompt> --toolsets file
+exit_code: 0
+parsed_result_json: false
+output_sha256: 534f0a29b9c325f1fabbbb980321bf5ed1ce0b3a4ddebc36f347233e1b86e838
+output_excerpt: >2
+    ┊ review diff
+  a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts
+
+  @@ -8,9 +8,10 @@
+     outcome: 'delivered' | 'timeout' | 'rejected';
+     /**
+      * Probe measurements for the sample. Populated by the probe worker once
+  -   * the node's first measurement cycle completes.
+
+  +   * the node's first measurement cycle completes. Absent for newly registered
+
+  +   * nodes that haven't completed a measurement cycle yet.
+      */
+  -  metrics: {
+
+  +  metrics?: {
+       latency_ms: number;
+       retries: number;
+     };
+    ┊ review diff
+  a//work/agent-codebench/src/report.ts → b//work/agent-codebench/src/report.ts
+
+  @@ -30,9 +30,9 @@
+         if (s.outcome === 'delivered') delivered += 1;
+         else if (s.outcome === 'timeout') timeouts += 1;
+         else rejected += 1;
+  -      totalRetries += s.metrics.retries;
+
+  -      latencySum += s.metrics.latency_ms;
+
+  -      latencyCount += 1;
+
+  +      totalRetries += s.metrics?.retries ?? 0;
+
+  +      latencySum += s.metrics?.latency_ms ?? 0;
+
+  +      if (s.metrics) latencyCount += 1;
+       }
+       rows.push({
+         node,
+    ┊ review diff
+  a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+
+  @@ -46,7 +46,7 @@
+     assert.equal(gw01.mean_latency_ms, 2560.2);
+   });
+   
+  -test('renderReport prints one row per node with a header', () => {
+
+  +test('summarize handles samples without metrics (newly registered nodes)', () => {\n  const mixed:
+  DeliverySample[] = [\n    {\n      node: 'gw-03',\n      observed_at: '2026-06-11T22:00:00Z',\n     
+  outcome: 'delivered',\n      metrics: { latency_ms: 50.0, retries: 0 },\n    },\n    {\n      node:
+  'gw-03',\n      observed_at: '2026-06-11T22:01:00Z',\n      outcome: 'rejected',\n    },\n    {\n      node:
+  'gw-04',\n      observed_at: '2026-06-11T22:00:02Z',\n      outcome: 'rejected',\n    },\n  ];\n  const rows
+  = summarize(mixed);\n  assert.equal(rows.length, 2);\n  const gw03 = rows.find((r) => r.node ===
+  'gw-03');\n  if (!gw03) throw new Error('expected a summary row for gw-03');\n  assert.equal(gw03.samples,
+  2);\n  assert.equal(gw03.delivered, 1);\n  assert.equal(gw03.rejected, 1);\n 
+  assert.equal(gw03.total_retries, 0);\n  assert.equal(gw03.mean_latency_ms, 50.0);\n  const gw04 =
+  rows.find((r) => r.node === 'gw-04');\n  if (!gw04) throw new Error('expected a summary row for gw-04');\n 
+  assert.equal(gw04.samples, 1);\n  assert.equal(gw04.rejected, 1);\n  assert.equal(gw04.total_retries, 0);\n 
+  assert.equal(gw04.mean_latency_ms, null);\n});\n\ntest('renderReport prints one row per node with a header',
+  () => {
+     const text = renderReport(summarize(wellFormed));
+     const lines = text.split('\n');
+     assert.equal(lines.length, 3);
+    ┊ review diff
+  a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+
+  @@ -46,7 +46,43 @@
+     assert.equal(gw01.mean_latency_ms, 2560.2);
+   });
+   
+  -test('summarize handles samples without metrics (newly registered nodes)', () => {\n  const mixed:
+  DeliverySample[] = [\n    {\n      node: 'gw-03',\n      observed_at: '2026-06-11T22:00:00Z',\n     
+  outcome: 'delivered',\n      metrics: { latency_ms: 50.0, retries: 0 },\n    },\n    {\n      node:
+  'gw-03',\n      observed_at: '2026-06-11T22:01:00Z',\n      outcome: 'rejected',\n    },\n    {\n      node:
+  'gw-04',\n      observed_at: '2026-06-11T22:00:02Z',\n      outcome: 'rejected',\n    },\n  ];\n  const rows
+  = summarize(mixed);\n  assert.equal(rows.length, 2);\n  const gw03 = rows.find((r) => r.node ===
+  'gw-03');\n  if (!gw03) throw new Error('expected a summary row for gw-03');\n  assert.equal(gw03.samples,
+  2);\n  assert.equal(gw03.delivered, 1);\n  assert.equal(gw03.rejected, 1);\n 
+  assert.equal(gw03.total_retries, 0);\n  assert.equal(gw03.mean_latency_ms, 50.0);\n  const gw04 =
+  rows.find((r) => r.node === 'gw-04');\n  if (!gw04) throw new Error('expected a summary row for gw-04');\n 
+  assert.equal(gw04.samples, 1);\n  assert.equal(gw04.rejected, 1);\n  assert.equal(gw04.total_retries, 0);\n 
+  assert.equal(gw04.mean_latency_ms, null);\n});\n\ntest('renderReport prints one row per node with a header',
+  () => {
+
+  +test('summarize handles samples without metrics (newly registered nodes)', () => {
+
+  +  const mixed: DeliverySample[] = [
+
+  +    {
+
+  +      node: 'gw-03',
+
+  +      observed_at: '2026-06-11T22:00:00Z',
+
+  +      outcome: 'delivered',
+
+  +      metrics: { latency_ms: 50.0, retries: 0 },
+
+  +    },
+
+  +    {
+
+  +      node: 'gw-03',
+
+  +      observed_at: '2026-06-11T22:01:00Z',
+
+  +      outcome: 'rejected',
+
+  +    },
+
+  +    {
+
+  +      node: 'gw-04',
+
+  +      observed_at: '2026-06-11T22:00:02Z',
+
+  +      outcome: 'rejected',
+
+  +    },
+
+  +  ];
+
+  +  const rows = summarize(mixed);
+
+  +  assert.equal(rows.length, 2);
+
+  +  const gw03 = rows.find((r) => r.node === 'gw-03');
+
+  +  if (!gw03) throw new Error('expected a summary row for gw-03');
+
+  +  assert.equal(gw03.samples, 2);
+
+  +  assert.equal(gw03.delivered, 1);
+
+  +  assert.equal(gw03.rejected, 1);
+
+  +  assert.equal(gw03.total_retries, 0);
+
+  +  assert.equal(gw03.mean_latency_ms, 50.0);
+
+  +  const gw04 = rows.find((r) => r.node === 'gw-04');
+
+  +  if (!gw04) throw new Error('expected a summary row for gw-04');
+
+  +  assert.equal(gw04.samples, 1);
+
+  +  assert.equal(gw04.rejected, 1);
+
+  +  assert.equal(gw04.total_retries, 0);
+
+  +  assert.equal(gw04.mean_latency_ms, null);
+
+  +});
+
+  +
+
+  +test('renderReport prints one row per node with a header', () => {
+     const text = renderReport(summarize(wellFormed));
+     const lines = text.split('\n');
+     assert.equal(lines.length, 3);
+  Error: Model generated invalid tool call: bash
+
+
+  session_id: 20260612_145721_758d2b
+redaction:
+  applied: false
+  rules: []
+  note: >-
+    output_excerpt and output_sha256 are computed from the redacted Hermes CLI output (shared secret-patterns;
+    rule ids only, values never preserved).

@@ -1,0 +1,288 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "code" into 3-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: bangtong
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:8f8b1a8f8b1a8f8b1a8f8b1a8f8b1a8f8b1a8f8b1a8f8b1a8f8b1a8f8b1a8f8b
+    result_packet: sha256:8f89798f89798f89798f89798f89798f89798f89798f89798f89798f89798f89
+    trace_record: sha256:8f89398f89398f89398f89398f89398f89398f89398f89398f89398f89398f89
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: code
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: deepseek-v4-pro
+    provider: deepseek
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: vps3
+  participant:
+    adapter: hermes
+    agent_id: bangtong
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: code-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: code
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-12T14:57:07Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "code"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 3 steps for event family "code"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 0; output_sha256=534f0a29b9c325f1 (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 0; parsed_json=false
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: Hermes CLI mission output captured but JSON markers were not
+      parseable. ┊ review diff a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts @@
+      -8,9 +8,10 @@ outcome: 'delivered' | 'timeout' | 'rejec
+findings:
+  - claim: >-
+      ┊ review diff a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts @@ -8,9 +8,10
+      @@ outcome: 'delivered' | 'timeout' | 'rejected'; /** * Probe measurements for the sample. Populated by
+      the probe worker once - * the node's first measurement cycle completes. + * the node's first measurement
+      cycle completes. Absent for newly registered + * nodes that haven't completed a measurement cycle yet.
+      */ - metrics: { + metrics?: { latency_ms: number; retries: number; }; ┊ review diff 
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: Inspect evidence/worker-traces.yaml and rerun wrapper if structured JSON is required.
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: medium
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: deepseek-v4-pro
+model_provider: deepseek
+node: vps3
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  bug_cause: '[hermes-adapter:orchestrator/code] Output for bug_cause. Status: completed. Commander report synthesized.'
+  changed_files: >-
+    [hermes-adapter:orchestrator/code] Output for changed_files. Status: completed. Commander report
+    synthesized.
+  fix_summary: >-
+    [hermes-adapter:orchestrator/code] Output for fix_summary. Status: completed. Commander report
+    synthesized.
+  residual_risk: >-
+    [hermes-adapter:orchestrator/code] Output for residual_risk. Status: completed. Commander report
+    synthesized.
+  test_results: >-
+    [hermes-adapter:orchestrator/code] Output for test_results. Status: completed. Commander report
+    synthesized.
+  workflow:
+    step_count: 3
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-code-001-bangtong-2026-06-12T14-57-07-475d8b
+  mission_parse_fallback: true
+  diagnosis: >-
+    ┊ review diff a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts @@ -8,9 +8,10 @@
+    outcome: 'delivered' | 'timeout' | 'rejected'; /** * Probe measurements for the sample. Populated by the
+    probe worker once - * the node's first measurement cycle completes. + * the node's first measurement cycle
+    completes. Absent for newly registered + * nodes that haven't completed a measurement cycle yet. */ -
+    metrics: { + metrics?: { latency_ms: number; retries: number; }; ┊ review diff 
+  evidence: >-
+    /root/agent-olympics/runs/stage2-fleet/code-001-bangtong/hermes-mission-output.txt: Raw Hermes CLI output
+    captured in evidence/worker-traces.yaml
+  risk_assessment: Mission output required fallback parsing; human review recommended before competitive scoring.
+  next_action: Inspect evidence/worker-traces.yaml and rerun wrapper if structured JSON is required.
+  durable_memory_decision: No durable memory should be written from fallback parsing alone.
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 6
+  retries: 0
+  tool_invocations_total: 9
+  wall_time_seconds: 162
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 3
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-12T14:57:07Z'
+status: partial
+summary: >-
+  Hermes CLI mission output captured but JSON markers were not parseable. ┊ review diff
+  a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts @@ -8,9 +8,10 @@ outcome:
+  'delivered' | 'timeout' | 'rejected'; /** * Probe measurements for the sample. Populated by the probe worker
+  once - * the node's first measurement cycle completes. + * the node's first measurement cycle completes.
+  Absent for newly registered + * nodes that haven't completed a measurement cycle yet. */ - metrics: { +
+  metrics?: { latency_ms: number; retries: number; }; ┊ review diff
+task_id: code-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: partial_valid

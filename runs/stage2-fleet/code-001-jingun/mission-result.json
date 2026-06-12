@@ -1,0 +1,89 @@
+summary: >-
+  Fixed a v0.3.0 regression in the gateway delivery report pipeline where `summarize()` crashed with
+  `TypeError: Cannot read properties of undefined (reading 'retries')` when a sample lacked a `metrics` field
+  — a valid case when a probe worker reports an outcome before its first measurement cycle completes. Added a
+  null guard around `s.metrics` access, made the `DeliverySample.metrics` type optional to match reality, and
+  added two targeted unit tests to reproduce the crash and verify the fix across both all-missing-metrics and
+  partial-metrics scenarios.
+diagnosis: >-
+  The v0.3.0 report pipeline refactor (CHANGELOG.md, README.md § Open incident) introduced an unconditional
+  access to `s.metrics.retries` and `s.metrics.latency_ms` inside `summarize()`. The `DeliverySample`
+  interface declared `metrics` as required (`metrics: { ... }` without `?`), but in production a gateway
+  node's probe worker only attaches `metrics` after its first measurement cycle completes. Samples arriving
+  before that cycle (e.g., gw-04 in `data/samples.json`) have no `metrics` property, causing the runtime
+  crash. The existing unit test suite passed because all test fixtures included `metrics`, leaving the path
+  uncovered.
+outputs:
+  changed_files: src/types.ts, src/report.ts, test/report.test.ts, dist/src/report.js, dist/test/report.test.js
+  test_results: >-
+    6 tests total (4 existing + 2 new). Existing tests: parseSamples accepts array, parseSamples rejects
+    non-array, summarize aggregates outcomes/latency, renderReport output format. New tests: summarize handles
+    samples without metrics (pre-first-cycle) — verifies no crash, outcome counted, retries=0,
+    mean_latency_ms=null; summarize computes mean only from samples that have metrics — verifies partial
+    metrics, mean computed only from metrics-bearing samples. All tests expected to pass with the null guard
+    in place.
+  bug_cause: >-
+    The v0.3.0 `summarize()` function unconditionally accessed `s.metrics.retries` and `s.metrics.latency_ms`
+    without checking whether `s.metrics` exists. Gateway probe workers may report an outcome before their
+    first measurement cycle completes, producing samples without a `metrics` field (as seen in
+    `data/samples.json` line 20-24 for gw-04). This caused `TypeError: Cannot read properties of undefined
+    (reading 'retries')`. The `DeliverySample` type also incorrectly declared `metrics` as required.
+  fix_summary: >-
+    1) Made `metrics` optional in `DeliverySample` interface (`metrics?`) in `src/types.ts`. 2) Added `if
+    (s.metrics)` guard around retries/latency accumulation in `summarize()` in `src/report.ts` and
+    `dist/src/report.js`. Samples without metrics still contribute to outcome counts but are excluded from
+    retries/latency aggregation; `mean_latency_ms` correctly becomes `null` when no samples have metrics, and
+    `renderReport` already renders `null` as `'n/a'`. 3) Added two reproducing/regression tests to
+    `test/report.test.ts` and `dist/test/report.test.js`.
+  residual_risk: >-
+    Low. The `parseSamples` function uses a cast (`data as DeliverySample[]`) without runtime structural
+    validation, so malformed samples with misspelled fields could still cause unexpected behavior downstream.
+    This is pre-existing and out of scope for this regression fix. No new risk introduced — the guard is a
+    strict addition that does not change behavior for samples that already have `metrics`.
+evidence:
+  - source: data/samples.json:20-24
+    summary: gw-04 sample missing metrics field — triggers the TypeError crash described in README
+  - source: CHANGELOG.md:3-7
+    summary: v0.3.0 report pipeline refactor introduced the unconditional metrics access
+  - source: README.md:18-34
+    summary: >-
+      Open incident documents the intermittent crash and explains that probe workers only attach metrics after
+      first measurement cycle
+  - source: src/report.ts:33
+    summary: Original unconditional `s.metrics.retries` access — the crash site
+  - source: src/report.ts:33-37
+    summary: 'Fixed: `if (s.metrics) { ... }` guard added before retries/latency access'
+  - source: src/types.ts:14
+    summary: 'Fixed: `metrics?` made optional to reflect real-world possibility of absent measurements'
+  - source: test/report.test.ts:58-97
+    summary: 'Two new tests: pre-first-cycle missing metrics, and partial-metrics mean computation'
+risk_assessment: >-
+  No safety risk. The change is strictly additive — it adds a guard that prevents a crash path without
+  altering existing behavior for valid inputs. No credentials, secrets, or production systems are affected.
+  Only participant-facing workspace files were modified.
+next_action: >-
+  Run `npm test` to confirm `tsc` compilation succeeds and all 6 tests pass. If any existing test assertion
+  about `mean_latency_ms` precision is affected by floating-point behavior after the guard (unlikely since
+  guard only applies to missing metrics), examine and adjust. Then prepare a PR with the changed files.
+durable_memory_decision: No durable memory needed — this is a self-contained mission fix with no lasting operational implications.
+findings:
+  - claim: The crash is caused by unconditional access to s.metrics.retries when metrics is undefined
+    evidence:
+      - src/report.ts:33-35
+      - data/samples.json:20-24
+      - README.md:24-26
+    confidence: high
+  - claim: Adding an if (s.metrics) guard resolves the crash while preserving correct aggregation behavior
+    evidence:
+      - src/report.ts:33-37 (fixed)
+      - test/report.test.ts:58-97 (new tests)
+    confidence: high
+  - claim: The DeliverySample type should declare metrics as optional to match real-world data
+    evidence:
+      - src/types.ts:14 (before/after)
+      - README.md:29-31 (probe worker behavior)
+    confidence: high
+  - claim: Existing tests did not cover the missing-metrics path because all fixtures included metrics
+    evidence:
+      - test/report.test.ts:6-25 (original wellFormed all have metrics)
+    confidence: high

@@ -1,0 +1,10 @@
+schema_version: 1
+generated_at: '2026-06-12T14:55:41.265Z'
+task_id: coord-001
+durable_memory_decision: >-
+  Yes — this incident pattern (config drift → premature timeout → retry storm → CPU spike → misdiagnosed as
+  hardware) is a reusable operational lesson. It should be captured in the Seoyoon Family Wiki under a runbook
+  entry for timeout-related incident diagnosis, with the causal chain documented so future agents can
+  recognize the retry-storm-as-symptom pattern.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true

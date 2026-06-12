@@ -1,0 +1,20 @@
+summary: >-
+  Hermes CLI mission output captured but JSON markers were not parseable. ┊ review diff
+  a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts @@ -8,9 +8,10 @@ outcome:
+  'delivered' | 'timeout' | 'rejected'; /** * Probe measurements for the sample. Populated by the probe worker
+  once - * the node's first measurement cycle completes. + * the node's first measurement cycle completes.
+  Absent for newly registered + * nodes that haven't completed a measurement cycle yet. */ - metrics: { +
+  metrics?: { latency_ms: number; retries: number; }; ┊ review diff 
+diagnosis: >-
+  ┊ review diff a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts @@ -8,9 +8,10 @@
+  outcome: 'delivered' | 'timeout' | 'rejected'; /** * Probe measurements for the sample. Populated by the
+  probe worker once - * the node's first measurement cycle completes. + * the node's first measurement cycle
+  completes. Absent for newly registered + * nodes that haven't completed a measurement cycle yet. */ -
+  metrics: { + metrics?: { latency_ms: number; retries: number; }; ┊ review diff 
+evidence:
+  - source: /root/agent-olympics/runs/stage2-fleet/code-001-bangtong/hermes-mission-output.txt
+    summary: Raw Hermes CLI output captured in evidence/worker-traces.yaml
+risk_assessment: Mission output required fallback parsing; human review recommended before competitive scoring.
+next_action: Inspect evidence/worker-traces.yaml and rerun wrapper if structured JSON is required.
+durable_memory_decision: No durable memory should be written from fallback parsing alone.
+findings: []

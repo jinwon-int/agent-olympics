@@ -1,0 +1,112 @@
+  ┊ review diff
+a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts
+@@ -10,7 +10,7 @@
+    * Probe measurements for the sample. Populated by the probe worker once
+    * the node's first measurement cycle completes.
+    */
+-  metrics: {
++  metrics?: {
+     latency_ms: number;
+     retries: number;
+   };
+a//work/agent-codebench/src/report.ts → b//work/agent-codebench/src/report.ts
+@@ -30,9 +30,11 @@
+       if (s.outcome === 'delivered') delivered += 1;
+       else if (s.outcome === 'timeout') timeouts += 1;
+       else rejected += 1;
+-      totalRetries += s.metrics.retries;
+-      latencySum += s.metrics.latency_ms;
+-      latencyCount += 1;
++      if (s.metrics) {
++        totalRetries += s.metrics.retries;
++        latencySum += s.metrics.latency_ms;
++        latencyCount += 1;
++      }
+     }
+     rows.push({
+       node,
+a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+@@ -46,6 +46,25 @@
+   assert.equal(gw01.mean_latency_ms, 2560.2);
+ });
+ 
++test('summarize accepts samples before metrics are populated', () => {
++  const rows = summarize([
++    ...wellFormed,
++    {
++      node: 'gw-03',
++      observed_at: '2026-06-11T22:10:00Z',
++      outcome: 'rejected',
++    },
++  ]);
++  const gw03 = rows.find((r) => r.node === 'gw-03');
++  if (!gw03) throw new Error('expected a summary row for gw-03');
++  assert.equal(gw03.samples, 1);
++  assert.equal(gw03.delivered, 0);
++  assert.equal(gw03.timeouts, 0);
++  assert.equal(gw03.rejected, 1);
++  assert.equal(gw03.total_retries, 0);
++  assert.equal(gw03.mean_latency_ms, null);
++});
++
+ test('renderReport prints one row per node with a header', () => {
+   const text = renderReport(summarize(wellFormed));
+   const lines = text.split('\n');
+
+session_id: 20260613_001005_0ebfa8
+AGENT_OLYMPICS_RESULT_JSON_BEGIN
+{
+  "summary": "Fixed the TypeScript delivery report regression by allowing DeliverySample.metrics to be absent before the first probe cycle, guarding metric aggregation in summarize(), and adding a focused regression test for samples without metrics.",
+  "diagnosis": "summarize() assumed every DeliverySample had metrics and unconditionally read s.metrics.retries and s.metrics.latency_ms. Public fixture data includes a sample without metrics, matching a newly registered or not-yet-measured gateway node, so the previous code could throw a TypeError at runtime.",
+  "outputs": {
+    "changed_files": "src/types.ts, src/report.ts, test/report.test.ts",
+    "test_results": "Not fully run: this Hermes tool session does not expose a terminal/test execution tool. The edit tool attempted TypeScript syntax checks but reported them skipped because npx was not usable: \"This is not the tsc command you are looking for\". Static verification was performed by re-reading the changed files and searching remaining metrics usages; no unguarded s.metrics access remains in src.",
+    "bug_cause": "DeliverySample.metrics was modeled and consumed as required even though the documented lifecycle says probe measurements are populated only after a node's first measurement cycle completes. Samples can therefore legitimately arrive without metrics.",
+    "fix_summary": "Made metrics optional in DeliverySample and changed summarize() to count outcomes/samples for every row while only adding retries and latency when metrics are present. Added a regression test covering a rejected sample without metrics, expecting total_retries=0 and mean_latency_ms=null.",
+    "residual_risk": "Low. The fix is narrowly scoped to optional metrics handling. Runtime tests should still be run by the operator or harness with npm test once a terminal-capable environment is available."
+  },
+  "evidence": [
+    {
+      "source": "data/samples.json:20-24",
+      "summary": "Participant-facing sample data contains gw-04 with outcome rejected and no metrics object."
+    },
+    {
+      "source": "src/report.ts:33-37",
+      "summary": "summarize() now guards metrics aggregation with if (s.metrics)."
+    },
+    {
+      "source": "src/types.ts:13-16",
+      "summary": "DeliverySample.metrics is now optional in the TypeScript interface."
+    },
+    {
+      "source": "test/report.test.ts:49-66",
+      "summary": "Focused regression test covers a sample before metrics are populated and asserts null mean latency and zero retries."
+    },
+    {
+      "source": "patch-tool-lint",
+      "summary": "Automatic syntax checks were skipped by the patch tool because npx/tsc was not usable in this tool environment."
+    }
+  ],
+  "risk_assessment": "No oracle, judge notes, hidden answer keys, secrets, production systems, or destructive actions were accessed. Changes were limited to the task workspace and task-relevant TypeScript source/test files.",
+  "next_action": "Run npm test in /work/agent-codebench with a terminal-capable executor, then open a PR with the summary above if it passes.",
+  "durable_memory_decision": "Do not persist as durable memory; this is a synthetic Agent Olympics fixture fix, not reusable operational knowledge.",
+  "findings": [
+    {
+      "claim": "The regression is caused by unguarded access to optional runtime metrics.",
+      "evidence": [
+        "data/samples.json:20-24",
+        "src/report.ts:33-37"
+      ],
+      "confidence": "high"
+    },
+    {
+      "claim": "The fix preserves node outcome/sample counts while excluding missing metrics from latency and retry aggregates.",
+      "evidence": [
+        "src/report.ts:29-46",
+        "test/report.test.ts:49-66"
+      ],
+      "confidence": "high"
+    }
+  ]
+}
+AGENT_OLYMPICS_RESULT_JSON_END

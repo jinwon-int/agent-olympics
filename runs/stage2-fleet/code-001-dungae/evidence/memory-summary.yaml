@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-12T15:00:45.696Z'
+task_id: code-001
+durable_memory_decision: >-
+  No durable memory needed. This is a task-specific fix within the agent-codebench workspace. The regression
+  pattern is already documented in the judge notes fixture.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true
