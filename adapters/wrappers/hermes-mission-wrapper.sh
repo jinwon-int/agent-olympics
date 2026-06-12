@@ -44,14 +44,21 @@ MISSION_OUTPUT="$RUN_DIR/hermes-mission-output.txt"
 # the prompt's "run the tests" instruction on bench tasks — capping honest
 # evidence and incentivizing fabricated execution claims. Precedence:
 # HERMES_TOOLSETS operator override > envelope repo_path bench with the exec
-# toolset (default "shell", HERMES_EXEC_TOOLSET overrides the name) when the
-# local `hermes chat --help` advertises it > `file` fallback. The derived
-# list and its source are attested into the result packet by the merge step.
+# toolset (default "terminal" — the fleet Hermes name, attested vps6
+# 2026-06-12; HERMES_EXEC_TOOLSET overrides) when a node probe confirms it >
+# `file` fallback. Probe order: `hermes tools list` (authoritative; help text
+# on fleet builds does not name toolsets) then `hermes chat --help`. An
+# unprobed toolset value must never be passed: the fleet build accepts it
+# with only "Warning: Unknown toolsets: ..." and runs WITHOUT the exec tool.
+# The derived list and its source are attested into the result packet by the
+# merge step.
+HERMES_TOOLS_LIST="$($HERMES_BIN tools list 2>/dev/null || true)"
 HERMES_CHAT_HELP="$($HERMES_BIN chat --help 2>&1 || true)"
-TOOLSETS_JSON="$(printf '%s' "$HERMES_CHAT_HELP" | node "$REPO/scripts/lib/mission-toolsets.js" "$ENVELOPE" \
+TOOLSETS_JSON="$(node "$REPO/scripts/lib/mission-toolsets.js" "$ENVELOPE" \
   --override "${HERMES_TOOLSETS:-}" \
-  --exec-toolset "${HERMES_EXEC_TOOLSET:-shell}" \
-  --help-text-file -)" || TOOLSETS_JSON=""
+  --exec-toolset "${HERMES_EXEC_TOOLSET:-terminal}" \
+  --tools-list-file <(printf '%s' "$HERMES_TOOLS_LIST") \
+  --help-text-file <(printf '%s' "$HERMES_CHAT_HELP"))" || TOOLSETS_JSON=""
 IFS=$'\t' read -r HERMES_TOOLSETS_USED HERMES_TOOLSETS_SOURCE <<< "$(printf '%s' "$TOOLSETS_JSON" | python3 -c '
 import json, sys
 try:
@@ -160,6 +167,15 @@ fi
 PARSE_FALLBACK=0
 if grep -q 'parsed_json=false' "$RUN_DIR/mission-merge.log" 2>/dev/null; then
   PARSE_FALLBACK=1
+fi
+
+# Known fleet quirk (vps6, 2026-06-12): the Hermes CLI can abort at shutdown
+# (exit 134, core dump) AFTER printing a complete, parseable mission result —
+# observed with the terminal toolset enabled. A parseable result is the
+# success signal here; the shutdown exit code must not fail the run. It is
+# still attested honestly (worker trace exit_code, wrapper-status.env).
+if [[ "$HERMES_STATUS" -ne 0 && "$PARSE_FALLBACK" -eq 0 ]]; then
+  echo "WARNING: Hermes exited $HERMES_STATUS after producing a parseable mission result (known shutdown abort on some fleet builds) — run kept; exit code attested in the worker trace." >&2
 fi
 
 printf 'adapter_status=%s\nhermes_status=%s\nmerge_status=%s\nvalidate_status=%s\nparse_fallback=%s\ntoolsets=%s\ntoolsets_source=%s\n' \

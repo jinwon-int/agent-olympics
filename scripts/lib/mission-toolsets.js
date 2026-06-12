@@ -18,14 +18,22 @@
  *      used verbatim — the operator asserts the node supports it.
  *   2. Envelope declares `environment.repo_path` (writable bench → the
  *      mission is expected to run commands): want `file,<exec>` where
- *      <exec> defaults to "shell" (--exec-toolset overrides for Hermes
- *      builds that name it differently). The exec toolset is only enabled
- *      when the node's `hermes chat --help` text mentions it near a
- *      "toolset" line — an unsupported flag value would fail the whole
- *      mission, which is worse than the file-only ceiling. Otherwise fall
- *      back to `file` and record WHY in `source`, so the run is honestly
- *      attributable to a probe fallback instead of silently mismatching
- *      the cohort.
+ *      <exec> defaults to "terminal" (the fleet's Hermes builds name their
+ *      command-execution toolset "terminal", attested on vps6 2026-06-12;
+ *      --exec-toolset overrides for builds that name it differently). The
+ *      exec toolset is only enabled when a node probe confirms it — an
+ *      unknown toolset value yields a session without the exec tool (vps6:
+ *      "Warning: Unknown toolsets: shell"), which silently recreates the
+ *      fabrication setup this change removes. Probe order:
+ *        a. `hermes tools list` output mentions the toolset on a line that
+ *           is not "disabled" (authoritative; vps6 prints
+ *           "terminal enabled" here), else
+ *        b. `hermes chat --help` mentions it near a "toolset" line (some
+ *           builds list toolset names in help; vps6 does NOT — its help
+ *           says only "Comma-separated toolsets to enable").
+ *      Otherwise fall back to `file` and record WHY in `source`, so the
+ *      run is honestly attributable to a probe fallback instead of
+ *      silently mismatching the cohort.
  *   3. No repo_path → `file` (legacy read-only/diagnosis missions).
  *
  * The returned `source` is attested into the result packet (probe evidence
@@ -33,25 +41,28 @@
  * ceiling from the packet alone:
  *
  *   operator_env          — override used verbatim
- *   envelope_exec         — repo_path bench, exec toolset probe-confirmed
- *   probe_fallback_file   — repo_path bench, help text lacks the exec toolset
- *   probe_unavailable_file— repo_path bench, no help text to probe
+ *   tools_list_exec       — repo_path bench, exec toolset confirmed by
+ *                           `hermes tools list`
+ *   help_text_exec        — repo_path bench, exec toolset confirmed by
+ *                           `hermes chat --help`
+ *   probe_fallback_file   — repo_path bench, probes ran but lack the toolset
+ *   probe_unavailable_file— repo_path bench, no probe text available
  *   default_file          — no repo_path; file-only by design
  *
  * Usage (CLI):
  *   node scripts/lib/mission-toolsets.js <envelope> \
- *     [--override "<HERMES_TOOLSETS>"] [--exec-toolset shell] \
- *     [--help-text-file <path>|-]
+ *     [--override "<HERMES_TOOLSETS>"] [--exec-toolset terminal] \
+ *     [--tools-list-file <path>|-] [--help-text-file <path>|-]
  *   node scripts/lib/mission-toolsets.js selftest
  *
- * Prints JSON: {"toolsets": "file,shell", "source": "envelope_exec"}
+ * Prints JSON: {"toolsets": "file,terminal", "source": "tools_list_exec"}
  */
 
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 
-const DEFAULT_EXEC_TOOLSET = 'shell';
+const DEFAULT_EXEC_TOOLSET = 'terminal';
 
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -83,7 +94,20 @@ function helpTextSupportsToolset(helpText, execToolset) {
   return false;
 }
 
-function deriveHermesToolsets({ envelope, override, execToolset, helpText }) {
+/**
+ * True when `hermes tools list` output mentions the exec toolset on a line
+ * that is not marked disabled (vps6 prints e.g. "terminal enabled").
+ */
+function toolsListSupportsToolset(toolsListText, execToolset) {
+  if (!toolsListText || !toolsListText.trim()) return false;
+  const token = new RegExp(`(?<![\\w-])${escapeRegExp(execToolset)}(?![\\w-])`, 'i');
+  for (const line of toolsListText.split(/\r?\n/)) {
+    if (token.test(line) && !/disabled/i.test(line)) return true;
+  }
+  return false;
+}
+
+function deriveHermesToolsets({ envelope, override, execToolset, helpText, toolsListText }) {
   const exec = (execToolset || DEFAULT_EXEC_TOOLSET).trim();
   if (override && override.trim()) {
     return { toolsets: override.trim(), source: 'operator_env' };
@@ -92,11 +116,16 @@ function deriveHermesToolsets({ envelope, override, execToolset, helpText }) {
   if (!repoPath) {
     return { toolsets: 'file', source: 'default_file' };
   }
-  if (helpText === null || helpText === undefined || !String(helpText).trim()) {
-    return { toolsets: 'file', source: 'probe_unavailable_file' };
+  const tools = toolsListText === null || toolsListText === undefined ? '' : String(toolsListText);
+  const help = helpText === null || helpText === undefined ? '' : String(helpText);
+  if (toolsListSupportsToolset(tools, exec)) {
+    return { toolsets: `file,${exec}`, source: 'tools_list_exec' };
   }
-  if (helpTextSupportsToolset(String(helpText), exec)) {
-    return { toolsets: `file,${exec}`, source: 'envelope_exec' };
+  if (helpTextSupportsToolset(help, exec)) {
+    return { toolsets: `file,${exec}`, source: 'help_text_exec' };
+  }
+  if (!tools.trim() && !help.trim()) {
+    return { toolsets: 'file', source: 'probe_unavailable_file' };
   }
   return { toolsets: 'file', source: 'probe_fallback_file' };
 }
@@ -108,53 +137,71 @@ function deriveHermesToolsets({ envelope, override, execToolset, helpText }) {
 function selftest() {
   const benchEnvelope = { environment: { repo_path: '/work/agent-codebench' } };
   const opsEnvelope = { environment: {} };
-  const helpWithShell = [
+  // vps6-attested shapes (2026-06-12): help does NOT list toolset names;
+  // `hermes tools list` is where "terminal enabled" appears.
+  const helpVps6 = [
+    'Usage: hermes chat [flags]',
+    '  --toolsets TOOLSETS  Comma-separated toolsets to enable',
+    '  --shell-completion   Generate shell completion script',
+  ].join('\n');
+  const toolsListVps6 = [
+    'file enabled',
+    'terminal enabled',
+    'code_execution enabled',
+  ].join('\n');
+  const helpWithTerminal = [
     'Usage: hermes chat [flags]',
     '  --toolsets strings   Toolsets to enable, comma-separated.',
-    '                       Available: file, shell, web',
+    '                       Available: file, terminal, web',
     '  -q string            Prompt to send',
-  ].join('\n');
-  const helpWithoutShell = [
-    'Usage: hermes chat [flags]',
-    '  --toolsets strings   Toolsets to enable (file, web)',
-    '  --shell-completion   Generate shell completion script',
   ].join('\n');
 
   const cases = [
     {
       name: 'operator override wins verbatim',
-      args: { envelope: benchEnvelope, override: 'file,exec', execToolset: 'shell', helpText: helpWithoutShell },
+      args: { envelope: benchEnvelope, override: 'file,exec', helpText: helpVps6, toolsListText: '' },
       want: { toolsets: 'file,exec', source: 'operator_env' },
     },
     {
       name: 'no repo_path stays file-only by design',
-      args: { envelope: opsEnvelope, override: '', execToolset: 'shell', helpText: helpWithShell },
+      args: { envelope: opsEnvelope, override: '', helpText: helpWithTerminal, toolsListText: toolsListVps6 },
       want: { toolsets: 'file', source: 'default_file' },
     },
     {
-      name: 'bench + probe-confirmed shell enables exec',
-      args: { envelope: benchEnvelope, override: '', execToolset: 'shell', helpText: helpWithShell },
-      want: { toolsets: 'file,shell', source: 'envelope_exec' },
+      name: 'vps6 shape: tools list confirms terminal even though help names no toolsets',
+      args: { envelope: benchEnvelope, override: '', helpText: helpVps6, toolsListText: toolsListVps6 },
+      want: { toolsets: 'file,terminal', source: 'tools_list_exec' },
     },
     {
-      name: 'bench + help lacking shell near toolset line falls back (shell-completion is not a toolset)',
-      args: { envelope: benchEnvelope, override: '', execToolset: 'shell', helpText: helpWithoutShell },
+      name: 'help text listing terminal works without a tools list',
+      args: { envelope: benchEnvelope, override: '', helpText: helpWithTerminal, toolsListText: '' },
+      want: { toolsets: 'file,terminal', source: 'help_text_exec' },
+    },
+    {
+      name: 'disabled tools-list entry does not count',
+      args: { envelope: benchEnvelope, override: '', helpText: helpVps6, toolsListText: 'file enabled\nterminal disabled' },
       want: { toolsets: 'file', source: 'probe_fallback_file' },
     },
     {
-      name: 'bench + no help text falls back honestly',
-      args: { envelope: benchEnvelope, override: '', execToolset: 'shell', helpText: '' },
+      name: 'probes present but lacking the toolset fall back (shell-completion is not a toolset)',
+      args: { envelope: benchEnvelope, override: '', helpText: helpVps6, toolsListText: 'file enabled' },
+      want: { toolsets: 'file', source: 'probe_fallback_file' },
+    },
+    {
+      name: 'no probe text at all falls back honestly',
+      args: { envelope: benchEnvelope, override: '', helpText: '', toolsListText: '' },
       want: { toolsets: 'file', source: 'probe_unavailable_file' },
     },
     {
-      name: 'custom exec toolset name is probed instead of shell',
+      name: 'custom exec toolset name is probed instead of terminal',
       args: {
         envelope: benchEnvelope,
         override: '',
         execToolset: 'exec',
-        helpText: '--toolsets  Toolsets to enable\n            One of: file, exec',
+        helpText: '',
+        toolsListText: 'file enabled\nexec enabled',
       },
-      want: { toolsets: 'file,exec', source: 'envelope_exec' },
+      want: { toolsets: 'file,exec', source: 'tools_list_exec' },
     },
   ];
 
@@ -186,25 +233,29 @@ function main() {
   let override = '';
   let execToolset = DEFAULT_EXEC_TOOLSET;
   let helpTextFile = null;
+  let toolsListFile = null;
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === '--override') override = args[++i] || '';
     else if (args[i] === '--exec-toolset') execToolset = args[++i] || DEFAULT_EXEC_TOOLSET;
     else if (args[i] === '--help-text-file') helpTextFile = args[++i] || null;
+    else if (args[i] === '--tools-list-file') toolsListFile = args[++i] || null;
     else if (!envelopePath) envelopePath = args[i];
     else { console.error(`Unknown argument: ${args[i]}`); process.exit(2); }
   }
   if (!envelopePath) {
-    console.error('Usage: mission-toolsets.js <envelope> [--override <toolsets>] [--exec-toolset <name>] [--help-text-file <path>|-] | selftest');
+    console.error('Usage: mission-toolsets.js <envelope> [--override <toolsets>] [--exec-toolset <name>] [--tools-list-file <path>|-] [--help-text-file <path>|-] | selftest');
     process.exit(2);
   }
   const envelope = yaml.load(fs.readFileSync(path.resolve(envelopePath), 'utf8'));
-  let helpText = null;
-  if (helpTextFile) {
-    helpText = fs.readFileSync(helpTextFile === '-' ? 0 : path.resolve(helpTextFile), 'utf8');
-  }
-  process.stdout.write(`${JSON.stringify(deriveHermesToolsets({ envelope, override, execToolset, helpText }))}\n`);
+  const readProbe = (file) => {
+    if (!file) return null;
+    return fs.readFileSync(file === '-' ? 0 : path.resolve(file), 'utf8');
+  };
+  const helpText = readProbe(helpTextFile);
+  const toolsListText = readProbe(toolsListFile);
+  process.stdout.write(`${JSON.stringify(deriveHermesToolsets({ envelope, override, execToolset, helpText, toolsListText }))}\n`);
 }
 
 if (require.main === module) main();
 
-module.exports = { deriveHermesToolsets, helpTextSupportsToolset };
+module.exports = { deriveHermesToolsets, helpTextSupportsToolset, toolsListSupportsToolset };

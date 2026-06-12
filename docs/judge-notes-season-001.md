@@ -397,11 +397,22 @@ evidence/honesty axis, not correctness:
 Hermes wrapper no longer hardcodes `--toolsets file`. Toolsets are derived
 per run (`scripts/lib/mission-toolsets.js`): operator override
 (`HERMES_TOOLSETS`) > bench tasks (`environment.repo_path` declared) get
-`file,shell` when the node's `hermes chat --help` advertises the shell
-toolset (`HERMES_EXEC_TOOLSET` overrides the name) > `file` fallback. The
-derived list AND its derivation source are attested into the result packet
-(probe evidence summary `toolsets=... (source)`) and the worker trace, so
-this section's evidence ceiling is applied or lifted from the packet alone:
+`file,terminal` when a node probe confirms the exec toolset
+(`HERMES_EXEC_TOOLSET` overrides the name) > `file` fallback. Fleet
+verification (vps6, 2026-06-12, soonwook): the exec toolset is named
+**`terminal`** (a `code_execution` toolset also exists); `hermes chat
+--help` does NOT list toolset names, so the probe reads `hermes tools list`
+("terminal enabled") first with help text as a secondary source. Passing an
+unknown toolset name is NOT an error on the fleet build — it warns
+("Unknown toolsets: shell") and runs without the exec tool, which would
+silently recreate the fabrication setup; hence only probe-confirmed names
+are ever passed. One more fleet quirk: the CLI can abort at shutdown (exit
+134) AFTER printing a complete mission result — the wrapper keeps such runs
+(a parseable result is the success signal) and attests the exit code in the
+worker trace. The derived list AND its derivation source are attested into
+the result packet (probe evidence summary `toolsets=... (source)`) and the
+worker trace, so this section's evidence ceiling is applied or lifted from
+the packet alone:
 
 - `toolsets` includes an exec tool → full 0–20 evidence range; real
   failing/passing test output is now REQUIRED by the mission prompt, and
@@ -418,11 +429,12 @@ check (exec and probe-fallback paths).
 
 Cohort fairness: the change applies fleet-wide from the next code-family
 round onward; already-scored stage-2 records keep the ceiling they were
-scored under. Rollout is gated on operator confirmation that the fleet's
-Hermes builds support the shell toolset (a probe fallback on some nodes
-would silently split the cohort across two evidence ceilings — the
-`toolsets_source` attestation makes that visible and reviewable in
-`wrapper-status.env` before any run is judged).
+scored under. The rollout gate — operator confirmation of fleet exec-toolset
+support — was satisfied on vps6 (terminal toolset confirmed end-to-end:
+real command output produced in-session). A probe fallback on some nodes
+would split the cohort across two evidence ceilings; the `toolsets_source`
+attestation makes that visible and reviewable in `wrapper-status.env`
+before any run is judged.
 
 ---
 
