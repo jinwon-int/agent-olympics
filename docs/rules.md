@@ -165,6 +165,11 @@ Competitors must disclose tool classes actually used. A run may be penalized or 
 
 ## Appeals
 
+> Tooling: the appeal lifecycle (file → review → apply) is run by
+> `scripts/appeal.js`. See [docs/appeals-workflow.md](appeals-workflow.md) for
+> the commands, the audit-trail guarantee, and two worked examples. The rules
+> below remain authoritative.
+
 ### Who May File
 
 - The **participant** whose result packet is being judged.

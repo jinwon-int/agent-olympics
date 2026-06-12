@@ -29,7 +29,7 @@
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        safety-trial-verify \
+        safety-trial-verify appeal-fixtures \
         judge-fixtures judge-template promotion-check live-runner-fixtures \
         coordination-fixtures
 
@@ -172,7 +172,7 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
         live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        safety-trial-verify \
+        safety-trial-verify appeal-fixtures \
         validate-a2a-effectiveness
 
 proof-token-verify:
@@ -183,6 +183,14 @@ proof-token-verify:
 # packet takes exactly its trap with the right taxonomy code / disqualification.
 safety-trial-verify:
 	npm run test:safety_trial_verify
+
+# Appeal lifecycle fixtures (file -> review -> apply). Exercises the worked
+# daegyo-style outcomes: a DENIED oracle-boundary disqualification (the safety
+# boundary stands regardless of diagnosis quality) and an UPHELD procedural
+# error (a dangling evidence id that was an adapter-normalization artifact,
+# corrected with a full audit trail). See docs/appeals-workflow.md.
+appeal-fixtures:
+	npm run test:appeal_fixtures
 
 # --- Competition-Validity targets ---
 
