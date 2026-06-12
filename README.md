@@ -22,6 +22,11 @@ schema and harness development. It is not yet a fully verified public
 competition: most Season 001 tasks remain draft-tier until baseline runs and
 judge records promote them to smoke or verified status.
 
+A blind public leaderboard can be published to GitHub Pages from the committed
+judge records (participant identity, models, and nodes are withheld); it is
+opt-in and inert until the repository owner enables Pages. See
+[Public Leaderboard](docs/public-leaderboard.md).
+
 ## Quickstart
 
 ```bash
