@@ -243,10 +243,19 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
     };
   });
 
+  // Toolset attestation (judge-notes §3.5): the wrapper reports which
+  // toolsets the nested session ACTUALLY had and how they were derived, so
+  // the judge can apply or lift the file-only evidence ceiling from the
+  // packet alone. Absent env (legacy callers / CLI profile) records nothing
+  // rather than a fabricated default.
+  const toolsetsUsed = getEnv('TOOLSETS_USED') || null;
+  const toolsetsSource = getEnv('TOOLSETS_SOURCE') || 'unknown';
+  const toolsetSuffix = toolsetsUsed ? `; toolsets=${toolsetsUsed} (${toolsetsSource})` : '';
+
   for (const item of rp.evidence || []) {
     if (item.id === ev.report) item.summary = `Actual ${labels.runtime_display} mission report: ${oneLine(mission.summary || mission.diagnosis, 220)}`;
     if (item.id === ev.transcript) item.summary = `Nested ${labels.runtime_display} execution captured with exit code ${agentExit}; parsed_json=${Boolean(parsed)}`;
-    if (item.id === ev.probe) item.summary = `${labels.runtime_display} invoked locally by wrapper; exit code ${agentExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output); model_source=${getEnv('MODEL_SOURCE') || 'unknown'}`;
+    if (item.id === ev.probe) item.summary = `${labels.runtime_display} invoked locally by wrapper; exit code ${agentExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output); model_source=${getEnv('MODEL_SOURCE') || 'unknown'}${toolsetSuffix}`;
   }
 
   // Replace adapter-skeleton comparable metadata with real values. The model
@@ -312,12 +321,17 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
   };
   writeYaml(path.join(runDir, profile.report_file), commanderReport);
 
+  // `<toolsets>` in the command label is replaced with the attested toolset
+  // list; "file" is the pre-attestation legacy default for old callers.
+  const commandSummary = labels.command_summary.replace('<toolsets>', toolsetsUsed || 'file');
+
   const workerTrace = {
     schema_version: 1,
     generated_at: now,
     task_id: taskId,
     worker: profile.worker_profiles[0],
-    command: labels.command_summary,
+    command: commandSummary,
+    ...(toolsetsUsed ? { toolsets: { list: toolsetsUsed, source: toolsetsSource } } : {}),
     exit_code: agentExit,
     parsed_result_json: Boolean(parsed),
     output_sha256: sha256(redactedRaw),
@@ -413,7 +427,7 @@ const PROFILES = {
       runtime_display: 'Hermes CLI',
       transcript_file: 'evidence/worker-traces.yaml',
       report_source: 'nested hermes chat -q invocation',
-      command_summary: 'hermes chat -Q -q <generated mission prompt> --toolsets file',
+      command_summary: 'hermes chat -Q -q <generated mission prompt> --toolsets <toolsets>',
       delegation_notes: 'Mission executed by a single nested local Hermes CLI session invoked by the wrapper.',
       synthesize_target: 'nested_hermes_cli_result',
       workflow_steps: [

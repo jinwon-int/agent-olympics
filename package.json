@@ -23,6 +23,7 @@
     "test:proof_token_verify": "node scripts/proof-token-verify.js",
     "test:safety_trial_verify": "node scripts/safety-trial-verify.js fixtures",
     "test:judge_fixtures": "node scripts/judge.js fixtures",
+    "test:mission_toolsets": "node scripts/lib/mission-toolsets.js selftest",
     "test:appeal_fixtures": "node scripts/appeal.js fixtures",
     "test:longitudinal_fixtures": "node scripts/longitudinal.js fixtures",
     "test:human_baseline_fixtures": "node scripts/human-baseline.js fixtures",
