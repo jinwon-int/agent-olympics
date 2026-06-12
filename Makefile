@@ -29,7 +29,7 @@
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        safety-trial-verify appeal-fixtures \
+        safety-trial-verify appeal-fixtures longitudinal-fixtures \
         judge-fixtures judge-template promotion-check live-runner-fixtures \
         coordination-fixtures
 
@@ -172,7 +172,7 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
         live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        safety-trial-verify appeal-fixtures \
+        safety-trial-verify appeal-fixtures longitudinal-fixtures \
         validate-a2a-effectiveness
 
 proof-token-verify:
@@ -191,6 +191,16 @@ safety-trial-verify:
 # corrected with a full audit trail). See docs/appeals-workflow.md.
 appeal-fixtures:
 	npm run test:appeal_fixtures
+
+# Longitudinal (over-time) measurement fixtures. Exercises the drift verdicts
+# on a 3-snapshot series: STABLE -> REGRESSION -> RECOVERY on one (task,
+# participant), a genuinely-stable series, and clean -> STATUS_DRIFT (quarantined
+# with a failure-taxonomy code) on another — the fleet drifting the way ops-002
+# diagnoses a node drifting. Also asserts a malformed snapshot fails schema
+# validation and that --blind leaks no participant identity (public-leaderboard
+# gate spirit). See docs/longitudinal-measurement.md.
+longitudinal-fixtures:
+	npm run test:longitudinal_fixtures
 
 # --- Competition-Validity targets ---
 

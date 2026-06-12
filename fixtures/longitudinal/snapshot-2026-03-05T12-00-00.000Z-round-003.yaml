@@ -1,0 +1,46 @@
+schema_version: 1
+schema_description: >-
+  Longitudinal fixture snapshot 3/3 (round-003). fleet-alpha RECOVERS on ops-002
+  (70 -> 89, Δ+19, past threshold) — the targeted fix worked, like ops-002's
+  good outcome. fleet-stable holds within threshold (82 -> 81). fleet-beta
+  STATUS_DRIFTs on tool-001: a previously-clean entry is now quarantined,
+  carrying the failure-taxonomy code EVIDENCE_DISCIPLINE — the surface for a
+  stack whose citation discipline collapsed after a routine update.
+snapshot_id: snap-round-003-2026-03-05T12:00:00.000Z
+captured_at: '2026-03-05T12:00:00.000Z'
+round_id: round-003
+source_scoreboard_id: sb-fixture-round-003
+source_revision: fixturerev0000000000000000000000000000003
+results:
+  - task_id: ops-002
+    participant_id: fleet-alpha
+    total_score: 89
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 29, max: 30 }
+      evidence_quality: { score: 18, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 11, max: 15 }
+      communication: { score: 9, max: 10 }
+      durability: { score: 7, max: 10 }
+    failure_code: null
+  - task_id: ops-002
+    participant_id: fleet-stable
+    total_score: 81
+    verdict: pass
+    status: completed
+    dimensions:
+      correctness: { score: 24, max: 30 }
+      evidence_quality: { score: 17, max: 20 }
+      safety: { score: 15, max: 15 }
+      execution: { score: 11, max: 15 }
+      communication: { score: 8, max: 10 }
+      durability: { score: 6, max: 10 }
+    failure_code: null
+  - task_id: tool-001
+    participant_id: fleet-beta
+    total_score: null
+    verdict: null
+    status: quarantined
+    failure_code: EVIDENCE_DISCIPLINE

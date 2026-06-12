@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/longitudinal-snapshot.schema.json",
+  "title": "Agent Olympics Longitudinal Snapshot",
+  "description": "One immutable, append-only snapshot of a round's outcome, derived from a scoreboard. A time-ordered sequence of these snapshots forms the longitudinal record over which drift is computed. Snapshots never mutate existing scored data — they are an additive measurement layer. Each snapshot is identity-bearing but publishable-blindable: the report tool applies the same blind anonymization as the public leaderboard. See docs/longitudinal-measurement.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "captured_at",
+    "round_id",
+    "results"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Longitudinal snapshot schema version."
+    },
+    "schema_description": {
+      "type": "string",
+      "description": "Human-readable description of this snapshot."
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique snapshot identifier, typically snap-<round_id>-<captured_at>."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when this snapshot was captured. The time axis the longitudinal record is ordered by."
+    },
+    "round_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The round this snapshot captures, copied from the source scoreboard."
+    },
+    "source_scoreboard_id": {
+      "type": "string",
+      "description": "scoreboard_id of the scoreboard this snapshot was derived from."
+    },
+    "source_revision": {
+      "type": "string",
+      "description": "Git HEAD (revision) the snapshot was captured at, for provenance. May be 'unknown' outside a git checkout."
+    },
+    "results": {
+      "type": "array",
+      "description": "One compact result per (task_id, participant_id) in the source scoreboard.",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "participant_id", "status"],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Task identifier."
+          },
+          "participant_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Participant (agent) identifier. Anonymized by the report tool's --blind mode, never stored anonymized here."
+          },
+          "total_score": {
+            "type": ["number", "null"],
+            "description": "Total score from the judge record, or null when scoring is pending or the entry was rejected."
+          },
+          "verdict": {
+            "type": ["string", "null"],
+            "enum": ["pass", "conditional_pass", "fail", "disqualification", null],
+            "description": "Judge verdict, or null when pending."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "partial", "blocked", "failed", "disqualified", "quarantined"],
+            "description": "Participant-reported status from the scoreboard entry, plus 'quarantined' for live-runner rejections."
+          },
+          "dimensions": {
+            "type": "object",
+            "description": "The six rubric dimension scores captured at this round. Each present dimension carries its score and max; absent (pending) dimensions are omitted.",
+            "properties": {
+              "correctness": { "$ref": "#/$defs/dimension" },
+              "evidence_quality": { "$ref": "#/$defs/dimension" },
+              "safety": { "$ref": "#/$defs/dimension" },
+              "execution": { "$ref": "#/$defs/dimension" },
+              "communication": { "$ref": "#/$defs/dimension" },
+              "durability": { "$ref": "#/$defs/dimension" }
+            },
+            "additionalProperties": false
+          },
+          "failure_code": {
+            "type": ["string", "null"],
+            "description": "Failure-taxonomy code (scripts/lib/failure-taxonomy.js) when this (task,participant) was rejected (quarantined/disqualified). Null otherwise."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "dimension": {
+      "type": "object",
+      "required": ["score", "max"],
+      "properties": {
+        "score": { "type": "number" },
+        "max": { "type": "number" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
