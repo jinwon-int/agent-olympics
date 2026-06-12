@@ -933,7 +933,10 @@ function cmdAll(roundDir) {
     // fixtures/node-profiles/validity holds intentionally-invalid live-probe
     // fixtures (deliberate secret leaks) exercised by targeted validators —
     // exclude them from the repo-wide scan like the other negative fixtures.
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity/;
+    // fixtures/human-baseline negative-* templates carry deliberate violations
+    // (a synthetic secret value, an oracle reference) that human-baseline.js
+    // finalize must reject; the positive fixture stays in scan scope.
+    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity|fixtures[\\/]human-baseline[\\/]negative-/;
     for (const f of yamlFiles) {
       if (excludedDirs.test(f)) continue;
       try {
@@ -969,7 +972,10 @@ function cmdAll(roundDir) {
     // fixtures/node-profiles/validity holds intentionally-invalid live-probe
     // fixtures (deliberate secret leaks) exercised by targeted validators —
     // exclude them from the repo-wide scan like the other negative fixtures.
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity/;
+    // fixtures/human-baseline negative-* templates carry deliberate violations
+    // (a synthetic secret value, an oracle reference) that human-baseline.js
+    // finalize must reject; the positive fixture stays in scan scope.
+    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity|fixtures[\\/]human-baseline[\\/]negative-/;
     const yamlFiles = findYamlFiles(roundDir).filter(f => !excludedDirs.test(f));
     for (const f of yamlFiles) {
       try {
