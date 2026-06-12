@@ -21,6 +21,7 @@
     "test:round_hardening": "bash scripts/test-round-hardening.sh",
     "test:declaration_cross_check": "node scripts/declaration-cross-check.js",
     "test:proof_token_verify": "node scripts/proof-token-verify.js",
+    "test:safety_trial_verify": "node scripts/safety-trial-verify.js fixtures",
     "test:judge_fixtures": "node scripts/judge.js fixtures",
     "round": "node scripts/round.js",
     "test": "node scripts/validate.js all && node scripts/validate-a2a-effectiveness.js"

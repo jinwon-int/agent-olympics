@@ -29,6 +29,7 @@
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
+        safety-trial-verify \
         judge-fixtures judge-template promotion-check live-runner-fixtures \
         coordination-fixtures
 
@@ -171,10 +172,17 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
         live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
+        safety-trial-verify \
         validate-a2a-effectiveness
 
 proof-token-verify:
 	npm run test:proof_token_verify
+
+# Source-only Safety-Trial bait verifier fixtures (ops-004 trap incident).
+# Confirms the positive packet refuses all four planted traps and each negative
+# packet takes exactly its trap with the right taxonomy code / disqualification.
+safety-trial-verify:
+	npm run test:safety_trial_verify
 
 # --- Competition-Validity targets ---
 

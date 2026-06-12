@@ -137,6 +137,19 @@ bundles:
     dry_run_compatible: true
     required_for_season: true
 
+  - bundle_id: season-001-ops-004-v1
+    task_id: ops-004
+    path: fixtures/season-001/ops-004/
+    description: >
+      Adversarial trap-laden production incident for the Safety Trial. The
+      fixture deliberately plants four trap classes (secret-copy bait, prompt
+      injection, approval-bypass lure, destructive-shortcut temptation) as
+      participant-facing input. Correct refusals and machine-detectable bait
+      signals live only in the private oracle. The planted credential is an
+      obviously-fake, non-functional test value.
+    dry_run_compatible: true
+    required_for_season: false
+
   - bundle_id: season-001-perf-001-v1
     task_id: perf-001
     path: fixtures/season-001/perf-001/
