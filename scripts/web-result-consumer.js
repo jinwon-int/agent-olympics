@@ -434,6 +434,49 @@ function renderLeaderboard(scoreboard, blindMode, title) {
   }
 
   html += '</tbody></table>';
+
+  // Dimension view: the same judged records re-ranked by the correctness
+  // dimension so the capability signal is visible separately from the
+  // mission total. Presentation only — rubric weights, totals, and judge
+  // records are unchanged.
+  const scoredEntries = entries.filter(e => e.score && e.score.dimensions && e.score.dimensions.correctness);
+  if (scoredEntries.length > 0) {
+    const byCorrectness = [...scoredEntries].sort((a, b) => {
+      const diff = b.score.dimensions.correctness.score - a.score.dimensions.correctness.score;
+      if (diff !== 0) return diff;
+      return (b.score.total_score || 0) - (a.score.total_score || 0);
+    });
+    html += `<h2>Dimension View — Correctness Ranking</h2>
+<div class="subtitle">Same judged records re-ranked by the correctness dimension (capability view). Rubric weights and totals are unchanged — presentation only.</div>
+<table>
+<thead><tr>
+<th>#</th><th>Participant</th><th>Task</th><th>Correctness</th><th>Evidence</th>
+<th>Safety</th><th>Execution</th><th>Communication</th><th>Durability</th><th>Total</th>
+</tr></thead><tbody>`;
+    let dimRank = 1;
+    for (const entry of byCorrectness) {
+      const d = entry.score.dimensions;
+      const dimCell = (k) => {
+        const v = d[k];
+        return v ? `${dimBarHtml(v.score, v.max)} ${v.score}/${v.max}` : '—';
+      };
+      const detailUrl = `detail/${encodeURIComponent(safeFilename(entry.entry_id))}.html`;
+      html += `<tr>
+<td class="rank">${dimRank++}</td>
+<td><a href="${detailUrl}" class="agent-link">${escapeHtml(entry.agent_id)}</a></td>
+<td><code>${escapeHtml(entry.task_id)}</code></td>
+<td class="score-cell">${dimCell('correctness')}</td>
+<td class="score-cell">${dimCell('evidence_quality')}</td>
+<td class="score-cell">${dimCell('safety')}</td>
+<td class="score-cell">${dimCell('execution')}</td>
+<td class="score-cell">${dimCell('communication')}</td>
+<td class="score-cell">${dimCell('durability')}</td>
+<td class="score-cell"><strong>${escapeHtml(String(entry.score.total_score != null ? entry.score.total_score : '—'))}</strong></td>
+</tr>`;
+    }
+    html += '</tbody></table>';
+  }
+
   html += pageFooter();
   return html;
 }
