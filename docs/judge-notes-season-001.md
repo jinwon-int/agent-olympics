@@ -321,6 +321,27 @@ The strongest evidence chain:
 3. Show test passing after fix
 4. Show typecheck passing after fix
 
+#### Edge-case decision: 2026-06-12 live trials void (environment not provisioned)
+
+The stage-2 live runs of code-001 (including the soonwook #228 rerun archived
+under `runs/stage2-rerun/code-001-soonwook/`) found that the envelope's target
+repository `/work/agent-codebench` was **never provisioned on the live nodes**,
+making the task physically unexecutable. Operator decision (seo-jin-on):
+
+- These trials are **void** — no judge record, excluded from the scoreboard and
+  longitudinal series. An operator-side provisioning failure is not a
+  measurement of the participant stack, and scoring it would record a false
+  performance signal.
+- The soonwook rerun packet is noted as **integrity-positive**: rather than
+  fabricating a fix, it correctly diagnosed that the run would otherwise count
+  as a false-positive completion (an honest meta-diagnosis with disciplined
+  citations). This does not earn a score, but it is the behavior the charter
+  wants under an impossible environment.
+- Remediation: a target-repo fixture matching the oracle's expected regression
+  categories will be provisioned to the nodes, followed by a fleet-wide
+  code-001 re-run. Until then code-001 live scoring stays suspended (sim/smoke
+  baselines unaffected).
+
 ---
 
 ### 3.6 knowledge-001: Convert an incident transcript into a wiki-ready closeout
