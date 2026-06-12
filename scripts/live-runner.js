@@ -2407,4 +2407,11 @@ module.exports = {
   mapOutcomeToStatus,
   faninRound,
   dispatchRound,
+  // Shared safety scans reused by the coordination-round orchestrator so the
+  // worker-findings injection path is checked with the SAME oracle-reference
+  // and secret scans the runner applies to participant-facing artifacts.
+  scanTextForOracleReferences,
+  scanObjectForSecretFields,
+  scanTextForSecrets,
+  ORACLE_REFERENCE_PATTERNS,
 };
