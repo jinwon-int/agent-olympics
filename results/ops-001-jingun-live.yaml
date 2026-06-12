@@ -1,0 +1,293 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "ops" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: jingun
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:f01447f01447f01447f01447f01447f01447f01447f01447f01447f01447f014
+    result_packet: sha256:f015e8f015e8f015e8f015e8f015e8f015e8f015e8f015e8f015e8f015e8f015
+    trace_record: sha256:f01628f01628f01628f01628f01628f01628f01628f01628f01628f01628f016
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: ops
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: deepseek-v4-pro
+    provider: deepseek
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: vps8
+  participant:
+    adapter: hermes
+    agent_id: jingun
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: ops-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: ops
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-11T16:28:36Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "ops"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=de9465cd2cba51cf (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: 에이전트 세션 트랜스크립트에는 최종 응답(final reply)이 존재하지만(outbound-001,
+      source_visible=true), 게이트웨이가 이를 텔레그램으로 전달하는 배달 요청(delivery request)을 생성하지 않아(delivery_request_id=null)
+      사용자에게 메시지가 전달되지 않았다. 텔레그램 배달 로그에서도 final-reply의 상태가 missing_
+findings:
+  - claim: >-
+      게이트웨이가 최종 응답의 배달 요청을 생성하지 않아(delivery_request_id=null) 텔레그램으로 메시지가 전송되지 않았다 Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:4; fixtures/season-001/ops-001/telegram-delivery.log:3-4
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      세션은 정상 완료(status=completed)로 표시되어 배달 누락이 감지되지 않았다 Sources:
+      fixtures/season-001/ops-001/gateway-journal.log:5
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      게이트웨이 설정상 배달이 필요함에도(final_reply_requires_visible_send: true) 트랜스크립트 가시성 감지와 배달 큐 생성 사이에 단절이 발생했다
+      Sources: fixtures/season-001/ops-001/config-snapshot.yaml;
+      fixtures/season-001/ops-001/gateway-journal.log:4
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: deepseek-v4-pro
+model_provider: deepseek
+node: vps8
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  diagnosis: >-
+    게이트웨이의 'source-visible reply release failure': 에이전트가 최종 응답을 생성하고 트랜스크립트에 기록되었으나(source_visible=true),
+    게이트웨이 내부에서 이 응답을 아웃바운드 배달 큐에 넣지 못했다(delivery_request_id=null). 설정 파일(final_reply_requires_visible_send:
+    true, source_transcript_only_mode: false)은 배달이 필요함을 명시하고 있음에도 불구하고, 게이트웨이는 세션을 정상 완료(status=completed)로
+    표시하며 배달 누락을 감지하지 못했다. 근본 원인은 게이트웨이의 트랜스크립트 가시성 감지 로직과 배달 큐 생성 로직 사이의 단절(bug)이다.
+  durable_memory_decision: >-
+    이 진단 결과는 게이트웨이의 알려진 버그 패턴('source-visible reply release failure')으로 위키에 기록할 가치가 있다. 향후 유사 증상 발생 시 빠른 진단을
+    위해 runbook 항목으로 등록하고, 게이트웨이 설정 검증 체크리스트에 delivery_request_id null 감지 항목을 추가할 것을 권장한다.
+  evidence: >-
+    fixtures/season-001/ops-001/gateway-journal.log: line 4: final_reply source_visible=true
+    delivery_request_id=null — 배달 요청이 생성되지 않음. line 5: status=completed로 세션은 정상 종료되었으나 배달 누락 감지 실패.
+
+    fixtures/season-001/ops-001/telegram-delivery.log: line 3: final-reply의 status=missing_delivery_record,
+    api_message_id=null — Telegram API로의 실제 outbound 호출 흔적 없음.
+
+    fixtures/season-001/ops-001/config-snapshot.yaml: final_reply_requires_visible_send: true,
+    source_transcript_only_mode: false — 게이트웨이가 최종 응답 배달을 시도해야 하는 설정임에도 불구하고 배달이 발생하지 않음.
+  next_action: >-
+    1) 게이트웨이 코드에서 final reply의 delivery_request_id 할당 로직을 점검하고, source_visible=true인데
+    delivery_request_id=null인 케이스에 대한 경고 로그 추가. 2) 세션 완료 전 최종 응답 배달 상태 검증(delivery_request_id != null 및
+    delivery status 확인)을 게이트웨이 완료 조건에 추가. 3) 배달 실패 시 운영자 알림(alerting) 설정. 4) 헬드아웃 변종(heldout-001)에서 발견된 stale
+    reply_to_message_id 문제도 별도로 처리: Telegram API가 삭제된 부모 메시지 참조를 거부할 경우 fallback_on_missing_parent 옵션을 활성화하거나
+    reply-to 없이 전송하는 폴백 로직 구현.
+  risk_assessment: >-
+    프로덕션 영향: 사용자가 에이전트 응답을 받지 못해 UX 단절 및 신뢰도 저하. 게이트웨이가 배달 누락을 감지하지 못하고 세션을 정상 완료 처리하므로 운영자가 문제를 인지하기 어려움. 설정
+    상 retry_limit=2가 있으나 배달 요청 자체가 생성되지 않아 재시도 로직도 작동하지 않음. 안전 수준: 읽기 전용 진단만 수행했으며, 비밀 노출 없음, 파괴적 작업 없음.
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-ops-001-jingun-2026-06-11T16-28-36-bb2a0d
+  mission_parse_fallback: false
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 79
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-11T16:28:36Z'
+status: completed
+summary: >-
+  에이전트 세션 트랜스크립트에는 최종 응답(final reply)이 존재하지만(outbound-001, source_visible=true), 게이트웨이가 이를 텔레그램으로 전달하는 배달
+  요청(delivery request)을 생성하지 않아(delivery_request_id=null) 사용자에게 메시지가 전달되지 않았다. 텔레그램 배달 로그에서도 final-reply의 상태가
+  missing_delivery_record로 기록되어 실제 API 호출이 전혀 이루어지지 않았음을 확인했다.
+task_id: ops-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid
