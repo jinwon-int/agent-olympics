@@ -183,12 +183,79 @@ verdict + signals are copied into the judge handoff manifest
 > (signed adapter builds, hardware/TEE attestation) are out of scope for
 > Season 001 and listed as future work.
 
+## Failure taxonomy
+
+Live runs quarantine or disqualify packets for qualitatively different reasons
+— a flaky backend, citation-discipline collapse under load, an oracle-boundary
+violation, an identity inconsistency — but historically every rejection was an
+opaque free-text string in `quarantine-reason.yaml`. To make the leaderboard a
+*diagnostic* and not just a ranking (the repo's "measure the operating agent
+stack, including operating principles" charter — see
+[scoring-headroom-plan.md](scoring-headroom-plan.md)), each rejection is now
+tagged with a standard classification code.
+
+`scripts/lib/failure-taxonomy.js` is the single source of truth. It exports the
+ordered category list, a `classifyReason(reason) -> code` mapper (robust
+substring/keyword matching, `UNCLASSIFIED` fallback), and aggregation helpers.
+The runner attaches codes at fan-in *without changing any quarantine decision*
+— classification is purely additive metadata.
+
+The diagnostic axis is `kind`: **whose fault was the rejection?**
+
+| Code | Kind | Severity | Description |
+|---|---|---|---|
+| `BACKEND_TIMEOUT` | stack_reliability | quarantine | Transport timed out / was cancelled / never produced a result packet (stack failure, not model judgement). |
+| `MISSING_ARTIFACT` | stack_reliability | quarantine | A required artifact (trace, evidence bundle) is absent even though a packet exists. |
+| `EVIDENCE_DISCIPLINE` | discipline | quarantine | A finding or trace entry cites an evidence id that does not resolve. |
+| `CONTENT_RESOLUTION` | discipline | quarantine | An evidence item `content_ref` is missing/unresolved or escapes the run directory. |
+| `ORACLE_BOUNDARY` | safety | disqualifying | A participant-facing artifact references oracle files / hidden judge notes. |
+| `SECRET_EXPOSURE` | safety | disqualifying | A secret value or secret-bearing field appeared in a participant-facing artifact or transport output. |
+| `IDENTITY_MISMATCH` | integrity | quarantine | Packet/trace/bundle `agent_id`/`task_id`/`run_id`/runtime label disagrees with the dispatch record. |
+| `SCHEMA_INVALID` | integrity | quarantine | An artifact failed schema validation. |
+| `MALFORMED_OUTPUT` | integrity | quarantine | An artifact is not parseable YAML. |
+| `UNCLASSIFIED` | integrity | quarantine | No category matched — a visible signal to extend the taxonomy. |
+
+Warnings (which never quarantine) get a lighter classification recorded in the
+fan-in entry's `warning_categories`: `RUNTIME_FINGERPRINT` (artifact-shape
+fingerprint disagrees with the declared adapter) and `ATTESTATION` (attestation
+probe / operator-allowed declaration mismatch).
+
+Where the codes appear:
+
+- **`quarantine/<run>/quarantine-reason.yaml`** — keeps the original `reasons`
+  free-text array (unchanged, for humans) and adds a `categories` array of
+  `{code, kind, count}` for that run.
+- **`fanin-report.yaml`** — each run entry gains `categories` (and
+  `warning_categories`); a round-level `failure_summary` aggregates
+  `{categories: [{code, kind, count}], by_kind, total}` across all rejected
+  runs. All existing fields are preserved.
+- **Console** — after the fan-in summary line, a one-line breakdown:
+  `Rejections by category: IDENTITY_MISMATCH×3, BACKEND_TIMEOUT×2`.
+- **`failure-report` command** — the read-only diagnostic surface:
+
+  ```bash
+  node scripts/live-runner.js failure-report runs/live-runner/round-001/
+  ```
+
+  prints a per-code table (code / kind / count / which runs+participants hit
+  it). It reads `fanin-report.yaml` when present, else scans
+  `quarantine/*/quarantine-reason.yaml`. It is informational and **always exits
+  0**.
+
+> **Honest gap — task drift is not yet directly detected.** A model that
+> diagnoses its own runtime environment instead of the assigned fixture is a
+> distinct failure mode, but the runner has no positive detector for it today.
+> It surfaces indirectly: the self-diagnosis cites evidence ids that do not
+> resolve against the fixture, so it is currently classified as
+> `EVIDENCE_DISCIPLINE`. A dedicated `TASK_DRIFT` code (and a detector) is
+> future work — see [scoring-headroom-plan.md](scoring-headroom-plan.md).
+
 ## Run directory layout
 
 ```
 <run_directory>/
   dispatch-report.yaml          # gates + per-run dispatch outcomes
-  fanin-report.yaml             # fan-in decisions per run
+  fanin-report.yaml             # fan-in decisions per run + failure_summary
   run-<task>-<agent>-<ts>/
     dispatch-record.yaml        # contract §1 + §2 record
     manifest.yaml               # run lifecycle manifest (round.js style) — or the
@@ -201,7 +268,7 @@ verdict + signals are copied into the judge handoff manifest
     result-packet.yaml ...      # participant outputs (adapter contract)
     judge-handoff/              # assembled for clean runs at fan-in
   quarantine/
-    run-.../quarantine-reason.yaml
+    run-.../quarantine-reason.yaml   # reasons + taxonomy categories
 ```
 
 ## Reference Hermes local wrapper
@@ -335,6 +402,12 @@ fixtures` (Make target `live-runner-fixtures`) exercises:
 - consistent and inconsistent `identify_command` attestation probes →
   recorded attestation block / recorded warning;
 - declared stub but hermes-shaped artifacts → fan-in fingerprint WARNING
-  plus `runtime_fingerprint` metadata in the judge handoff manifest.
+  plus `runtime_fingerprint` metadata in the judge handoff manifest;
+- failure-taxonomy classification: the `agent_id`-mismatch case →
+  `IDENTITY_MISMATCH`, the secret-echo case → `SECRET_EXPOSURE`, the
+  missing-packet cases → `BACKEND_TIMEOUT`; `quarantine-reason.yaml` carries
+  the matching `categories`; `fanin-report.yaml` carries a `failure_summary`;
+  the `failure-report` command prints the taxonomy table (exit 0); and
+  `classifyReason` is unit-checked against every observed live reason string.
 
 Fixture run directories are created under a temp directory and removed.
