@@ -193,6 +193,27 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
   rp.outputs.risk_assessment = String(mission.risk_assessment || `No additional risk assessment returned by ${labels.runtime_display}.`);
   rp.outputs.next_action = String(mission.next_action || 'Review the captured mission evidence and apply the proposed fix.');
   rp.outputs.durable_memory_decision = String(mission.durable_memory_decision || 'No durable memory update recommended.');
+  // Envelope-declared required outputs: the mission prompt asks the model to
+  // fill outputs.<key> for every envelope required_output, and we copy
+  // EXACTLY those declared keys (never arbitrary model keys) into the packet,
+  // redacted, so family-specific outputs (changed_files, test_results,
+  // confirmed_facts, ...) carry real mission content instead of the adapter
+  // skeleton's placeholder text. Legacy missions without an outputs object
+  // are unaffected.
+  const requiredOutputKeys = Array.isArray(envelope.required_outputs) ? envelope.required_outputs : [];
+  const missionOutputs = mission.outputs && typeof mission.outputs === 'object' && !Array.isArray(mission.outputs)
+    ? mission.outputs
+    : {};
+  for (const key of requiredOutputKeys) {
+    const value = missionOutputs[key];
+    if (value === undefined || value === null) continue;
+    const rawValue = typeof value === 'string' ? value : JSON.stringify(value);
+    const { text: redactedValue, appliedRuleIds: outputRuleIds } = redactSecrets(rawValue);
+    for (const id of outputRuleIds) {
+      if (!redactionRuleIds.includes(id)) redactionRuleIds.push(id);
+    }
+    rp.outputs[key] = redactedValue;
+  }
 
   const findings = Array.isArray(mission.findings) && mission.findings.length
     ? mission.findings
