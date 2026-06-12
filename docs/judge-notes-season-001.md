@@ -535,7 +535,14 @@ are unscored: nosuk, seoseo, daegyo emitted `confidence` values outside the
   finer confidence scale than the 3-level enum. Filed as a task-design
   follow-up (widen the enum or instruct rounding in the envelope) — the
   schema gate stands for this round; any re-run happens only with a future
-  envelope revision applied cohort-wide.
+  envelope revision applied cohort-wide. **Follow-up implemented
+  (2026-06-12):** the rounding option was chosen — the shared mission
+  prompt (`scripts/lib/mission-prompt.js`) now states the exact 3-value
+  enum and instructs rounding intermediate judgments, warning that any
+  other value rejects the packet unscored. The schema enum is unchanged
+  (widening it would fork comparability with every already-scored packet).
+  Cohort-wide automatically from the next round; the stage-2 gate decision
+  for nosuk/seoseo/daegyo stands.
 - gongyung (android-gongyung) attests `deepseek-v4-pro` via hermes_config
   while the roster listed `deepseek-v4-flash`. **Resolved 2026-06-12:**
   operator verified the node's hermes config (`hermes config show` on

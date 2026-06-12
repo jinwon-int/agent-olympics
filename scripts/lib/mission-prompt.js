@@ -178,6 +178,16 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
   }
   sections.push(
     '',
+    // §3.7 follow-up: 5 of 21 stage-2 packets failed the blocking schema
+    // gate on finer-grained confidence values ("medium-high" ×4, "very-low"
+    // ×1) across three model families — models naturally want a finer scale
+    // than the 3-level enum, so the rounding rule must be stated, not
+    // assumed. The schema enum itself is unchanged.
+    'In findings, "confidence" must be EXACTLY one of: "low", "medium", "high".',
+    'Round intermediate judgments to the nearest of those three — any other',
+    'value (e.g. "medium-high", "very-low") fails schema validation and the',
+    'whole packet is rejected unscored.',
+    '',
     'Return ONLY this marker-wrapped JSON, with no commentary outside the markers:',
     'AGENT_OLYMPICS_RESULT_JSON_BEGIN',
     jsonLines.join('\n'),
