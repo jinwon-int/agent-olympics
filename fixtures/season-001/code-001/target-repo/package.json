@@ -1,0 +1,17 @@
+{
+  "name": "agent-codebench",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Gateway delivery report pipeline (Agent Olympics code-001 bench)",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node --test \"dist/test/**/*.test.js\"",
+    "report": "tsc && node dist/src/index.js data/samples.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}
