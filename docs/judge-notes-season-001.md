@@ -494,10 +494,14 @@ are unscored: nosuk, seoseo, daegyo emitted `confidence` values outside the
   schema gate stands for this round; any re-run happens only with a future
   envelope revision applied cohort-wide.
 - gongyung (android-gongyung) attests `deepseek-v4-pro` via hermes_config
-  while the roster lists `deepseek-v4-flash`. The 87 score is
-  model-independent and stands; the attribution is held pending operator
-  verification of the node's hermes config, then the roster or the judge
-  record note gets corrected.
+  while the roster listed `deepseek-v4-flash`. **Resolved 2026-06-12:**
+  operator verified the node's hermes config (`hermes config show` on
+  android-gongyung) — default model is `deepseek-v4-pro`, matching the
+  attestation; the roster entry was stale and has been corrected in
+  `rounds/season-001-round-001.yaml`. The 87 score was model-independent
+  and stands; attribution is `deepseek-v4-pro`. (One footnote: the node's
+  delegation config has empty `model`/`provider` fields and inherits the
+  default, so the attested model and the executing model are the same.)
 
 ---
 

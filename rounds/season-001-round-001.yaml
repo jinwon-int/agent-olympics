@@ -152,7 +152,10 @@ participants:
     label: gongyung (Hermes A2A)
     enabled: true
     node: android-gongyung
-    model: deepseek-v4-flash
+    # Corrected 2026-06-12: node hermes config shows default model deepseek-v4-pro
+    # (operator-verified via `hermes config show` on android-gongyung); the
+    # previous deepseek-v4-flash entry was stale.
+    model: deepseek-v4-pro
     model_provider: deepseek
   - agent_id: daegyo
     runtime: hermes
