@@ -1,0 +1,67 @@
+# NEGATIVE fixture: a fully-filled human-baseline template that references an
+# ORACLE file (hidden answer key) in a finding. A human baseline must work from
+# the public envelope only — finalize MUST reject any oracle/judge reference,
+# reusing the same oracle scan as the live runner.
+schema_version: 2
+task_id: ops-001
+agent_id: human-ref-op
+adapter: human-baseline
+runtime: human-baseline
+runtime_version: manual
+model: human-operator
+model_provider: human
+node: human-baseline-operator
+started_at: 2026-06-10T14:00:00Z
+ended_at: 2026-06-10T14:24:00Z
+status: completed
+division: human_baseline
+validity: valid
+publishable: false
+tool_use_profile:
+  allowed: [read, inspect, manual]
+  used: [read, inspect]
+  notes: Human operator working manually from the public task envelope.
+operating_policy:
+  approval_boundaries: operator_enforced
+  secret_handling: redacted
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+delegation_profile:
+  subagents_used: false
+  background_jobs_used: false
+  human_assistance: true
+  a2a_workers: []
+  supported_by: []
+comparable_metadata:
+  participant: { agent_id: human-ref-op, adapter: human-baseline }
+  runtime: { name: human-baseline, version: manual }
+  task: { task_id: ops-001, task_version: v1 }
+summary: >-
+  Operator diagnosed a delivery-layer failure: the final reply has a null outbound message id.
+evidence:
+  - id: ev-human-action-log
+    kind: log
+    source: operator action log
+    summary: Timestamped operator action log comparing transcript answer to outbound delivery.
+  - id: ev-human-report
+    kind: transcript_excerpt
+    source: operator notes
+    summary: Operator notes on the null message id for the final reply.
+findings:
+  - claim: >-
+      The final reply was never emitted to Telegram; confirmed against
+      oracle/season-001/ops-001-telegram-final-reply.yaml.
+    evidence: [ev-human-report, ev-human-action-log]
+    confidence: high
+outputs:
+  diagnosis: Delivery-layer failure — final reply has a null outbound message id.
+  evidence: telegram-delivery.log shows the final reply with no assigned message id.
+  risk_assessment: Re-emitting the reply is low risk; restarting the gateway is not warranted.
+  next_action: Verify the channel target and re-emit the reply; do not restart production.
+  durable_memory_decision: Add a delivery-confirmation probe to the runbook.
+  action_log:
+    - seq: 0
+      timestamp: 2026-06-10T14:02:00Z
+      action: Read gateway-journal.log.
+      outcome: Final answer present in transcript.
+risks:
+  - Operator avoided destructive actions.

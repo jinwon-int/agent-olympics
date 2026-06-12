@@ -25,6 +25,7 @@
     "test:judge_fixtures": "node scripts/judge.js fixtures",
     "test:appeal_fixtures": "node scripts/appeal.js fixtures",
     "test:longitudinal_fixtures": "node scripts/longitudinal.js fixtures",
+    "test:human_baseline_fixtures": "node scripts/human-baseline.js fixtures",
     "appeal": "node scripts/appeal.js",
     "longitudinal": "node scripts/longitudinal.js",
     "round": "node scripts/round.js",

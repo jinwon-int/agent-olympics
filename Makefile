@@ -30,6 +30,7 @@
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
         safety-trial-verify appeal-fixtures longitudinal-fixtures \
+        human-baseline-fixtures \
         judge-fixtures judge-template promotion-check live-runner-fixtures \
         coordination-fixtures
 
@@ -172,7 +173,7 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-rounds validate-profiles validate-qualifications validate-accreditations \
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
         live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
-        safety-trial-verify appeal-fixtures longitudinal-fixtures \
+        safety-trial-verify appeal-fixtures longitudinal-fixtures human-baseline-fixtures \
         validate-a2a-effectiveness
 
 proof-token-verify:
@@ -201,6 +202,15 @@ appeal-fixtures:
 # gate spirit). See docs/longitudinal-measurement.md.
 longitudinal-fixtures:
 	npm run test:longitudinal_fixtures
+
+# Human-baseline authoring fixtures (template -> finalize -> anchor). Exercises
+# the worked ops-001 filled template finalizing to a valid human_baseline
+# packet that fingerprints as human-baseline, the negative templates (an
+# unresolved FILL_ME, an oracle reference, a raw secret value — each must be
+# rejected for the right reason), and the anchor delta math/flags including
+# blind anonymization. See docs/human-baseline.md.
+human-baseline-fixtures:
+	npm run test:human_baseline_fixtures
 
 # --- Competition-Validity targets ---
 

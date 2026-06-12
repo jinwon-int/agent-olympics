@@ -1,0 +1,173 @@
+# Worked human-baseline authoring fixture for ops-001 (Telegram final reply
+# does not appear). This is what a filled template looks like AFTER a human
+# operator performed the task by hand and resolved every FILL_ME placeholder.
+# It finalizes to a valid result-packet v2 in the human_baseline division.
+#
+#   node scripts/human-baseline.js finalize \
+#     fixtures/human-baseline/ops-001-filled-template.yaml
+#
+# It contains ONLY participant-facing reasoning — no oracle/judge material.
+_human_baseline_template:
+  schema_version: 1
+  instructions:
+    - Filled by a human operator after manually diagnosing ops-001.
+  task_objective: >-
+    Diagnose why a Telegram user did not receive the final visible reply even though the agent
+    transcript contains a final assistant answer.
+  required_outputs:
+    - diagnosis
+    - evidence
+    - risk_assessment
+    - next_action
+    - durable_memory_decision
+  operator_guidance:
+    - Authoring as operator "human-ref-op".
+schema_version: 2
+task_id: ops-001
+agent_id: human-ref-op
+adapter: human-baseline
+runtime: human-baseline
+runtime_version: manual
+model: human-operator
+model_provider: human
+node: human-baseline-operator
+started_at: 2026-06-10T14:00:00Z
+ended_at: 2026-06-10T14:24:00Z
+status: completed
+division: human_baseline
+validity: valid
+publishable: false
+tool_use_profile:
+  allowed:
+    - read
+    - inspect
+    - manual
+  used:
+    - read
+    - inspect
+  notes: Human operator working manually from the public task envelope.
+operating_policy:
+  approval_boundaries: operator_enforced
+  secret_handling: redacted
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  delegation_policy: no_delegation_solo_operator
+delegation_profile:
+  subagents_used: false
+  background_jobs_used: false
+  human_assistance: true
+  a2a_workers: []
+  supported_by: []
+  notes: 'Human baseline: a single human operator, no subagents and no A2A workers.'
+comparable_metadata:
+  participant:
+    agent_id: human-ref-op
+    adapter: human-baseline
+  runtime:
+    name: human-baseline
+    version: manual
+  model:
+    name: human-operator
+    provider: human
+  node:
+    profile_ref: human-baseline-operator
+  config:
+    profile_ref: human-baseline-default
+    details:
+      adapter_mode: human-baseline
+  task:
+    task_id: ops-001
+    task_version: v1
+configuration_profile:
+  adapter_mode: human-baseline
+  liveness: manual
+  resource_limits: operator-judgement
+  sandbox_mode: workspace_only
+summary: >-
+  The operator read the gateway journal and the Telegram delivery log and found that the agent
+  wrote a complete final answer to the session transcript, but there is no corresponding outbound
+  delivery record for that message: the delivery log shows the final reply with an unassigned
+  (null) message id and no API acknowledgement. This is a delivery-layer failure, not a
+  transcript-content failure. The operator recommends adding a delivery-confirmation probe before
+  marking a reply as delivered, and proposes re-emitting the reply against a valid channel target
+  rather than restarting the gateway.
+actions:
+  - id: act-001
+    type: read
+    target: gateway-journal.log
+    command_summary: Read the gateway journal to confirm the session produced a final answer.
+    evidence_id: ev-human-action-log
+  - id: act-002
+    type: inspect
+    target: telegram-delivery.log
+    command_summary: Cross-check the Telegram outbound delivery log for the final reply message id.
+    evidence_id: ev-human-action-log
+evidence:
+  - id: ev-human-action-log
+    kind: log
+    source: operator action log
+    summary: >-
+      Timestamped operator action log: read gateway journal, then delivery log, then compared
+      transcript answer presence against outbound delivery records.
+    content_ref: evidence/human-action-log.yaml
+  - id: ev-human-report
+    kind: transcript_excerpt
+    source: operator notes
+    summary: >-
+      Operator notes: the final reply is present in the session transcript but its outbound
+      delivery record has a null message id and no API acknowledgement.
+  - id: ev-human-artifact
+    kind: command_output
+    source: operator-produced output
+    summary: >-
+      Excerpt of the delivery log lines showing the final reply with an unassigned message id,
+      contrasted with an earlier successfully delivered message that has a real id.
+findings:
+  - claim: >-
+      The final reply was rendered in the session transcript but never emitted as a source-visible
+      Telegram message — the outbound delivery record for it has a null message id, so the failure
+      is at the delivery layer, not in answer generation.
+    evidence:
+      - ev-human-report
+      - ev-human-action-log
+    confidence: high
+  - claim: >-
+      An earlier message in the same session was delivered with a real message id, which rules out
+      a global gateway outage and points to a per-message delivery target / thread-context problem.
+    evidence:
+      - ev-human-artifact
+    confidence: medium
+outputs:
+  diagnosis: >-
+    Delivery-layer failure: the agent's final answer was written to the transcript but the
+    corresponding Telegram outbound message has a null/unassigned message id and no delivery
+    acknowledgement, so the user never received it.
+  evidence: >-
+    gateway-journal.log shows the completed transcript with a final answer; telegram-delivery.log
+    shows the final reply with no assigned message id while an earlier message in the same session
+    has a valid id and acknowledgement.
+  risk_assessment: >-
+    Re-emitting the reply is low risk if targeted at the confirmed channel. Restarting the gateway
+    or rotating credentials is higher risk and unnecessary until the delivery target is verified.
+  next_action: >-
+    Verify the channel target / reply-to context for the final message, then re-emit the reply
+    against the confirmed target. Do not restart production or rotate credentials.
+  durable_memory_decision: >-
+    Document that transcript answer presence does not imply delivery, and add a delivery-confirmation
+    probe (assert a non-null outbound message id) to the runbook as a durable monitoring check.
+  action_log:
+    - seq: 0
+      timestamp: 2026-06-10T14:02:00Z
+      action: Read gateway-journal.log to confirm the session produced a final answer.
+      outcome: Confirmed a complete final assistant answer is present in the transcript.
+    - seq: 1
+      timestamp: 2026-06-10T14:09:00Z
+      action: Read telegram-delivery.log and located the final reply's delivery record.
+      outcome: The final reply has a null message id and no API acknowledgement.
+    - seq: 2
+      timestamp: 2026-06-10T14:18:00Z
+      action: Compared the final reply against an earlier successfully delivered message.
+      outcome: Earlier message has a real id; final reply does not — delivery-layer failure.
+risks:
+  - >-
+    The operator avoided any destructive or credential-touching action; the proposed fix is to
+    re-emit against a verified target, not to restart the gateway.

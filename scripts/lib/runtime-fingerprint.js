@@ -28,6 +28,15 @@
  *              SOLO delegation_profile (subagents_used false AND empty
  *              a2a_workers) — the distinguishing shape of a bare coding-agent
  *              CLI vs an orchestrator.
+ *   human-baseline — scripts/human-baseline.js artifacts: a MANUALLY authored
+ *              reference packet. Signals: division human_baseline, runtime /
+ *              adapter labels human-baseline, the manual evidence-kind mix
+ *              (screenshot / transcript_excerpt / file_diff / command_output /
+ *              log), ev-human-* evidence ids, the human action timeline
+ *              (operator_action_log / human action timeline in outputs/trace),
+ *              and a SOLO delegation_profile with human_assistance true (a human
+ *              operator, not a subagent). Distinguishes a human reference line
+ *              from an automated cli/openclaw run.
  *
  * A non-unknown verdict requires at least MIN_SIGNALS (2) distinct signals
  * for one runtime AND strictly more signals than any other candidate
@@ -71,6 +80,16 @@ const CLI_EVIDENCE_KINDS = new Set(['transcript_excerpt', 'file_diff']);
 const CLI_EVIDENCE_ID_PATTERN = /^ev-cli-/i;
 const CLI_MODES = new Set(['cli']);
 
+// human-baseline: a manually authored reference packet. The distinctive shape
+// is the human_baseline division/mode, the human-baseline runtime/adapter
+// labels, ev-human-* evidence ids, and a human action timeline. The manual
+// evidence-kind mix (screenshot / log / command_output) overlaps with other
+// runtimes, so it is NOT used as a human signal on its own; the verdict leans
+// on the division/mode, the labels, the ev-human-* ids, and the timeline.
+const HUMAN_BASELINE_EVIDENCE_ID_PATTERN = /^ev-human-/i;
+const HUMAN_BASELINE_MODES = new Set(['human-baseline', 'human_baseline', 'human']);
+const HUMAN_BASELINE_LABELS = /human[-_ ]?baseline|^human$/i;
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -102,7 +121,10 @@ function traceText(trace) {
  *             signals: string[] }}
  */
 function fingerprintRuntime(packet, trace) {
-  const signals = { hermes: new Set(), openclaw: new Set(), stub: new Set(), cli: new Set() };
+  const signals = {
+    hermes: new Set(), openclaw: new Set(), stub: new Set(), cli: new Set(),
+    'human-baseline': new Set(),
+  };
 
   const evidence = asArray(packet && packet.evidence);
   const evidenceKinds = new Set(evidence.map((e) => e && e.kind).filter(Boolean));
@@ -172,6 +194,38 @@ function fingerprintRuntime(packet, trace) {
   }
   if (/\bcli agent\b|coding-agent cli/i.test(traceBody)) {
     signals.cli.add('cli agent activity in trace entries');
+  }
+
+  // --- human-baseline ---
+  const hb = signals['human-baseline'];
+  if (packet && String(packet.division || '').toLowerCase() === 'human_baseline') {
+    hb.add('division "human_baseline"');
+  }
+  if (mode && HUMAN_BASELINE_MODES.has(String(mode).toLowerCase())) {
+    hb.add(`adapter mode "${mode}"`);
+  }
+  const hbLabels = [packet && packet.runtime, packet && packet.adapter].filter(Boolean).map(String);
+  if (hbLabels.some((l) => HUMAN_BASELINE_LABELS.test(l))) {
+    hb.add('human-baseline runtime/adapter label');
+  }
+  for (const id of evidenceIds) {
+    if (HUMAN_BASELINE_EVIDENCE_ID_PATTERN.test(id)) hb.add(`evidence id "${id}"`);
+  }
+  // A human operator is solo support, not a delegated subagent: the manual
+  // reference packet records human_assistance true with no subagents/A2A.
+  if (delegation && delegation.human_assistance === true
+      && delegation.subagents_used === false
+      && asArray(delegation.a2a_workers).length === 0) {
+    hb.add('solo human-assisted delegation_profile (operator, no subagents/A2A)');
+  }
+  // The human action timeline: outputs.action_log / operator_action_log, or a
+  // "human action" / "operator" marker in the trace entries.
+  const outputs = (packet && packet.outputs) || {};
+  if (outputs.action_log || outputs.operator_action_log || outputs.human_action_timeline) {
+    hb.add('human action timeline in outputs');
+  }
+  if (/\bhuman operator\b|operator action|human action timeline/i.test(traceBody)) {
+    hb.add('human operator activity in trace entries');
   }
 
   // --- verdict: ≥ MIN_SIGNALS distinct signals AND a strict maximum ---
