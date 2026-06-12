@@ -1,0 +1,81 @@
+name: Publish public leaderboard
+
+# Builds the blind (anonymized) leaderboard from the committed scoreboard and
+# publishes it to GitHub Pages. Blind mode is mandatory for the public surface:
+# participant identities, models, nodes, and hardware are withheld (see
+# docs/public-leaderboard.md). Publication is opt-in — it only runs once the
+# repository has Pages enabled (Settings -> Pages -> Source: GitHub Actions).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'results/**'
+      - 'scripts/web-result-consumer.js'
+      - 'scripts/score.js'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel an in-flight publish; let it finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build blind leaderboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate scoreboard from committed judge records
+        run: make score
+
+      - name: Build the blind leaderboard
+        run: node scripts/web-result-consumer.js results/scoreboard.json --blind --output-dir public-site
+
+      - name: Verify no participant identity leaked into the public site
+        run: |
+          # Fail the publish if any known participant id, node, or model label
+          # survived blind anonymization. This is a hard gate on the public
+          # surface — a leak here is a fairness failure, not a cosmetic one.
+          leak=$(grep -rEi 'sogyo|seoseo|nosuk|dungae|bangtong|yukson|soonwook|gwakga|jingun|gongyung|daegyo|vps[0-9]|deepseek-v4|gpt-5\.5|openai-codex' public-site || true)
+          if [ -n "$leak" ]; then
+            echo "Participant identity leaked into the public blind leaderboard:" >&2
+            echo "$leak" >&2
+            exit 1
+          fi
+          echo "Blind leaderboard is identity-clean."
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public-site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
