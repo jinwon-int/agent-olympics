@@ -1,0 +1,9 @@
+schema_version: 1
+generated_at: '2026-06-12T09:13:23.053Z'
+task_id: code-001
+durable_memory_decision: >-
+  Do not persist as general durable user memory: this is a task-specific Olympics harness incident, not a
+  stable user preference or reusable operational fact beyond this run. If maintaining project memory, record
+  it in the Agent Olympics run notes/issue tracker rather than personal memory.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true

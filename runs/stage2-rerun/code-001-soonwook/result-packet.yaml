@@ -1,0 +1,347 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "code" into 3-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 3 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: soonwook
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:7b34a67b34a67b34a67b34a67b34a67b34a67b34a67b34a67b34a67b34a67b34
+    result_packet: sha256:7b36477b36477b36477b36477b36477b36477b36477b36477b36477b36477b36
+    trace_record: sha256:7b36877b36877b36877b36877b36877b36877b36877b36877b36877b36877b36
+  config:
+    details:
+      adapter_mode: orchestrator
+      event_family: code
+      max_concurrent_workers: 3
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: gpt-5.5
+    provider: openai-codex
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: unknown
+  participant:
+    adapter: hermes
+    agent_id: soonwook
+  runtime:
+    name: hermes
+    version: 0.16.0
+  task:
+    task_id: code-001
+    task_version: v2
+configuration_profile:
+  adapter_mode: orchestrator
+  event_family: code
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 3
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - local-hermes-cli
+  background_jobs_used: false
+  human_assistance: false
+  notes: Mission executed by a single nested local Hermes CLI session invoked by the wrapper.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-06-12T09:09:45Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "code"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 3 steps for event family "code"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 3 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: >-
+      Hermes CLI invoked locally by wrapper; exit code 250; output_sha256=a79e9ff5af45db24 (redacted output);
+      model_source=hermes_config
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Nested Hermes CLI execution captured with exit code 250; parsed_json=true
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: >-
+      Actual Hermes CLI mission report: The code-001 TypeScript regression mission did not actually diagnose,
+      patch, or test a TypeScript repository; the recorded soonwook run is a completed schema-valid Hermes
+      adapter artifact set composed of generated/stub e
+findings:
+  - claim: >-
+      The soonwook code-001 run was marked completed without concrete TypeScript regression work. Sources:
+      runs/stage2-rerun/code-001-soonwook/result-packet.yaml:196-201;
+      runs/stage2-rerun/code-001-soonwook/evidence/worker-traces.yaml:11-21,40-49,67-77
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The declared target repository was unavailable in the local environment inspected for this mission.
+      Sources: tasks/season-001/code-001-typescript-regression-v2.yaml:27-35; local inspection:
+      search_files(/work/agent-codebench)
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The adapter code explains the false-positive artifacts by generating placeholder outputs and synthetic
+      traces. Sources: adapters/lib/adapter-common.js:292-297; adapters/hermes-adapter.js:1276-1293;
+      adapters/hermes-adapter.js:1356-1372
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Completed-status evidence requirements are not enforced hard enough for this path. Sources:
+      runs/stage2-rerun/code-001-soonwook/adapter.log:1-5; runs/stage2-rerun/code-001-soonwook/run.yaml:18-20;
+      adapters/lib/adapter-common.js:386-404
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: gpt-5.5
+model_provider: openai-codex
+node: unknown
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  bug_cause: '[hermes-adapter:orchestrator/code] Output for bug_cause. Status: completed. Commander report synthesized.'
+  changed_files: >-
+    [hermes-adapter:orchestrator/code] Output for changed_files. Status: completed. Commander report
+    synthesized.
+  fix_summary: >-
+    [hermes-adapter:orchestrator/code] Output for fix_summary. Status: completed. Commander report
+    synthesized.
+  residual_risk: >-
+    [hermes-adapter:orchestrator/code] Output for residual_risk. Status: completed. Commander report
+    synthesized.
+  test_results: >-
+    [hermes-adapter:orchestrator/code] Output for test_results. Status: completed. Commander report
+    synthesized.
+  workflow:
+    step_count: 3
+    worker_count: 1
+    worker_profiles:
+      - local-hermes-cli
+    workflow_id: wf-code-001-soonwook-2026-06-12T09-09-45-09dff4
+  mission_parse_fallback: false
+  diagnosis: >-
+    Root cause is a harness/adapter false-positive completion path: the Hermes adapter generated deterministic
+    placeholder outputs and synthetic worker evidence for event_family=code, then marked the run completed
+    because the requested exit code/status path succeeded. The participant-facing code repository declared by
+    the envelope (/work/agent-codebench) was not available locally, worker traces only show reads of
+    /var/log/sample.log, required outputs contain generic placeholder strings, and the adapter logs only a
+    non-fatal warning for missing required artifact_hash evidence.
+  evidence: >-
+    tasks/season-001/code-001-typescript-regression-v2.yaml:16-24: Public objective requires identifying a
+    TypeScript regression, reproducing it with a failing test, fixing it, and verifying the test suite.
+
+    tasks/season-001/code-001-typescript-regression-v2.yaml:27-35: Envelope declares the working code repo as
+    /work/agent-codebench and allows repo inspection, edits, targeted tests, and typecheck.
+
+    local inspection: search_files(/work/agent-codebench): The declared code repository path was not present:
+    Path not found: /work/agent-codebench.
+
+    runs/stage2-rerun/code-001-soonwook/result-packet.yaml:196-201: Required outputs changed_files,
+    test_results, bug_cause, fix_summary, and residual_risk are all generic
+    '[hermes-adapter:orchestrator/code] Output for ... Status: completed' placeholders, not concrete PR-ready
+    results.
+
+    runs/stage2-rerun/code-001-soonwook/evidence/worker-traces.yaml:11-21,40-49,67-77: All three workers
+    report the same synthetic read_file invocation against /var/log/sample.log with bytes_read=8192, not
+    TypeScript source/test inspection.
+
+    runs/stage2-rerun/code-001-soonwook/evidence/commander-report.yaml:3-17: Commander report contains generic
+    findings such as 'Task-level analysis complete' and 'Initial connectivity and configuration inspected',
+    plus 'All checks passed / No action required', which do not address the regression task.
+
+    runs/stage2-rerun/code-001-soonwook/adapter.log:1-5,16-23: Schema validation passed and status was
+    completed with exit code 0, but the log warned that required completed-status evidence kind artifact_hash
+    was missing.
+
+    adapters/lib/adapter-common.js:292-297: buildOutputs constructs placeholder text directly from
+    envelope.required_outputs rather than real task results.
+
+    adapters/hermes-adapter.js:1276-1293: generateWorkerTracesContent hard-codes worker traces to read
+    /var/log/sample.log and classify workers complete.
+
+    adapters/lib/adapter-common.js:386-404: checkRequiredEvidence explicitly treats missing required evidence
+    as warnings and returns the missing list, so validation can still pass.
+  risk_assessment: >-
+    Safety risk is low from this investigation because only public/participant-facing local files were
+    inspected read-only and oracle/judge/private answer-key files were not opened. Operational risk is high if
+    the run is scored as a real code fix: it can falsely count as completed without changed files, failing
+    tests, patches, typecheck output, or a mounted target repo.
+  next_action: >-
+    Rerun code-001 with /work/agent-codebench actually mounted and a real coding adapter/session that inspects
+    the TypeScript repo, edits files, runs targeted tests/typecheck, and emits concrete
+    changed_files/test_results; additionally make missing completed-status evidence and placeholder
+    required_outputs fatal for code missions.
+  durable_memory_decision: >-
+    Do not persist as general durable user memory: this is a task-specific Olympics harness incident, not a
+    stable user preference or reusable operational fact beyond this run. If maintaining project memory, record
+    it in the Agent Olympics run notes/issue tracker rather than personal memory.
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 6
+  retries: 0
+  tool_invocations_total: 9
+  wall_time_seconds: 214
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 3
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log
+    with resolution status)
+  - >-
+    Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully
+    applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 0.16.0
+schema_version: 2
+started_at: '2026-06-12T09:09:45Z'
+status: completed
+summary: >-
+  The code-001 TypeScript regression mission did not actually diagnose, patch, or test a TypeScript
+  repository; the recorded soonwook run is a completed schema-valid Hermes adapter artifact set composed of
+  generated/stub evidence, despite the public task requiring a real regression fix, focused tests, and
+  verification.
+task_id: code-001
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+    - message
+    - api_call
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+  notes: >-
+    Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided:
+    manual.
+  used:
+    - read
+    - write
+    - exec
+    - message
+    - web_search
+    - web_fetch
+    - delegate
+    - sessions_spawn
+validity: valid

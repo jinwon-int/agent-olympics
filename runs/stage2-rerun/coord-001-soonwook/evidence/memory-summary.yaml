@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-12T09:14:51.937Z'
+task_id: coord-001
+durable_memory_decision: >-
+  Do not persist durable memory: this is an isolated Agent Olympics fixture incident, not a stable user
+  preference, credential, infrastructure fact, or reusable operational rule.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true
