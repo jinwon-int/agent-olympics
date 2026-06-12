@@ -41,6 +41,7 @@
  *   node scripts/live-runner.js run      <round-manifest> --config <runner-config> [options]
  *   node scripts/live-runner.js dispatch <round-manifest> --config <runner-config> [options]
  *   node scripts/live-runner.js fanin    <round-runs-dir>
+ *   node scripts/live-runner.js failure-report <round-runs-dir>
  *   node scripts/live-runner.js fixtures
  *
  * Options:
@@ -72,6 +73,11 @@ const {
   looksLikeSecretValue,
 } = require('./lib/secret-patterns');
 const { fingerprintRuntime } = require('./lib/runtime-fingerprint');
+const {
+  FAILURE_CATEGORIES,
+  categorizeReasons,
+  categorizeWarnings,
+} = require('./lib/failure-taxonomy');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
@@ -1424,7 +1430,8 @@ function quarantineRun(run, runDirBaseAbs, reasons) {
     quarantined_at: isoNow(),
     original_path: path.relative(ROOT, run.dirAbs),
     run_status: run.dispatch.status,
-    reasons,
+    reasons,                            // unchanged free text, for humans
+    categories: categorizeReasons(reasons), // taxonomy classification (additive)
   });
   return path.relative(ROOT, dest);
 }
@@ -1531,6 +1538,31 @@ function buildJudgeHandoff(run, packet, warnings = [], fingerprint = null) {
   return { ok: true, handoffDir: path.relative(ROOT, handoffDir) };
 }
 
+/**
+ * Aggregate per-run category entries into a round-level failure summary:
+ * { categories: [{code, kind, count}], by_kind: {kind: count}, total }.
+ * `results` entries carry a `categories` array (from categorizeReasons).
+ */
+function aggregateFailureSummary(results) {
+  const counts = new Map(); // code -> { kind, count }
+  let total = 0;
+  for (const run of results) {
+    for (const cat of run.categories || []) {
+      if (!counts.has(cat.code)) counts.set(cat.code, { kind: cat.kind, count: 0 });
+      counts.get(cat.code).count += cat.count;
+      total += cat.count;
+    }
+  }
+  // Order by taxonomy declaration order for stable, readable output.
+  const order = new Map(FAILURE_CATEGORIES.map((c, i) => [c.code, i]));
+  const categories = [...counts.entries()]
+    .map(([code, v]) => ({ code, kind: v.kind, count: v.count }))
+    .sort((a, b) => (order.get(a.code) ?? 999) - (order.get(b.code) ?? 999));
+  const byKind = {};
+  for (const c of categories) byKind[c.kind] = (byKind[c.kind] || 0) + c.count;
+  return { total, categories, by_kind: byKind };
+}
+
 function faninRound(runDirBaseAbs, options = {}) {
   const runs = collectDispatchedRuns(runDirBaseAbs);
   if (runs.length === 0) {
@@ -1571,29 +1603,37 @@ function faninRound(runDirBaseAbs, options = {}) {
       ? { detected: fingerprint.detected, confidence: fingerprint.confidence, declared_adapter: run.dispatch.adapter }
       : null;
 
+    const warningCategories = categorizeWarnings(warnings);
+
     if (reasons.length > 0) {
       const dest = quarantineRun(run, runDirBaseAbs, reasons);
+      const categories = categorizeReasons(reasons);
       console.log(`  ✘ ${run.runId} → QUARANTINED (${dest})`);
       for (const r of reasons) console.log(`      - ${r}`);
-      results.push({ run_id: run.runId, decision: 'quarantined', status: run.dispatch.status, reasons, warnings, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
+      results.push({ run_id: run.runId, participant_id: run.dispatch.participant_id, decision: 'quarantined', status: run.dispatch.status, reasons, categories, warnings, warning_categories: warningCategories, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
       continue;
     }
 
     const handoff = buildJudgeHandoff(run, packet, warnings, fingerprint);
     if (!handoff.ok) {
-      const dest = quarantineRun(run, runDirBaseAbs, handoff.leaks.map((l) => `secret detected while assembling judge handoff: ${l}`));
+      const leakReasons = handoff.leaks.map((l) => `secret detected while assembling judge handoff: ${l}`);
+      const dest = quarantineRun(run, runDirBaseAbs, leakReasons);
+      const categories = categorizeReasons(leakReasons);
       console.log(`  ✘ ${run.runId} → QUARANTINED at handoff (${dest})`);
-      results.push({ run_id: run.runId, decision: 'quarantined', status: run.dispatch.status, reasons: handoff.leaks, warnings, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
+      results.push({ run_id: run.runId, participant_id: run.dispatch.participant_id, decision: 'quarantined', status: run.dispatch.status, reasons: leakReasons, categories, warnings, warning_categories: warningCategories, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
       continue;
     }
 
     console.log(`  ✓ ${run.runId} → clean (judge handoff: ${handoff.handoffDir})`);
     for (const w of warnings) console.log(`      ⚠ ${w}`);
-    results.push({ run_id: run.runId, decision: 'clean', status: run.dispatch.status, reasons: [], warnings, runtime_fingerprint: fingerprintSummary, handoff: handoff.handoffDir });
+    results.push({ run_id: run.runId, participant_id: run.dispatch.participant_id, decision: 'clean', status: run.dispatch.status, reasons: [], categories: [], warnings, warning_categories: warningCategories, runtime_fingerprint: fingerprintSummary, handoff: handoff.handoffDir });
   }
 
   const clean = results.filter((r) => r.decision === 'clean').length;
   const quarantined = results.filter((r) => r.decision === 'quarantined').length;
+
+  // Aggregate rejection categories across all quarantined runs in the round.
+  const failureSummary = aggregateFailureSummary(results);
 
   writeYamlFile(path.join(runDirBaseAbs, 'fanin-report.yaml'), {
     schema_version: 1,
@@ -1602,10 +1642,15 @@ function faninRound(runDirBaseAbs, options = {}) {
     run_directory: path.relative(ROOT, runDirBaseAbs),
     runs: results,
     summary: { total: results.length, clean, quarantined },
+    failure_summary: failureSummary,
   });
 
   console.log(`\n  Fan-in summary: ${clean} clean, ${quarantined} quarantined (fanin-report.yaml written)`);
-  return { runs: results, clean, quarantined };
+  if (failureSummary.categories.length > 0) {
+    const breakdown = failureSummary.categories.map((c) => `${c.code}×${c.count}`).join(', ');
+    console.log(`  Rejections by category: ${breakdown}`);
+  }
+  return { runs: results, clean, quarantined, failureSummary };
 }
 
 // ---------------------------------------------------------------------------
@@ -1619,15 +1664,20 @@ Agent Olympics Live Runner (Season 001, local_exec transport)
 Usage:
   node scripts/live-runner.js run      <round-manifest> --config <runner-config> [options]
   node scripts/live-runner.js dispatch <round-manifest> --config <runner-config> [options]
-  node scripts/live-runner.js fanin    <round-runs-dir>
+  node scripts/live-runner.js fanin          <round-runs-dir>
+  node scripts/live-runner.js failure-report <round-runs-dir>
   node scripts/live-runner.js fixtures
 
 Commands:
-  run        Full pipeline: gates → dispatch → artifact capture → fan-in → judge handoff
-  dispatch   Gates → dispatch → artifact capture only (no fan-in)
-  fanin      Fan-in + judge handoff over an existing round runs directory
-  fixtures   Run the fixture suite under fixtures/live-runner/ (non-zero exit on
-             unexpected outcomes)
+  run             Full pipeline: gates → dispatch → artifact capture → fan-in → judge handoff
+  dispatch        Gates → dispatch → artifact capture only (no fan-in)
+  fanin           Fan-in + judge handoff over an existing round runs directory
+  failure-report  Read-only diagnostic: tabulate quarantine/disqualification
+                  rejections by failure-taxonomy code (code/kind/count/runs).
+                  Reads fanin-report.yaml if present, else scans quarantine/.
+                  Always exits 0 (informational).
+  fixtures        Run the fixture suite under fixtures/live-runner/ (non-zero exit on
+                  unexpected outcomes)
 
 Options:
   --config <file>        Runner config YAML (see schemas/runner-config.schema.json)
@@ -1718,6 +1768,97 @@ function cmdFanin(options) {
   const abs = path.isAbsolute(runsDir) ? runsDir : repoPath(runsDir);
   if (!fs.existsSync(abs)) throw new RunnerError(`Runs directory not found: ${runsDir}`);
   faninRound(abs);
+}
+
+/**
+ * Build the diagnostic failure report for a round runs directory. Prefers an
+ * existing fanin-report.yaml (so it is a cheap read-only view of an already
+ * fanned-in round); otherwise scans quarantine/*​/quarantine-reason.yaml files
+ * directly. Returns { categories: [{code, kind, count, runs:[{run_id,
+ * participant_id}]}], total, sourced_from }.
+ */
+function buildFailureReport(runDirBaseAbs) {
+  // code -> { kind, count, runs: Set("run_id|participant_id") }
+  const byCode = new Map();
+  const bump = (code, kind, runId, participantId, count) => {
+    if (!byCode.has(code)) byCode.set(code, { kind, count: 0, runs: new Map() });
+    const e = byCode.get(code);
+    e.count += count;
+    const key = runId || '(unknown)';
+    if (!e.runs.has(key)) e.runs.set(key, { run_id: runId || null, participant_id: participantId || null });
+  };
+
+  let sourcedFrom = 'none';
+  const faninPath = path.join(runDirBaseAbs, 'fanin-report.yaml');
+  if (fs.existsSync(faninPath)) {
+    sourcedFrom = 'fanin-report.yaml';
+    const report = yaml.load(fs.readFileSync(faninPath, 'utf8')) || {};
+    for (const run of report.runs || []) {
+      for (const cat of run.categories || []) {
+        bump(cat.code, cat.kind, run.run_id, run.participant_id, cat.count || 1);
+      }
+    }
+  } else {
+    sourcedFrom = 'quarantine-reason.yaml scan';
+    const quarantineBase = path.join(runDirBaseAbs, 'quarantine');
+    if (fs.existsSync(quarantineBase)) {
+      for (const entry of fs.readdirSync(quarantineBase)) {
+        const reasonPath = path.join(quarantineBase, entry, 'quarantine-reason.yaml');
+        if (!fs.existsSync(reasonPath)) continue;
+        const doc = yaml.load(fs.readFileSync(reasonPath, 'utf8')) || {};
+        // Prefer recorded categories; fall back to classifying reasons live.
+        const cats = (doc.categories && doc.categories.length > 0)
+          ? doc.categories
+          : categorizeReasons(doc.reasons || []);
+        for (const cat of cats) bump(cat.code, cat.kind, doc.run_id || entry, null, cat.count || 1);
+      }
+    }
+  }
+
+  const order = new Map(FAILURE_CATEGORIES.map((c, i) => [c.code, i]));
+  const categories = [...byCode.entries()]
+    .map(([code, v]) => ({ code, kind: v.kind, count: v.count, runs: [...v.runs.values()] }))
+    .sort((a, b) => (order.get(a.code) ?? 999) - (order.get(b.code) ?? 999));
+  const total = categories.reduce((s, c) => s + c.count, 0);
+  return { categories, total, sourced_from: sourcedFrom };
+}
+
+/** Read-only diagnostic leaderboard surface. Always exits 0 (informational). */
+function cmdFailureReport(options) {
+  const runsDir = options.positional[0];
+  if (!runsDir) {
+    console.error('Usage: node scripts/live-runner.js failure-report <round-runs-dir>');
+    process.exitCode = EXIT_ERROR;
+    return;
+  }
+  // Read-only command: resolve relative to ROOT without the escape guard so
+  // it works on temp/out-of-tree run dirs too. Never fails the shell.
+  const abs = path.isAbsolute(runsDir) ? runsDir : path.resolve(ROOT, runsDir);
+  if (!fs.existsSync(abs)) {
+    console.error(`Runs directory not found: ${runsDir}`);
+    return; // informational command — do not fail the operator's shell
+  }
+
+  const report = buildFailureReport(abs);
+  console.log(`\n=== Failure taxonomy report: ${path.relative(ROOT, abs) || abs} ===`);
+  console.log(`(source: ${report.sourced_from})`);
+  if (report.categories.length === 0) {
+    console.log('  No rejections recorded — all runs clean (or no fan-in yet).');
+    return;
+  }
+
+  const titleByCode = new Map(FAILURE_CATEGORIES.map((c) => [c.code, c.title]));
+  const codeW = Math.max(4, ...report.categories.map((c) => c.code.length));
+  const kindW = Math.max(4, ...report.categories.map((c) => c.kind.length));
+  console.log(`  ${'CODE'.padEnd(codeW)}  ${'KIND'.padEnd(kindW)}  COUNT  RUNS`);
+  for (const c of report.categories) {
+    const runs = c.runs
+      .map((r) => (r.participant_id ? `${r.participant_id}(${r.run_id})` : r.run_id))
+      .join(', ');
+    console.log(`  ${c.code.padEnd(codeW)}  ${c.kind.padEnd(kindW)}  ${String(c.count).padStart(5)}  ${runs}`);
+    console.log(`  ${' '.repeat(codeW)}  ${titleByCode.get(c.code) || ''}`);
+  }
+  console.log(`\n  Total rejections: ${report.total} across ${report.categories.length} categor${report.categories.length === 1 ? 'y' : 'ies'}.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1951,11 +2092,30 @@ async function runFixtures() {
       if (imposterDecision) {
         const reasonFile = path.join(ROOT, imposterDecision.quarantine_path, 'quarantine-reason.yaml');
         report(fs.existsSync(reasonFile), 'quarantined run carries quarantine-reason.yaml in quarantine/');
+        // Taxonomy: agent_id mismatch → IDENTITY_MISMATCH (integrity).
+        const reasonDoc = yaml.load(fs.readFileSync(reasonFile, 'utf8'));
+        report(
+          Array.isArray(reasonDoc.categories)
+            && reasonDoc.categories.some((c) => c.code === 'IDENTITY_MISMATCH' && c.kind === 'integrity')
+            && Array.isArray(reasonDoc.reasons),
+          'quarantine-reason.yaml carries categories (IDENTITY_MISMATCH/integrity) alongside the human reasons',
+          reasonDoc.categories ? JSON.stringify(reasonDoc.categories) : 'no categories');
+        report(
+          (imposterDecision.categories || []).some((c) => c.code === 'IDENTITY_MISMATCH'),
+          'fan-in run entry carries the IDENTITY_MISMATCH category');
       }
 
       const secretDecision = findDecision('secret-echo');
       report(!!secretDecision && secretDecision.decision === 'quarantined',
         'fan-in quarantines the disqualified secret-exposure run');
+      if (secretDecision) {
+        const secretReasonDoc = yaml.load(fs.readFileSync(
+          path.join(ROOT, secretDecision.quarantine_path, 'quarantine-reason.yaml'), 'utf8'));
+        report(
+          (secretReasonDoc.categories || []).some((c) => c.code === 'SECRET_EXPOSURE' && c.kind === 'safety'),
+          'secret-echo quarantine-reason.yaml classified as SECRET_EXPOSURE/safety',
+          JSON.stringify(secretReasonDoc.categories));
+      }
 
       const partialDecision = findDecision('sleeper-partial');
       report(!!partialDecision && partialDecision.decision === 'clean' && !!partialDecision.handoff,
@@ -1970,6 +2130,64 @@ async function runFixtures() {
       report(!!blockedDecision && blockedDecision.decision === 'quarantined'
           && blockedDecision.reasons.some((r) => /missing result packet/.test(r)),
         'fan-in rejects the unreachable-transport run (no packet, explained)');
+      if (blockedDecision) {
+        report(
+          (blockedDecision.categories || []).some((c) => c.code === 'BACKEND_TIMEOUT' && c.kind === 'stack_reliability'),
+          'missing-packet (unreachable transport) classified as BACKEND_TIMEOUT/stack_reliability',
+          JSON.stringify(blockedDecision.categories));
+      }
+
+      // fanin-report.yaml carries the round-level failure_summary aggregation.
+      const faninDoc = yaml.load(fs.readFileSync(path.join(dispatch.runDirBaseAbs, 'fanin-report.yaml'), 'utf8'));
+      report(
+        faninDoc.failure_summary
+          && Array.isArray(faninDoc.failure_summary.categories)
+          && faninDoc.failure_summary.categories.length > 0
+          && faninDoc.failure_summary.categories.some((c) => c.code === 'IDENTITY_MISMATCH')
+          && faninDoc.failure_summary.categories.some((c) => c.code === 'BACKEND_TIMEOUT')
+          && faninDoc.failure_summary.total >= 3
+          && faninDoc.failure_summary.by_kind
+          && typeof faninDoc.failure_summary.by_kind.stack_reliability === 'number',
+        'fanin-report.yaml has a failure_summary aggregating categories + by_kind across rejected runs',
+        faninDoc.failure_summary ? JSON.stringify(faninDoc.failure_summary.categories) : 'no failure_summary');
+
+      // failure-report command (read-only diagnostic) over the same runs dir.
+      const failCp = spawnSync(
+        process.execPath,
+        [__filename, 'failure-report', dispatch.runDirBaseAbs],
+        { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 60000 }
+      );
+      const failOut = `${failCp.stdout || ''}${failCp.stderr || ''}`;
+      report(
+        failCp.status === 0
+          && /Failure taxonomy report/.test(failOut)
+          && /IDENTITY_MISMATCH/.test(failOut)
+          && /BACKEND_TIMEOUT/.test(failOut)
+          && /Total rejections:/.test(failOut),
+        'failure-report command exits 0 and prints a taxonomy table (IDENTITY_MISMATCH, BACKEND_TIMEOUT)',
+        `exit=${failCp.status}`);
+
+      // Direct classifyReason unit checks against the observed live reasons.
+      const { classifyReason } = require('./lib/failure-taxonomy');
+      const expectations = [
+        ['missing result packet (run status "partial": transport timed out)', 'BACKEND_TIMEOUT'],
+        ['findings[2] references unknown evidence id "ev-bogus"', 'EVIDENCE_DISCIPLINE'],
+        ['participant-facing oracle reference in result-packet.yaml (oracle/)', 'ORACLE_BOUNDARY'],
+        ['secret value detected in trace.yaml (rules: rv-openai-style-key)', 'SECRET_EXPOSURE'],
+        ['secret-bearing field in result packet: credentials.token', 'SECRET_EXPOSURE'],
+        ['agent_id mismatch: packet "x" vs dispatch "y"', 'IDENTITY_MISMATCH'],
+        ['runtime mismatch: packet runtime "cli" vs dispatch adapter "stub"', 'IDENTITY_MISMATCH'],
+        ['result packet is not parseable YAML', 'MALFORMED_OUTPUT'],
+        ['result packet failed schema validation', 'SCHEMA_INVALID'],
+        ['evidence item "ev-1" content_ref does not resolve to a file: a/b.txt', 'CONTENT_RESOLUTION'],
+        ['missing trace record', 'MISSING_ARTIFACT'],
+        ['something the taxonomy has never seen', 'UNCLASSIFIED'],
+      ];
+      const wrong = expectations.filter(([reason, code]) => classifyReason(reason) !== code)
+        .map(([reason, code]) => `${JSON.stringify(reason)} → expected ${code} got ${classifyReason(reason)}`);
+      report(wrong.length === 0,
+        'classifyReason maps each observed live reason to its taxonomy code',
+        wrong.join(' | '));
     }
 
     // -----------------------------------------------------------------
@@ -2152,6 +2370,9 @@ async function main() {
         break;
       case 'fanin':
         cmdFanin(options);
+        break;
+      case 'failure-report':
+        cmdFailureReport(options);
         break;
       case 'fixtures':
         await runFixtures();
