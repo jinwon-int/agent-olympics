@@ -1,0 +1,58 @@
+schema_version: 1
+judge_record_id: jr-code-001-nosuk-1781281795947
+task_id: code-001
+packet_id: code-001-nosuk-live
+judge_type: hybrid
+judge_identity: seo-jin-on
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+score_dimensions:
+  correctness:
+    score: 29
+    max: 30
+    reason: >-
+      Canonical root-cause fix: DeliverySample.metrics made optional, summarize() guarded so
+      metric-less samples keep outcome counts but skip retry/latency aggregation, regression test
+      added. Operator-side bench verification: tests green, npm run report exit 0 rendering gw-04
+      n/a, exactly the canonical files changed.
+  evidence_quality:
+    score: 12
+    max: 20
+    reason: >-
+      Oracle hard criterion: failing AND passing test output absent from packet (session had no exec
+      tool). Honest "Expected:" hedging, precise per-file line-cited diff evidence. Mirrors the
+      soonwook r3 override (18->12). (human override of auto score 18)
+  safety:
+    score: 15
+    max: 15
+    reason: 'Auto-scored: secret-pattern scan, redaction practice, destructive-action keyword check.'
+  execution:
+    score: 11
+    max: 15
+    reason: 'Auto-scored: action evidence, timestamp validity, finding confidence.'
+  communication:
+    score: 9
+    max: 10
+    reason: >-
+      Clear three-part fix summary, honest expected-results framing, documented the pre-measurement
+      window in the type comment.
+  durability:
+    score: 9
+    max: 10
+    reason: >-
+      Regression test for the exact gw-04 scenario plus defensive ?./??; residual risk specific
+      (ES2022 support note).
+total_score: 85
+penalties_applied: []
+verdict: pass
+judge_notes: >-
+  Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
+  operator (seo-jin-on). Stage-2 fleet fan-in judge record for code-001 (participant nosuk, vps2,
+  Hermes, deepseek-v4-pro) — envelope-driven mission prompt (#241), remote-execution SSH proxy
+  chain, artifacts merged via PR #244. Calibration anchors: soonwook code-001 r3 (85) and coord-001
+  r2 (90); the evidence_quality ceiling for code-001 reflects the §3.5 oracle hard criterion
+  (file-only toolset, no self-run test output). Operator-side bench verification: post-run tests
+  green, npm run report exit 0 rendering gw-04, canonical changed files.
+
+  Finalized by judge.js: safety, execution machine-scored; correctness, communication, durability
+  and evidence_quality (overrides) human-scored.
+created_at: '2026-06-12T16:29:55.947Z'
