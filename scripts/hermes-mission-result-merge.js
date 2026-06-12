@@ -164,12 +164,18 @@ const findings = Array.isArray(mission.findings) && mission.findings.length
       { claim: rp.outputs.diagnosis, confidence: 'high' },
       { claim: rp.outputs.next_action, confidence: 'medium' },
     ];
+// Findings may cite evidence ids the model invented (e.g. ev-config-diff).
+// Only ids that actually exist in the packet's evidence list may become
+// machine links; everything else — file paths AND hallucinated ev-* ids —
+// is preserved verbatim in the claim text instead, so the citation stays
+// honest without creating dangling references (fan-in quarantines those).
+const knownEvidenceIds = new Set((rp.evidence || []).map((e) => e && e.id).filter(Boolean));
 rp.findings = findings.slice(0, 8).map((f) => {
   const validEvidenceRefs = Array.isArray(f.evidence)
-    ? f.evidence.filter((ref) => typeof ref === 'string' && ref.startsWith('ev-'))
+    ? f.evidence.filter((ref) => typeof ref === 'string' && knownEvidenceIds.has(ref))
     : [];
   const sourceRefs = Array.isArray(f.evidence)
-    ? f.evidence.filter((ref) => typeof ref === 'string' && !ref.startsWith('ev-'))
+    ? f.evidence.filter((ref) => typeof ref === 'string' && !knownEvidenceIds.has(ref))
     : [];
   const claim = String(f.claim || f.summary || f);
   return {
