@@ -666,6 +666,28 @@ function checkProvisionalPublishability(packetDoc, filePath) {
   }
 }
 
+// Lazily-loaded appeal-record JSON schema validator (additive, never the
+// source of a new ERROR — see checkAppealRecord). Loading is best-effort: if
+// ajv or the schema file is unavailable the field/status checks below still
+// fully enforce the contract, preserving backward compatibility.
+let _appealSchemaValidator;
+let _appealSchemaTried = false;
+function getAppealSchemaValidator() {
+  if (_appealSchemaTried) return _appealSchemaValidator;
+  _appealSchemaTried = true;
+  try {
+    const Ajv = require('ajv');
+    const schemaPath = path.join(ROOT, 'schemas', 'appeal-record.schema.json');
+    if (!fs.existsSync(schemaPath)) return undefined;
+    const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+    const ajv = new Ajv({ allErrors: true, strict: false });
+    _appealSchemaValidator = ajv.compile(schema);
+  } catch {
+    _appealSchemaValidator = undefined;
+  }
+  return _appealSchemaValidator;
+}
+
 function checkAppealRecord(packetDoc, filePath) {
   if (!packetDoc || typeof packetDoc !== 'object' || !packetDoc.appeal) return;
   const rel = path.relative(ROOT, filePath);
@@ -682,6 +704,17 @@ function checkAppealRecord(packetDoc, filePath) {
   }
   if (['under_review', 'upheld', 'denied', 'remanded', 'dismissed'].includes(appeal.status) && !appeal.reviewed_by) {
     error(`appeal:${rel}`, `appeal status "${appeal.status}" requires reviewed_by`);
+  }
+
+  // Optional, additive JSON-schema cross-check (schemas/appeal-record.schema
+  // .json). It encodes the SAME required fields and status set as above, so it
+  // never introduces a new failure beyond what the field/status checks already
+  // flag; any schema-only deviation is surfaced as a WARNING for visibility.
+  const validate = getAppealSchemaValidator();
+  if (validate && !validate(appeal)) {
+    for (const e of validate.errors || []) {
+      warn(`appeal:${rel}`, `appeal-record schema: ${e.instancePath || '(root)'} ${e.message}`);
+    }
   }
 }
 

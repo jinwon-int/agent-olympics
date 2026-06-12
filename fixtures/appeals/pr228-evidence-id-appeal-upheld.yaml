@@ -1,0 +1,38 @@
+# Worked appeals fixture (UPHELD case) — the PR #228 dangling-evidence-id
+# quarantine appealed and UPHELD because the original judgement was genuinely
+# procedurally wrong: the "dangling" id was an adapter-normalization rename, not
+# missing evidence. The verdict is corrected with a full audit trail.
+#
+# Conforms to the checkAppealRecord contract. The machine-actionable correction
+# is encoded in desired_outcome as `verdict=conditional_pass` so `apply` can
+# rewrite the verdict (never silently — always with an appeal_resolution block).
+schema_version: 1
+appeal_id: appeal-ops-001-yukson-live-upheld
+status: upheld
+packet_id: ops-001-yukson-live
+task_id: ops-001
+filed_at: '2026-06-11T16:15:00.000Z'
+filed_by: curator-02
+statement: >-
+  The finding cited evidence id ev-cfg-snapshot-2, which the adapter renamed during normalization
+  from ev-config-snapshot. The evidence WAS present; only the literal id changed. The quarantine for
+  a "dangling evidence id" is an adapter-normalization artifact (the PR #228 situation), not a real
+  citation-discipline failure. The packet should not have failed on this basis.
+desired_outcome: re-instate and re-score; verdict=conditional_pass
+rule_ref: docs/rules.md#appeals
+evidence_refs:
+  - ev-config-snapshot
+  - ev-adapter-normalization-map
+reviewed_by: judge-appeals-02
+reviewed_at: '2026-06-11T19:00:00.000Z'
+decided_at: '2026-06-11T19:00:00.000Z'
+decision: upheld
+decision_reasoning: >-
+  Appeal UPHELD. Confirmed against the adapter normalization map: ev-cfg-snapshot-2 is the
+  normalized alias of ev-config-snapshot, which resolves. The dangling-id quarantine was a
+  procedural error, not an evidence-discipline failure. Verdict corrected to conditional_pass and
+  the evidence_quality penalty is vacated. verdict=conditional_pass
+outcome: upheld
+outcome_notes: >-
+  Dangling-evidence-id was an adapter-normalization rename. Quarantine vacated; verdict corrected to
+  conditional_pass with audit trail.

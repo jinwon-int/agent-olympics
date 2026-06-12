@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/appeal-record.schema.json",
+  "title": "Agent Olympics Appeal Record",
+  "description": "Appeal record contract. This is the JSON-schema form of the same contract already enforced by scripts/competition-validity.js checkAppealRecord and documented in docs/rules.md \"Appeals\". Required fields and the status set are identical; this schema does not introduce new requirements. An appeal record may be embedded under a result packet's `appeal` field or stand alone (as produced by scripts/appeal.js).",
+  "type": "object",
+  "required": [
+    "status",
+    "packet_id",
+    "filed_at",
+    "filed_by",
+    "statement",
+    "desired_outcome"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer" },
+    "appeal_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["filed", "under_review", "upheld", "denied", "remanded", "dismissed"]
+    },
+    "packet_id": { "type": "string", "minLength": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "filed_at": { "type": "string", "minLength": 1 },
+    "filed_by": { "type": "string", "minLength": 1 },
+    "statement": { "type": "string", "minLength": 1 },
+    "desired_outcome": { "type": "string", "minLength": 1 },
+    "rule_ref": { "type": "string" },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "reviewed_by": { "type": "string" },
+    "reviewed_at": { "type": "string" },
+    "decided_at": { "type": "string" },
+    "decision": {
+      "type": "string",
+      "enum": ["upheld", "denied", "remanded", "dismissed"]
+    },
+    "decision_reasoning": { "type": "string" },
+    "outcome": { "type": "string" },
+    "outcome_notes": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "$comment": "reviewed_by is required for any status other than `filed` — matches checkAppealRecord's REVIEWED_STATUSES rule.",
+      "if": {
+        "properties": {
+          "status": {
+            "enum": ["under_review", "upheld", "denied", "remanded", "dismissed"]
+          }
+        }
+      },
+      "then": { "required": ["reviewed_by"] }
+    }
+  ],
+  "additionalProperties": true
+}
