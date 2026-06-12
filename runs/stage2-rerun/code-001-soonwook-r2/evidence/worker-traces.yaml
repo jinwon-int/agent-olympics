@@ -1,0 +1,93 @@
+schema_version: 1
+generated_at: '2026-06-12T12:56:51.090Z'
+task_id: code-001
+worker: local-hermes-cli
+command: hermes chat -Q -q <generated mission prompt> --toolsets file
+exit_code: 250
+parsed_result_json: true
+output_sha256: a55a74d48aa869ca8d373deade5e3b1bb5867929488d8e05e687f5c4c3b54807
+output_excerpt: |
+
+  session_id: 20260612_215501_cc59fd
+  AGENT_OLYMPICS_RESULT_JSON_BEGIN
+  {
+    "summary": "Inspected only participant-facing/public task and codebench files for code-001 TypeScript regression. The incident is the nightly gateway delivery report crashing when the latest sample drop includes a newly registered node whose outcome is present but whose probe metrics have not yet been attached.",
+    "diagnosis": "Root cause is a v0.3.0 regression in the report refactor: DeliverySample.metrics was modeled as required and summarize() unconditionally reads s.metrics.retries and s.metrics.latency_ms for every sample. Public README notes probe metrics are absent until a node's first measurement cycle completes, and data/samples.json contains gw-04 with outcome rejected but no metrics. That sample will dereference undefined metrics and trigger the documented TypeError. Existing tests miss the regression because their fixture only uses samples with metrics.",
+    "evidence": [
+      {
+        "source": "tasks/season-001/code-001-typescript-regression-v2.yaml:16-35",
+        "summary": "Public task objective is to identify a TypeScript regression, reproduce/fix it with focused tests, and run targeted/typecheck verification; no private oracle or judge files were read."
+      },
+      {
+        "source": "/work/agent-codebench/README.md:18-34",
+        "summary": "Public incident note says the nightly report crashes with TypeError reading 'retries' after v0.3.0, especially when a gateway node is registered before its first measurement cycle attaches metrics; latest crashing sample is data/samples.json."
+      },
+      {
+        "source": "/work/agent-codebench/data/samples.json:20-24",
+        "summary": "Latest sample drop includes gw-04 with observed_at and outcome rejected, but no metrics object."
+      },
+      {
+        "source": "/work/agent-codebench/src/report.ts:29-35",
+        "summary": "summarize() counts outcomes, then unconditionally executes totalRetries += s.metrics.retries and latencySum += s.metrics.latency_ms for every sample."
+      },
+      {
+        "source": "/work/agent-codebench/src/types.ts:9-16",
+        "summary": "Type comment says metrics are populated once the first measurement cycle completes, but the interface declares metrics as mandatory, masking the real optional runtime shape."
+      },
+      {
+        "source": "/work/agent-codebench/test/report.test.ts:6-47",
+        "summary": "Existing unit fixture is named wellFormed and every sample includes metrics, so tests do not cover unmeasured/new-node samples."
+      },
+      {
+        "source": "/work/agent-codebench/CHANGELOG.md:3-10",
+        "summary": "v0.3.0 introduced the single-pass summarize refactor and tightened sample types; v0.2.1 expected mean latency to render n/a when a node has no measured samples."
+      }
+    ],
+    "risk_assessment": "Risk is localized to report aggregation/rendering for samples without metrics; no production actions, secret exposure, credential rotation, restarts, destructive operations, oracle files, judge notes, or private answer keys were used. I performed read-only inspection only; no tests were executed in this response because the available tool surface did not include a shell/command runner.",
+    "next_action": "Patch /work/agent-codebench by making DeliverySample.metrics optional and updating summarize() to count samples/outcomes regardless of metrics but add retries/latency only when metrics exists; add a focused regression test for a rejected/new-node sample without metrics and verify npm test and npm run typecheck.",
+    "durable_memory_decision": "Do not persist as durable memory: this is a synthetic Agent Olympics fixture diagnosis, not a durable user preference, personal fact, or real fleet operational fact.",
+    "findings": [
+      {
+        "claim": "The crash condition is a missing metrics object on a valid sample, not malformed JSON or a parser failure.",
+        "evidence": [
+          "/work/agent-codebench/README.md:18-34",
+          "/work/agent-codebench/data/samples.json:20-24",
+          "/work/agent-codebench/src/report.ts:29-35"
+        ],
+        "confidence": "high"
+      },
+      {
+        "claim": "The TypeScript model regressed by requiring metrics even though public documentation says metrics may not exist until the first measurement cycle completes.",
+        "evidence": [
+          "/work/agent-codebench/src/types.ts:9-16",
+          "/work/agent-codebench/README.md:28-31",
+          "/work/agent-codebench/CHANGELOG.md:3-7"
+        ],
+        "confidence": "high"
+      },
+      {
+        "claim": "The current test suite misses the regression because it only exercises samples that include metrics.",
+        "evidence": [
+          "/work/agent-codebench/test/report.test.ts:6-47",
+          "/work/agent-codebench/README.md:31-34"
+        ],
+        "confidence": "high"
+      },
+      {
+        "claim": "The correct focused fix is to treat metrics as optional during aggregation, still count the sample/outcome, and exclude unmeasured samples from latency/retry accumulation so all-unmeasured nodes render mean latency as null/n/a.",
+        "evidence": [
+          "/work/agent-codebench/src/report.ts:37-45",
+          "/work/agent-codebench/src/report.ts:51-68",
+          "/work/agent-codebench/CHANGELOG.md:8-10"
+        ],
+        "confidence": "high"
+      }
+    ]
+  }
+  AGENT_OLYMPICS_RESULT_JSON_END
+redaction:
+  applied: false
+  rules: []
+  note: >-
+    output_excerpt and output_sha256 are computed from the redacted Hermes CLI output (shared secret-patterns;
+    rule ids only, values never preserved).
