@@ -22,6 +22,12 @@
  *   stub     — scripts/stub-adapter.js artifacts: ev-stub-* evidence ids,
  *              "Stub adapter run ... deterministic placeholder" summary,
  *              stub agent/runtime labels.
+ *   cli      — scripts/cli-adapter.js + cli-mission-wrapper artifacts: CLI-
+ *              native evidence kinds (transcript_excerpt / file_diff /
+ *              command_output), ev-cli-* evidence ids, adapter mode cli, and a
+ *              SOLO delegation_profile (subagents_used false AND empty
+ *              a2a_workers) — the distinguishing shape of a bare coding-agent
+ *              CLI vs an orchestrator.
  *
  * A non-unknown verdict requires at least MIN_SIGNALS (2) distinct signals
  * for one runtime AND strictly more signals than any other candidate
@@ -56,6 +62,15 @@ const OPENCLAW_EVIDENCE_ID_PATTERN = /gateway|telegram/i;
 const STUB_EVIDENCE_ID_PATTERN = /^ev-stub-/i;
 const STUB_SUMMARY_PATTERN = /stub adapter run|deterministic placeholder|deterministic stub/i;
 
+// CLI-native evidence kinds (cli.yaml). transcript_excerpt / file_diff /
+// config_snippet are characteristic of a terminal coding-agent session.
+// command_output and log are shared with the stub, so they are NOT used as
+// cli signals on their own — the cli verdict leans on the distinctive kinds,
+// the ev-cli-* ids, the cli adapter mode, and the solo delegation shape.
+const CLI_EVIDENCE_KINDS = new Set(['transcript_excerpt', 'file_diff']);
+const CLI_EVIDENCE_ID_PATTERN = /^ev-cli-/i;
+const CLI_MODES = new Set(['cli']);
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -82,12 +97,12 @@ function traceText(trace) {
  *
  * @param {object|null} packet result-packet document (parsed YAML)
  * @param {object|null} trace  trace record document (parsed YAML), optional
- * @returns {{ detected: 'hermes'|'openclaw'|'stub'|'unknown',
+ * @returns {{ detected: 'hermes'|'openclaw'|'stub'|'cli'|'unknown',
  *             confidence: 'high'|'medium'|'low'|'none',
  *             signals: string[] }}
  */
 function fingerprintRuntime(packet, trace) {
-  const signals = { hermes: new Set(), openclaw: new Set(), stub: new Set() };
+  const signals = { hermes: new Set(), openclaw: new Set(), stub: new Set(), cli: new Set() };
 
   const evidence = asArray(packet && packet.evidence);
   const evidenceKinds = new Set(evidence.map((e) => e && e.kind).filter(Boolean));
@@ -137,6 +152,26 @@ function fingerprintRuntime(packet, trace) {
   }
   if (/stub adapter/i.test(traceBody)) {
     signals.stub.add('stub adapter marker in trace entries');
+  }
+
+  // --- cli ---
+  for (const kind of evidenceKinds) {
+    if (CLI_EVIDENCE_KINDS.has(kind)) signals.cli.add(`evidence kind "${kind}"`);
+  }
+  for (const id of evidenceIds) {
+    if (CLI_EVIDENCE_ID_PATTERN.test(id)) signals.cli.add(`evidence id "${id}"`);
+  }
+  if (mode && CLI_MODES.has(String(mode).toLowerCase())) {
+    signals.cli.add(`adapter mode "${mode}"`);
+  }
+  // A bare CLI coding agent is solo: subagents_used false AND no a2a_workers.
+  // (Hermes/openclaw both populate a2a_workers or set subagents_used true.)
+  if (delegation && delegation.subagents_used === false
+      && asArray(delegation.a2a_workers).length === 0) {
+    signals.cli.add('solo delegation_profile (no subagents, no a2a_workers)');
+  }
+  if (/\bcli agent\b|coding-agent cli/i.test(traceBody)) {
+    signals.cli.add('cli agent activity in trace entries');
   }
 
   // --- verdict: ≥ MIN_SIGNALS distinct signals AND a strict maximum ---

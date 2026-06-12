@@ -2,21 +2,19 @@
 'use strict';
 
 /**
- * Hermes model attestation probe.
+ * Hermes model attestation probe (thin CLI over scripts/lib/model-detect.js).
  *
- * Detects which model the local Hermes instance actually routes to by
- * running the Hermes binary with candidate info arguments and parsing the
- * "Model:" line it prints, e.g.:
+ * Detects which model the local Hermes instance actually routes to by running
+ * the Hermes binary with candidate info arguments and parsing the "Model:"
+ * line it prints, e.g.:
  *
  *   Hermes Agent v0.16.0
  *   Model: {'default': 'deepseek-v4-pro', 'provider': 'deepseek', 'base_url': 'https://api.deepseek.com'}
  *
- * Motivation: operator-supplied HERMES_MODEL env labels are trust-based and
- * a real fleet run shipped a wrong label (env said gpt-5.5/openai-codex,
- * the node actually routed deepseek-v4-pro/deepseek). Detection from the
- * Hermes config closes that gap the same way the runtime attestation probe
- * closed the runtime-label gap. Like all attestation here, this catches
- * honest mistakes, not adversarial spoofing.
+ * Motivation: operator-supplied HERMES_MODEL env labels are trust-based and a
+ * real fleet run shipped a wrong label. Detection from the Hermes config
+ * closes that gap. Like all attestation here, this catches honest mistakes,
+ * not adversarial spoofing.
  *
  * Usage:
  *   node scripts/hermes-model-detect.js [--bin <hermes>] [--args "<info args>"]
@@ -25,11 +23,10 @@
  *
  * Prints JSON: {"detected":bool,"model":string,"provider":string,"via":string}
  * Exit codes: 0 detected, 1 not detected, 2 usage/self-test failure.
- * base_url and any other config values are intentionally NOT emitted —
- * endpoints can be private and belong nowhere near result artifacts.
+ * base_url and any other config values are intentionally NOT emitted.
  */
 
-const { spawnSync } = require('child_process');
+const { parseModelInfo, detect: sharedDetect } = require('./lib/model-detect');
 
 // Candidate info invocations tried in order until one prints a Model line.
 // HERMES_INFO_ARGS / --args overrides the list with a single invocation.
@@ -41,49 +38,10 @@ const CANDIDATE_ARGS = [
   ['--version'],
 ];
 
-/**
- * Parse a "Model:" line out of Hermes info output. Tolerates the observed
- * python-dict style ({'default': 'x', 'provider': 'y'}), JSON style, and a
- * bare "Model: <name>" fallback. Returns { model, provider } or null.
- */
-function parseHermesModelInfo(text) {
-  const line = String(text)
-    .split(/\r?\n/)
-    .find((l) => /^\s*"?[Mm]odel"?\s*[:=]/.test(l));
-  if (!line) return null;
-
-  const body = line.replace(/^\s*"?[Mm]odel"?\s*[:=]\s*/, '').trim();
-
-  // Dict/JSON style: pull 'default'/'name'/'model' and 'provider' keys with
-  // either quote style.
-  const dictKey = (key) => {
-    const m = body.match(new RegExp(`['"]${key}['"]\\s*:\\s*['"]([^'"]+)['"]`));
-    return m ? m[1] : null;
-  };
-  if (body.startsWith('{')) {
-    const model = dictKey('default') || dictKey('name') || dictKey('model');
-    if (!model) return null;
-    return { model, provider: dictKey('provider') || 'unknown' };
-  }
-
-  // Bare style: "Model: deepseek-v4-pro (deepseek)" or "Model: deepseek-v4-pro"
-  const bare = body.match(/^([\w.:\/-]+)(?:\s*\(([^)]+)\))?/);
-  if (bare && bare[1]) {
-    return { model: bare[1], provider: bare[2] || 'unknown' };
-  }
-  return null;
-}
-
+// Backward-compatible aliases (existing imports use these names).
+const parseHermesModelInfo = parseModelInfo;
 function detect(bin, overrideArgs) {
-  const attempts = overrideArgs ? [overrideArgs] : CANDIDATE_ARGS;
-  for (const args of attempts) {
-    const res = spawnSync(bin, args, { encoding: 'utf8', timeout: 10000 });
-    if (res.error) continue;
-    const out = `${res.stdout || ''}\n${res.stderr || ''}`;
-    const parsed = parseHermesModelInfo(out);
-    if (parsed) return { detected: true, ...parsed, via: `${bin} ${args.join(' ')}` };
-  }
-  return { detected: false, model: 'unknown', provider: 'unknown', via: 'none' };
+  return sharedDetect(bin, CANDIDATE_ARGS, overrideArgs);
 }
 
 function selfTest() {

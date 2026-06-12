@@ -1,0 +1,46 @@
+# Live runner CLI participant config — a generic coding-agent CLI participant.
+#
+# Dispatches a CLI participant (registered as `runtime: cli` in the fixture
+# round manifest) through adapters/wrappers/cli-mission-wrapper.sh. The wrapper
+# is pointed at an OFFLINE fake `claude`-like binary
+# (fixtures/live-runner/transports/fake-claude-cli.js) via CLI_AGENT_BIN, so
+# the whole path runs without network or credentials.
+#
+# This is the simulation/source-only slice. Pointing CLI_AGENT_BIN at a real
+# Claude Code / Codex install is an operator extension (see docs/cli-participant.md).
+#
+# Run with:
+#   node scripts/live-runner.js run fixtures/live-runner/round-live-runner-fixture.yaml \
+#     --config fixtures/live-runner/runner-config-cli.yaml
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-cli
+description: Dry-run dispatch of a generic coding-agent CLI participant via the cli mission wrapper.
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901-cli/
+tasks:
+  - ops-001
+participants:
+  - participant_id: claude-cli
+    adapter: cli                   # MUST match the manifest participant's runtime (cli)
+    transport: local_exec
+    execution_profile: dry_run
+    # Runtime attestation probe (identity layer 2): the fake binary's --version
+    # line "fake-claude-cli 9.9.9" contains the declared adapter substring
+    # "cli", so the recorded attestation is consistent. The layer-3 artifact
+    # fingerprint independently confirms the cli shape.
+    identify_command:
+      - env
+      - CLI_AGENT_BIN=fixtures/live-runner/transports/fake-claude-cli.js
+      - fixtures/live-runner/transports/fake-claude-cli.js
+      - --version
+    # The command points the cli wrapper at the offline fake binary through
+    # `env CLI_AGENT_BIN=...` (no shell — `env` is a real argv[0]).
+    command:
+      - env
+      - CLI_AGENT_BIN=fixtures/live-runner/transports/fake-claude-cli.js
+      - bash
+      - adapters/wrappers/cli-mission-wrapper.sh
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'

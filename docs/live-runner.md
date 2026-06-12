@@ -340,6 +340,38 @@ answer keys. If Hermes returns non-JSON text, the merge script preserves the raw
 output in `mission-result.raw.txt` and writes a fallback result that still
 validates, but flags the parse fallback for human review.
 
+## Reference CLI local wrapper (heterogeneous participant)
+
+The same pattern runs a generic coding-agent CLI (Claude Code, Codex, any argv
+command) as a live-runner participant, validating that the schemas/gates/scoring
+are runtime-neutral rather than Hermes-specific:
+
+- `adapters/wrappers/cli-mission-wrapper.sh` is the CLI analogue of the Hermes
+  wrapper. It bootstraps a schema-valid **result-packet v2** baseline with
+  `scripts/cli-adapter.js` (labelled `runtime: cli` / `adapter: cli`, solo
+  `delegation_profile`, CLI-native evidence kinds), invokes the coding-agent CLI
+  via env-configured argv (`CLI_AGENT_BIN`, default `claude`; `CLI_AGENT_ARGS`
+  for the run subcommand) with the same marker-wrapped-JSON mission prompt
+  contract, merges, validates, and applies the same parse-fallback → partial /
+  exit-2 discipline, wall-time measurement, and model attestation.
+- The merge logic is **shared** with the Hermes wrapper:
+  `scripts/cli-mission-result-merge.js` and
+  `scripts/hermes-mission-result-merge.js` are thin profile selectors over
+  `scripts/lib/mission-result-merge.js`, which parameterizes the evidence-id set
+  and execution shape so both wrappers reuse one implementation (redaction,
+  hallucinated-evidence-id normalization, parse-fallback downgrade).
+- Model attestation generalizes the Hermes probe:
+  `scripts/cli-model-detect.js` (over the shared `scripts/lib/model-detect.js`)
+  detects the routed model from the CLI and records `model_source`
+  (`cli_config` / `operator_env` / `unknown`).
+
+This is the **simulation / source-only slice**: the committed fixtures point the
+wrapper at an offline fake `claude`-like binary
+(`fixtures/live-runner/transports/fake-claude-cli.js`); real Claude Code / Codex
+live runs are an operator extension. See [CLI participant](cli-participant.md)
+for registration, the wrapper env vars, the model-attestation story, and the
+runtime-neutrality layers.
+
 ## Transport extension point (how an operator points at a real node)
 
 `local_exec` runs any argv command, so a real participant node is reached by
@@ -383,8 +415,9 @@ Rules for any such extension:
 
 ## Fixtures
 
-`fixtures/live-runner/` contains the fixture round manifest, six runner
-configs, and four tiny fixture transports. `node scripts/live-runner.js
+`fixtures/live-runner/` contains the fixture round manifest, seven runner
+configs (including `runner-config-cli.yaml`), and five tiny fixture transports
+(including the offline `fake-claude-cli.js`). `node scripts/live-runner.js
 fixtures` (Make target `live-runner-fixtures`) exercises:
 
 - dry-run dispatch → fan-in → handoff with hermes + openclaw + stub local_exec
@@ -403,6 +436,12 @@ fixtures` (Make target `live-runner-fixtures`) exercises:
   recorded attestation block / recorded warning;
 - declared stub but hermes-shaped artifacts → fan-in fingerprint WARNING
   plus `runtime_fingerprint` metadata in the judge handoff manifest;
+- a heterogeneous CLI participant (`runtime: cli`) dispatched through
+  `cli-mission-wrapper.sh` against an offline fake `claude`-like binary →
+  dispatches and completes, the `runtime_identity` gate accepts `cli`, the
+  merged packet's runtime/adapter is `cli` (v2, solo delegation), model
+  attestation records a source, the layer-3 fingerprint detects `cli`, and the
+  run fans in clean with a `cli` fingerprint in the judge handoff manifest;
 - failure-taxonomy classification: the `agent_id`-mismatch case →
   `IDENTITY_MISMATCH`, the secret-echo case → `SECRET_EXPOSURE`, the
   missing-packet cases → `BACKEND_TIMEOUT`; `quarantine-reason.yaml` carries
