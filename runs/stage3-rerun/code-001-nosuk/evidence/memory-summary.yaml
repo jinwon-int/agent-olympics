@@ -1,0 +1,8 @@
+schema_version: 1
+generated_at: '2026-06-13T03:49:04.269Z'
+task_id: code-001
+durable_memory_decision: >-
+  No durable memory needed. This is a straightforward code-001 regression fix that is fully documented in the
+  test file and the commit would serve as the authoritative record.
+note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
+redacted: true
