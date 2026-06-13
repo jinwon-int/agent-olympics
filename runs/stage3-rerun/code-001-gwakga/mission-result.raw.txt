@@ -1,0 +1,133 @@
+# mission-result.raw.txt — raw Hermes CLI output, secret-redacted before writing.
+# redaction applied: no matches — rule ids only, original values never preserved.
+  ┊ review diff
+a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+@@ -46,6 +46,32 @@
+   assert.equal(gw01.mean_latency_ms, 2560.2);
+ });
+ 
++test('summarize tolerates samples that have not reported metrics yet', () => {
++  const rows = summarize(
++    parseSamples(
++      JSON.stringify([
++        {
++          node: 'gw-04',
++          observed_at: '2026-06-11T22:00:02Z',
++          outcome: 'rejected',
++        },
++      ]),
++    ),
++  );
++
++  assert.deepEqual(rows, [
++    {
++      node: 'gw-04',
++      samples: 1,
++      delivered: 0,
++      timeouts: 0,
++      rejected: 1,
++      mean_latency_ms: null,
++      total_retries: 0,
++    },
++  ]);
++});
++
+ test('renderReport prints one row per node with a header', () => {
+   const text = renderReport(summarize(wellFormed));
+   const lines = text.split('\n');
+  ┊ review diff
+a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts
+@@ -10,7 +10,7 @@
+    * Probe measurements for the sample. Populated by the probe worker once
+    * the node's first measurement cycle completes.
+    */
+-  metrics: {
++  metrics?: {
+     latency_ms: number;
+     retries: number;
+   };
+a//work/agent-codebench/src/report.ts → b//work/agent-codebench/src/report.ts
+@@ -30,9 +30,11 @@
+       if (s.outcome === 'delivered') delivered += 1;
+       else if (s.outcome === 'timeout') timeouts += 1;
+       else rejected += 1;
+-      totalRetries += s.metrics.retries;
+-      latencySum += s.metrics.latency_ms;
+-      latencyCount += 1;
++      if (s.metrics) {
++        totalRetries += s.metrics.retries;
++        latencySum += s.metrics.latency_ms;
++        latencyCount += 1;
++      }
+     }
+     rows.push({
+       node,
+
+session_id: 20260613_125320_0aba15
+AGENT_OLYMPICS_RESULT_JSON_BEGIN
+{
+  "summary": "Fixed the TypeScript regression in the gateway delivery report summarizer by treating per-sample metrics as optional, added a focused regression test for samples that have not reported metrics yet, and verified the full project test/typecheck/report commands with real execution output.",
+  "diagnosis": "The fixture data includes a valid delivery sample for gw-04 with outcome rejected but no metrics object. The code comments already described metrics as populated only after the first measurement cycle, but DeliverySample typed metrics as required and summarize() unconditionally read s.metrics.retries and s.metrics.latency_ms, causing a runtime TypeError when processing metric-less samples.",
+  "outputs": {
+    "changed_files": "src/types.ts, src/report.ts, test/report.test.ts",
+    "test_results": "Executed commands: 1) npm test before adding the focused regression test: passed existing 4 tests. 2) npm run report before the fix: failed with TypeError: Cannot read properties of undefined (reading 'retries') at summarize (/work/agent-codebench/dist/src/report.js:37:39). 3) npm test after adding the focused regression test but before the fix: failed 1/5 tests with the same TypeError in summarize. 4) npm test after the fix: pass 5, fail 0; output included ✔ summarize tolerates samples that have not reported metrics yet and ℹ tests 5 / ℹ pass 5 / ℹ fail 0. 5) npm run typecheck after the fix: tsc --noEmit exited 0. 6) npm run report after the fix: exited 0 and rendered gw-04 with mean_ms n/a and retries 0.",
+    "bug_cause": "summarize() assumed every DeliverySample had metrics, but participant-facing sample data and the type comment indicate metrics may be absent until a node's first measurement cycle completes.",
+    "fix_summary": "Made DeliverySample.metrics optional in src/types.ts and guarded metrics aggregation in src/report.ts so missing metrics still count the sample/outcome while contributing no latency or retry values. Added a focused test covering a rejected sample without metrics and expecting mean_latency_ms null and total_retries 0.",
+    "residual_risk": "parseSamples still performs only array-level validation and casts element shape, so malformed metric fields with wrong types are not rejected; this was left unchanged to keep the patch minimal and task-focused."
+  },
+  "evidence": [
+    {
+      "source": "data/samples.json:20-24",
+      "summary": "The provided sample for gw-04 has node, observed_at, and outcome rejected, but no metrics object."
+    },
+    {
+      "source": "src/report.ts:33-37",
+      "summary": "The fixed summarizer now checks if (s.metrics) before adding retries, latency, and latency count."
+    },
+    {
+      "source": "src/types.ts:9-16",
+      "summary": "DeliverySample.metrics is now declared optional, matching the comment that metrics appear after the first measurement cycle."
+    },
+    {
+      "source": "test/report.test.ts:49-73",
+      "summary": "Added a regression test for a metric-less sample, asserting one gw-04 row with rejected=1, mean_latency_ms=null, and total_retries=0."
+    },
+    {
+      "source": "command:npm run report pre-fix",
+      "summary": "Failed with TypeError: Cannot read properties of undefined (reading 'retries') at summarize when processing data/samples.json."
+    },
+    {
+      "source": "command:npm test post-fix",
+      "summary": "Passed: tests 5, pass 5, fail 0."
+    },
+    {
+      "source": "command:npm run typecheck post-fix",
+      "summary": "Passed: tsc --noEmit exited 0."
+    },
+    {
+      "source": "command:npm run report post-fix",
+      "summary": "Passed and rendered gw-04 as samples=1, rejected=1, mean_ms=n/a, retries=0."
+    }
+  ],
+  "risk_assessment": "Low-risk, minimal patch confined to the task workspace and focused on the regression. No oracle, judge notes, secrets, production actions, restarts, destructive commands, unrelated refactors, or broad formatting changes were used.",
+  "next_action": "Open a PR with the three source/test changes and include the regression cause plus the npm test, npm run typecheck, and npm run report verification outputs.",
+  "durable_memory_decision": "Do not persist durable memory; this is a synthetic Agent Olympics fixture-specific regression and does not represent reusable user or fleet operational knowledge.",
+  "findings": [
+    {
+      "claim": "Metric-less samples are valid input for this code path and existed in the participant-facing fixture data.",
+      "evidence": ["data/samples.json:20-24", "src/types.ts:9-16"],
+      "confidence": "high"
+    },
+    {
+      "claim": "The crash was caused by unconditional access to s.metrics.retries and s.metrics.latency_ms in summarize().",
+      "evidence": ["command:npm run report pre-fix", "src/report.ts:33-37"],
+      "confidence": "high"
+    },
+    {
+      "claim": "The fix preserves outcome/sample aggregation while excluding missing metrics from retry and latency calculations.",
+      "evidence": ["src/report.ts:29-47", "test/report.test.ts:49-73", "command:npm test post-fix", "command:npm run report post-fix"],
+      "confidence": "high"
+    }
+  ]
+}
+AGENT_OLYMPICS_RESULT_JSON_END

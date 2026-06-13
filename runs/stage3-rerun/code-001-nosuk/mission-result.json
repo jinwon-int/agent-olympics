@@ -1,0 +1,84 @@
+summary: >-
+  Fixed a regression where the nightly report summarise() function crashed on delivery samples that lack a
+  `metrics` field (e.g., rejected messages where the probe worker never ran). The fix makes `metrics` optional
+  on the `DeliverySample` type, guards metric access with optional chaining, and adds a targeted test for the
+  missing-metrics scenario. The report command now runs successfully against the full samples.json dataset.
+diagnosis: >-
+  The `summarize()` function in src/report.ts unconditionally read `s.metrics.retries` and
+  `s.metrics.latency_ms` for every sample. The `DeliverySample` interface declared `metrics` as required, but
+  real-world data (data/samples.json) includes a `gw-04` entry with outcome `rejected` and no `metrics` field
+  — the probe worker hadn't measured it. Accessing `.retries` on `undefined` threw `TypeError: Cannot read
+  properties of undefined (reading 'retries')`.
+outputs:
+  changed_files: >-
+    src/types.ts (made metrics optional on DeliverySample), src/report.ts (guarded metrics access with
+    optional chaining + nullish coalescing), test/report.test.ts (added 'summarize handles samples with
+    missing metrics' test)
+  test_results: >-
+    BEFORE: 4/4 pass (no coverage for missing-metrics samples). AFTER: 5/5 pass (existing 4 + new 1):
+    parseSamples accepts a JSON array document, parseSamples rejects a non-array document, summarize
+    aggregates outcomes and latency per node, summarize handles samples with missing metrics, renderReport
+    prints one row per node with a header. Report command: BEFORE crash with TypeError, AFTER renders gw-04
+    row with n/a latency and 0 retries.
+  bug_cause: >-
+    The DeliverySample interface declared `metrics` as a required property, and the summarise() function in
+    src/report.ts accessed `s.metrics.retries` and `s.metrics.latency_ms` without null guarding. A recent
+    change introduced `gw-04` in data/samples.json with a `rejected` outcome but no `metrics` field (the probe
+    hadn't measured it). This caused a TypeError crash in the nightly report pipeline.
+  fix_summary: >-
+    1) Made `metrics` optional (`metrics?:`) on the `DeliverySample` interface in src/types.ts. 2) Changed
+    `s.metrics.retries` to `s.metrics?.retries ?? 0` and guarded `latencySum`/`latencyCount` updates behind
+    `if (s.metrics)` in src/report.ts. Samples without metrics contribute 0 to retries and are excluded from
+    mean latency calculation (rendered as 'n/a'). 3) Added a focused test that mixes a rejected-no-metrics
+    sample with a delivered-with-metrics sample and asserts correct aggregation.
+  residual_risk: >-
+    Low. The fix is minimal (3 changed lines in summarise, 1 changed line in types, 25 new test lines).
+    Existing tests still pass unchanged. The only remaining risk is if other consumers of DeliverySample
+    (outside this repo) assume `metrics` is always present — they would need similar null handling, but that
+    is out of scope for this single-repo fix.
+evidence:
+  - source: data/samples.json:21-24
+    summary: gw-04 entry has outcome 'rejected' with no metrics field — the trigger for the crash
+  - source: 'terminal: npm run report (before fix)'
+    summary: >-
+      TypeError: Cannot read properties of undefined (reading 'retries') at summarize
+      (dist/src/report.js:37:39)
+  - source: src/types.ts:13
+    summary: metrics changed from required to optional (? suffix)
+  - source: src/report.ts:33-37
+    summary: 'Guarded metrics access: totalRetries += s.metrics?.retries ?? 0; if (s.metrics) { ... }'
+  - source: test/report.test.ts:49-72
+    summary: >-
+      New test 'summarize handles samples with missing metrics' with 6 assertions covering samples, rejected,
+      delivered, retries, mean_latency_ms
+  - source: 'terminal: npm test (after fix)'
+    summary: '5/5 pass: 0 fail, 0 skipped, duration_ms 119.5'
+  - source: 'terminal: npm run report (after fix)'
+    summary: 'Renders gw-04 row: ''gw-04           1          0         0         1      n/a        0'''
+risk_assessment: >-
+  The fix is minimal, targeted, and fully backward-compatible. Only three source lines changed in the logic
+  (one for retries, two for latency guard). The type change from required to optional is semver-compatible
+  (widening). No unrelated refactors, no formatting changes, no dependency modifications. Production-safe.
+next_action: >-
+  The fix is ready for PR. Reviewer should confirm: (a) the `metrics?` type widening doesn't break any
+  downstream consumers, (b) the `n/a` rendering plus zero-retries default is the intended behavior for
+  metric-less samples, (c) the test covers the edge case and passes in CI.
+durable_memory_decision: >-
+  No durable memory needed. This is a straightforward code-001 regression fix that is fully documented in the
+  test file and the commit would serve as the authoritative record.
+findings:
+  - claim: The summarise() function crashes when a delivery sample lacks metrics
+    evidence:
+      - 'terminal: npm run report (before fix) showing TypeError at dist/src/report.js:37:39'
+      - data/samples.json:21-24 gw-04 entry without metrics
+    confidence: high
+  - claim: The fix correctly handles missing metrics by defaulting retries to 0 and excluding from latency mean
+    evidence:
+      - 'terminal: npm run report (after fix) showing n/a and 0 for gw-04'
+      - 'terminal: npm test (after fix) showing 5/5 pass'
+    confidence: high
+  - claim: No unrelated changes were introduced
+    evidence:
+      - src/report.ts diff shows only 3 logic lines changed
+      - test/report.test.ts diff shows only 1 new test added
+    confidence: high

@@ -1,0 +1,81 @@
+schema_version: 1
+generated_at: '2026-06-13T03:49:22.900Z'
+task_id: code-001
+source: nested hermes chat -q invocation
+parsed_json: true
+agent_exit_code: 250
+model_attestation:
+  model: deepseek-v4-pro
+  provider: deepseek
+  source: hermes_config
+summary: >-
+  Fixed a TypeScript regression in the gateway delivery report pipeline where `summarize()` crashed with
+  `TypeError: Cannot read properties of undefined (reading 'retries')` when processing samples from freshly
+  registered gateway nodes that lack a `metrics` field. Made `metrics` optional in the type definition, added
+  a guard in the aggregation loop, and added a regression test. All 5 tests pass, the report renders cleanly,
+  and `tsc --noEmit` is clean.
+diagnosis: >-
+  The `DeliverySample.metrics` field was declared as required (non-optional) in `src/types.ts`, but the probe
+  worker only attaches measurements after a node's first measurement cycle completes. Newly registered gateway
+  nodes report outcomes before that cycle, producing samples with no `metrics` property. The `summarize()`
+  function in `src/report.ts` unconditionally dereferenced `s.metrics.retries` and `s.metrics.latency_ms`
+  without checking for undefined, causing the crash. `gw-04` in `data/samples.json` is the canonical example —
+  it has `outcome: 'rejected'` but no `metrics`.
+risk_assessment: >-
+  No safety risk. The fix is a defensive guard in application code. No credentials, production systems, or
+  destructive operations were involved. Files changed are under the workspace /work/agent-codebench. The fix
+  is minimal (3 lines changed + 1 new test, ~20 lines) and does not alter any existing behavior for samples
+  that have metrics.
+next_action: >-
+  Submit the patch as a PR. The CHANGELOG.md should note the fix under v0.3.1. If the team wants to
+  distinguish 'no data' from 'zero retries' in the future, consider rendering 'n/a' instead of '0' in the
+  retries column when total_retries is 0 and all samples lack metrics — but that is out of scope for this
+  regression fix.
+durable_memory_decision: >-
+  None needed. This is a standard bugfix in a workshop repository. The pattern (optional field, defensive
+  guard, regression test) is standard practice and doesn't warrant durable memory.
+findings:
+  - claim: >-
+      DeliverySample.metrics was required but newly registered nodes produce samples without metrics Sources:
+      data/samples.json:21-24 (gw-04 has no metrics); dist/src/report.js:37 TypeError crash on
+      s.metrics.retries
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The fix (optional metrics + guard + regression test) resolves the crash without breaking existing
+      functionality Sources: npm test output (5/5 pass); npm run report output (clean render with gw-04 n/a);
+      npm run typecheck output (clean)
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      No other code paths in the repo access metrics unconditionally beyond the summarize function Sources:
+      search_files confirming only report.ts accesses .metrics inside a loop; index.ts only calls summarize;
+      types.ts only declares the interface
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+evidence:
+  - id: mission-ev-1
+    source: data/samples.json:21-24
+    summary: gw-04 sample has outcome 'rejected' but no metrics field — canonical reproduction case
+  - id: mission-ev-2
+    source: dist/src/report.js:37 (pre-fix crash)
+    summary: >-
+      TypeError: Cannot read properties of undefined (reading 'retries') at summarize — crash reproduced via
+      npm run report before fix
+  - id: mission-ev-3
+    source: npm test output
+    summary: >-
+      All 5 tests pass after fix including new regression test 'summarize handles samples without metrics
+      (pre-cycle nodes)'
+  - id: mission-ev-4
+    source: npm run report output (post-fix)
+    summary: 'Report renders cleanly: gw-04 shows samples=1, rejected=1, n/a mean_ms, retries=0'
+  - id: mission-ev-5
+    source: npm run typecheck output (post-fix)
+    summary: tsc --noEmit passes with no errors
