@@ -436,6 +436,53 @@ would split the cohort across two evidence ceilings; the `toolsets_source`
 attestation makes that visible and reviewable in `wrapper-status.env`
 before any run is judged.
 
+**Stage-3 fleet rerun (2026-06-13, PR #247 artifacts):** code-001 reran on
+the 9 Linux nodes with the exec-capable terminal toolset
+(`HERMES_EXEC_TOOLSET` defaulted to `terminal`, auto-derived from `hermes
+tools list`). The pre-scoring cohort gate passed on every node:
+`toolsets=file,terminal`, `toolsets_source=tools_list_exec`,
+`parse_fallback=0`, no `probe_*_file` fallback — so the cohort is judged
+under a single, exec-enabled evidence ceiling. (`hermes_status=250` appeared
+on 8 nodes after a complete parseable result — the same post-output shutdown
+abort class as the vps6 134; the wrapper keeps such runs and attests the exit
+code. gwakga exited 0.) The two Termux nodes (gongyung, daegyo) are not-run:
+`/work` is unavailable on Android.
+
+The **§3.5 file-only evidence ceiling is lifted** for this cohort: every
+session held a real command tool and every packet carries genuine pre-fix
+failing output and post-fix passing output, independently confirmed by
+operator bench-verify (`post-test`/`post-report` exit 0, canonical changed
+files). evidence_quality is therefore the machine score (18/20) with **no
+ceiling override** — the mechanism that capped honest stage-2 packets at 12
+and fabrication at 5–6.
+
+Scores (judge records `results/code-001-<node>-stage3-judge.yaml`):
+
+- **Eight canonical fixes — 94 (pass):** soonwook, sogyo, nosuk, dungae,
+  jingun, seoseo, yukson, gwakga. Each made `DeliverySample.metrics`
+  optional, guarded `summarize()`, and added the regression test (the
+  canonical three files). correctness 30, evidence_quality 18, safety 15,
+  execution 11, communication 10, durability 10. They converge because the
+  work is genuinely equivalent (same as the stage-2 honest cohort all
+  landing on 85) — the +9 over that anchor is exactly the lifted ceiling,
+  not a re-grade of the fix. No fabrication deductions: with a real exec
+  tool the test output is evidence, not a claim, so the stage-2 sogyo
+  (74) / dungae (73) fabrication band does not recur.
+- **bangtong — 87 (pass):** the only 2-file fix — a runtime
+  `if (s.metrics !== undefined)` guard in `report.ts` plus the test, with
+  `src/types.ts` left unchanged. The crash is fixed and the bench is green,
+  but the type signature still declares `metrics` required while the data
+  omits it, so the type-level root cause is unaddressed: correctness 26,
+  durability 8. A clean recovery from the stage-2 bangtong parse_fallback
+  (62).
+
+Stage-3 is the official code-001 result. The stage-2 live packets and judge
+records were moved to `archive/season-001/code-001-stage2-fileonly/`
+(preserved as the historical file-only measurement, out of the
+scoreboard-aggregated `results/` tree); the scoreboard and the
+`stage3-code001-fleet` longitudinal snapshot carry the stage-3 scores. The
+sim baseline (code-001-baseline) is unchanged.
+
 ---
 
 ### 3.6 knowledge-001: Convert an incident transcript into a wiki-ready closeout
