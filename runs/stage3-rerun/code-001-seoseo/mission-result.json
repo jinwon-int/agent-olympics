@@ -1,0 +1,102 @@
+summary: >-
+  Fixed the TypeScript nightly report regression by making delivery sample metrics optional in the public type
+  and teaching summarize() to count outcomes even when measurements are not yet populated, while excluding
+  missing measurements from retry and mean-latency aggregation. Added a focused node:test regression case for
+  a newly registered gateway sample with no metrics, and verified the unit suite, typecheck, and sample report
+  command now pass.
+diagnosis: >-
+  The v0.3.0 refactor assumed every DeliverySample always had metrics and unconditionally read
+  s.metrics.retries and s.metrics.latency_ms. The documented probe behavior and crashing sample data show that
+  newly registered nodes can report an outcome before their first measurement cycle, so metrics may be absent.
+  That mismatch caused TypeError: Cannot read properties of undefined (reading 'retries') during nightly
+  report generation.
+outputs:
+  changed_files: src/types.ts; src/report.ts; test/report.test.ts
+  test_results: >-
+    Executed in /work/agent-codebench. Baseline: npm test passed 4/4 before the fix, but npm run report failed
+    with TypeError: Cannot read properties of undefined (reading 'retries') at dist/src/report.js:37. After
+    adding the focused regression test before fixing, npm test failed 1/5 on 'summarize handles samples before
+    metrics are populated' with the same TypeError. Final verification: npm test passed 5/5; npm run typecheck
+    exited 0; npm run report exited 0 and rendered gw-04 with samples=1, rejected=1, mean_ms=n/a, retries=0.
+  bug_cause: >-
+    DeliverySample.metrics was typed and handled as required even though probe workers may omit measurements
+    until a node's first measurement cycle completes. summarize() therefore dereferenced undefined metrics for
+    valid samples without measurements.
+  fix_summary: >-
+    Changed DeliverySample.metrics to optional and guarded metric aggregation in summarize(): outcome and
+    sample counts are still included, while retries and latency are only aggregated when metrics exists. Added
+    a regression test covering a rejected sample without metrics and expecting mean_latency_ms null and
+    total_retries 0.
+  residual_risk: >-
+    parseSamples still performs only shallow JSON parsing/casting and does not validate all sample shapes or
+    partial malformed metrics objects; this fix narrowly addresses absent metrics as described by the incident
+    without adding broader schema validation.
+evidence:
+  - source: README.md:18-34
+    summary: >-
+      Public incident notes state the nightly job crashes with TypeError reading retries when a node reports
+      an outcome before its first measurement cycle and therefore has no measurements yet.
+  - source: data/samples.json:20-24
+    summary: The sample drop contains gw-04 with outcome rejected and no metrics field, matching the crash condition.
+  - source: src/report.ts:29-37
+    summary: >-
+      summarize() now counts delivered/timeout/rejected outcomes for every sample but only reads retries and
+      latency inside an if (s.metrics) guard.
+  - source: src/types.ts:9-16
+    summary: >-
+      DeliverySample.metrics is now optional, matching the documented probe behavior that measurements appear
+      only after the first measurement cycle.
+  - source: test/report.test.ts:49-71
+    summary: >-
+      Added a focused regression test for a rejected gw-04 sample without metrics, expecting rejected/sample
+      counts to be preserved and mean_latency_ms=null, total_retries=0.
+  - source: command:npm run report:baseline
+    summary: >-
+      Before the fix, npm run report failed: TypeError: Cannot read properties of undefined (reading
+      'retries') at summarize (/work/agent-codebench/dist/src/report.js:37:39).
+  - source: command:npm test:regression-before-fix
+    summary: >-
+      After adding the focused regression test and before code fix, npm test failed 1/5 on 'summarize handles
+      samples before metrics are populated' with the same TypeError.
+  - source: command:npm test:final
+    summary: 'Final npm test passed: 1..5, tests 5, pass 5, fail 0.'
+  - source: command:npm run typecheck:final
+    summary: Final npm run typecheck completed successfully with tsc --noEmit and exit code 0.
+  - source: command:npm run report:final
+    summary: >-
+      Final npm run report completed successfully and rendered gw-04 as: samples 1, delivered 0, timeouts 0,
+      rejected 1, mean_ms n/a, retries 0.
+risk_assessment: >-
+  Minimal, task-scoped TypeScript source and test changes only. No oracle, judge notes, secrets, production
+  services, destructive commands, broad formatting, or unrelated refactors were used. The behavior choice is
+  conservative: incomplete measurement samples remain visible in outcome counts while unavailable metric
+  fields do not contribute zeros to latency averages.
+next_action: >-
+  Open a PR with the three source/test changes and include the final npm test, npm run typecheck, and npm run
+  report outputs in the PR body.
+durable_memory_decision: >-
+  No durable memory should be persisted; this was a narrow fixture-specific regression fix and did not reveal
+  a reusable operator preference or long-term workflow lesson.
+findings:
+  - claim: >-
+      The regression is caused by unconditionally dereferencing metrics on samples where metrics may
+      legitimately be absent.
+    evidence:
+      - README.md:18-34
+      - data/samples.json:20-24
+      - command:npm run report:baseline
+    confidence: high
+  - claim: >-
+      The implemented fix preserves outcome/sample aggregation and skips retry/latency aggregation only when
+      metrics is missing.
+    evidence:
+      - src/report.ts:29-37
+      - src/types.ts:9-16
+      - test/report.test.ts:49-71
+    confidence: high
+  - claim: The final workspace state is verified by the project's relevant test, typecheck, and report commands.
+    evidence:
+      - command:npm test:final
+      - command:npm run typecheck:final
+      - command:npm run report:final
+    confidence: high

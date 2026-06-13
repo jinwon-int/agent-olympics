@@ -1,0 +1,107 @@
+agent_id: dungae
+artifacts:
+  - checksum:
+      algorithm: sha256
+      value: 2cbaa22cbaa22cbaa22cbaa22cbaa22cbaa22cbaa22cbaa22cbaa22cbaa22cba
+    content_type: text/yaml
+    generated_by: agent
+    kind: result_packet
+    path: result-packet.yaml
+    redacted: false
+    retention: season
+    size_bytes: 5120
+  - checksum:
+      algorithm: sha256
+      value: 2cbae22cbae22cbae22cbae22cbae22cbae22cbae22cbae22cbae22cbae22cba
+    content_type: text/yaml
+    generated_by: agent
+    kind: trace
+    path: trace.yaml
+    redacted: false
+    retention: season
+    size_bytes: 6144
+  - checksum:
+      algorithm: sha256
+      value: 2cb9012cb9012cb9012cb9012cb9012cb9012cb9012cb9012cb9012cb9012cb9
+    content_type: text/yaml
+    generated_by: agent
+    kind: evidence_bundle
+    path: evidence-bundle.yaml
+    redacted: false
+    retention: permanent
+    size_bytes: 4096
+  - checksum:
+      algorithm: sha256
+      value: 2cb9fd2cb9fd2cb9fd2cb9fd2cb9fd2cb9fd2cb9fd2cb9fd2cb9fd2cb9fd2cb9
+    content_type: text/yaml
+    generated_by: agent
+    kind: run_manifest
+    path: manifest.yaml
+    redacted: false
+    retention: season
+    size_bytes: 2400
+  - checksum:
+      algorithm: sha256
+      value: 95983e95983e95983e95983e95983e95983e95983e95983e95983e95983e9598
+    content_type: text/yaml
+    generated_by: agent
+    kind: evidence_file
+    path: evidence/workflow-plan.yaml
+    redacted: false
+    retention: round
+    size_bytes: 2560
+  - checksum:
+      algorithm: sha256
+      value: 95983d95983d95983d95983d95983d95983d95983d95983d95983d95983d9598
+    content_type: text/yaml
+    generated_by: agent
+    kind: evidence_file
+    path: evidence/worker-traces.yaml
+    redacted: false
+    retention: round
+    size_bytes: 4096
+  - checksum:
+      algorithm: sha256
+      value: 95983c95983c95983c95983c95983c95983c95983c95983c95983c95983c9598
+    content_type: text/yaml
+    generated_by: agent
+    kind: evidence_file
+    path: evidence/memory-summary.yaml
+    redacted: true
+    retention: round
+    size_bytes: 2048
+created_at: '2026-06-13T03:46:09Z'
+manifest_id: am-run-code-001-dungae-2026-06-13T03-46-09-c96cbc
+references:
+  evidence_bundle_path: evidence-bundle.yaml
+  evidence_dir: evidence/
+  result_packet_path: result-packet.yaml
+  trace_path: trace.yaml
+retention_policy:
+  cleanup_after_days: 90
+  default_retention: season
+  scrubbing_required: true
+round_id: season-001-round-001
+run_id: run-code-001-dungae-2026-06-13T03-46-09-c96cbc
+run_metadata:
+  adapter: hermes
+  adapter_mode: orchestrator
+  adapter_version: 1.0.0
+  duration_seconds: 0
+  event_family: code
+  runner: a2a-runner-v1
+  runner_version: 1.0.0
+schema_version: 1
+status: completed
+status_history:
+  - note: Run directory created
+    status: pending
+    timestamp: '2026-06-13T03:46:09Z'
+  - note: 'Hermes adapter execution started (mode: orchestrator, event: code)'
+    status: running
+    timestamp: '2026-06-13T03:46:09Z'
+  - note: 'Hermes adapter completed: completed'
+    status: completed
+    timestamp: '2026-06-13T03:46:09Z'
+task_id: code-001
+updated_at: '2026-06-13T03:46:09Z'

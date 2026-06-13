@@ -1,0 +1,99 @@
+schema_version: 1
+generated_at: '2026-06-13T03:52:20.152Z'
+task_id: code-001
+source: nested hermes chat -q invocation
+parsed_json: true
+agent_exit_code: 250
+model_attestation:
+  model: deepseek-v4-pro
+  provider: deepseek
+  source: hermes_config
+summary: >-
+  Fixed a TypeScript regression in the gateway delivery report pipeline where summarize() crashed with
+  TypeError when samples lacked a metrics field. Made metrics optional in the DeliverySample type, added a
+  runtime guard in the aggregation loop, and added a targeted test covering samples with missing metrics. All
+  5 tests pass, type checking passes, and the report command runs cleanly against real sample data.
+diagnosis: >-
+  The summarize() function in src/report.ts unconditionally accessed s.metrics.retries and
+  s.metrics.latency_ms on every sample. However, real data (data/samples.json) contains a gw-04 sample with
+  outcome 'rejected' and no metrics field, because the probe worker's measurement cycle had not yet completed.
+  At runtime this produced: TypeError: Cannot read properties of undefined (reading 'retries'). The
+  DeliverySample interface also declared metrics as required, masking the real-world possibility of absent
+  metrics at the type level.
+risk_assessment: >-
+  Low risk. The fix is surgical — a single guard block protecting three metric accumulations. The type change
+  from metrics to metrics? is backward-compatible (existing callers that always provide metrics continue to
+  work). No production deployments, credential rotation, or destructive actions were performed. The fix does
+  not alter the output format or semantics for fully-populated samples.
+next_action: >-
+  Ready for PR: create a branch from main with these three file changes, submit with a Korean-language PR body
+  describing the regression and fix, squash-merge after review.
+durable_memory_decision: >-
+  Nothing needs to be persisted to durable memory. This is a standard code-001 mission with no novel
+  infrastructure, node configuration, or reusable process knowledge beyond the fix itself.
+findings:
+  - claim: >-
+      summarize() crashes on samples without metrics field due to unconditional s.metrics access Sources:
+      terminal: npm run report before fix shows TypeError: Cannot read properties of undefined (reading
+      'retries'); data/samples.json contains gw-04 sample without metrics
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The DeliverySample type incorrectly declared metrics as required, masking the real-world scenario where
+      probe cycles haven't completed Sources: src/types.ts declared metrics without ?; JSDoc says 'Populated
+      by the probe worker once the node's first measurement cycle completes' implying it may not always be
+      present
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The fix resolves the bug and all tests pass including the new edge-case test Sources: terminal: npm test
+      shows 5/5 pass; terminal: npm run report produces correct output; terminal: npm run typecheck passes
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      Only three files were changed and the changes are minimal and targeted Sources: src/types.ts: 1
+      character change (?), 1 JSDoc line added; src/report.ts: 3 lines guarded inside if block;
+      test/report.test.ts: 1 new test function added
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+evidence:
+  - id: mission-ev-1
+    source: 'terminal: cd /work/agent-codebench && npm run report (before fix)'
+    summary: >-
+      Crashed with TypeError: Cannot read properties of undefined (reading 'retries') at summarize() line 37 —
+      confirms the bug is reproducible
+  - id: mission-ev-2
+    source: 'terminal: cd /work/agent-codebench && npm test (after fix)'
+    summary: 5/5 tests pass including new 'summarize handles samples with missing metrics gracefully' test
+  - id: mission-ev-3
+    source: 'terminal: cd /work/agent-codebench && npm run report (after fix)'
+    summary: >-
+      Runs cleanly: gw-01 shows 2560.2 mean_ms, gw-04 shows n/a mean_ms and 0 retries — correct behavior for
+      missing metrics
+  - id: mission-ev-4
+    source: 'terminal: cd /work/agent-codebench && npm run typecheck (after fix)'
+    summary: tsc --noEmit passes with zero errors — no type regressions introduced
+  - id: mission-ev-5
+    source: src/report.ts:29-38
+    summary: >-
+      The fix: metrics access guarded by if (s.metrics) — retries and latency only accumulated when metrics
+      are present
+  - id: mission-ev-6
+    source: src/types.ts:9-17
+    summary: >-
+      metrics changed from required to optional (metrics?) with updated JSDoc documenting early-sample
+      scenario
+  - id: mission-ev-7
+    source: test/report.test.ts:49-86
+    summary: >-
+      New test: gw-04 has one rejected sample without metrics + one delivered with metrics; gw-05 has a
+      timeout without metrics. Asserts correct outcome counts, total_retries=0 when no metrics,
+      mean_latency_ms=null when no metrics, and correct partial mean for gw-04

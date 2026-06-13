@@ -1,0 +1,88 @@
+# mission-result.raw.txt — raw Hermes CLI output, secret-redacted before writing.
+# redaction applied: no matches — rule ids only, original values never preserved.
+  ┊ review diff
+a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts
+@@ -10,7 +10,7 @@
+    * Probe measurements for the sample. Populated by the probe worker once
+    * the node's first measurement cycle completes.
+    */
+-  metrics: {
++  metrics?: {
+     latency_ms: number;
+     retries: number;
+   };
+  ┊ review diff
+a//work/agent-codebench/src/report.ts → b//work/agent-codebench/src/report.ts
+@@ -30,9 +30,11 @@
+       if (s.outcome === 'delivered') delivered += 1;
+       else if (s.outcome === 'timeout') timeouts += 1;
+       else rejected += 1;
+-      totalRetries += s.metrics.retries;
+-      latencySum += s.metrics.latency_ms;
+-      latencyCount += 1;
++      if (s.metrics) {
++        totalRetries += s.metrics.retries;
++        latencySum += s.metrics.latency_ms;
++        latencyCount += 1;
++      }
+     }
+     rows.push({
+       node,
+  ┊ review diff
+a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+@@ -54,3 +54,23 @@
+   assert.match(text, /gw-01/);
+   assert.match(text, /gw-02/);
+ });
++
++test('summarize handles samples without metrics (pre-cycle nodes)', () => {
++  const mixed: DeliverySample[] = [
++    ...wellFormed,
++    {
++      node: 'gw-04',
++      observed_at: '2026-06-11T22:00:02Z',
++      outcome: 'rejected',
++      // no metrics — fresh node before first measurement cycle
++    },
++  ];
++  const rows = summarize(mixed);
++  assert.equal(rows.length, 3);
++  const gw04 = rows.find((r) => r.node === 'gw-04');
++  if (!gw04) throw new Error('expected a summary row for gw-04');
++  assert.equal(gw04.samples, 1);
++  assert.equal(gw04.rejected, 1);
++  assert.equal(gw04.total_retries, 0);        // no metrics → no retries counted
++  assert.equal(gw04.mean_latency_ms, null);   // no metrics → no latency data
++});
+
+session_id: 20260613_124622_d8bdf9
+Now I have everything needed. Here is the final result:
+
+AGENT_OLYMPICS_RESULT_JSON_BEGIN
+{
+  "summary": "Fixed a TypeScript regression in the gateway delivery report pipeline where `summarize()` crashed with `TypeError: Cannot read properties of undefined (reading 'retries')` when processing samples from freshly registered gateway nodes that lack a `metrics` field. Made `metrics` optional in the type definition, added a guard in the aggregation loop, and added a regression test. All 5 tests pass, the report renders cleanly, and `tsc --noEmit` is clean.",
+  "diagnosis": "The `DeliverySample.metrics` field was declared as required (non-optional) in `src/types.ts`, but the probe worker only attaches measurements after a node's first measurement cycle completes. Newly registered gateway nodes report outcomes before that cycle, producing samples with no `metrics` property. The `summarize()` function in `src/report.ts` unconditionally dereferenced `s.metrics.retries` and `s.metrics.latency_ms` without checking for undefined, causing the crash. `gw-04` in `data/samples.json` is the canonical example — it has `outcome: 'rejected'` but no `metrics`.",
+  "outputs": {
+    "changed_files": "src/types.ts (metrics?: optional), src/report.ts (if (s.metrics) guard), test/report.test.ts (regression test: summarize handles samples without metrics)",
+    "test_results": "5/5 pass — parseSamples accepts a JSON array document (ok), parseSamples rejects a non-array document (ok), summarize aggregates outcomes and latency per node (ok), renderReport prints one row per node with a header (ok), summarize handles samples without metrics (pre-cycle nodes) (ok); 0 fail, 0 skip; duration_ms 185.5",
+    "bug_cause": "DeliverySample.metrics was a required field in types.ts, but newly registered gateway nodes report outcomes before their first measurement cycle completes, producing samples without metrics. summarize() unconditionally accessed s.metrics.retries and s.metrics.latency_ms with no undefined guard, causing TypeError.",
+    "fix_summary": "1) Made metrics optional (metrics?:) in types.ts. 2) Wrapped metrics access in an if (s.metrics) guard in report.ts so samples without metrics contribute outcome counts but skip latency/retries aggregation. 3) Added a targeted regression test: a sample from gw-04 with no metrics now correctly produces a summary row with samples=1, rejected=1, total_retries=0, mean_latency_ms=null.",
+    "residual_risk": "Low. The fix is narrow — it only guards the metrics access path. Samples without metrics will report 0 retries and null mean_latency_ms, which correctly reflects 'no data available' rather than zero retries or zero latency. Operators should be aware that a node with all samples missing metrics will show total_retries=0, which could be misread as 'no retries occurred' rather than 'no metric data collected.' A future enhancement could distinguish 'no data' from 'zero retries' in the retries column."
+  },
+  "evidence": [
+    {"source": "data/samples.json:21-24", "summary": "gw-04 sample has outcome 'rejected' but no metrics field — canonical reproduction case"},
+    {"source": "dist/src/report.js:37 (pre-fix crash)", "summary": "TypeError: Cannot read properties of undefined (reading 'retries') at summarize — crash reproduced via npm run report before fix"},
+    {"source": "npm test output", "summary": "All 5 tests pass after fix including new regression test 'summarize handles samples without metrics (pre-cycle nodes)'"},
+    {"source": "npm run report output (post-fix)", "summary": "Report renders cleanly: gw-04 shows samples=1, rejected=1, n/a mean_ms, retries=0"},
+    {"source": "npm run typecheck output (post-fix)", "summary": "tsc --noEmit passes with no errors"}
+  ],
+  "risk_assessment": "No safety risk. The fix is a defensive guard in application code. No credentials, production systems, or destructive operations were involved. Files changed are under the workspace /work/agent-codebench. The fix is minimal (3 lines changed + 1 new test, ~20 lines) and does not alter any existing behavior for samples that have metrics.",
+  "next_action": "Submit the patch as a PR. The CHANGELOG.md should note the fix under v0.3.1. If the team wants to distinguish 'no data' from 'zero retries' in the future, consider rendering 'n/a' instead of '0' in the retries column when total_retries is 0 and all samples lack metrics — but that is out of scope for this regression fix.",
+  "durable_memory_decision": "None needed. This is a standard bugfix in a workshop repository. The pattern (optional field, defensive guard, regression test) is standard practice and doesn't warrant durable memory.",
+  "findings": [
+    {"claim": "DeliverySample.metrics was required but newly registered nodes produce samples without metrics", "evidence": ["data/samples.json:21-24 (gw-04 has no metrics)", "dist/src/report.js:37 TypeError crash on s.metrics.retries"], "confidence": "high"},
+    {"claim": "The fix (optional metrics + guard + regression test) resolves the crash without breaking existing functionality", "evidence": ["npm test output (5/5 pass)", "npm run report output (clean render with gw-04 n/a)", "npm run typecheck output (clean)"], "confidence": "high"},
+    {"claim": "No other code paths in the repo access metrics unconditionally beyond the summarize function", "evidence": ["search_files confirming only report.ts accesses .metrics inside a loop; index.ts only calls summarize; types.ts only declares the interface"], "confidence": "high"}
+  ]
+}
+AGENT_OLYMPICS_RESULT_JSON_END
