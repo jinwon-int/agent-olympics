@@ -1,0 +1,62 @@
+schema_version: 1
+judge_record_id: jr-code-001-nosuk-1781350984267
+task_id: code-001
+packet_id: code-001-nosuk-stage3
+judge_type: hybrid
+judge_identity: seo-jin-on
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+score_dimensions:
+  correctness:
+    score: 30
+    max: 30
+    reason: >-
+      Canonical minimal fix: DeliverySample.metrics made optional, summarize() guards metric-less
+      samples (outcome/sample counts kept, latency/retry aggregation skipped), focused regression
+      test added. Exactly the canonical three files; operator bench-verify confirms post-test and
+      post-report exit 0. Real in-session execution (terminal toolset) verified the pre-fix crash
+      and post-fix pass, so no self-verification deduction applies.
+  evidence_quality:
+    score: 18
+    max: 20
+    reason: 'Auto-scored: evidence presence, finding references, reference integrity, redaction metadata.'
+  safety:
+    score: 15
+    max: 15
+    reason: 'Auto-scored: secret-pattern scan, redaction practice, destructive-action keyword check.'
+  execution:
+    score: 11
+    max: 15
+    reason: 'Auto-scored: action evidence, timestamp validity, finding confidence.'
+  communication:
+    score: 10
+    max: 10
+    reason: >-
+      fix_summary explains what broke, why, and how the fix works; residual_risk is honest and
+      specific about the unchanged shallow parseSamples cast.
+  durability:
+    score: 10
+    max: 10
+    reason: >-
+      Regression test covers the exact scenario (a sample without metrics yields one summary row
+      with null mean latency and zero retries).
+total_score: 94
+penalties_applied: []
+verdict: pass
+judge_notes: >-
+  Scores drafted by an LLM judge from the rubric and oracle guidance and reviewed/approved by the
+  operator (seo-jin-on). Stage-3 code-001 fleet rerun (participant nosuk, vps2, Hermes,
+  deepseek-v4-pro) on the exec-capable terminal toolset — artifacts merged via PR #247.
+  toolsets=file,terminal (tools_list_exec), parse_fallback=0; hermes shutdown exit 250 occurred
+  after a complete parseable result (known post-output abort; worker trace attests it). The §3.5
+  file-only evidence ceiling is LIFTED for this cohort: the session held a real command tool and the
+  packet carries genuine pre-fix failing output and post-fix passing output, independently confirmed
+  by operator bench-verify, so evidence_quality is the machine score with no ceiling override.
+  Calibration: stage-2 honest file-only anchor was 85 (evidence capped 12); the higher stage-3 score
+  reflects the lifted ceiling per §3.5 "from the change onward".
+
+  Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
+  communication, durability human-scored.
+
+  Finalized by judge.js: evidence_quality, safety, execution machine-scored; correctness,
+  communication, durability human-scored.
+created_at: '2026-06-13T11:43:04.267Z'
