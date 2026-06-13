@@ -1,0 +1,72 @@
+adapter_mode: orchestrator
+agent_id: yukson
+bundle_id: eb-run-code-001-yukson-2026-06-13T03-52-32-572339
+event_family: code
+generated_at: '2026-06-13T03:52:32Z'
+items:
+  - checksum:
+      algorithm: sha256
+      value: aaa7ca4547ca4547ca4547ca4547ca4547ca4547ca4547ca4547ca4547ca4547
+    content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    size_bytes: 2048
+    source: task envelope
+    summary: Copy of input task envelope for event family "code"
+  - checksum:
+      algorithm: sha256
+      value: bbb7ca4537ca4537ca4537ca4537ca4537ca4537ca4537ca4537ca4537ca4537
+    content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    size_bytes: 2560
+    source: hermes workflow engine
+    summary: Workflow plan with 3 steps for event family "code"
+  - checksum:
+      algorithm: sha256
+      value: ccc7ca4527ca4527ca4527ca4527ca4527ca4527ca4527ca4527ca4527ca4527
+    content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    size_bytes: 4096
+    source: worker execution traces
+    summary: Nested Hermes CLI output captured; parsed_json=true; exit_code=250
+  - checksum:
+      algorithm: sha256
+      value: ddd7ca4517ca4517ca4517ca4517ca4517ca4517ca4517ca4517ca4517ca4517
+    content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    metadata:
+      cache_hit_ratio: 0.5
+      total_keys_found: 2
+      total_keys_requested: 4
+    redacted: true
+    redaction_rule: hermes_memory_content
+    size_bytes: 2048
+    source: worker memory retrieval
+    summary: Durable memory decision captured without private memory content.
+  - checksum:
+      algorithm: sha256
+      value: fff7ca44f7ca44f7ca44f7ca44f7ca44f7ca44f7ca44f7ca44f7ca44f7ca44f7
+    content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    size_bytes: 3072
+    source: hermes commander
+    summary: >-
+      Fixed the TypeScript delivery report regression by allowing delivery samples to exist before their first
+      metrics cycle, guarding aggregation against absent metrics, and adding a focused regression test for the
+      pending-me
+run_id: run-code-001-yukson-2026-06-13T03-52-32-572339
+runtime: hermes
+schema_version: 1

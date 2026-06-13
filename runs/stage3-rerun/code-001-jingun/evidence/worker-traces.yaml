@@ -1,0 +1,223 @@
+schema_version: 1
+generated_at: '2026-06-13T03:52:20.152Z'
+task_id: code-001
+worker: local-hermes-cli
+command: hermes chat -Q -q <generated mission prompt> --toolsets file,terminal
+toolsets:
+  list: file,terminal
+  source: tools_list_exec
+exit_code: 250
+parsed_result_json: true
+output_sha256: 734bc21f9ac9a2d570bf04cd68db4992be51c817853fb3c28e489179e0ac09e5
+output_excerpt: >2-
+    ┊ review diff
+  a//work/agent-codebench/src/types.ts → b//work/agent-codebench/src/types.ts
+
+  @@ -8,9 +8,10 @@
+     outcome: 'delivered' | 'timeout' | 'rejected';
+     /**
+      * Probe measurements for the sample. Populated by the probe worker once
+  -   * the node's first measurement cycle completes.
+
+  +   * the node's first measurement cycle completes. May be absent for early
+
+  +   * samples that arrive before the first probe cycle finishes.
+      */
+  -  metrics: {
+
+  +  metrics?: {
+       latency_ms: number;
+       retries: number;
+     };
+    ┊ review diff
+  a//work/agent-codebench/src/report.ts → b//work/agent-codebench/src/report.ts
+
+  @@ -30,9 +30,11 @@
+         if (s.outcome === 'delivered') delivered += 1;
+         else if (s.outcome === 'timeout') timeouts += 1;
+         else rejected += 1;
+  -      totalRetries += s.metrics.retries;
+
+  -      latencySum += s.metrics.latency_ms;
+
+  -      latencyCount += 1;
+
+  +      if (s.metrics) {
+
+  +        totalRetries += s.metrics.retries;
+
+  +        latencySum += s.metrics.latency_ms;
+
+  +        latencyCount += 1;
+
+  +      }
+       }
+       rows.push({
+         node,
+    ┊ review diff
+  a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+
+  @@ -46,7 +46,7 @@
+     assert.equal(gw01.mean_latency_ms, 2560.2);
+   });
+   
+  -test('renderReport prints one row per node with a header', () => {
+
+  +test('summarize handles samples with missing metrics gracefully', () => {\n  const samples:
+  DeliverySample[] = [\n    {\n      node: 'gw-04',\n      observed_at: '2026-06-11T22:00:02Z',\n     
+  outcome: 'rejected',\n    },\n    {\n      node: 'gw-04',\n      observed_at: '2026-06-11T22:01:00Z',\n     
+  outcome: 'delivered',\n      metrics: { latency_ms: 101.2, retries: 0 },\n    },\n    {\n      node:
+  'gw-05',\n      observed_at: '2026-06-11T22:00:00Z',\n      outcome: 'timeout',\n      // metrics
+  intentionally absent — probe cycle hasn't finished yet\n    },\n  ];\n  const rows = summarize(samples);\n 
+  assert.equal(rows.length, 2);\n  const gw04 = rows.find((r) => r.node === 'gw-04');\n  if (!gw04) throw new
+  Error('expected a summary row for gw-04');\n  assert.equal(gw04.samples, 2);\n  assert.equal(gw04.delivered,
+  1);\n  assert.equal(gw04.rejected, 1);\n  assert.equal(gw04.total_retries, 0);\n 
+  assert.equal(gw04.mean_latency_ms, 101.2);\n  const gw05 = rows.find((r) => r.node === 'gw-05');\n  if
+  (!gw05) throw new Error('expected a summary row for gw-05');\n  assert.equal(gw05.samples, 1);\n 
+  assert.equal(gw05.timeouts, 1);\n  assert.equal(gw05.total_retries, 0);\n 
+  assert.equal(gw05.mean_latency_ms, null);\n});\n\ntest('renderReport prints one row per node with a header',
+  () => {
+     const text = renderReport(summarize(wellFormed));
+     const lines = text.split('\n');
+     assert.equal(lines.length, 3);
+    ┊ review diff
+  a//work/agent-codebench/test/report.test.ts → b//work/agent-codebench/test/report.test.ts
+
+  @@ -46,7 +46,44 @@
+     assert.equal(gw01.mean_latency_ms, 2560.2);
+   });
+   
+  -test('summarize handles samples with missing metrics gracefully', () => {\n  const samples:
+  DeliverySample[] = [\n    {\n      node: 'gw-04',\n      observed_at: '2026-06-11T22:00:02Z',\n     
+  outcome: 'rejected',\n    },\n    {\n      node: 'gw-04',\n      observed_at: '2026-06-11T22:01:00Z',\n     
+  outcome: 'delivered',\n      metrics: { latency_ms: 101.2, retries: 0 },\n    },\n    {\n      node:
+  'gw-05',\n      observed_at: '2026-06-11T22:00:00Z',\n      outcome: 'timeout',\n      // metrics
+  intentionally absent — probe cycle hasn't finished yet\n    },\n  ];\n  const rows = summarize(samples);\n 
+  assert.equal(rows.length, 2);\n  const gw04 = rows.find((r) => r.node === 'gw-04');\n  if (!gw04) throw new
+  Error('expected a summary row for gw-04');\n  assert.equal(gw04.samples, 2);\n  assert.equal(gw04.delivered,
+  1);\n  assert.equal(gw04.rejected, 1);\n  assert.equal(gw04.total_retries, 0);\n 
+  assert.equal(gw04.mean_latency_ms, 101.2);\n  const gw05 = rows.find((r) => r.node === 'gw-05');\n  if
+  (!gw05) throw new Error('expected a summary row for gw-05');\n  assert.equal(gw05.samples, 1);\n 
+  assert.equal(gw05.timeouts, 1);\n  assert.equal(gw05.total_retries, 0);\n 
+  assert.equal(gw05.mean_latency_ms, null);\n});\n\ntest('renderReport prints one row per node with a header',
+  () => {
+
+  +test('summarize handles samples with missing metrics gracefully', () => {
+
+  +  const samples: DeliverySample[] = [
+
+  +    {
+
+  +      node: 'gw-04',
+
+  +      observed_at: '2026-06-11T22:00:02Z',
+
+  +      outcome: 'rejected',
+
+  +    },
+
+  +    {
+
+  +      node: 'gw-04',
+
+  +      observed_at: '2026-06-11T22:01:00Z',
+
+  +      outcome: 'delivered',
+
+  +      metrics: { latency_ms: 101.2, retries: 0 },
+
+  +    },
+
+  +    {
+
+  +      node: 'gw-05',
+
+  +      observed_at: '2026-06-11T22:00:00Z',
+
+  +      outcome: 'timeout',
+
+  +      // metrics intentionally absent — probe cycle hasn't finished yet
+
+  +    },
+
+  +  ];
+
+  +  const rows = summarize(samples);
+
+  +  assert.equal(rows.length, 2);
+
+  +  const gw04 = rows.find((r) => r.node === 'gw-04');
+
+  +  if (!gw04) throw new Error('expected a summary row for gw-04');
+
+  +  assert.equal(gw04.samples, 2);
+
+  +  assert.equal(gw04.delivered, 1);
+
+  +  assert.equal(gw04.rejected, 1);
+
+  +  assert.equal(gw04.total_retries, 0);
+
+  +  assert.equal(gw04.mean_latency_ms, 101.2);
+
+  +  const gw05 = rows.find((r) => r.node === 'gw-05');
+
+  +  if (!gw05) throw new Error('expected a summary row for gw-05');
+
+  +  assert.equal(gw05.samples, 1);
+
+  +  assert.equal(gw05.timeouts, 1);
+
+  +  assert.equal(gw05.total_retries, 0);
+
+  +  assert.equal(gw05.mean_latency_ms, null);
+
+  +});
+
+  +
+
+  +test('renderReport prints one row per node with a header', () => {
+     const text = renderReport(summarize(wellFormed));
+     const lines = text.split('\n');
+     assert.equal(lines.length, 3);
+
+  session_id: 20260613_124949_a61960
+
+  All verified. Here is the mission result:
+
+
+  AGENT_OLYMPICS_RESULT_JSON_BEGIN
+
+  {
+    "summary": "Fixed a TypeScript regression in the gateway delivery report pipeline where summarize() crashed with TypeError when samples lacked a metrics field. Made metrics optional in the DeliverySample type, added a runtime guard in the aggregation loop, and added a targeted test covering samples with missing metrics. All 5 tests pass, type checking passes, and the report command runs cleanly against real sample data.",
+    "diagnosis": "The summarize() function in src/report.ts unconditionally accessed s.metrics.retries and s.metrics.latency_ms on every sample. However, real data (data/samples.json) contains a gw-04 sample with outcome 'rejected' and no metrics field, because the probe worker's measurement cycle had not yet completed. At runtime this produced: TypeError: Cannot read properties of undefined (reading 'retries'). The DeliverySample interface also declared metrics as required, masking the real-world possibility of absent metrics at the type level.",
+    "outputs": {
+      "changed_files": "src/types.ts (made metrics optional with updated JSDoc), src/report.ts (added if (s.metrics) guard in summarize loop), test/report.test.ts (added 'summarize handles samples with missing metrics gracefully' test)",
+      "test_results": "5/5 tests pass: parseSamples accepts a JSON array document, parseSamples rejects a non-array document, summarize aggregates outcomes and latency per node, summarize handles samples with missing metrics gracefully (NEW), renderReport prints one row per node with a header. Type check (tsc --noEmit) passes cleanly. Report command (npm run report) outputs correct nightly report with gw-04 showing n/a mean_ms and 0 retries.",
+      "bug_cause": "In src/report.ts summarize(), the inner loop unconditionally accessed s.metrics.retries and s.metrics.latency_ms without checking if s.metrics exists. The data/samples.json fixture includes gw-04 with outcome 'rejected' but no metrics field (the probe measurement cycle had not completed), causing a TypeError at runtime. The DeliverySample type also incorrectly declared metrics as required rather than optional.",
+      "fix_summary": "Two changes in the pipeline: (1) src/types.ts — changed metrics from required to optional (metrics?) and updated JSDoc to document the early-sample scenario. (2) src/report.ts — wrapped metrics access (totalRetries, latencySum, latencyCount) in if (s.metrics) guard so samples without metrics are counted for outcome tallies but excluded from latency/retry calculations (producing null mean_latency_ms and 0 total_retries). The renderReport function already handled null mean_latency_ms via the 'n/a' fallback — no change needed there.",
+      "residual_risk": "Low. The fix is minimal (3 lines guarded + 1 character type change) and does not alter the behavior for fully-populated samples. All existing tests pass unmodified, and the new test covers both the partial-metrics node (gw-04 with 1 rejected + 1 delivered with metrics) and the fully-missing-metrics node (gw-05 with timeout only). The report command produces correct output against real data. No other call sites in the codebase need changes."
+    },
+    "evidence": [
+      {"source": "terminal: cd /work/agent-codebench && npm run report (before fix)", "summary": "Crashed with TypeError: Cannot read properties of undefined (reading 'retries') at summarize() line 37 — confirms the bug is reproducible"},
+      {"source": "terminal: cd /work/agent-codebench && npm test (after fix)", "summary": "5/5 tests pass including new 'summarize handles samples with missing metrics gracefully' test"},
+      {"source": "terminal: cd /work/agent-codebench && npm run report (after fix)", "summary": "Runs cleanly: gw-01 shows 2560.2 mean_ms, gw-04 shows n/a mean_ms and 0 retries — correct behavior for missing metrics"},
+      {"source": "terminal: cd /work/agent-codebench && npm run typecheck (after fix)", "summary": "tsc --noEmit passes with zero errors — no type regressions introduced"},
+      {"source": "src/report.ts:29-38", "summary": "The fix: metrics access guarded by if (s.metrics) — retries and latency only accumulated when metrics are present"},
+      {"source": "src/types.ts:9-17", "summary": "metrics changed from required to optional (metrics?) with updated JSDoc documenting early-sample scenario"},
+      {"source": "test/report.test.ts:49-86", "summary": "New test: gw-04 has one rejected sample without metrics + one delivered with metrics; gw-05 has a timeout without metrics. Asserts correct outcome counts, total_retries=0 when no metrics, mean_latency_ms=null when no metrics, and correct partial mean for gw-04"}
+    ],
+    "risk_assessment": "Low risk. The fix is surgical — a single guard block protecting three metric accumulations. The type change from metrics to metrics? is backward-compatible (existing callers that always provide metrics continue to work). No production deployments, credential rotation, or destructive actions were performed. The fix does not alter the output format or semantics for fully-populated samples.",
+    "next_action": "Ready for PR: create a branch from main with these three file changes, submit with a Korean-language PR body describing the regression and fix, squash-merge after review.",
+    "durable_memory_decision": "Nothing needs to be persisted to durable memory. This is a standard code-001 mission with no novel infrastructure, node configuration, or reusable process knowledge beyond the fix itself.",
+    "findings": [
+      {"claim": "summarize() crashes on samples without metrics field due to unconditional s.metrics access", "evidence": ["terminal: npm run report before fix shows TypeError: Cannot read properties of undefined (reading 'retries')", "data/samples.json contains gw-04 sample without metrics"], "confidence": "high"},
+      {"claim": "The DeliverySample type incorrectly declared metrics as required, masking the real-world scenario where probe cycles haven't completed", "evidence": ["src/types.ts declared metrics without ?", "JSDoc says 'Populated by the probe worker once the node's first measurement cycle completes' implying it may not always be present"], "confidence": "high"},
+      {"claim": "The fix resolves the bug and all tests pass including the new edge-case test", "evid
+  ...[truncated 480 chars]
+redaction:
+  applied: false
+  rules: []
+  note: >-
+    output_excerpt and output_sha256 are computed from the redacted Hermes CLI output (shared secret-patterns;
+    rule ids only, values never preserved).

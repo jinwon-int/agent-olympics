@@ -1,0 +1,83 @@
+schema_version: 1
+generated_at: '2026-06-13T03:56:25.631Z'
+task_id: code-001
+source: nested hermes chat -q invocation
+parsed_json: true
+agent_exit_code: 0
+model_attestation:
+  model: gpt-5.5
+  provider: openai-codex
+  source: hermes_config
+summary: >-
+  Fixed the TypeScript regression in the gateway delivery report summarizer by treating per-sample metrics as
+  optional, added a focused regression test for samples that have not reported metrics yet, and verified the
+  full project test/typecheck/report commands with real execution output.
+diagnosis: >-
+  The fixture data includes a valid delivery sample for gw-04 with outcome rejected but no metrics object. The
+  code comments already described metrics as populated only after the first measurement cycle, but
+  DeliverySample typed metrics as required and summarize() unconditionally read s.metrics.retries and
+  s.metrics.latency_ms, causing a runtime TypeError when processing metric-less samples.
+risk_assessment: >-
+  Low-risk, minimal patch confined to the task workspace and focused on the regression. No oracle, judge
+  notes, secrets, production actions, restarts, destructive commands, unrelated refactors, or broad formatting
+  changes were used.
+next_action: >-
+  Open a PR with the three source/test changes and include the regression cause plus the npm test, npm run
+  typecheck, and npm run report verification outputs.
+durable_memory_decision: >-
+  Do not persist durable memory; this is a synthetic Agent Olympics fixture-specific regression and does not
+  represent reusable user or fleet operational knowledge.
+findings:
+  - claim: >-
+      Metric-less samples are valid input for this code path and existed in the participant-facing fixture
+      data. Sources: data/samples.json:20-24; src/types.ts:9-16
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The crash was caused by unconditional access to s.metrics.retries and s.metrics.latency_ms in
+      summarize(). Sources: command:npm run report pre-fix; src/report.ts:33-37
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+  - claim: >-
+      The fix preserves outcome/sample aggregation while excluding missing metrics from retry and latency
+      calculations. Sources: src/report.ts:29-47; test/report.test.ts:49-73; command:npm test post-fix;
+      command:npm run report post-fix
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+    confidence: high
+evidence:
+  - id: mission-ev-1
+    source: data/samples.json:20-24
+    summary: The provided sample for gw-04 has node, observed_at, and outcome rejected, but no metrics object.
+  - id: mission-ev-2
+    source: src/report.ts:33-37
+    summary: The fixed summarizer now checks if (s.metrics) before adding retries, latency, and latency count.
+  - id: mission-ev-3
+    source: src/types.ts:9-16
+    summary: >-
+      DeliverySample.metrics is now declared optional, matching the comment that metrics appear after the
+      first measurement cycle.
+  - id: mission-ev-4
+    source: test/report.test.ts:49-73
+    summary: >-
+      Added a regression test for a metric-less sample, asserting one gw-04 row with rejected=1,
+      mean_latency_ms=null, and total_retries=0.
+  - id: mission-ev-5
+    source: command:npm run report pre-fix
+    summary: >-
+      Failed with TypeError: Cannot read properties of undefined (reading 'retries') at summarize when
+      processing data/samples.json.
+  - id: mission-ev-6
+    source: command:npm test post-fix
+    summary: 'Passed: tests 5, pass 5, fail 0.'
+  - id: mission-ev-7
+    source: command:npm run typecheck post-fix
+    summary: 'Passed: tsc --noEmit exited 0.'
+  - id: mission-ev-8
+    source: command:npm run report post-fix
+    summary: Passed and rendered gw-04 as samples=1, rejected=1, mean_ms=n/a, retries=0.
