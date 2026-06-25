@@ -1,6 +1,0 @@
-== post npm test/report summary ==
-post-test-exit=0
-post-report-exit=0
-== diff vs fixture ==
-Files fixtures/season-001/code-001/target-repo/src/report.ts and /work/agent-codebench/src/report.ts differ
-Files fixtures/season-001/code-001/target-repo/test/report.test.ts and /work/agent-codebench/test/report.test.ts differ

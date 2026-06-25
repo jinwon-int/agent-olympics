@@ -1,9 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-12T15:03:35.211Z'
-task_id: coord-001
-durable_memory_decision: >-
-  Do NOT persist this to durable memory. This is a synthetic Olympic fixture (coord-001), not a real
-  operational incident. The analysis and evidence are fixture artifacts. Per established protocol, synthetic
-  fixture data is not persisted as durable memory.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true

@@ -1,8 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-13T03:52:54.271Z'
-task_id: code-001
-durable_memory_decision: >-
-  No durable memory should be persisted; this was a narrow fixture-specific regression fix and did not reveal
-  a reusable operator preference or long-term workflow lesson.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true

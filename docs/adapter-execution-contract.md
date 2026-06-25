@@ -600,7 +600,7 @@ redaction_policy:
 | ✅ Correct | ❌ Wrong |
 |---|---|
 | `api_token_value` | `sk-proj-abc123def456` |
-| `private_key_material` | `-----BEGIN RSA PRIVATE KEY-----MIIEpA...` |
+| `private_key_material` | `<private-key-material-redacted>` |
 | `session_cookie` | `session=abc123; path=/` |
 
 ### Approval Boundaries
