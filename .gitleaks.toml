@@ -1,0 +1,9 @@
+title = "agent-olympics public-readiness gitleaks allowlist"
+
+[allowlist]
+description = "Allow source-only proof-token SHA-256 fixture fields; these are challenge hashes, not credentials."
+paths = [
+  'fixtures/proof-token-verification/challenge-set.yaml',
+  'fixtures/proof-token-verification/positive-result-packet.yaml',
+  'fixtures/proof-token-verification/negative-result-packet.yaml',
+]

@@ -1,8 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-12T15:08:34.276Z'
-task_id: coord-001
-durable_memory_decision: >-
-  이번 coord-001 임무에서 도출한 교훈 — 구성 diff가 가장 신뢰성 높은 증거 유형이며, CPU 메트릭은 단독으로 근본 원인을 판단하기에 불충분하다는 점 — 은 향후 유사한
-  coordination-drill에서 재사용할 가치가 있다. 또한 소수 의견 보존 원칙(근거 명시 후 '미확인' 종결)의 실천 사례로 기록할 만하다.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true

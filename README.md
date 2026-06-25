@@ -18,7 +18,7 @@ motto, and Korean working line.
 
 Agent Olympics is an MVP evaluation framework with source packs, schemas,
 validation tooling, adapter fixtures, and dry-run examples. It is ready for
-schema and harness development. It is not yet a fully verified public
+schema and harness development. It is public-source-ready for schema and harness review, but it is not yet a fully verified public
 competition: most Season 001 tasks remain draft-tier until baseline runs and
 judge records promote them to smoke or verified status.
 
@@ -366,3 +366,14 @@ v2 schemas add public/private separation and oracle cross-referencing:
 - `schemas/judge-record-v2.schema.json` — Judge Record v2
 
 See [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md) for the migration guide.
+
+## Public source visibility boundary
+
+This repository is being prepared for possible public source visibility. A
+public repository setting would be source-only: it would not approve release or
+tag creation, package/image publication, production deploy/restart/reload,
+database mutation, provider or Telegram sends, credential movement, history
+rewrite, or any other live operation.
+
+Runtime credentials and private operational data must stay outside the
+repository. Example configuration must use placeholders only.

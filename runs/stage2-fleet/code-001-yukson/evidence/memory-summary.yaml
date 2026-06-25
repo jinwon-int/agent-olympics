@@ -1,8 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-12T15:10:52.175Z'
-task_id: code-001
-durable_memory_decision: >-
-  Do not persist as durable memory; this is a synthetic Agent Olympics fixture/task result, not lasting user
-  or fleet operational knowledge.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true

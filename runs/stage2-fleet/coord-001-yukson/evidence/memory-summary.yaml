@@ -1,9 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-12T15:14:03.848Z'
-task_id: coord-001
-durable_memory_decision: >-
-  Do not persist this as durable operational memory; this is a synthetic Agent Olympics fixture, not a
-  confirmed real fleet incident. At most, retain the general lesson that contradictory reports should be
-  resolved against shared evidence and minority reports preserved with confidence labels.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true

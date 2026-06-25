@@ -1,6 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-12T15:06:47.783Z'
-task_id: code-001
-durable_memory_decision: No durable memory needed — this is a self-contained mission fix with no lasting operational implications.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true

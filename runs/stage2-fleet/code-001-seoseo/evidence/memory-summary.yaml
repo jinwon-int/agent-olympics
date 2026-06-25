@@ -1,8 +1,0 @@
-schema_version: 1
-generated_at: '2026-06-12T15:06:25.203Z'
-task_id: code-001
-durable_memory_decision: >-
-  Do not persist durable memory: this was a narrow benchmark repository regression, not a reusable user
-  preference or operational lesson.
-note: Private Hermes CLI memory content is not copied into Agent Olympics artifacts.
-redacted: true
