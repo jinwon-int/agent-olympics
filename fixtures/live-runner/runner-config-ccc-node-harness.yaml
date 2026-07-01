@@ -1,0 +1,39 @@
+# ccc-node harness dry-run config — source-only registration fixture.
+#
+# This config demonstrates how a ccc-node harness participant can be dispatched
+# through the generic CLI mission wrapper without credentials. It points at the
+# offline fake CLI binary; a real ccc-node/Hermes/Codex execution is an operator
+# extension and must disclose the paired reasoning runtime separately.
+#
+# Run with:
+#   node scripts/live-runner.js run fixtures/live-runner/round-live-runner-fixture.yaml \
+#     --config fixtures/live-runner/runner-config-ccc-node-harness.yaml
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-001-live-runner-ccc-node-harness
+description: Dry-run dispatch for the ccc-node harness registration fixture.
+round_manifest: fixtures/live-runner/round-live-runner-fixture.yaml
+run_directory: runs/live-runner-fixtures/round-901-ccc-node-harness/
+tasks:
+  - ops-001
+participants:
+  - participant_id: ccc-node-harness
+    adapter: cli
+    transport: local_exec
+    execution_profile: dry_run
+    identify_command:
+      - env
+      - CLI_AGENT_BIN=fixtures/live-runner/transports/fake-claude-cli.js
+      - fixtures/live-runner/transports/fake-claude-cli.js
+      - --version
+    command:
+      - env
+      - CLI_AGENT_BIN=fixtures/live-runner/transports/fake-claude-cli.js
+      - CLI_AGENT_MODEL=source-only-harness-fixture
+      - CLI_AGENT_MODEL_PROVIDER=fixture
+      - CLI_NODE=ccc-node-harness-vps7
+      - bash
+      - adapters/wrappers/cli-mission-wrapper.sh
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'

@@ -1,0 +1,118 @@
+# ccc-node Harness Adapter Capability Declaration
+#
+# Declares the ccc-node harness as a participant support adapter. ccc-node is
+# not a model endpoint; it is the sanitized node bootstrap / validation harness
+# that prepares Hermes/CLI nodes to emit standard Agent Olympics artifacts.
+
+schema_version: 1
+adapter_id: ccc-node-harness
+adapter_type: automation
+display_name: "ccc-node Harness Adapter"
+description: >
+  Wraps a ccc-node checkout as a source-only harness participant: it can run
+  bootstrap diagnostics, no-network smoke tests, bridge/agent-cron status
+  summaries, fleet-matrix classifiers over already-collected evidence, and
+  documentation/readiness checks. The harness delegates actual model reasoning
+  to a declared Hermes or CLI runtime; ccc-node itself contributes reproducible
+  setup, validation, redaction, and artifact-shaping evidence.
+
+status:
+  standard_statuses:
+    - completed
+    - partial
+    - blocked
+    - failed
+    - disqualified
+  internal_mapping:
+    harness_validation_passed: "completed"
+    harness_validation_passed_with_warnings: "partial"
+    required_tool_missing: "blocked"
+    approval_gate_required: "blocked"
+    harness_test_failed: "failed"
+    secret_or_live_boundary_violation: "disqualified"
+
+evidence_kinds:
+  - command_output
+  - log
+  - config_snippet
+  - file_diff
+  - probe_result
+  - transcript_excerpt
+  - url
+
+runtime_fields:
+  harness_repo_ref: "Safe repository reference and source commit used for the harness run."
+  validation_summary: "Summary of ccc-node smoke tests, py_compile checks, or bridge tests."
+  node_readiness_summary: "Value-free readiness labels produced by ccc-doctor or agent-cron status."
+  fleet_matrix_summary: "Aggregated status counts from already-collected fleet evidence."
+  approval_boundary_report: "List of live operations that were deliberately not performed."
+  adapter_runtime_ref: "Declared reasoning/runtime adapter paired with the harness, such as hermes or cli."
+
+redaction_rules:
+  - rule_id: "ccc_node_secret_in_logs"
+    pattern_description: "Credential-like strings in harness stdout/stderr, config snippets, or bridge spools"
+    target_data_class:
+      - "api_tokens"
+      - "private_keys"
+      - "session_cookies"
+      - "credential_from_config"
+    applies_to:
+      - "command_output"
+      - "log"
+      - "config_snippet"
+
+  - rule_id: "ccc_node_private_node_context"
+    pattern_description: "Private node paths, chat identifiers, hostnames, or unredacted runtime state in diagnostics"
+    target_data_class:
+      - "private_paths"
+      - "user_identifiers"
+      - "conversation_content"
+    applies_to:
+      - "log"
+      - "transcript_excerpt"
+      - "config_snippet"
+
+approval_boundaries:
+  always_requires_approval:
+    - gateway_restart
+    - live_provider_or_telegram_canary
+    - database_migration_prune_or_replay
+    - secret_movement
+    - production_service_restart
+  context_dependent:
+    - package_installation
+    - git_push
+    - cross_node_probe
+  default_allowed:
+    - read_only_inspection
+    - no_network_smoke_tests
+    - source_only_schema_validation
+    - local_fixture_generation
+
+timeout_behavior:
+  supports_hard_timeout: true
+  supports_soft_timeout: true
+  default_grace_seconds: 60
+
+task_families:
+  - node-readiness
+  - ops-relay
+  - code-sprint
+  - knowledge-wiki
+  - harness-reliability
+  - coordination-drill
+
+fixture_dependencies:
+  env_dependent: false
+  generated: true
+  bundled: true
+  notes: >
+    Source-only ccc-node participation uses repo-local fixtures and already
+    collected evidence. Live node reflection, provider sends, Gateway restarts,
+    or credential-bearing probes are operator extension points and must not be
+    encoded in public fixtures.
+
+known_limitations:
+  - "ccc-node is a harness/bootstrap layer, not a standalone reasoning model; result packets must disclose the paired reasoning runtime."
+  - "Fleet matrix reports classify already-collected evidence only; they do not prove that every remote node is currently reachable."
+  - "Live bridge, provider, Gateway, or A2A broker canaries require separate operator approval and are outside source-only registration."
