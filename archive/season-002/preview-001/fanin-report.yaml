@@ -1,0 +1,58 @@
+schema_version: 1
+report_kind: agent-olympics.season-002-preview-001.fanin-report
+generated_at: '2026-07-01T17:38:30Z'
+source_run_directory: runs/live-runner/season-002-preview
+archive_directory: archive/season-002/preview-001
+summary:
+  clean: 6
+  quarantined: 0
+  selected_invocation_runs: 6
+runs:
+  - run_id: run-ops-201-gwakga-20260701T173754UTC
+    task_id: ops-201
+    participant_id: gwakga
+    status: completed
+    decision: clean
+    result_packet: archive/season-002/preview-001/run-ops-201-gwakga-20260701T173754UTC/result-packet.yaml
+    judge_record: archive/season-002/preview-001/run-ops-201-gwakga-20260701T173754UTC/result-packet-judge.yaml
+  - run_id: run-code-201-gwakga-20260701T173759UTC
+    task_id: code-201
+    participant_id: gwakga
+    status: completed
+    decision: clean
+    result_packet: archive/season-002/preview-001/run-code-201-gwakga-20260701T173759UTC/result-packet.yaml
+    judge_record: archive/season-002/preview-001/run-code-201-gwakga-20260701T173759UTC/result-packet-judge.yaml
+  - run_id: run-node-201-gwakga-20260701T173804UTC
+    task_id: node-201
+    participant_id: gwakga
+    status: completed
+    decision: clean
+    result_packet: archive/season-002/preview-001/run-node-201-gwakga-20260701T173804UTC/result-packet.yaml
+    judge_record: archive/season-002/preview-001/run-node-201-gwakga-20260701T173804UTC/result-packet-judge.yaml
+  - run_id: run-ops-201-ccc-node-harness-20260701T173809UTC
+    task_id: ops-201
+    participant_id: ccc-node-harness
+    status: completed
+    decision: clean
+    result_packet: >-
+      archive/season-002/preview-001/run-ops-201-ccc-node-harness-20260701T173809UTC/result-packet.yaml
+    judge_record: >-
+      archive/season-002/preview-001/run-ops-201-ccc-node-harness-20260701T173809UTC/result-packet-judge.yaml
+  - run_id: run-code-201-ccc-node-harness-20260701T173815UTC
+    task_id: code-201
+    participant_id: ccc-node-harness
+    status: completed
+    decision: clean
+    result_packet: >-
+      archive/season-002/preview-001/run-code-201-ccc-node-harness-20260701T173815UTC/result-packet.yaml
+    judge_record: >-
+      archive/season-002/preview-001/run-code-201-ccc-node-harness-20260701T173815UTC/result-packet-judge.yaml
+  - run_id: run-node-201-ccc-node-harness-20260701T173820UTC
+    task_id: node-201
+    participant_id: ccc-node-harness
+    status: completed
+    decision: clean
+    result_packet: >-
+      archive/season-002/preview-001/run-node-201-ccc-node-harness-20260701T173820UTC/result-packet.yaml
+    judge_record: >-
+      archive/season-002/preview-001/run-node-201-ccc-node-harness-20260701T173820UTC/result-packet-judge.yaml

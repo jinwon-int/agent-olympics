@@ -1,0 +1,29 @@
+adapter_mode: cli
+agent_id: ccc-node-harness
+bundle_id: eb-run-code-201-ccc-node-harness-2026-07-01T17-38-15-89838d
+generated_at: '2026-07-01T17:38:15Z'
+items:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-cli-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Copy of the input task envelope "code-201".
+  - content_ref: evidence/cli-transcript.yaml
+    content_type: application/x-yaml
+    id: ev-cli-transcript
+    kind: transcript_excerpt
+    redacted: false
+    source: cli terminal transcript
+    summary: Nested CLI agent output captured; parsed_json=true; exit_code=0
+  - content_ref: evidence/cli-report.yaml
+    content_type: application/x-yaml
+    id: ev-cli-report
+    kind: command_output
+    redacted: false
+    source: cli agent answer
+    summary: Solo CLI agent inspected the public fixtures for envelope and isolated the delivery-layer failure.
+run_id: run-code-201-ccc-node-harness-2026-07-01T17-38-15-89838d
+runtime: cli
+schema_version: 1

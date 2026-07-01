@@ -11,6 +11,8 @@ Season 002 Preview is a source-only rehearsal pack. It validates that the projec
 | Dry-run runner config | `fixtures/live-runner/runner-config-season-002-preview.yaml` |
 | Intended mode | source-only preview / invitational rehearsal |
 | Official public scoring | not yet enabled |
+| Preview 001 evidence | `archive/season-002/preview-001/` |
+| Preview task tier | `verified` for source-only preview readiness only |
 
 ## Preview tasks
 

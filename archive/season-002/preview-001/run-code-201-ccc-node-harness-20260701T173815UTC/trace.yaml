@@ -1,0 +1,39 @@
+adapter_mode: cli
+agent_id: ccc-node-harness
+entries:
+  - action: read
+    duration_ms: 20
+    evidence_ref: ev-cli-input
+    result_summary: 'Loaded envelope: Harness validation fix with targeted evidence'
+    seq: 0
+    summary: Read task envelope "code-201" from disk.
+    target: task_envelope
+    timestamp: '2026-07-01T17:38:15Z'
+  - action: exec
+    duration_ms: 500
+    evidence_ref: ev-cli-probe
+    result_summary: CLI agent session executed; transcript captured.
+    seq: 1
+    summary: Invoke the coding-agent CLI with the public task envelope and participant-facing fixture paths.
+    target: cli_agent
+    timestamp: '2026-07-01T17:38:15Z'
+  - action: synthesize
+    duration_ms: 100
+    evidence_ref: ev-cli-report
+    result_summary: Artifacts written for run run-code-201-ccc-node-harness-2026-07-01T17-38-15-89838d.
+    seq: 2
+    summary: Capture the CLI agent answer and write result artifacts to the run directory.
+    target: cli_report
+    timestamp: '2026-07-01T17:38:15Z'
+  - seq: 3
+    timestamp: '2026-07-01T17:38:19.318Z'
+    action: synthesize
+    target: nested_cli_agent_result
+    summary: Merged actual CLI agent mission output into Agent Olympics artifacts
+    result_summary: Solo CLI agent inspected the public fixtures for envelope and isolated the delivery-layer failure.
+    evidence_ref: ev-cli-report
+generated_at: '2026-07-01T17:38:15Z'
+run_id: run-code-201-ccc-node-harness-2026-07-01T17-38-15-89838d
+runtime: cli
+schema_version: 1
+trace_id: tr-cli-run-code-201-ccc-node-harness-2026-07-01T17-38-15-89838d

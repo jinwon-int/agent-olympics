@@ -44,15 +44,17 @@ required_outputs:
   - test_results
   - residual_risk
 scoring_rubric: rubrics/agent-olympics-v1.yaml
-tier: smoke
+judge_notes_ref: docs/season-002-preview-judge-notes.md
+tier: verified
 baseline:
-  baseline_actor: preview-dry-run-fixture
+  baseline_actor: preview-001-gwakga-and-ccc-node-harness
   baseline_time_sec: 0
   baseline_success: true
-  baseline_artifact_ref: runs/live-runner/season-002-preview/
+  baseline_artifact_ref: archive/season-002/preview-001/
   difficulty_notes: >
-    Source-only preview task intended to reward minimal diffs, accurate test
-    evidence, and explicit non-actions.
+    Source-only preview task verified by archived dry-run result packets, clean
+    fan-in evidence, and complete llm-assisted judge records. Verification is
+    limited to Season 002 Preview readiness and does not imply public scoring.
 labels:
   - season-002
   - preview

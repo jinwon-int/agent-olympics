@@ -1,0 +1,247 @@
+actions:
+  - command_summary: Parse task envelope from file
+    duration_seconds: 0.045
+    evidence_id: ev-session-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Create Hermes orchestrator session
+    duration_seconds: 0.35
+    evidence_id: ev-orchestrator-session
+    id: act-002
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    target: hermes_orchestrator
+    type: api_call
+  - command_summary: Decompose task "ops" into 4-step workflow plan
+    duration_seconds: 1.2
+    evidence_id: ev-workflow-plan
+    id: act-003
+    redacted: false
+    target: workflow
+    type: plan
+  - command_summary: Dispatch 1 workers with assigned subtasks
+    duration_seconds: 0.8
+    evidence_id: ev-worker-assignments
+    id: act-004
+    redacted: true
+    redaction_reason: hermes_workflow_arguments
+    target: worker_pool
+    type: delegate
+  - command_summary: Probe worker readiness and memory cache availability
+    duration_seconds: 0.6
+    evidence_id: ev-probe-result
+    id: act-005
+    redacted: true
+    redaction_reason: prevent_worker_credential_exposure_in_trace
+    target: worker_readiness
+    type: api_call
+  - command_summary: Collect tool traces and memory summaries from workers
+    duration_seconds: 0.9
+    evidence_id: ev-worker-traces
+    id: act-006
+    redacted: false
+    target: worker_results
+    type: collect
+  - command_summary: Synthesize final commander report from all worker results
+    duration_seconds: 1.1
+    evidence_id: ev-commander-report
+    id: act-008
+    redacted: false
+    target: commander_report
+    type: synthesize
+adapter: hermes
+agent_id: gwakga
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:ed6af3ed6af3ed6af3ed6af3ed6af3ed6af3ed6af3ed6af3ed6af3ed6af3ed6a
+    result_packet: sha256:ed6952ed6952ed6952ed6952ed6952ed6952ed6952ed6952ed6952ed6952ed69
+    trace_record: sha256:ed6912ed6912ed6912ed6912ed6912ed6912ed6912ed6912ed6912ed6912ed69
+  config:
+    details:
+      adapter_mode: simulation
+      event_family: ops
+      max_concurrent_workers: 1
+      timeout_seconds: 900
+    profile_ref: orchestrator-default
+  model:
+    name: gpt-5.x
+    provider: openai
+  node:
+    hardware_profile:
+      cpu_class: medium-vps
+      memory_gb: 4
+      os_family: linux
+      storage_class: nvme-shared
+    profile_ref: orchestrator-node
+  participant:
+    adapter: hermes
+    agent_id: gwakga
+  runtime:
+    name: hermes
+    version: 1.0.0
+  task:
+    task_id: ops-201
+    task_version: v2
+configuration_profile:
+  adapter_mode: simulation
+  event_family: ops
+  liveness: hermes-orchestrator
+  max_concurrent_workers: 1
+  model_routing: documented
+  resource_limits: configured
+  worker_count: 1
+delegation_profile:
+  a2a_workers:
+    - stub-small-vps
+  background_jobs_used: false
+  human_assistance: false
+  notes: Hermes orchestrator dispatched 1 workers across 4 workflow steps.
+  subagents_used: true
+  supported_by: []
+division: open_stack
+ended_at: '2026-07-01T17:37:55Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for event family "ops"
+  - id: ev-orchestrator-session
+    kind: log
+    redacted: true
+    redaction_reason: hermes_credential_in_worker_output
+    source: hermes orchestrator journal
+    summary: Orchestrator session created and authenticated successfully
+  - content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - id: ev-worker-assignments
+    kind: worker_assignment
+    redacted: false
+    source: hermes worker pool
+    summary: Worker assignments for 1 workers
+  - id: ev-probe-result
+    kind: probe_result
+    redacted: false
+    source: worker readiness probe
+    summary: Worker readiness confirmed for all selected profiles
+  - content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    source: worker execution traces
+    summary: Consolidated tool traces from 1 workers with redaction applied to sensitive outputs
+  - content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    redacted: true
+    redaction_reason: hermes_memory_content
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    source: hermes commander
+    summary: Synthesized commander report from all worker results
+findings:
+  - claim: >-
+      Hermes adapter executed workflow "wf-ops-201-gwakga-2026-07-01T17-37-55-f3f0df" for task "ops-201" with status
+      "completed" in ops mode.
+    confidence: high
+    evidence:
+      - ev-orchestrator-session
+      - ev-workflow-plan
+  - claim: Workflow plan created with 4 steps and worker probes confirmed.
+    confidence: high
+    evidence:
+      - ev-workflow-plan
+      - ev-probe-result
+  - claim: >-
+      All worker results synthesized into coherent commander report. No contradictions detected. Worker memory retrieval
+      summaries captured.
+    confidence: high
+    evidence:
+      - ev-commander-report
+      - ev-worker-traces
+      - ev-memory-summary
+hardware_profile:
+  cpu_class: medium-vps
+  memory_gb: 4
+  os_family: linux
+  storage_class: nvme-shared
+model: gpt-5.x
+model_provider: openai
+node: orchestrator-node
+operating_policy:
+  approval_boundaries: documented
+  contradiction_resolution: automated_resolved
+  delegation_policy: worker_dispatched
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+  timeout_handling: timeout_after_900s_status_partial
+outputs:
+  approval_gates: '[hermes-adapter:simulation/ops] Output for approval_gates. Status: completed. Commander report synthesized.'
+  confirmed_facts: '[hermes-adapter:simulation/ops] Output for confirmed_facts. Status: completed. Commander report synthesized.'
+  evidence: '[hermes-adapter:simulation/ops] Output for evidence. Status: completed. Commander report synthesized.'
+  likely_failure_boundary: '[hermes-adapter:simulation/ops] Output for likely_failure_boundary. Status: completed. Commander report synthesized.'
+  next_safe_action: '[hermes-adapter:simulation/ops] Output for next_safe_action. Status: completed. Commander report synthesized.'
+  risk_assessment: '[hermes-adapter:simulation/ops] Output for risk_assessment. Status: completed. Commander report synthesized.'
+  workflow:
+    step_count: 4
+    worker_count: 1
+    worker_profiles:
+      - stub-small-vps
+    workflow_id: wf-ops-201-gwakga-2026-07-01T17-37-55-f3f0df
+publishable: false
+raw_measurements:
+  contradictions_detected: 0
+  contradictions_resolved: 0
+  delivery_probes_attempted: 1
+  delivery_probes_succeeded: 1
+  errors: 0
+  memory_cache_hit_ratio: 0.5
+  memory_retrievals: 8
+  retries: 0
+  tool_invocations_total: 12
+  wall_time_seconds: 0
+  worker_count: 1
+  workers_completed: 1
+  workers_failed: 0
+  workflow_step_count: 4
+risks:
+  - >-
+    Worker evidence merging may fail when workers return contradictory results (mitigation: contradiction log with
+    resolution status)
+  - Memory retrieval summaries may inadvertently contain private content if redaction rules are not fully applied
+  - Workflow plan may require human review for complex multi-step coordination tasks
+runtime: hermes
+runtime_version: 1.0.0
+schema_version: 2
+started_at: '2026-07-01T17:37:55Z'
+status: completed
+summary: >-
+  Hermes adapter run for task "ops-201". Adapter mode: simulation. Event family: ops. Status: completed. Workers: 1.
+  Steps: 4. All worker evidence merged cleanly.
+task_id: ops-201
+tool_use_profile:
+  allowed:
+    - read
+    - write
+  notes: 'Simulation mode. Intentionally avoided: all real execution tools.'
+  used:
+    - read
+    - write
+validity: valid

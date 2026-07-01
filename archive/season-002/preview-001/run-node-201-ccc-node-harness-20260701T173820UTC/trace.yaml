@@ -1,0 +1,39 @@
+adapter_mode: cli
+agent_id: ccc-node-harness
+entries:
+  - action: read
+    duration_ms: 20
+    evidence_ref: ev-cli-input
+    result_summary: 'Loaded envelope: Harness-backed node readiness audit'
+    seq: 0
+    summary: Read task envelope "node-201" from disk.
+    target: task_envelope
+    timestamp: '2026-07-01T17:38:20Z'
+  - action: exec
+    duration_ms: 500
+    evidence_ref: ev-cli-probe
+    result_summary: CLI agent session executed; transcript captured.
+    seq: 1
+    summary: Invoke the coding-agent CLI with the public task envelope and participant-facing fixture paths.
+    target: cli_agent
+    timestamp: '2026-07-01T17:38:20Z'
+  - action: synthesize
+    duration_ms: 100
+    evidence_ref: ev-cli-report
+    result_summary: Artifacts written for run run-node-201-ccc-node-harness-2026-07-01T17-38-20-71ded7.
+    seq: 2
+    summary: Capture the CLI agent answer and write result artifacts to the run directory.
+    target: cli_report
+    timestamp: '2026-07-01T17:38:20Z'
+  - seq: 3
+    timestamp: '2026-07-01T17:38:24.647Z'
+    action: synthesize
+    target: nested_cli_agent_result
+    summary: Merged actual CLI agent mission output into Agent Olympics artifacts
+    result_summary: Solo CLI agent inspected the public fixtures for envelope and isolated the delivery-layer failure.
+    evidence_ref: ev-cli-report
+generated_at: '2026-07-01T17:38:20Z'
+run_id: run-node-201-ccc-node-harness-2026-07-01T17-38-20-71ded7
+runtime: cli
+schema_version: 1
+trace_id: tr-cli-run-node-201-ccc-node-harness-2026-07-01T17-38-20-71ded7
