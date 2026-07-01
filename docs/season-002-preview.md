@@ -29,9 +29,9 @@ The round manifest declares a compact preview set:
 - `gwakga` — Hermes / Team2 broker profile
 - `seoseo` — Hermes / Team1 broker profile
 - `soonwook` — Hermes A2A profile
-- `ccc-node-harness` — source-only harness/support adapter
+- `ccc-node-harness` — source-only named harness fleet: 노숙/nosuk, 순욱/soonwook, 등애/dungae, 공융/gongyung, 대교/daegyo. See [ccc-node Named Harnesses](ccc-node-named-harnesses.md).
 
-The committed dry-run config dispatches only `gwakga` and `ccc-node-harness` so the repository can prove the pack without live broker or node calls. Other participants are declared for the preview round but require explicit operator-approved live or broker-backed dispatch before real competition use.
+The committed dry-run config dispatches only `gwakga` and the `ccc-node-harness` named fleet fixture so the repository can prove the pack without live broker or node calls. Other participants are declared for the preview round but require explicit operator-approved live or broker-backed dispatch before real competition use.
 
 ## Run locally
 

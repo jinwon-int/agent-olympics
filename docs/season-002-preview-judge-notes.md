@@ -4,7 +4,7 @@ These notes describe the public, source-only judging basis for Season 002 Previe
 
 ## Scope
 
-The preview verification checks whether the Season 002 pack can be dispatched, produce valid result packets, pass runtime identity gates, and fan in cleanly without live operations.
+The preview verification checks whether the Season 002 pack can be dispatched, produce valid result packets, pass runtime identity gates, and fan in cleanly without live operations. Operator-facing ccc-node output should identify the named harness fleet — 노숙/nosuk, 순욱/soonwook, 등애/dungae, 공융/gongyung, 대교/daegyo — while retaining `ccc-node-harness` as the schema/runtime adapter id.
 
 Verified boundaries:
 

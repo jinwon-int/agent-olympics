@@ -60,7 +60,7 @@ participants:
     model_provider: openai-codex
   - agent_id: ccc-node-harness
     runtime: cli
-    label: ccc-node harness (source-only support adapter)
+    label: ccc-node named harness fleet (노숙/nosuk, 순욱/soonwook, 등애/dungae, 공융/gongyung, 대교/daegyo)
     enabled: true
     node: ccc-node-harness-vps7
     model: source-only-harness-fixture

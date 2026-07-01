@@ -1,8 +1,11 @@
 # Live runner dry-run config for the Season 002 Preview round.
 #
-# Dispatches one source-only ccc-node-harness participant through the generic CLI
-# wrapper and one Hermes simulation participant. This proves the preview round
-# manifest and task pack are runnable without credentials or live-node mutation.
+# Dispatches one source-only ccc-node named harness fleet fixture through the
+# generic CLI wrapper and one Hermes simulation participant. The fixture uses
+# adapter id `ccc-node-harness`, displayed as 노숙/nosuk, 순욱/soonwook,
+# 등애/dungae, 공융/gongyung, 대교/daegyo in operator-facing docs. This proves
+# the preview round manifest and task pack are runnable without credentials or
+# live-node mutation.
 #
 # Run with:
 #   node scripts/live-runner.js run rounds/season-002-round-001.yaml \
