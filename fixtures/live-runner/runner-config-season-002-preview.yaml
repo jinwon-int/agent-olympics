@@ -1,0 +1,62 @@
+# Live runner dry-run config for the Season 002 Preview round.
+#
+# Dispatches one source-only ccc-node-harness participant through the generic CLI
+# wrapper and one Hermes simulation participant. This proves the preview round
+# manifest and task pack are runnable without credentials or live-node mutation.
+#
+# Run with:
+#   node scripts/live-runner.js run rounds/season-002-round-001.yaml \
+#     --config fixtures/live-runner/runner-config-season-002-preview.yaml
+schema_version: 1
+config_kind: agent-olympics.live-runner.config
+runner_id: season-002-preview-dryrun
+description: Source-only dry-run dispatch for the Season 002 Preview round.
+round_manifest: rounds/season-002-round-001.yaml
+run_directory: runs/live-runner/season-002-preview/
+tasks:
+  - ops-201
+  - code-201
+  - node-201
+participants:
+  - participant_id: gwakga
+    adapter: hermes
+    transport: local_exec
+    execution_profile: dry_run
+    identify_command:
+      - node
+      - -e
+      - console.log('Hermes Agent simulation probe for Season 002 Preview')
+    command:
+      - node
+      - adapters/hermes-adapter.js
+      - '{envelope}'
+      - --run-dir
+      - '{run_dir}'
+      - --agent-id
+      - '{agent_id}'
+      - --mode
+      - simulation
+      - --event-family
+      - ops
+      - --seed
+      - '{seed}'
+  - participant_id: ccc-node-harness
+    adapter: cli
+    transport: local_exec
+    execution_profile: dry_run
+    identify_command:
+      - env
+      - CLI_AGENT_BIN=fixtures/live-runner/transports/fake-claude-cli.js
+      - fixtures/live-runner/transports/fake-claude-cli.js
+      - --version
+    command:
+      - env
+      - CLI_AGENT_BIN=fixtures/live-runner/transports/fake-claude-cli.js
+      - CLI_AGENT_MODEL=source-only-harness-fixture
+      - CLI_AGENT_MODEL_PROVIDER=fixture
+      - CLI_NODE=ccc-node-harness-vps7
+      - bash
+      - adapters/wrappers/cli-mission-wrapper.sh
+      - '{envelope}'
+      - '{run_dir}'
+      - '{agent_id}'

@@ -1,0 +1,20 @@
+schema_version: 1
+bundle_id: season-002-node-201-v1
+season: season-002
+task_id: node-201
+version: 1
+description: >
+  Safe ccc-node harness readiness fixture. It references public capability and
+  node profile declarations only.
+dry_run_compatible: true
+required: true
+files:
+  - path: readiness-brief.md
+    description: Public readiness audit brief for ccc-node harness registration.
+    content_type: text/markdown
+preparation:
+  method: bundled
+  description: Fixture is committed and contains no live node addresses or credentials.
+  expected_duration_minutes: 1
+environment_requirements: []
+depends_on: []

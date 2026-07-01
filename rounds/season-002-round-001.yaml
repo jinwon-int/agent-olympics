@@ -1,0 +1,74 @@
+schema_version: 1
+round_id: season-002-round-001
+season: season-002
+title: Season 002 Preview — Source-only Harness Round
+description: >
+  Preview round for Season 002. This is a source-only, no-secret, no-live-mutation
+  round used to validate the Season 002 task pack, participant declarations,
+  ccc-node harness registration, runner dispatch, fan-in, and judge-handoff
+  flow before any official public competitive season is declared.
+created_at: '2026-07-02T00:00:00+09:00'
+lifecycle:
+  status: pending
+  status_history:
+    - status: pending
+      timestamp: '2026-07-02T00:00:00+09:00'
+      note: Season 002 Preview source-only pack prepared; official scoring/publication remains a later approval gate.
+tasks:
+  - task_id: ops-201
+    title: Source-only incident triage without live mutation
+    envelope_path: tasks/season-002/ops-201-source-only-incident-triage.yaml
+    time_limit_minutes: 25
+    fixture_bundle_ref: fixtures/season-002/ops-201/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 1
+  - task_id: code-201
+    title: Harness validation fix with targeted evidence
+    envelope_path: tasks/season-002/code-201-harness-validation-fix.yaml
+    time_limit_minutes: 45
+    fixture_bundle_ref: fixtures/season-002/code-201/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 2
+  - task_id: node-201
+    title: Harness-backed node readiness audit
+    envelope_path: tasks/season-002/node-201-harness-readiness-audit.yaml
+    time_limit_minutes: 35
+    fixture_bundle_ref: fixtures/season-002/node-201/
+    scoring_rubric: rubrics/agent-olympics-v1.yaml
+    order: 3
+participants:
+  - agent_id: gwakga
+    runtime: hermes
+    label: gwakga (Hermes / Team2 Broker)
+    enabled: true
+    node: vps7
+    model: gpt-5.5
+    model_provider: openai-codex
+  - agent_id: seoseo
+    runtime: hermes
+    label: seoseo (Hermes / Team1 Broker)
+    enabled: true
+    node: vps4
+    model: gpt-5.5
+    model_provider: openai-codex
+  - agent_id: soonwook
+    runtime: hermes
+    label: soonwook (Hermes A2A)
+    enabled: true
+    node: vps6
+    model: gpt-5.5
+    model_provider: openai-codex
+  - agent_id: ccc-node-harness
+    runtime: cli
+    label: ccc-node harness (source-only support adapter)
+    enabled: true
+    node: ccc-node-harness-vps7
+    model: source-only-harness-fixture
+    model_provider: fixture
+run_directory: runs/season-002/round-001/
+run_id_template: run-{task_id}-{agent_id}-{timestamp}
+labels:
+  - season-002
+  - preview
+  - source-only
+  - ccc-node-harness

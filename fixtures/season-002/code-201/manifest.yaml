@@ -1,0 +1,20 @@
+schema_version: 1
+bundle_id: season-002-code-201-v1
+season: season-002
+task_id: code-201
+version: 1
+description: >
+  Safe harness-validation fixture. It points participants at repository-local
+  validation behavior and asks for a minimal, test-backed patch plan or change.
+dry_run_compatible: true
+required: true
+files:
+  - path: harness-gap.md
+    description: Public prompt describing the validation gap surface.
+    content_type: text/markdown
+preparation:
+  method: bundled
+  description: Fixture is committed and contains no private repository or oracle material.
+  expected_duration_minutes: 1
+environment_requirements: []
+depends_on: []

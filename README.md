@@ -49,6 +49,11 @@ the adapter-neutral path that lets OpenClaw, Hermes, generic CLI/shell agents,
 coding agents, future runtimes, and human baselines participate through the
 same Task Envelope -> Result Packet interface.
 
+Season 002 Preview is available as a source-only rehearsal pack; see
+[Season 002 Preview Plan](docs/season-002-preview.md). It validates the
+second-season task/round shape and ccc-node harness dry-run path without making
+any live-operation or public-scoring approval.
+
 For the shortest participant onboarding path, see
 [Participant Quickstart](docs/participant-quickstart.md). The core architecture
 is:
