@@ -1,0 +1,60 @@
+# Agent Olympics Task Envelope v2 — code-201
+
+schema_version: 2
+schema_description: "Agent Olympics Task Envelope v2 — Season 002 Preview source-only task"
+task_id: code-201
+title: Harness validation fix with targeted evidence
+event_family: code-sprint
+category: harness-reliability-fix
+time_limit_minutes: 45
+participant_visibility: blind
+evaluation_focus:
+  - mission_execution
+  - tool_optimization
+  - operating_discipline
+  - durability
+objective: >
+  Identify a small validation or fixture drift in a source-controlled harness,
+  produce the smallest safe patch, and report the exact verification commands.
+background: >
+  The task models the kind of issue found while preparing Agent Olympics itself:
+  a validator or runner may be too strict for source-only repository states, or
+  a fixture may need an adapter-neutral registration path. Participants should
+  avoid broad rewrites and demonstrate review-ready evidence.
+environment:
+  execution_mode: source-only
+  language: javascript-or-yaml
+  repo_state: controlled-fixture
+allowed_actions:
+  - inspect_repo
+  - edit_files
+  - run_targeted_tests
+  - run_schema_validation
+  - prepare_patch_summary
+forbidden_actions:
+  - unrelated_refactor
+  - broad_format_churn
+  - skip_tests_without_reason
+  - publish_release_or_tag
+  - mutate_live_services
+required_outputs:
+  - changed_files
+  - bug_or_gap_cause
+  - fix_summary
+  - test_results
+  - residual_risk
+scoring_rubric: rubrics/agent-olympics-v1.yaml
+tier: smoke
+baseline:
+  baseline_actor: preview-dry-run-fixture
+  baseline_time_sec: 0
+  baseline_success: true
+  baseline_artifact_ref: runs/live-runner/season-002-preview/
+  difficulty_notes: >
+    Source-only preview task intended to reward minimal diffs, accurate test
+    evidence, and explicit non-actions.
+labels:
+  - season-002
+  - preview
+  - code-sprint
+  - harness

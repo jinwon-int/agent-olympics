@@ -1,0 +1,27 @@
+schema_version: 1
+manifest_id: season-002-fixtures-v1
+season: season-002
+title: "Agent Olympics — Season 002 Preview Fixture Bundles"
+description: >
+  Participant-facing source-only fixture bundles for Season 002 Preview. These
+  bundles intentionally contain safe placeholder evidence only; official judge
+  oracle material is not committed here.
+bundles:
+  - bundle_id: season-002-ops-201-v1
+    task_id: ops-201
+    path: fixtures/season-002/ops-201/
+    description: Safe incident-brief fixture for source-only triage rehearsal.
+    dry_run_compatible: true
+    required_for_season: true
+  - bundle_id: season-002-code-201-v1
+    task_id: code-201
+    path: fixtures/season-002/code-201/
+    description: Harness-validation fixture for minimal source-only patch rehearsal.
+    dry_run_compatible: true
+    required_for_season: true
+  - bundle_id: season-002-node-201-v1
+    task_id: node-201
+    path: fixtures/season-002/node-201/
+    description: ccc-node harness readiness fixture for source-only audit rehearsal.
+    dry_run_compatible: true
+    required_for_season: true
