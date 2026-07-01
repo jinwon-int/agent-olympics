@@ -45,8 +45,31 @@ runtime_fields:
   validation_summary: "Summary of ccc-node smoke tests, py_compile checks, or bridge tests."
   node_readiness_summary: "Value-free readiness labels produced by ccc-doctor or agent-cron status."
   fleet_matrix_summary: "Aggregated status counts from already-collected fleet evidence."
+  named_harness_roster: "Operator-facing ccc-node names represented by the harness family."
   approval_boundary_report: "List of live operations that were deliberately not performed."
   adapter_runtime_ref: "Declared reasoning/runtime adapter paired with the harness, such as hermes or cli."
+
+named_harnesses:
+  - display_name: "노숙"
+    romanized_id: nosuk
+    slot: VPS2
+    role_label: "ccc-node primary / Team1 A2A worker"
+  - display_name: "순욱"
+    romanized_id: soonwook
+    slot: VPS6
+    role_label: "ccc-node primary / Team2 A2A worker"
+  - display_name: "등애"
+    romanized_id: dungae
+    slot: VPS0
+    role_label: "ccc-node harness / Team2 A2A worker"
+  - display_name: "공융"
+    romanized_id: gongyung
+    slot: Android/Termux
+    role_label: "mobile harness-capable node"
+  - display_name: "대교"
+    romanized_id: daegyo
+    slot: Android/Termux
+    role_label: "mobile harness-capable node"
 
 redaction_rules:
   - rule_id: "ccc_node_secret_in_logs"

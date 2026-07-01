@@ -97,7 +97,7 @@ participants:
     enabled: true
   - agent_id: ccc-node-harness
     runtime: cli
-    label: ccc-node harness fixture — source-only CLI wrapper registration
+    label: ccc-node named harness fixture — 노숙/nosuk, 순욱/soonwook, 등애/dungae, 공융/gongyung, 대교/daegyo
     enabled: true
 run_directory: runs/live-runner-fixtures/round-901/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}

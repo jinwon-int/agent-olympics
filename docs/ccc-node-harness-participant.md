@@ -58,4 +58,6 @@ Those remain separate operator-approved live actions. Public fixtures must stay 
 
 ## Safety note
 
-Use `ccc-node-harness` for reproducibility and readiness evidence. Do not score it as a model unless the round explicitly evaluates harness quality rather than reasoning output.
+Use `ccc-node-harness` for reproducibility and readiness evidence. In operator-facing summaries, display it as the named ccc-node harness fleet — 노숙/nosuk, 순욱/soonwook, 등애/dungae, 공융/gongyung, 대교/daegyo — instead of an anonymous single node. Do not score it as a model unless the round explicitly evaluates harness quality rather than reasoning output.
+
+See also [ccc-node Named Harnesses](ccc-node-named-harnesses.md).
