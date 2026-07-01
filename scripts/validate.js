@@ -2354,7 +2354,9 @@ function main() {
   }
 
   if (modeConfig.roots.includes('results')) {
-    files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
+    if (fs.existsSync(resultsDir)) {
+      files = files.concat(findFiles(resultsDir, /\.ya?ml$/));
+    }
   }
 
   // Deduplicate

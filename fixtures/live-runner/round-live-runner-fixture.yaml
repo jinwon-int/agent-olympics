@@ -95,6 +95,10 @@ participants:
     runtime: cli
     label: cli fixture — generic coding-agent CLI participant via cli-mission-wrapper (offline fake binary)
     enabled: true
+  - agent_id: ccc-node-harness
+    runtime: cli
+    label: ccc-node harness fixture — source-only CLI wrapper registration
+    enabled: true
 run_directory: runs/live-runner-fixtures/round-901/
 run_id_template: run-{task_id}-{agent_id}-{timestamp}
 labels:

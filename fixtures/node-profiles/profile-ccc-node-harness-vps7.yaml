@@ -1,0 +1,51 @@
+# ccc-node harness profile — vps7-class local source-only runner
+#
+# Safe profile for registering a ccc-node harness checkout as an Agent Olympics
+# source-only participant support node. No hostnames, IPs, tokens, SSH aliases,
+# private paths, or exact provider details appear here.
+
+schema_version: 1
+profile_id: ccc-node-harness-vps7
+profile_class: medium-vps
+os_family: linux
+cpu:
+  class: "x86-64"
+  cores_min: 2
+  cores_max: 4
+  description: "medium virtual CPU class suitable for harness validation and code tasks"
+memory_gb:
+  min: 4.0
+  max: 8.0
+  description: "shared operational node memory band"
+runner_limits:
+  max_concurrent: 1
+  max_task_duration_minutes: 60
+  max_total_daily_tasks: 12
+  description: "single source-only runner; avoid parallel pressure on broker workloads"
+storage_class:
+  type: ssd
+  min_free_gb: 10
+  max_total_gb: 80
+  description: "persistent local storage for source checkouts and test artifacts"
+network_class:
+  class: medium
+  public_egress: true
+  description: "outbound network available for repository fetches; live service calls remain approval-gated"
+capability_labels:
+  - ops
+  - code
+  - knowledge
+  - node-readiness
+  - coordination
+  - smoke
+  - harness
+allowed_runner_types:
+  - hermes
+  - cli
+  - custom
+notes: >
+  Represents a ccc-node harness checkout used for source-only validation,
+  no-network smoke tests, and safe readiness evidence generation. It does not
+  imply permission to restart services, move credentials, send provider canaries,
+  or mutate live nodes.
+last_updated: "2026-07-02T00:00:00Z"
