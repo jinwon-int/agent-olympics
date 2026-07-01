@@ -1,0 +1,69 @@
+adapter_mode: simulation
+agent_id: gwakga
+bundle_id: eb-run-ops-201-gwakga-2026-07-01T17-37-55-f3f0df
+event_family: ops
+generated_at: '2026-07-01T17:37:55Z'
+items:
+  - checksum:
+      algorithm: sha256
+      value: aaa4019124019124019124019124019124019124019124019124019124019124
+    content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-session-input
+    kind: config_snippet
+    redacted: false
+    size_bytes: 2048
+    source: task envelope
+    summary: Copy of input task envelope for event family "ops"
+  - checksum:
+      algorithm: sha256
+      value: bbb4019134019134019134019134019134019134019134019134019134019134
+    content_ref: evidence/workflow-plan.yaml
+    content_type: application/x-yaml
+    id: ev-workflow-plan
+    kind: workflow_plan
+    redacted: false
+    size_bytes: 2560
+    source: hermes workflow engine
+    summary: Workflow plan with 4 steps for event family "ops"
+  - checksum:
+      algorithm: sha256
+      value: ccc4019144019144019144019144019144019144019144019144019144019144
+    content_ref: evidence/worker-traces.yaml
+    content_type: application/x-yaml
+    id: ev-worker-traces
+    kind: worker_trace
+    redacted: false
+    size_bytes: 4096
+    source: worker execution traces
+    summary: Consolidated tool traces from 1 workers
+  - checksum:
+      algorithm: sha256
+      value: ddd4019154019154019154019154019154019154019154019154019154019154
+    content_ref: evidence/memory-summary.yaml
+    content_type: application/x-yaml
+    id: ev-memory-summary
+    kind: memory_summary
+    metadata:
+      cache_hit_ratio: 0.5
+      total_keys_found: 2
+      total_keys_requested: 4
+    redacted: true
+    redaction_rule: hermes_memory_content
+    size_bytes: 2048
+    source: worker memory retrieval
+    summary: Memory retrieval summaries from each worker (redacted for private content)
+  - checksum:
+      algorithm: sha256
+      value: fff4019174019174019174019174019174019174019174019174019174019174
+    content_ref: evidence/commander-report.yaml
+    content_type: application/x-yaml
+    id: ev-commander-report
+    kind: commander_report
+    redacted: false
+    size_bytes: 3072
+    source: hermes commander
+    summary: Synthesized commander report from all worker results
+run_id: run-ops-201-gwakga-2026-07-01T17-37-55-f3f0df
+runtime: hermes
+schema_version: 1

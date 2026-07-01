@@ -1,0 +1,178 @@
+actions:
+  - command_summary: Read task envelope from file
+    duration_seconds: 0.02
+    evidence_id: ev-cli-input
+    id: act-001
+    redacted: false
+    target: task_envelope
+    type: read
+  - command_summary: Invoke the coding-agent CLI with the public task envelope
+    duration_seconds: 0.5
+    evidence_id: ev-cli-probe
+    id: act-002
+    redacted: false
+    target: cli_agent
+    type: exec
+  - command_summary: Capture the CLI agent answer into the result packet
+    duration_seconds: 0.1
+    evidence_id: ev-cli-report
+    id: act-003
+    redacted: false
+    target: cli_report
+    type: read
+adapter: cli
+agent_id: ccc-node-harness
+comparable_metadata:
+  artifact_hashes:
+    evidence_bundle: sha256:b17ffdb17ffdb17ffdb17ffdb17ffdb17ffdb17ffdb17ffdb17ffdb17ffdb17f
+    result_packet: sha256:b1819eb1819eb1819eb1819eb1819eb1819eb1819eb1819eb1819eb1819eb181
+    trace_record: sha256:b181deb181deb181deb181deb181deb181deb181deb181deb181deb181deb181
+  config:
+    details:
+      adapter_mode: cli
+      liveness: local-cli
+      model_routing: cli_config
+    profile_ref: cli-default
+  model:
+    name: sim-claude-opus
+    provider: anthropic
+  node:
+    hardware_profile:
+      cpu_class: workstation
+      memory_gb: 8
+      os_family: linux
+      storage_class: local-ssd
+    profile_ref: ccc-node-harness-vps7
+  participant:
+    adapter: cli
+    agent_id: ccc-node-harness
+  runtime:
+    name: cli
+    version: 9.9.9
+  task:
+    task_id: ops-201
+    task_version: v2
+configuration_profile:
+  adapter_mode: cli
+  liveness: local-cli
+  model_routing: cli_config
+  resource_limits: workspace-scoped
+  sandbox_mode: workspace_only
+delegation_profile:
+  a2a_workers: []
+  background_jobs_used: false
+  human_assistance: false
+  notes: >-
+    Mission executed by a single solo coding-agent CLI session invoked by the wrapper (no subagents, no A2A
+    workers).
+  subagents_used: false
+  supported_by: []
+division: open_stack
+ended_at: '2026-07-01T17:38:09Z'
+evidence:
+  - content_ref: envelope-copy.yaml
+    content_type: application/x-yaml
+    id: ev-cli-input
+    kind: config_snippet
+    redacted: false
+    source: task envelope
+    summary: Input task envelope for task "ops-201".
+  - content_ref: adapter.log
+    content_type: text/plain
+    id: ev-cli-command
+    kind: log
+    redacted: false
+    source: cli adapter
+    summary: Command log for the CLI agent invocation (workspace-local, read-only inspection).
+  - content_ref: evidence/cli-transcript.yaml
+    content_type: application/x-yaml
+    id: ev-cli-transcript
+    kind: transcript_excerpt
+    redacted: false
+    source: cli terminal transcript
+    summary: Nested CLI agent execution captured with exit code 0; parsed_json=true
+  - id: ev-cli-probe
+    kind: command_output
+    redacted: false
+    source: cli invocation probe
+    summary: >-
+      CLI agent invoked locally by wrapper; exit code 0; output_sha256=5245ac0b6691146a (redacted output);
+      model_source=cli_config
+  - content_ref: evidence/cli-report.yaml
+    content_type: application/x-yaml
+    id: ev-cli-report
+    kind: command_output
+    redacted: false
+    source: cli agent answer
+    summary: >-
+      Actual CLI agent mission report: Solo CLI agent inspected the public fixtures for envelope and isolated
+      the delivery-layer failure.
+findings:
+  - claim: Root cause is a delivery-layer release failure, not transcript absence.
+    evidence:
+      - ev-cli-report
+      - ev-cli-transcript
+    confidence: high
+  - claim: 'A delivery probe would have caught this earlier. Sources: ev-hallucinated-probe'
+    evidence:
+      - ev-cli-report
+    confidence: medium
+hardware_profile:
+  cpu_class: workstation
+  memory_gb: 8
+  os_family: linux
+  storage_class: local-ssd
+model: sim-claude-opus
+model_provider: anthropic
+node: ccc-node-harness-vps7
+operating_policy:
+  approval_boundaries: documented
+  delegation_policy: no_subagents_used
+  destructive_action_rules: destructive_actions_forbidden_without_explicit_approval
+  progress_reporting: required_for_long_tasks
+  secret_handling: redacted
+outputs:
+  approval_gates: '[cli-adapter:cli/ops] Output for approval_gates. Status: completed. CLI agent answer captured.'
+  confirmed_facts: '[cli-adapter:cli/ops] Output for confirmed_facts. Status: completed. CLI agent answer captured.'
+  evidence: |-
+    gateway delivery log: Outbound message attempt shows a null message id after session replay.
+    config snapshot: Channel target was absent on the recovered run.
+  likely_failure_boundary: '[cli-adapter:cli/ops] Output for likely_failure_boundary. Status: completed. CLI agent answer captured.'
+  next_safe_action: '[cli-adapter:cli/ops] Output for next_safe_action. Status: completed. CLI agent answer captured.'
+  risk_assessment: Read-only inspection only; no destructive action proposed. Verify before any restart.
+  mission_parse_fallback: false
+  diagnosis: >-
+    The final answer was rendered into the session transcript but no source-visible outbound message was
+    emitted on the channel — a delivery-layer release failure, not a transcript-content problem.
+  next_action: Add a delivery-probe check and re-emit the final message with a valid channel target.
+  durable_memory_decision: Document the stale-recovery delivery failure pattern as a durable runbook note.
+publishable: false
+raw_measurements:
+  action_count: 3
+  errors: 0
+  evidence_count: 5
+  finding_count: 2
+  retries: 0
+  wall_time_seconds: 0
+risks:
+  - >-
+    CLI transcript may contain credential-like strings; redaction is applied before any transcript is
+    persisted.
+  - A bare CLI agent has no built-in approval-boundary enforcement; boundaries are enforced by the runner.
+runtime: cli
+runtime_version: 9.9.9
+schema_version: 2
+started_at: '2026-07-01T17:38:09Z'
+status: completed
+summary: Solo CLI agent inspected the public fixtures for envelope and isolated the delivery-layer failure.
+task_id: ops-201
+tool_use_profile:
+  allowed:
+    - read
+    - write
+    - exec
+  notes: 'Bare coding-agent CLI: workspace-local read/exec. Intentionally avoided: delegate, message, web_search.'
+  used:
+    - read
+    - exec
+validity: valid
