@@ -26,17 +26,16 @@ Warnings:  0
 
 ## 2. Full Schema Validation
 
+> Historical capture (pre-#257/#264). The former hand-trimmed example
+> envelopes and the inline-answer-key `tasks/season-001/*.yaml` v1 envelopes
+> shown in this log were subsequently retired; the canonical files are the
+> `tasks/season-001/*-v2.yaml` envelopes. Re-run `node scripts/validate.js all`
+> for a current listing.
+
 ```bash
 $ node scripts/validate.js all
 Validating 46 file(s)...
 
-OK    tasks/examples/code-001-typescript-regression.yaml  (task-envelope v1)
-OK    tasks/examples/coord-001-commander-report.yaml  (task-envelope v1)
-OK    tasks/examples/knowledge-001-wiki-closeout.yaml  (task-envelope v1)
-OK    tasks/examples/node-001-agent-readiness-audit.yaml  (task-envelope v1)
-OK    tasks/examples/ops-001-telegram-final-reply.yaml  (task-envelope v1)
-OK    tasks/examples/ops-002-clean-reinstall-drift.yaml  (task-envelope v1)
-OK    tasks/examples/perf-001-node-throughput-baseline.yaml  (task-envelope v1)
 OK    tasks/season-001/code-001-typescript-regression-v2.yaml  (task-envelope v2) - with tier warnings
 OK    tasks/season-001/code-001-typescript-regression.yaml  (task-envelope v1) - with tier warnings
 OK    tasks/season-001/coord-001-commander-report-v2.yaml  (task-envelope v2) - with tier warnings

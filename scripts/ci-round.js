@@ -146,12 +146,10 @@ function writeCiManifest(options) {
   fs.rmSync(workDir, { recursive: true, force: true });
   fs.mkdirSync(workDir, { recursive: true });
 
-  if (task.envelope_path && task.envelope_path.endsWith('-v2.yaml')) {
-    const v1EnvelopePath = task.envelope_path.replace(/-v2\.yaml$/, '.yaml');
-    if (fs.existsSync(repoPath(v1EnvelopePath))) {
-      task.envelope_path = v1EnvelopePath;
-    }
-  }
+  // The smoke round runs against the canonical v2 envelope referenced by the
+  // manifest. (Historically this downgraded to a sibling v1 envelope when one
+  // existed; the v1 Season-001 envelopes were retired in #257, so the stub now
+  // exercises the strict v2 result-packet schema directly.)
 
   const runDirectory = path.posix.join(
     options.workDir.replace(/\\/g, '/').replace(/\/$/, ''),

@@ -100,7 +100,7 @@ function getAjv() {
 let _schemasLoaded = false;
 const SCHEMA_REGISTRY = {
   1: {
-    'result-packet':   'schemas/result-packet.schema.json',
+    'result-packet':   'archive/schemas/result-packet.schema.json',
     'judge-record':    'schemas/judge-record.schema.json',
     'trace-record':    'schemas/trace-record.schema.json',
     'evidence-bundle': 'schemas/evidence-bundle.schema.json',

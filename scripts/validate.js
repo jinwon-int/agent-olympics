@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * Agent Olympics Schema Validator (v1 + v2)
+ * Agent Olympics Schema Validator (v1 archived + v2)
  *
  * Validates Task Envelope, Result Packet, Run Result, Trace Record,
  * Evidence Bundle, and Judge Record YAML/JSON files against their JSON Schema
- * definitions (v1 or v2 where available), plus cross-field semantic checks.
+ * definitions (v2 in schemas/; the retired v1 task-envelope and result-packet
+ * schemas are loaded from archive/schemas/ for backward-compat validation of
+ * remaining v1 documents), plus cross-field semantic checks.
  *
  * Usage:
  *   node scripts/validate.js envelopes          - validate all task envelopes (v1)
@@ -55,8 +57,12 @@ const SUPPORTED_RUN_ID_TEMPLATE_VARIABLES = new Set([
 // Load schemas (v1)
 // ---------------------------------------------------------------------------
 const v1Schemas = {
-  'task-envelope':    loadSchema('schemas/task-envelope.schema.json'),
-  'result-packet':    loadSchema('schemas/result-packet.schema.json'),
+  // v1 task-envelope / result-packet schemas were retired from schemas/ and
+  // archived under archive/schemas/. They are still loaded here to preserve
+  // v1 validation *capability* for the remaining v1 task envelopes (smoke +
+  // stub-test) and any legacy v1 result packets. See issue #257.
+  'task-envelope':    loadSchema('archive/schemas/task-envelope.schema.json'),
+  'result-packet':    loadSchema('archive/schemas/result-packet.schema.json'),
   'judge-record':     loadSchema('schemas/judge-record.schema.json'),
   'trace-record':     loadSchema('schemas/trace-record.schema.json'),
   'evidence-bundle':  loadSchema('schemas/evidence-bundle.schema.json'),

@@ -50,8 +50,8 @@ complete after the #121 finalizer.
 | Result Packet docs | `docs/result-packet.md` | ✅ Present |
 | Validator script | `scripts/validate.js` | ✅ Present — 3-layer validation (schema + cross-field + secret detection) |
 | v2 example tasks | `tasks/season-001/*-v2.yaml` | ✅ 7 v2 envelopes exist |
-| v1 example tasks | `tasks/examples/*.yaml` | ✅ 7 v1 example envelopes exist |
-| v1 season tasks | `tasks/season-001/*.yaml` | ✅ 9 v1 season tasks exist |
+| v1 example tasks | `tasks/season-001/*-v2.yaml` (canonical) | ⛔ Retired — the former hand-trimmed example envelopes were removed in #264; use the canonical v2 season envelopes |
+| v1 season tasks | `tasks/season-001/*.yaml` | ⛔ Retired — the 9 inline-answer-key v1 season envelopes were deleted in #257; superseded by the `-v2.yaml` counterparts |
 | Smoke tasks | `tasks/smoke/*.yaml` | ✅ 7 smoke tasks exist |
 | Result packets | `results/*.yaml` | ✅ 4 result packets (ops-001-yukson, perf-001-baseline, perf-001-baseline-small, ops-001-yukson-judge) |
 | Validation passes | `npm test` output | ✅ 37/38 validated, 0 errors |
@@ -144,7 +144,7 @@ hardening pass.
 | Round manifest | `rounds/season-001-round-001.yaml` | ✅ Valid round manifest, 7 tasks, participants listed |
 | Rubric | `rubrics/agent-olympics-v1.yaml` | ✅ Scoring rubric with overlays (node_readiness, performance_trial, agent_stack) |
 | Judge notes | `docs/judge-notes-season-001.md` | ✅ 542 lines of structured scoring guidance |
-| Example tasks | `tasks/examples/*.yaml` | ✅ 7 example envelopes |
+| Example tasks | `tasks/season-001/*-v2.yaml` | ⛔ The former hand-trimmed example envelopes were removed in #264; canonical v2 season envelopes are the reference |
 | Smoke tasks | `tasks/smoke/` | ✅ 7 smoke tasks + smoke-manifest |
 
 ### Acceptance Criteria Verification
