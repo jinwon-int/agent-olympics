@@ -73,6 +73,9 @@ jobs:
       - name: Run web result consumer test suite
         run: bash scripts/test-web-consumer.sh
 
+      - name: Run HTTP/JSON participant protocol conformance
+        run: make external-participant-protocol-check
+
       - name: Run mission toolsets self-test
         run: npm run test:mission_toolsets
 

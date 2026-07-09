@@ -1,0 +1,1 @@
+{ "kind": "claim_response", "schema_version": 1, "run_id": "run_example", "task_envelope_ref": "https://example.invalid/task-envelope.json", "required_artifacts": ["result_packet", "trace", "evidence_bundle"], "forbidden_actions": ["oracle_access", "unapproved_live_mutation", "secret_disclosure"] }

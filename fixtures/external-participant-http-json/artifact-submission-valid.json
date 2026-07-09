@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "result_packet": {
+    "agent_id": "example-agent",
+    "comparable_metadata": {
+      "model": {
+        "name": "deterministic-stub",
+        "provider": "stub"
+      },
+      "node": {
+        "profile_ref": "stub"
+      },
+      "participant": {
+        "agent_id": "example-agent"
+      },
+      "runtime": {
+        "name": "external_http_json"
+      },
+      "task": {
+        "task_id": "ops-001"
+      }
+    },
+    "delegation_profile": {
+      "a2a_workers": [],
+      "background_jobs_used": false,
+      "human_assistance": false,
+      "notes": "Deterministic stub run — no delegation.",
+      "subagents_used": false,
+      "supported_by": []
+    },
+    "division": "closed_stack",
+    "ended_at": "2026-07-09T06:28:14Z",
+    "evidence": [
+      {
+        "content_ref": "envelope-copy.yaml",
+        "content_type": "application/x-yaml",
+        "id": "ev-stub-input",
+        "kind": "config_snippet",
+        "source": "task envelope",
+        "summary": "Input task envelope: \"Telegram final reply does not appear\". Objective: Diagnose why a Telegram user did not receive the final visible reply even though the agent transcript contains a final a"
+      },
+      {
+        "content_ref": "adapter.log",
+        "content_type": "text/plain",
+        "id": "ev-stub-run",
+        "kind": "command_output",
+        "source": "stub adapter",
+        "summary": "Stub adapter executed with exit code 0 (mapped status: completed). No live commands were run."
+      },
+      {
+        "content_ref": "",
+        "content_type": "text/plain",
+        "id": "ev-stub-task",
+        "kind": "log",
+        "source": "stub adapter",
+        "summary": "Task ops-001 processed. Required outputs: diagnosis, evidence, risk_assessment, next_action, durable_memory_decision. Stub adapter does not produce real outputs."
+      }
+    ],
+    "findings": [
+      {
+        "claim": "Stub adapter executed successfully (deterministic stub).",
+        "confidence": "high",
+        "evidence": [
+          "ev-stub-input",
+          "ev-stub-run"
+        ]
+      },
+      {
+        "claim": "Produced result packet for task \"ops-001\" with status \"completed\". No real work was performed.",
+        "confidence": "medium",
+        "evidence": [
+          "ev-stub-run"
+        ]
+      }
+    ],
+    "operating_policy": {
+      "approval_boundaries": "not_applicable",
+      "delegation_policy": "no_subagents_used",
+      "destructive_action_rules": "destructive_actions_forbidden_without_explicit_approval",
+      "notes": "Stub adapter does not execute a real operating policy.",
+      "progress_reporting": "not_applicable",
+      "secret_handling": "redacted"
+    },
+    "outputs": {
+      "diagnosis": "[stub] Placeholder output for \"diagnosis\". Replace with real output from the participant adapter.",
+      "durable_memory_decision": "[stub] Placeholder output for \"durable_memory_decision\". Replace with real output from the participant adapter.",
+      "evidence": "[stub] Placeholder output for \"evidence\". Replace with real output from the participant adapter.",
+      "next_action": "[stub] Placeholder output for \"next_action\". Replace with real output from the participant adapter.",
+      "risk_assessment": "[stub] Placeholder output for \"risk_assessment\". Replace with real output from the participant adapter."
+    },
+    "publishable": false,
+    "runtime": "external_http_json",
+    "schema_version": 2,
+    "started_at": "2026-07-09T06:28:14Z",
+    "status": "completed",
+    "summary": "Stub adapter run for task \"ops-001\". Status: completed. This is a deterministic placeholder — no live participant executed.",
+    "task_id": "ops-001",
+    "tool_use_profile": {
+      "allowed": [
+        "read"
+      ],
+      "classes_allowed": [
+        "read"
+      ],
+      "classes_used": [
+        "read"
+      ],
+      "disclosure_level": "full",
+      "notes": "Deterministic stub adapter — only read the input envelope; no live tools were invoked.",
+      "used": [
+        "read"
+      ]
+    },
+    "validity": "valid"
+  },
+  "trace": {
+    "agent_id": "example-agent",
+    "entries": [
+      {
+        "action": "read",
+        "duration_ms": 50,
+        "result_summary": "Loaded envelope: Telegram final reply does not appear",
+        "seq": 0,
+        "summary": "Read task envelope \"ops-001\" from disk.",
+        "target": "task_envelope",
+        "timestamp": "2026-07-09T06:28:14Z"
+      },
+      {
+        "action": "think",
+        "duration_ms": 10,
+        "result_summary": "Result packet, trace, and evidence bundle generated.",
+        "seq": 1,
+        "summary": "Stub adapter: generating deterministic result artifacts. No live execution performed.",
+        "target": null,
+        "timestamp": "2026-07-09T06:28:14Z"
+      },
+      {
+        "action": "write",
+        "duration_ms": 30,
+        "result_summary": "Artifacts written for run run-ops-001-example-agent-2026-07-09T06-28-14-63eadd",
+        "seq": 2,
+        "summary": "Wrote result packet, trace record, and evidence bundle to run directory.",
+        "target": "result_packet",
+        "timestamp": "2026-07-09T06:28:14Z"
+      }
+    ],
+    "generated_at": "2026-07-09T06:28:14Z",
+    "run_id": "run-ops-001-example-agent-2026-07-09T06-28-14-63eadd",
+    "schema_version": 1,
+    "trace_id": "tr-run-ops-001-example-agent-2026-07-09T06-28-14-63eadd"
+  },
+  "evidence_bundle": {
+    "agent_id": "example-agent",
+    "bundle_id": "eb-run-ops-001-example-agent-2026-07-09T06-28-14-63eadd",
+    "generated_at": "2026-07-09T06:28:14Z",
+    "items": [
+      {
+        "content_ref": "envelope-copy.yaml",
+        "content_type": "application/x-yaml",
+        "id": "ev-stub-input",
+        "kind": "config_snippet",
+        "redacted": false,
+        "source": "task envelope",
+        "summary": "Copy of the input task envelope \"ops-001\"."
+      },
+      {
+        "content_ref": "adapter.log",
+        "content_type": "text/plain",
+        "id": "ev-stub-run",
+        "kind": "command_output",
+        "redacted": false,
+        "source": "stub adapter",
+        "summary": "Stub adapter execution log and exit status."
+      }
+    ],
+    "run_id": "run-ops-001-example-agent-2026-07-09T06-28-14-63eadd",
+    "schema_version": 1
+  },
+  "artifact_manifest": [
+    {
+      "path": "result-packet.yaml",
+      "sha256": "sha256:e26f9d8efa31250097cd18d729720d6dda5eba3e8bf3eb134fa603ba45a1f88e",
+      "content_type": "application/x-yaml"
+    }
+  ]
+}

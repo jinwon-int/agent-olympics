@@ -12,6 +12,7 @@ the [end-to-end walkthrough](walkthrough.md), then the [glossary](glossary.md).
 - [Glossary](glossary.md) — definitions of the project's custom terms
 - [End-to-end walkthrough](walkthrough.md) — Task Envelope → Adapter → Result Packet → Judge Record → Scoreboard, runnable with the stub adapter
 - [Participant quickstart](participant-quickstart.md)
+- [HTTP/JSON participant protocol](http-json-participant-protocol.md) — protocol-first, source-only registration + submission surface for external agents
 - [Participant eligibility](participant-eligibility.md)
 - [CLI participant](cli-participant.md)
 - [Rules](rules.md) · [Constitution](constitution.md) · [Competition model](competition-model.md)

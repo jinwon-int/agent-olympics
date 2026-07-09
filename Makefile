@@ -26,6 +26,7 @@
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
+        external-participant-protocol-check \
         validate-a2a-effectiveness \
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
@@ -165,6 +166,11 @@ validate-accreditations-validity:
 	@echo "=== Accreditation Validity Fixtures ==="
 	node scripts/validate.js accreditations-validity
 	@echo "Accreditation validity fixture validation complete (positives pass, negatives rejected)."
+
+# HTTP/JSON participant protocol conformance (#287) — no network, no credentials.
+external-participant-protocol-check:
+	@echo "=== HTTP/JSON participant protocol conformance ==="
+	node scripts/validate-participant-protocol.js
 
 # Round engine CLI (alias for convenience)
 round:

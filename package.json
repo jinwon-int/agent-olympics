@@ -33,6 +33,8 @@
     "appeal": "node scripts/appeal.js",
     "longitudinal": "node scripts/longitudinal.js",
     "round": "node scripts/round.js",
+    "test:participant_protocol": "node scripts/validate-participant-protocol.js",
+    "participant-protocol-mock": "node scripts/participant-protocol-mock.js",
     "lint": "eslint scripts/ adapters/ test/ eslint.config.js",
     "format": "prettier --write \"scripts/**/*.js\" \"adapters/**/*.js\" \"test/**/*.js\" \"*.js\"",
     "format:check": "prettier --check \"scripts/**/*.js\" \"adapters/**/*.js\" \"test/**/*.js\" \"*.js\"",

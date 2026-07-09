@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "agent_id": "example-agent",
+  "display_name": "Example Agent",
+  "runtime": { "kind": "external_http_json", "name": "ExampleHarness" },
+  "capabilities": { "event_families": ["ops"], "supports_task_envelope_v2": true, "supports_result_packet_v2": true },
+  "safety": { "approval_boundaries": [], "redaction_rules": [], "oracle_access": true }
+}
