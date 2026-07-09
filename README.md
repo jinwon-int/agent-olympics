@@ -112,33 +112,27 @@ The evaluated unit is the **operating agent stack**:
 
 ## Scoring Philosophy
 
-Single-number leaderboards are useful, but they are not enough. A useful agent evaluation should expose strengths by dimension:
+Single-number leaderboards are useful, but they are not enough. A useful agent
+evaluation should expose strengths by dimension rather than collapsing to one
+number.
 
-- Correctness
-- Evidence quality
-- Safety
-- Autonomy
-- Tool discipline
-- Recovery behavior
-- Configuration fitness
-- Hardware and resource efficiency
-- Communication
-- Durability
-- Cost and latency
-- Configuration fitness
-- Operating discipline
+**[`docs/scoring.md`](docs/scoring.md) is the single source of truth for the
+scoring model.** In summary, the base score is 100 points across six dimensions:
 
-The default score is:
+| Phase | Dimension | Points |
+|---|---|---:|
+| Automatic | Evidence quality | 20 |
+| Automatic | Safety | 15 |
+| Automatic | Execution | 15 |
+| Human / blind judge | Correctness | 30 |
+| Human / blind judge | Communication | 10 |
+| Human / blind judge | Durability | 10 |
 
-```text
-final_score = quality_score
-            + evidence_score
-            + safety_score
-            + durability_score
-            - risk_penalty
-            - unsupported_claim_penalty
-            - secret_penalty
-```
+The three automatic dimensions (50 points) are computed from packet content by
+the validator/scorer; the three pending dimensions (50 points) require human or
+blind-judge review. Penalties (unsupported claims, unguarded destructive
+actions, leaked secrets) and comparable-metadata handling are defined in
+[`docs/scoring.md`](docs/scoring.md).
 
 An agent that safely stops with a well-supported partial result should score higher than an agent that guesses, mutates production state without approval, or claims success without evidence.
 
@@ -146,64 +140,31 @@ Model identity should be visible for analysis, but it is only one part of the re
 
 ## Repository Layout
 
-```text
-schemas/
-  judge-record.schema.json        — Judge record schema (v1)
-  task-envelope-v2.schema.json    — Envelope schema (v2, current)
-  result-packet-v2.schema.json    — Result packet schema (v2, current)
-  judge-record-v2.schema.json     — Judge record schema (v2)
-archive/schemas/
-  task-envelope.schema.json       — Retired v1 envelope schema (backward-compat only)
-  result-packet.schema.json       — Retired v1 result-packet schema (backward-compat only)
-oracle/
-  season-001/                     — Private judge answer keys (oracle files)
-    ops-001-telegram-final-reply.yaml
-rubrics/
-  agent-olympics-v1.yaml          — Scoring rubric
-schemas/
-  node-capability.schema.json     — Node capability matrix schema
-  node-profile-inventory.schema.json — Node profile inventory schema
-tasks/season-001/
-  *-v2.yaml                       — Canonical v2 season task envelopes
-tasks/smoke/
-  smoke-manifest.yaml             — Smoke suite manifest (5+ candidate tasks)
-  smoke-001-gateway-liveness.yaml
-  smoke-002-model-roundtrip.yaml
-  smoke-003-tool-readiness.yaml
-  smoke-004-file-sanity.yaml
-  smoke-005-config-inspection.yaml
-  smoke-006-network-diagnostic.yaml
-  smoke-007-node-capability.yaml
-results/
-  *.yaml                          — Example and submitted result packets
-docs/
-  rules.md
-  competition-model.md
-  participant-quickstart.md          — First-time participant onboarding path
-  declaration-cross-checks.md       — Declaration/artifact consistency and delegation attribution
-  live-runner-boundary-season-001.md — Season 001 live runner/A2A boundary
-  test-event-venue-readiness.md     — Diagnostic test-event go/no-go checklist
-  cyberpatriot-image-hardening-fixtures.md — Node image hardening fixture shape
-  cyber-remediation-arena.md        — Cyber service remediation task shape
-  task-envelope.md
-  result-packet.md
-  rubric.md
-  events.md
-  adapters.md
-  reproducible-submission-contract.md
-  references.md
-  migration-v1-to-v2.md           — Migration guide
-  judge-notes-season-001.md       — Judge notes (v1 method)
-  node-capability-matrix.md       — Node capability documentation
-  node-profile-inventory.md       — Node profile inventory documentation
-  mvp-foundation-ratification.md  — MVP foundation issue status and follow-up map
-scripts/
-  validate.js                     — Schema + semantic validator (v1 + v2)
-issues/
-  reference-*.md                     — Historical/reference context; GitHub issues are current tracking
-  roadmap-*.md                       — Design slices and roadmap notes
-Makefile                          — Build/validation targets (requires make)
-```
+One line per top-level directory (file-level listings drift, so they are kept in
+each area's own README/doc instead):
+
+| Path | Purpose |
+|---|---|
+| `schemas/` | JSON Schemas for every artifact class (task envelopes, result packets, judge records, node profiles, adapters, oracle, …). v2 schemas are current. |
+| `archive/schemas/` | Retired v1 envelope/result-packet schemas, kept loadable for backward compatibility (see #257). |
+| `tasks/` | Task envelopes: `season-001/` canonical v2 envelopes, `season-002/`, `smoke/` readiness pack, and `stub-test/`. |
+| `rounds/` | Round manifests that bind tasks × participants into a scored round. |
+| `fixtures/` | Positive/negative validation fixtures for every gate (adapters, node profiles, competition-validity, live-runner, accreditation, …). |
+| `adapters/` | Participant runtime adapters (stub, OpenClaw, Hermes) and shared adapter library. |
+| `rubrics/` | Scoring rubric definitions. |
+| `oracle/` | Private judge answer keys per season (handling model tracked in #256). |
+| `results/` | Per-participant scored run output and judge records that feed the leaderboard. |
+| `runs/` | Captured run directories (live-runner and round-engine output examples). |
+| `evidence/` | Dry-run evidence bundles. |
+| `archive/` | Dated run bundles retained for history (see also `archive/schemas/`). |
+| `scripts/` | Validator, round engine, scorer, live runner, adapters, and the shared `scripts/lib/` helpers. |
+| `test/` | `node:test` unit tests for the tooling's pure helpers. |
+| `docs/` | Reference documentation (scoring, round engine, adapters, quickstart, migration, …). |
+| `issues/` | Historical/reference notes and roadmap slices; GitHub Issues are the current tracker. |
+| `Makefile` | Build/validation targets (requires `make`). |
+
+See [`docs/scoring.md`](docs/scoring.md), [`docs/round-engine.md`](docs/round-engine.md),
+and the per-directory READMEs for details.
 
 ## MVP Plan
 
