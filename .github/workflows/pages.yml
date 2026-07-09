@@ -52,10 +52,21 @@ jobs:
 
       - name: Verify no participant identity leaked into the public site
         run: |
-          # Fail the publish if any known participant id, node, or model label
-          # survived blind anonymization. This is a hard gate on the public
-          # surface — a leak here is a fairness failure, not a cosmetic one.
-          leak=$(grep -rEi 'sogyo|seoseo|nosuk|dungae|bangtong|yukson|soonwook|gwakga|jingun|gongyung|daegyo|vps[0-9]|deepseek-v4|gpt-5\.5|openai-codex' public-site || true)
+          # Fail the publish if any participant id, node, or model label survived
+          # blind anonymization. This is a hard gate on the public surface — a
+          # leak here is a fairness failure, not a cosmetic one.
+          #
+          # The blocklist is derived at run time from the authoritative rounds/
+          # and results/ data (plus a static vps<N> tail), so newly registered
+          # participants/models/nodes are covered automatically. The helper exits
+          # non-zero if the derived set is empty, which fails this step rather
+          # than letting the gate silently become a no-op.
+          blocklist=$(node scripts/identity-blocklist.js --regex) || {
+            echo "Identity blocklist derivation failed — refusing to publish." >&2
+            exit 1
+          }
+          echo "Derived identity blocklist: $blocklist"
+          leak=$(grep -rEi "$blocklist" public-site || true)
           if [ -n "$leak" ]; then
             echo "Participant identity leaked into the public blind leaderboard:" >&2
             echo "$leak" >&2
