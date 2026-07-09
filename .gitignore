@@ -24,6 +24,14 @@ results/pkt-harness-*.yaml
 # Web result consumer — generated output directories
 web-output/
 
+# Oracle privacy (#256): Season 001 keys are public reference/spent material and
+# stay committed. From Season 002 onward, oracle answer keys and judge notes are
+# a PRIVATE pipeline held out-of-repo — block them from being committed here.
+# See docs/season-001-reference-tier.md.
+oracle/season-002/
+oracle/season-0[3-9]*/
+docs/judge-notes-season-0[2-9]*.md
+
 # OS files
 *.DS_Store
 Thumbs.db

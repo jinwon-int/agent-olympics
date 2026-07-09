@@ -1,6 +1,8 @@
 # Oracle / Answer Key for node-001 image hardening variants
 #
-# This file is PRIVATE. It must not be shared with participants.
+# PUBLISHED REFERENCE KEY (Season 001 — spent material). Season 001 answer keys
+# are public reference/practice material and MUST NOT be reused for blind
+# competitive scoring. See docs/season-001-reference-tier.md.
 # The public fixture manifests reference the image-state and score-check files.
 
 oracle_schema_version: 1
