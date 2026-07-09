@@ -2213,14 +2213,39 @@ function main() {
       process.exit(0);
     }
     console.log(`Validating ${files.length} accreditation validity fixture file(s)...\n`);
+    // Assertion semantics: `positive-*` fixtures must validate cleanly and
+    // `negative-*` fixtures MUST be rejected. A negative fixture that starts
+    // passing (a validator regression) fails this gate, instead of its errors
+    // being silently expected. Negative fixtures' intended errors are NOT
+    // counted as gate failures.
+    let unexpected = 0;
+    let negativeRejected = 0;
     for (const f of files) {
+      const base = path.basename(f);
+      const expectInvalid = base.startsWith('negative-');
+      const errsBefore = totalErrors;
       validateAccreditation(f);
+      const fileErrored = totalErrors > errsBefore;
+      if (expectInvalid) {
+        if (fileErrored) {
+          negativeRejected++;
+          console.log(`OK (rejected): ${base}`);
+        } else {
+          console.error(`FAIL: negative fixture unexpectedly passed: ${base}`);
+          unexpected++;
+        }
+      } else if (fileErrored) {
+        console.error(`FAIL: positive fixture unexpectedly failed: ${base}`);
+        unexpected++;
+      }
     }
-    printSummaryAndExit([
-      `Files:     ${fileCount}`,
-      `Errors:    ${totalErrors}`,
-      `Warnings:  ${totalWarnings}`,
-    ]);
+    console.log('\n--- Summary ---');
+    console.log(`Files:              ${fileCount}`);
+    console.log(`Negatives rejected: ${negativeRejected}`);
+    console.log(`Unexpected results: ${unexpected}`);
+    console.log(`Warnings:           ${totalWarnings}`);
+    // Exit is driven by assertion violations, not by the negatives' expected errors.
+    process.exit(unexpected > 0 ? 1 : 0);
   }
 
   // Rounds mode

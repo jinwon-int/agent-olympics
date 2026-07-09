@@ -157,11 +157,13 @@ validate-accreditations:
 	node scripts/validate.js accreditations
 	@echo "Accreditation declaration validation passed."
 
-# Validate all accreditation validity fixtures
+# Validate all accreditation validity fixtures. The accreditations-validity mode
+# now asserts positive-* fixtures pass and negative-* fixtures are rejected, and
+# exits non-zero if either expectation is violated — so no `|| true` masking.
 validate-accreditations-validity:
 	@echo "=== Accreditation Validity Fixtures ==="
-	node scripts/validate.js accreditations-validity || true
-	@echo "Accreditation validity fixture validation complete (errors expected for negative cases)."
+	node scripts/validate.js accreditations-validity
+	@echo "Accreditation validity fixture validation complete (positives pass, negatives rejected)."
 
 # Round engine CLI (alias for convenience)
 round:
@@ -307,11 +309,17 @@ validate-openclaw:
 		node scripts/validate.js "$$f" || exit 1; \
 	done
 	@echo ""
-	@echo "=== Validating OpenClaw adapter negative fixtures ==="
+	@echo "=== Validating OpenClaw adapter negative fixtures (must be rejected) ==="
 	@for f in fixtures/openclaw-validity/negative/*.yaml; do \
-		echo "--- $$(basename $$f) ---"; \
-		node scripts/validate.js "$$f"; \
-		echo "(expected to produce errors for negative fixtures)"; \
+		if node scripts/validate.js "$$f" >/dev/null 2>&1; then \
+			if grep -qiE 'Schema-valid' "$$f"; then \
+				echo "OK (schema-valid by design; competition-invalid): $$(basename $$f)"; \
+			else \
+				echo "FAIL: schema-negative fixture unexpectedly passed schema validation: $$f"; exit 1; \
+			fi; \
+		else \
+			echo "OK (rejected): $$(basename $$f)"; \
+		fi; \
 	done
 	@echo ""
 	@echo "OpenClaw adapter fixture validation complete."
@@ -344,11 +352,17 @@ validate-hermes:
 		node scripts/validate.js "$$f" || exit 1; \
 	done
 	@echo ""
-	@echo "=== Validating Hermes adapter negative fixtures ==="
+	@echo "=== Validating Hermes adapter negative fixtures (must be rejected) ==="
 	@for f in fixtures/hermes-validity/negative/*.yaml; do \
-		echo "--- $$(basename $$f) ---"; \
-		node scripts/validate.js "$$f"; \
-		echo "(expected to produce errors for negative fixtures)"; \
+		if node scripts/validate.js "$$f" >/dev/null 2>&1; then \
+			if grep -qiE 'Schema-valid' "$$f"; then \
+				echo "OK (schema-valid by design; competition-invalid): $$(basename $$f)"; \
+			else \
+				echo "FAIL: schema-negative fixture unexpectedly passed schema validation: $$f"; exit 1; \
+			fi; \
+		else \
+			echo "OK (rejected): $$(basename $$f)"; \
+		fi; \
 	done
 	@echo ""
 	@echo "Hermes adapter fixture validation complete."
