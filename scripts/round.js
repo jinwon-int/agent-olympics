@@ -34,16 +34,14 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const { SECRET_VALUE_PATTERNS } = require('./lib/secret-patterns');
+const {
+  DEFAULT_RUN_ID_TEMPLATE,
+  SUPPORTED_RUN_ID_TEMPLATE_VARIABLES,
+  runIdTemplateVariables,
+  renderRunIdTemplateValues,
+} = require('./lib/run-id-template');
 
 const ROOT = path.resolve(__dirname, '..');
-const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
-const SUPPORTED_RUN_ID_TEMPLATE_VARIABLES = new Set([
-  'task_id',
-  'agent_id',
-  'timestamp',
-  'round_id',
-  'season',
-]);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,20 +89,15 @@ function generateTimestamp() {
   return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}UTC`;
 }
 
-function runIdTemplateVariables(template) {
-  return [...String(template || '').matchAll(/\{([^{}]+)\}/g)].map((match) => match[1]);
-}
-
 function renderRunId(manifest, task, participant, timestamp) {
   const template = manifest.run_id_template || DEFAULT_RUN_ID_TEMPLATE;
-  const values = {
+  return renderRunIdTemplateValues(template, {
     task_id: task.task_id,
     agent_id: participant.agent_id,
     timestamp,
     round_id: manifest.round_id,
     season: manifest.season,
-  };
-  return template.replace(/\{([^{}]+)\}/g, (match, key) => values[key] !== undefined ? values[key] : match);
+  });
 }
 
 function failIfStrictWarnings(strict, context) {
@@ -1330,4 +1323,17 @@ function main() {
   }
 }
 
-main();
+// Only run the CLI when invoked directly, so the module can be `require()`d in
+// unit tests to reach its pure helpers without executing a command.
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  exitCodeToStatus,
+  renderRunId,
+  runIdTemplateVariables,
+  generateTimestamp,
+  DEFAULT_RUN_ID_TEMPLATE,
+  SUPPORTED_RUN_ID_TEMPLATE_VARIABLES,
+};
