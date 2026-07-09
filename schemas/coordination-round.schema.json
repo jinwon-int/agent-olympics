@@ -75,11 +75,11 @@
           "description": "A2A-effectiveness taxonomy mode. team1: workers independently produce evidence and one finalizer selects/closes. a2a_crosscheck: finalizer does the work and workers audit it."
         },
         "worker_probe": {
-          "$ref": "#/$defs/stageEnvelope",
+          "$ref": "#/$defs/stage_envelope",
           "description": "The probe task envelope each worker runs independently (same question, no shared scratchpad). v2 envelope preferred; oracle_ref/judge_notes_ref are stripped by the live runner before any worker sees the envelope."
         },
         "merge": {
-          "$ref": "#/$defs/stageEnvelope",
+          "$ref": "#/$defs/stage_envelope",
           "description": "The merge task envelope the finalizer runs. Its participant-facing input is augmented with a worker-reports evidence file built from worker participant-facing findings only."
         },
         "workers": {
@@ -104,7 +104,7 @@
     }
   },
   "$defs": {
-    "stageEnvelope": {
+    "stage_envelope": {
       "type": "object",
       "additionalProperties": false,
       "required": ["task_id", "envelope_path", "time_limit_minutes", "fixture_bundle_ref"],

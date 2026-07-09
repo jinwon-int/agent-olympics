@@ -699,7 +699,28 @@ function main() {
     } else if (args[i] === '--quiet' || args[i] === '-q') {
       quiet = true;
     } else if (!args[i].startsWith('--')) {
-      reportFiles.push(path.resolve(ROOT, args[i]));
+      const resolved = path.resolve(ROOT, args[i]);
+      // Accept a directory: resolve the perf-harness report file(s) inside it
+      // (preferring .json over .yaml), so callers don't need a fragile shell
+      // glob to guess the extension (#269).
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        const reports = fs.readdirSync(resolved)
+          .filter((f) => /^perf-harness-report-.*\.(json|ya?ml)$/.test(f))
+          .sort((a, b) => {
+            const aj = a.endsWith('.json');
+            const bj = b.endsWith('.json');
+            if (aj !== bj) return aj ? -1 : 1; // .json first
+            return a < b ? 1 : -1;             // newest name last -> first
+          })
+          .map((f) => path.join(resolved, f));
+        if (reports.length === 0) {
+          console.error(`ERROR: No perf-harness-report-*.{json,yaml} found in directory: ${resolved}`);
+          process.exit(1);
+        }
+        reportFiles.push(reports[0]);
+      } else {
+        reportFiles.push(resolved);
+      }
     }
   }
 

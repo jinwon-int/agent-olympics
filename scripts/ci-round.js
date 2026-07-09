@@ -14,8 +14,10 @@ const yaml = require('js-yaml');
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_MANIFEST = 'rounds/season-001-round-001.yaml';
 const DEFAULT_WORK_DIR = '.tmp/ci-round';
-const DEFAULT_TASK_ID = 'ops-001';
-const DEFAULT_AGENT_ID = 'sogyo';
+// Task/participant default to the first entry in the manifest (not a hardcoded
+// id) so the gate doesn't break if a specific id leaves the manifest (#269).
+const DEFAULT_TASK_ID = null;
+const DEFAULT_AGENT_ID = null;
 const DEFAULT_SEED = 'ci-round-source-only';
 
 function usage() {
@@ -25,8 +27,8 @@ function usage() {
 Options:
   --manifest <path>   Source round manifest (default: ${DEFAULT_MANIFEST})
   --work-dir <path>   Repo-relative temporary workspace (default: ${DEFAULT_WORK_DIR})
-  --task-id <id>      Task to include in the smoke round (default: ${DEFAULT_TASK_ID})
-  --agent-id <id>     Participant to include in the smoke round (default: ${DEFAULT_AGENT_ID})
+  --task-id <id>      Task to include in the smoke round (default: first task in manifest)
+  --agent-id <id>     Participant to include in the smoke round (default: first participant in manifest)
   --seed <string>     Stub adapter seed (default: ${DEFAULT_SEED})
   --keep              Keep temporary artifacts after a successful run
   --help              Show this help
@@ -131,15 +133,22 @@ function writeCiManifest(options) {
   ensureRelativePath(options.workDir, 'work-dir');
   const manifest = loadYaml(options.manifest);
 
-  const selectedTask = (manifest.tasks || []).find((entry) => entry.task_id === options.taskId);
+  // Default to the first task/participant in the manifest when not specified,
+  // rather than a hardcoded id that could leave the manifest.
+  const tasks = manifest.tasks || [];
+  const participants = manifest.participants || [];
+  const wantTaskId = options.taskId || (tasks[0] && tasks[0].task_id);
+  const wantAgentId = options.agentId || (participants[0] && participants[0].agent_id);
+
+  const selectedTask = tasks.find((entry) => entry.task_id === wantTaskId);
   if (!selectedTask) {
-    throw new Error(`Task not found in ${options.manifest}: ${options.taskId}`);
+    throw new Error(`Task not found in ${options.manifest}: ${wantTaskId || '(manifest has no tasks)'}`);
   }
   const task = { ...selectedTask };
 
-  const participant = (manifest.participants || []).find((entry) => entry.agent_id === options.agentId);
+  const participant = participants.find((entry) => entry.agent_id === wantAgentId);
   if (!participant) {
-    throw new Error(`Participant not found in ${options.manifest}: ${options.agentId}`);
+    throw new Error(`Participant not found in ${options.manifest}: ${wantAgentId || '(manifest has no participants)'}`);
   }
 
   const workDir = repoPath(options.workDir);
