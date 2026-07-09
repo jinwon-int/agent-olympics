@@ -102,6 +102,7 @@ the [end-to-end walkthrough](walkthrough.md), then the [glossary](glossary.md).
 
 ## Operations
 - [Artifact retention policy](artifact-retention.md) — what is committed vs. regenerated, and the CI drift guard
+- [Season 001 reference tier & oracle privacy](season-001-reference-tier.md) — why Season 001 keys are public and how Season 002+ keys stay private
 
 ## References
 - [External benchmark references](references.md) — single source of truth for external benchmark citations

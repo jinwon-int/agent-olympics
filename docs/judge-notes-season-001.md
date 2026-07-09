@@ -1,5 +1,11 @@
 # Agent Olympics 2026 — Season 001 Judge Notes
 
+> **PUBLISHED REFERENCE — Season 001 (spent material).** These judge notes and
+> the Season 001 `oracle/` answer keys are public reference/practice material.
+> They MUST NOT be used for blind competitive scoring of Season 001. From
+> Season 002 onward, judge notes and oracle keys are held in a private pipeline
+> (see [Season 001 reference tier](season-001-reference-tier.md)).
+
 This document contains the judging methodology, scoring guidance, and
 quality criteria for all seven events in the Agent Olympics 2026 first
 season pack.
