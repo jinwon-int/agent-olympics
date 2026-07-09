@@ -25,6 +25,7 @@
  *   --run-id <id>      Execute/resume only a specific run (by run_id)
  *   --exit <code>      Override stub adapter exit code (for testing)
  *   --seed <string>    Deterministic seed for stable output
+ *   --adapter-timeout-ms <n>  Stub adapter timeout in ms (default 120000)
  *   --help, -h         Show usage
  *
  * Exit code: 0 = success, 1 = validation or runtime error
@@ -42,6 +43,7 @@ const {
 } = require('./lib/run-id-template');
 
 const ROOT = path.resolve(__dirname, '..');
+const DEFAULT_ADAPTER_TIMEOUT_MS = 120000; // 2-minute source-only stub safety timeout
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,10 +85,15 @@ function mkdirp(p) {
   return resolved;
 }
 
-function generateTimestamp() {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}UTC`;
+/**
+ * Compact, filesystem-safe UTC stamp used as the `{timestamp}` component of a
+ * run-id / run directory name (e.g. `20260709T024452UTC`). Colons from ISO 8601
+ * are not path-safe, so run ids use this slug form. It is derived from a single
+ * `Date().toISOString()` source; metadata fields (created_at, updated_at, status
+ * timestamps) keep the full ISO 8601 string via new Date().toISOString().
+ */
+function generateTimestamp(now = new Date()) {
+  return now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'UTC');
 }
 
 function renderRunId(manifest, task, participant, timestamp) {
@@ -190,6 +197,18 @@ function warn(label, condition, detail) {
   if (!condition) {
     checkWarnings++;
   }
+}
+
+/**
+ * Reset the shared check state. Every command that runs checks calls this at
+ * entry so results never leak between commands (previously four copy-pasted
+ * reset blocks that were easy to forget when adding a command).
+ */
+function resetChecks() {
+  CHECKS.length = 0;
+  checkPassed = 0;
+  checkFailed = 0;
+  checkWarnings = 0;
 }
 
 function printCheckResult(verbose) {
@@ -374,6 +393,9 @@ Options:
   --run-id <id>        Execute/resume only a specific run (by run_id)
   --exit <code>        Override stub adapter exit code (for testing)
   --seed <string>      Deterministic seed for stable output
+  --adapter-timeout-ms <n>  Stub adapter timeout in ms (default 120000; env
+                       AGENT_OLYMPICS_ADAPTER_TIMEOUT_MS). Timeouts downgrade
+                       the run to "partial".
   --help, -h           Show this help
 
 Exit codes:
@@ -507,10 +529,7 @@ function cmdPlan(manifestArg, options) {
     process.exit(1);
   }
 
-  CHECKS.length = 0;
-  checkPassed = 0;
-  checkFailed = 0;
-  checkWarnings = 0;
+  resetChecks();
 
   const manifest = validateRoundManifest(manifestPath, options.strict);
   failIfStrictWarnings(options.strict, 'plan');
@@ -566,10 +585,7 @@ function cmdPlan(manifestArg, options) {
 function cmdInit(manifestArg, options) {
   // First validate and plan
   const manifest = cmdPlan(manifestArg, options);
-  CHECKS.length = 0;
-  checkPassed = 0;
-  checkFailed = 0;
-  checkWarnings = 0;
+  resetChecks();
 
   // Check run directory does not already exist (safety)
   const runDir = manifest.run_directory;
@@ -761,8 +777,11 @@ function saveRunManifest(runDirPath, manifest) {
  * Invoke the stub adapter for a single run.
  * Returns { status, exitCode, error } or throws.
  */
-function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOverride) {
+function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOverride, timeoutMs) {
   const resolve = (p) => path.resolve(ROOT, p);
+  const adapterTimeoutMs = Number.isInteger(timeoutMs) && timeoutMs > 0
+    ? timeoutMs
+    : DEFAULT_ADAPTER_TIMEOUT_MS;
 
   const args = [
     resolve('scripts/stub-adapter.js'),
@@ -786,7 +805,7 @@ function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOve
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8',
-      timeout: 120000, // 2-minute safety timeout
+      timeout: adapterTimeoutMs,
     }
   );
 
@@ -799,7 +818,8 @@ function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOve
 
   if (cp.error) {
     if (cp.error.code === 'ETIMEDOUT') {
-      return { status: 'partial', exitCode: 2, error: 'Adapter timed out' };
+      console.warn(`  ⚠ Adapter exceeded ${adapterTimeoutMs} ms timeout — downgrading run status to "partial" (configure with --adapter-timeout-ms or AGENT_OLYMPICS_ADAPTER_TIMEOUT_MS)`);
+      return { status: 'partial', exitCode: 2, error: `Adapter timed out after ${adapterTimeoutMs} ms` };
     }
     return { status: 'blocked', exitCode: 3, error: cp.error.message };
   }
@@ -957,7 +977,8 @@ function executeSingleRun(runDir, runManifest, roundManifest, options) {
       agentId,
       runtime,
       seed,
-      options.exitOverride
+      options.exitOverride,
+      options.adapterTimeoutMs
     );
   } catch (err) {
     console.error(`  ✘ Adapter invocation failed: ${err.message}`);
@@ -1071,10 +1092,7 @@ function cmdExecute(manifestArg, options) {
     process.exit(1);
   }
 
-  CHECKS.length = 0;
-  checkPassed = 0;
-  checkFailed = 0;
-  checkWarnings = 0;
+  resetChecks();
 
   // Validate manifest first
   const manifest = validateRoundManifest(manifestPath, options.strict);
@@ -1238,6 +1256,18 @@ function main() {
   let runId = null;
   let exitOverride = null;
   let seed = null;
+  let adapterTimeoutMs = null;
+
+  // Consume the value token that follows an option flag, guarding against a
+  // missing value or the next flag being swallowed as the value.
+  const takeValue = (flag, idx) => {
+    const next = args[idx + 1];
+    if (next === undefined || next.startsWith('--')) {
+      console.error(`Missing value for ${flag}`);
+      process.exit(1);
+    }
+    return next;
+  };
 
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -1250,18 +1280,33 @@ function main() {
         options.strict = true;
         break;
       case '--run-id':
-        runId = args[++i];
+        runId = takeValue('--run-id', i);
+        i++;
         break;
-      case '--exit':
-        exitOverride = parseInt(args[++i], 10);
+      case '--exit': {
+        const raw = takeValue('--exit', i);
+        i++;
+        exitOverride = parseInt(raw, 10);
         if (!Number.isInteger(exitOverride)) {
-          console.error(`Invalid --exit value: "${args[i]}" — expected an integer exit code`);
+          console.error(`Invalid --exit value: "${raw}" — expected an integer exit code`);
           process.exit(1);
         }
         break;
+      }
       case '--seed':
-        seed = args[++i];
+        seed = takeValue('--seed', i);
+        i++;
         break;
+      case '--adapter-timeout-ms': {
+        const raw = takeValue('--adapter-timeout-ms', i);
+        i++;
+        adapterTimeoutMs = parseInt(raw, 10);
+        if (!Number.isInteger(adapterTimeoutMs) || adapterTimeoutMs <= 0) {
+          console.error(`Invalid --adapter-timeout-ms value: "${raw}" — expected a positive integer (milliseconds)`);
+          process.exit(1);
+        }
+        break;
+      }
       case '--help':
       case '-h':
         cmdHelp();
@@ -1275,6 +1320,12 @@ function main() {
   const cmdArg = filtered[1];
   const cmdArg2 = filtered[2];
 
+  // Adapter timeout: --adapter-timeout-ms flag, else env var, else 2-minute default.
+  const envTimeout = parseInt(process.env.AGENT_OLYMPICS_ADAPTER_TIMEOUT_MS || '', 10);
+  const resolvedAdapterTimeoutMs = adapterTimeoutMs
+    || (Number.isInteger(envTimeout) && envTimeout > 0 ? envTimeout : null)
+    || DEFAULT_ADAPTER_TIMEOUT_MS;
+
   // Execution options (shared by execute and resume)
   const execOptions = {
     verbose: options.verbose,
@@ -1282,15 +1333,13 @@ function main() {
     runId,
     exitOverride,
     seed,
+    adapterTimeoutMs: resolvedAdapterTimeoutMs,
     resume: false,
   };
 
   switch (cmd) {
     case 'validate':
-      CHECKS.length = 0;
-      checkPassed = 0;
-      checkFailed = 0;
-      checkWarnings = 0;
+      resetChecks();
       cmdValidate(cmdArg, options);
       break;
     case 'plan':

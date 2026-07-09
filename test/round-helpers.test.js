@@ -39,3 +39,8 @@ test('renderRunId falls back to the default template', () => {
 test('generateTimestamp emits a UTC-suffixed compact timestamp', () => {
   assert.match(generateTimestamp(), /^\d{8}T\d{6}UTC$/);
 });
+
+test('generateTimestamp derives a filesystem-safe slug from an ISO source', () => {
+  // Derived from a single ISO 8601 source with separators/millis stripped.
+  assert.equal(generateTimestamp(new Date('2026-07-09T02:44:52.123Z')), '20260709T024452UTC');
+});
