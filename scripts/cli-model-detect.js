@@ -46,18 +46,33 @@ function detect(bin, overrideArgs) {
 
 function selfTest() {
   const cases = [
-    { name: 'bare model with provider', text: 'Model: gpt-5.1 (openai)', expect: { model: 'gpt-5.1', provider: 'openai' } },
-    { name: 'dict style', text: "Model: {'default': 'claude-opus-4', 'provider': 'anthropic'}", expect: { model: 'claude-opus-4', provider: 'anthropic' } },
-    { name: 'bare model only', text: 'model = codex-mini', expect: { model: 'codex-mini', provider: 'unknown' } },
+    {
+      name: 'bare model with provider',
+      text: 'Model: gpt-5.1 (openai)',
+      expect: { model: 'gpt-5.1', provider: 'openai' },
+    },
+    {
+      name: 'dict style',
+      text: "Model: {'default': 'claude-opus-4', 'provider': 'anthropic'}",
+      expect: { model: 'claude-opus-4', provider: 'anthropic' },
+    },
+    {
+      name: 'bare model only',
+      text: 'model = codex-mini',
+      expect: { model: 'codex-mini', provider: 'unknown' },
+    },
     { name: 'no model line', text: 'Claude Code 1.2.3\nReady.', expect: null },
   ];
   let failed = 0;
   for (const c of cases) {
     const got = parseModelInfo(c.text);
-    const ok = c.expect === null
-      ? got === null
-      : !!got && got.model === c.expect.model && got.provider === c.expect.provider;
-    console.log(`${ok ? 'PASS' : 'FAIL'}  ${c.name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(c.expect)}`}`);
+    const ok =
+      c.expect === null
+        ? got === null
+        : !!got && got.model === c.expect.model && got.provider === c.expect.provider;
+    console.log(
+      `${ok ? 'PASS' : 'FAIL'}  ${c.name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(c.expect)}`}`
+    );
     if (!ok) failed += 1;
   }
   console.log(`${cases.length - failed} passed, ${failed} failed`);
@@ -72,12 +87,25 @@ function main() {
   let runSelfTest = false;
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--bin': bin = args[++i]; break;
-      case '--args': overrideArgs = String(args[++i] || '').split(/\s+/).filter(Boolean); break;
-      case '--parse-file': parseFile = args[++i]; break;
-      case '--self-test': runSelfTest = true; break;
-      case '--help': case '-h':
-        console.log('Usage: cli-model-detect.js [--bin <claude>] [--args "<info args>"] | --parse-file <file> | --self-test');
+      case '--bin':
+        bin = args[++i];
+        break;
+      case '--args':
+        overrideArgs = String(args[++i] || '')
+          .split(/\s+/)
+          .filter(Boolean);
+        break;
+      case '--parse-file':
+        parseFile = args[++i];
+        break;
+      case '--self-test':
+        runSelfTest = true;
+        break;
+      case '--help':
+      case '-h':
+        console.log(
+          'Usage: cli-model-detect.js [--bin <claude>] [--args "<info args>"] | --parse-file <file> | --self-test'
+        );
         process.exit(0);
         break;
       default:

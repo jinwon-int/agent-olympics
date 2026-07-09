@@ -7,7 +7,14 @@ const yaml = require('js-yaml');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_FIXTURE_DIR = path.join(ROOT, 'fixtures', 'declaration-cross-check');
-const NO_DELEGATION_VALUES = new Set(['', 'none', 'no', 'false', 'no_subagents_used', 'no delegated workers for this packet']);
+const NO_DELEGATION_VALUES = new Set([
+  '',
+  'none',
+  'no',
+  'false',
+  'no_subagents_used',
+  'no delegated workers for this packet',
+]);
 
 function usage() {
   console.log(`Usage:
@@ -28,7 +35,8 @@ function fixturePaths(args) {
   if (!fs.existsSync(DEFAULT_FIXTURE_DIR)) {
     return [];
   }
-  return fs.readdirSync(DEFAULT_FIXTURE_DIR)
+  return fs
+    .readdirSync(DEFAULT_FIXTURE_DIR)
     .filter((name) => name.endsWith('.yaml') || name.endsWith('.yml'))
     .sort()
     .map((name) => path.join(DEFAULT_FIXTURE_DIR, name));
@@ -91,12 +99,19 @@ function actionLooksDelegated(action) {
     action.command_summary,
     action.summary,
     action.result_summary,
-  ].filter(Boolean).join(' ').toLowerCase();
-  return /\b(delegat\w*|subagent|worker_pool|worker dispatch|a2a worker|sessions_spawn)\b/.test(haystack);
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return /\b(delegat\w*|subagent|worker_pool|worker dispatch|a2a worker|sessions_spawn)\b/.test(
+    haystack
+  );
 }
 
 function delegationPolicyDeclaresDelegation(policy) {
-  const value = String(policy && policy.delegation_policy || '').trim().toLowerCase();
+  const value = String((policy && policy.delegation_policy) || '')
+    .trim()
+    .toLowerCase();
   return !NO_DELEGATION_VALUES.has(value);
 }
 
@@ -104,11 +119,13 @@ function delegationProfileDeclaresDelegation(profile) {
   if (!profile) {
     return false;
   }
-  return profile.subagents_used === true ||
+  return (
+    profile.subagents_used === true ||
     profile.background_jobs_used === true ||
     profile.human_assistance === true ||
     normalizedList(profile.a2a_workers).length > 0 ||
-    normalizedList(profile.supported_by).length > 0;
+    normalizedList(profile.supported_by).length > 0
+  );
 }
 
 function collectActions(resultPacket, traceRecord) {
@@ -133,9 +150,18 @@ function comparableValue(resultPacket, pathParts) {
 }
 
 function compareField(errors, warnings, label, left, right, leftName, rightName, required = false) {
-  if ((left === undefined || left === null || left === '') || (right === undefined || right === null || right === '')) {
+  if (
+    left === undefined ||
+    left === null ||
+    left === '' ||
+    right === undefined ||
+    right === null ||
+    right === ''
+  ) {
     if (required) {
-      warnings.push(`${label} is not fully cross-checkable: ${leftName}=${left || '(missing)'}, ${rightName}=${right || '(missing)'}`);
+      warnings.push(
+        `${label} is not fully cross-checkable: ${leftName}=${left || '(missing)'}, ${rightName}=${right || '(missing)'}`
+      );
     }
     return;
   }
@@ -170,29 +196,166 @@ function checkCase(fixture, fixtureFile) {
     errors.push('result_packet document is required');
   }
 
-  compareField(errors, warnings, 'run_id', manifest.run_id, result.run_id, 'run_manifest.run_id', 'result_packet.run_id');
-  compareField(errors, warnings, 'task_id', manifest.task_id, result.task_id, 'run_manifest.task_id', 'result_packet.task_id', true);
-  compareField(errors, warnings, 'agent_id', manifest.agent_id, result.agent_id, 'run_manifest.agent_id', 'result_packet.agent_id', true);
-  compareField(errors, warnings, 'runtime', manifest.runtime, result.runtime, 'run_manifest.runtime', 'result_packet.runtime');
-  compareField(errors, warnings, 'adapter', manifest.adapter, result.adapter, 'run_manifest.adapter', 'result_packet.adapter');
-  compareField(errors, warnings, 'model', manifest.model, result.model, 'run_manifest.model', 'result_packet.model');
-  compareField(errors, warnings, 'model_provider', manifest.model_provider, result.model_provider, 'run_manifest.model_provider', 'result_packet.model_provider');
-  compareField(errors, warnings, 'node', manifest.node, result.node, 'run_manifest.node', 'result_packet.node');
+  compareField(
+    errors,
+    warnings,
+    'run_id',
+    manifest.run_id,
+    result.run_id,
+    'run_manifest.run_id',
+    'result_packet.run_id'
+  );
+  compareField(
+    errors,
+    warnings,
+    'task_id',
+    manifest.task_id,
+    result.task_id,
+    'run_manifest.task_id',
+    'result_packet.task_id',
+    true
+  );
+  compareField(
+    errors,
+    warnings,
+    'agent_id',
+    manifest.agent_id,
+    result.agent_id,
+    'run_manifest.agent_id',
+    'result_packet.agent_id',
+    true
+  );
+  compareField(
+    errors,
+    warnings,
+    'runtime',
+    manifest.runtime,
+    result.runtime,
+    'run_manifest.runtime',
+    'result_packet.runtime'
+  );
+  compareField(
+    errors,
+    warnings,
+    'adapter',
+    manifest.adapter,
+    result.adapter,
+    'run_manifest.adapter',
+    'result_packet.adapter'
+  );
+  compareField(
+    errors,
+    warnings,
+    'model',
+    manifest.model,
+    result.model,
+    'run_manifest.model',
+    'result_packet.model'
+  );
+  compareField(
+    errors,
+    warnings,
+    'model_provider',
+    manifest.model_provider,
+    result.model_provider,
+    'run_manifest.model_provider',
+    'result_packet.model_provider'
+  );
+  compareField(
+    errors,
+    warnings,
+    'node',
+    manifest.node,
+    result.node,
+    'run_manifest.node',
+    'result_packet.node'
+  );
 
-  compareField(errors, warnings, 'participant agent_id', result.agent_id, comparableValue(result, ['participant', 'agent_id']), 'result_packet.agent_id', 'comparable_metadata.participant.agent_id');
-  compareField(errors, warnings, 'participant adapter', firstDefined(result.adapter, result.runtime), comparableValue(result, ['participant', 'adapter']), 'result_packet adapter/runtime', 'comparable_metadata.participant.adapter');
-  compareField(errors, warnings, 'runtime name', result.runtime, comparableValue(result, ['runtime', 'name']), 'result_packet.runtime', 'comparable_metadata.runtime.name');
-  compareField(errors, warnings, 'runtime version', result.runtime_version, comparableValue(result, ['runtime', 'version']), 'result_packet.runtime_version', 'comparable_metadata.runtime.version');
-  compareField(errors, warnings, 'model name', result.model, comparableValue(result, ['model', 'name']), 'result_packet.model', 'comparable_metadata.model.name');
-  compareField(errors, warnings, 'model provider', result.model_provider, comparableValue(result, ['model', 'provider']), 'result_packet.model_provider', 'comparable_metadata.model.provider');
-  compareField(errors, warnings, 'task metadata', result.task_id, comparableValue(result, ['task', 'task_id']), 'result_packet.task_id', 'comparable_metadata.task.task_id');
+  compareField(
+    errors,
+    warnings,
+    'participant agent_id',
+    result.agent_id,
+    comparableValue(result, ['participant', 'agent_id']),
+    'result_packet.agent_id',
+    'comparable_metadata.participant.agent_id'
+  );
+  compareField(
+    errors,
+    warnings,
+    'participant adapter',
+    firstDefined(result.adapter, result.runtime),
+    comparableValue(result, ['participant', 'adapter']),
+    'result_packet adapter/runtime',
+    'comparable_metadata.participant.adapter'
+  );
+  compareField(
+    errors,
+    warnings,
+    'runtime name',
+    result.runtime,
+    comparableValue(result, ['runtime', 'name']),
+    'result_packet.runtime',
+    'comparable_metadata.runtime.name'
+  );
+  compareField(
+    errors,
+    warnings,
+    'runtime version',
+    result.runtime_version,
+    comparableValue(result, ['runtime', 'version']),
+    'result_packet.runtime_version',
+    'comparable_metadata.runtime.version'
+  );
+  compareField(
+    errors,
+    warnings,
+    'model name',
+    result.model,
+    comparableValue(result, ['model', 'name']),
+    'result_packet.model',
+    'comparable_metadata.model.name'
+  );
+  compareField(
+    errors,
+    warnings,
+    'model provider',
+    result.model_provider,
+    comparableValue(result, ['model', 'provider']),
+    'result_packet.model_provider',
+    'comparable_metadata.model.provider'
+  );
+  compareField(
+    errors,
+    warnings,
+    'task metadata',
+    result.task_id,
+    comparableValue(result, ['task', 'task_id']),
+    'result_packet.task_id',
+    'comparable_metadata.task.task_id'
+  );
 
   if (capability.adapter_id) {
-    const declaredAdapter = firstDefined(result.adapter, result.runtime, manifest.adapter, manifest.runtime);
-    compareField(errors, warnings, 'adapter capability', capability.adapter_id, declaredAdapter, 'adapter_capability.adapter_id', 'result/manifest adapter');
+    const declaredAdapter = firstDefined(
+      result.adapter,
+      result.runtime,
+      manifest.adapter,
+      manifest.runtime
+    );
+    compareField(
+      errors,
+      warnings,
+      'adapter capability',
+      capability.adapter_id,
+      declaredAdapter,
+      'adapter_capability.adapter_id',
+      'result/manifest adapter'
+    );
   }
 
-  const allowedTools = listFromProfile(result.tool_use_profile, 'classes_allowed', 'allowed').map(toolName);
+  const allowedTools = listFromProfile(result.tool_use_profile, 'classes_allowed', 'allowed').map(
+    toolName
+  );
   const usedTools = listFromProfile(result.tool_use_profile, 'classes_used', 'used').map(toolName);
   const allowedSet = new Set(allowedTools);
   const usedSet = new Set(usedTools);
@@ -207,30 +370,43 @@ function checkCase(fixture, fixtureFile) {
     .map((action) => ({ action, type: actionType(action) }))
     .filter(({ type }) => type && !usedSet.has(type));
   for (const { action, type } of undeclaredActions) {
-    warnings.push(`${action.source || 'action'} "${action.id || action.seq || '(unnamed)'}" uses "${type}" not listed in tool_use_profile used tools`);
+    warnings.push(
+      `${action.source || 'action'} "${action.id || action.seq || '(unnamed)'}" uses "${type}" not listed in tool_use_profile used tools`
+    );
   }
 
   const delegationActions = actions.filter(actionLooksDelegated);
   const profileDeclaresDelegation = delegationProfileDeclaresDelegation(result.delegation_profile);
   const policyDeclaresDelegation = delegationPolicyDeclaresDelegation(result.operating_policy);
-  const toolDeclaresDelegation = usedSet.has('delegate') || usedSet.has('subagent') ||
-    usedSet.has('sessions_spawn') || usedSet.has('a2a_worker');
+  const toolDeclaresDelegation =
+    usedSet.has('delegate') ||
+    usedSet.has('subagent') ||
+    usedSet.has('sessions_spawn') ||
+    usedSet.has('a2a_worker');
   const supportAgents = [
     ...normalizedList(result.delegation_profile && result.delegation_profile.a2a_workers),
     ...normalizedList(result.delegation_profile && result.delegation_profile.supported_by),
   ];
 
   if (delegationActions.length > 0 && !profileDeclaresDelegation) {
-    errors.push('delegation appears in actions/trace but delegation_profile does not disclose support');
+    errors.push(
+      'delegation appears in actions/trace but delegation_profile does not disclose support'
+    );
   }
   if (delegationActions.length > 0 && !policyDeclaresDelegation) {
-    errors.push('delegation appears in actions/trace but operating_policy.delegation_policy does not allow/disclose it');
+    errors.push(
+      'delegation appears in actions/trace but operating_policy.delegation_policy does not allow/disclose it'
+    );
   }
   if (delegationActions.length > 0 && !toolDeclaresDelegation) {
-    errors.push('delegation appears in actions/trace but tool_use_profile used tools do not include a delegation tool class');
+    errors.push(
+      'delegation appears in actions/trace but tool_use_profile used tools do not include a delegation tool class'
+    );
   }
   if (profileDeclaresDelegation && supportAgents.length === 0) {
-    errors.push('delegation_profile discloses support but does not attribute supporting agents/workers');
+    errors.push(
+      'delegation_profile discloses support but does not attribute supporting agents/workers'
+    );
   }
   if (profileDeclaresDelegation && delegationActions.length === 0) {
     warnings.push('delegation_profile discloses support but no delegation action/trace was found');
@@ -238,11 +414,21 @@ function checkCase(fixture, fixtureFile) {
 
   const attribution = fixture.attribution || {};
   if (attribution.owner_agent_id) {
-    compareField(errors, warnings, 'delegation owner attribution', attribution.owner_agent_id, result.agent_id, 'attribution.owner_agent_id', 'result_packet.agent_id');
+    compareField(
+      errors,
+      warnings,
+      'delegation owner attribution',
+      attribution.owner_agent_id,
+      result.agent_id,
+      'attribution.owner_agent_id',
+      'result_packet.agent_id'
+    );
   }
   for (const supporter of normalizedList(attribution.support_agents)) {
     if (!supportAgents.includes(supporter)) {
-      errors.push(`attribution.support_agents includes "${supporter}" but delegation_profile does not list it`);
+      errors.push(
+        `attribution.support_agents includes "${supporter}" but delegation_profile does not list it`
+      );
     }
   }
 
@@ -289,11 +475,15 @@ function run() {
     }
 
     const label = expectedFailure ? `expected failure - ${errors.length} error(s)` : 'pass';
-    console.log(`OK    ${rel}  (${label}${warnings.length ? `, ${warnings.length} warning(s)` : ''})`);
+    console.log(
+      `OK    ${rel}  (${label}${warnings.length ? `, ${warnings.length} warning(s)` : ''})`
+    );
   }
 
   if (failed > 0) {
-    console.error(`\nDeclaration cross-check failed: ${failed} fixture(s) did not match expectation.`);
+    console.error(
+      `\nDeclaration cross-check failed: ${failed} fixture(s) did not match expectation.`
+    );
     process.exit(1);
   }
   console.log('\nDeclaration cross-check fixtures passed.');

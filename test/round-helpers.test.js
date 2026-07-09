@@ -18,10 +18,14 @@ test('exitCodeToStatus maps any other code to blocked', () => {
 
 test('renderRunId uses the manifest template and provided timestamp', () => {
   const out = renderRunId(
-    { run_id_template: 'run-{task_id}-{agent_id}-{timestamp}', round_id: 'r1', season: 'season-001' },
+    {
+      run_id_template: 'run-{task_id}-{agent_id}-{timestamp}',
+      round_id: 'r1',
+      season: 'season-001',
+    },
     { task_id: 'ops-001' },
     { agent_id: 'sogyo' },
-    '20260709T000000UTC',
+    '20260709T000000UTC'
   );
   assert.equal(out, 'run-ops-001-sogyo-20260709T000000UTC');
 });
@@ -31,7 +35,7 @@ test('renderRunId falls back to the default template', () => {
     {},
     { task_id: 'code-001' },
     { agent_id: 'gwakga' },
-    '20260709T010203UTC',
+    '20260709T010203UTC'
   );
   assert.equal(out, 'run-code-001-gwakga-20260709T010203UTC');
 });

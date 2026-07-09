@@ -39,9 +39,22 @@ const IDENTITY_KEYS = new Set(['agent_id', 'node', 'model', 'model_provider', 'p
 // Generic / non-identifying values that must never enter the blocklist (they
 // are shared defaults or placeholders, and blocking them would false-positive).
 const GENERIC_VALUES = new Set([
-  '', 'none', 'null', 'unknown', 'n/a', 'na', 'stub', 'deterministic-stub',
-  'cli', 'cli-default', 'orchestrator-default', 'open-stack-default',
-  'closed-stack-default', 'default', 'fixture', 'fixtures',
+  '',
+  'none',
+  'null',
+  'unknown',
+  'n/a',
+  'na',
+  'stub',
+  'deterministic-stub',
+  'cli',
+  'cli-default',
+  'orchestrator-default',
+  'open-stack-default',
+  'closed-stack-default',
+  'default',
+  'fixture',
+  'fixtures',
 ]);
 
 // Static infrastructure patterns (regex fragments) that don't appear as literal
@@ -51,7 +64,8 @@ const STATIC_PATTERNS = ['vps[0-9]+'];
 function listYaml(dirRel) {
   const dir = path.join(ROOT, dirRel);
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
+  return fs
+    .readdirSync(dir)
     .filter((f) => /\.ya?ml$/.test(f))
     .map((f) => path.join(dir, f));
 }
@@ -90,15 +104,17 @@ function deriveTokens() {
     }
     collectFromNode(doc, raw);
   }
-  return [...raw]
-    .map((t) => (t || '').trim())
-    .filter((t) => t.length >= 3)
-    .filter((t) => !GENERIC_VALUES.has(t.toLowerCase()))
-    // Drop path-like values (a field pointing at a profile/fixture file, not an identity).
-    .filter((t) => !/[\\/]/.test(t) && !/\.(ya?ml|json)$/i.test(t))
-    // A vps<N> slug is already covered by the static tail.
-    .filter((t) => !/^vps[0-9]+$/i.test(t))
-    .sort();
+  return (
+    [...raw]
+      .map((t) => (t || '').trim())
+      .filter((t) => t.length >= 3)
+      .filter((t) => !GENERIC_VALUES.has(t.toLowerCase()))
+      // Drop path-like values (a field pointing at a profile/fixture file, not an identity).
+      .filter((t) => !/[\\/]/.test(t) && !/\.(ya?ml|json)$/i.test(t))
+      // A vps<N> slug is already covered by the static tail.
+      .filter((t) => !/^vps[0-9]+$/i.test(t))
+      .sort()
+  );
 }
 
 function escapeRegex(s) {
@@ -115,13 +131,21 @@ function main() {
   const tokens = deriveTokens();
 
   if (tokens.length === 0) {
-    console.error('ERROR: derived identity blocklist is empty — refusing to emit a no-op gate. '
-      + 'Check that rounds/ and results/ contain participant data.');
+    console.error(
+      'ERROR: derived identity blocklist is empty — refusing to emit a no-op gate. ' +
+        'Check that rounds/ and results/ contain participant data.'
+    );
     process.exit(1);
   }
 
   if (args.includes('--json')) {
-    process.stdout.write(JSON.stringify({ tokens, staticPatterns: STATIC_PATTERNS, regex: buildRegex(tokens) }, null, 2) + '\n');
+    process.stdout.write(
+      JSON.stringify(
+        { tokens, staticPatterns: STATIC_PATTERNS, regex: buildRegex(tokens) },
+        null,
+        2
+      ) + '\n'
+    );
   } else if (args.includes('--regex')) {
     process.stdout.write(buildRegex(tokens) + '\n');
   } else {

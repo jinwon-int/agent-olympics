@@ -19,7 +19,9 @@ const path = require('path');
 const { mergeMissionResult, PROFILES } = require('./lib/mission-result-merge');
 
 function usage() {
-  console.error('Usage: node scripts/cli-mission-result-merge.js <envelope> <run_dir> <mission_output> <cli_exit>');
+  console.error(
+    'Usage: node scripts/cli-mission-result-merge.js <envelope> <run_dir> <mission_output> <cli_exit>'
+  );
   process.exit(3);
 }
 
@@ -36,4 +38,6 @@ const result = mergeMissionResult({
 });
 
 console.log(`Merged CLI mission output into ${path.join(runDir, 'result-packet.yaml')}`);
-console.log(`parsed_json=${result.parsed} cli_exit=${result.agentExit} output_sha256=${result.sha256} redaction_rules=${result.redactionRuleIds.join(',') || 'none'}`);
+console.log(
+  `parsed_json=${result.parsed} cli_exit=${result.agentExit} output_sha256=${result.sha256} redaction_rules=${result.redactionRuleIds.join(',') || 'none'}`
+);

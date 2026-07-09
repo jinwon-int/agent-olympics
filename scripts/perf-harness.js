@@ -58,7 +58,12 @@ function runCommand(cmd, label) {
   const start = process.hrtime.bigint();
   let stdout, stderr;
   try {
-    stdout = execSync(cmd, { cwd: WORKLOAD_ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, timeout: 120_000 });
+    stdout = execSync(cmd, {
+      cwd: WORKLOAD_ROOT,
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 120_000,
+    });
     stderr = '';
   } catch (err) {
     stdout = err.stdout || '';
@@ -66,7 +71,12 @@ function runCommand(cmd, label) {
     const end = process.hrtime.bigint();
     const dur = Number(end - start) / 1e9;
     console.warn(`  ⚠  ${label} exited with code ${err.status} after ${dur.toFixed(2)}s`);
-    return { stdout: stdout.trim(), stderr: stderr.trim(), durationSeconds: dur, exitCode: err.status };
+    return {
+      stdout: stdout.trim(),
+      stderr: stderr.trim(),
+      durationSeconds: dur,
+      exitCode: err.status,
+    };
   }
   const end = process.hrtime.bigint();
   const dur = Number(end - start) / 1e9;
@@ -78,8 +88,10 @@ function runCommand(cmd, label) {
  */
 function countFiles(dir) {
   try {
-    const result = execSync(`find "${dir}" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | wc -l`,
-      { encoding: 'utf8', timeout: 30_000 });
+    const result = execSync(
+      `find "${dir}" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | wc -l`,
+      { encoding: 'utf8', timeout: 30_000 }
+    );
     return parseInt(result.trim(), 10) || 0;
   } catch {
     return 0;
@@ -93,7 +105,8 @@ function countLines(dir) {
   try {
     const result = execSync(
       `find "${dir}" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -exec wc -l {} + 2>/dev/null | tail -1 | awk '{print $1}'`,
-      { encoding: 'utf8', timeout: 60_000 });
+      { encoding: 'utf8', timeout: 60_000 }
+    );
     const n = parseInt(result.trim(), 10);
     return isNaN(n) ? 0 : n;
   } catch {
@@ -108,7 +121,8 @@ function countYamlFiles(dir) {
   try {
     const result = execSync(
       `find "${dir}" -type f \\( -name '*.yaml' -o -name '*.yml' -o -name '*.json' \\) -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | wc -l`,
-      { encoding: 'utf8', timeout: 30_000 });
+      { encoding: 'utf8', timeout: 30_000 }
+    );
     return parseInt(result.trim(), 10) || 0;
   } catch {
     return 0;
@@ -153,7 +167,7 @@ function collectRuntimeProfile() {
     node_version: process.version,
     platform: os.platform(),
     arch: os.arch(),
-    hostname: 'harness-container',  // safe generic label; never real hostname
+    hostname: 'harness-container', // safe generic label; never real hostname
   };
 }
 
@@ -176,7 +190,8 @@ function phaseRepoScan() {
   results.raw_line_count = countLines(WORKLOAD_ROOT);
 
   // scan wall time (timed separately because find is cached trivially — caveat)
-  const scanCmd = 'git rev-list --count HEAD > /dev/null 2>&1; ' +
+  const scanCmd =
+    'git rev-list --count HEAD > /dev/null 2>&1; ' +
     'find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -1 > /dev/null';
   const scanTime = runCommand(scanCmd, 'scan wall');
   results.raw_scan_wall_time_seconds = Math.round(scanTime.durationSeconds * 100) / 100;
@@ -206,9 +221,8 @@ function phaseValidation() {
 
   // Compute per-file latency
   const validCount = results.raw_validated_file_count || 1;
-  results.raw_validation_latency_ms = Math.round(
-    (results.raw_validation_wall_time_seconds / validCount) * 1000 * 10
-  ) / 10;
+  results.raw_validation_latency_ms =
+    Math.round((results.raw_validation_wall_time_seconds / validCount) * 1000 * 10) / 10;
 
   return results;
 }
@@ -228,7 +242,7 @@ function phaseTests() {
   const warnLines = (testResult.stdout.match(/^WARN\s+/gm) || []).length;
   results.raw_test_count = okLines + warnLines;
   results.raw_test_passed = okLines;
-  results.raw_test_failed = 0;  // validate treats warnings as non-fatal
+  results.raw_test_failed = 0; // validate treats warnings as non-fatal
 
   // Throughput
   const testTime = results.raw_test_wall_time_seconds || 0.001;
@@ -264,33 +278,50 @@ function phaseProbes() {
   );
 
   // Probe 4: Process listing
-  const p4 = runCommand(
-    'ps aux 2>/dev/null | wc -l || echo 0',
-    'probe-ps'
-  );
+  const p4 = runCommand('ps aux 2>/dev/null | wc -l || echo 0', 'probe-ps');
 
   // Probe 5: Schema compilation (CPU + I/O mix)
   const p5 = runCommand(
-    'node -e "const fs=require(\'fs\'); JSON.parse(fs.readFileSync(\'schemas/scoreboard.schema.json\',\'utf8\')); console.log(\'schema loaded\')"',
+    "node -e \"const fs=require('fs'); JSON.parse(fs.readFileSync('schemas/scoreboard.schema.json','utf8')); console.log('schema loaded')\"",
     'probe-schema'
   );
 
-  probes.push({ id: 'probe-disk-io', duration: Math.round(p1.durationSeconds * 100) / 100, exit: p1.exitCode });
-  probes.push({ id: 'probe-cpu-grep', duration: Math.round(p2.durationSeconds * 100) / 100, exit: p2.exitCode });
-  probes.push({ id: 'probe-memory', duration: Math.round(p3.durationSeconds * 100) / 100, exit: p3.exitCode });
-  probes.push({ id: 'probe-ps', duration: Math.round(p4.durationSeconds * 100) / 100, exit: p4.exitCode });
-  probes.push({ id: 'probe-schema', duration: Math.round(p5.durationSeconds * 100) / 100, exit: p5.exitCode });
+  probes.push({
+    id: 'probe-disk-io',
+    duration: Math.round(p1.durationSeconds * 100) / 100,
+    exit: p1.exitCode,
+  });
+  probes.push({
+    id: 'probe-cpu-grep',
+    duration: Math.round(p2.durationSeconds * 100) / 100,
+    exit: p2.exitCode,
+  });
+  probes.push({
+    id: 'probe-memory',
+    duration: Math.round(p3.durationSeconds * 100) / 100,
+    exit: p3.exitCode,
+  });
+  probes.push({
+    id: 'probe-ps',
+    duration: Math.round(p4.durationSeconds * 100) / 100,
+    exit: p4.exitCode,
+  });
+  probes.push({
+    id: 'probe-schema',
+    duration: Math.round(p5.durationSeconds * 100) / 100,
+    exit: p5.exitCode,
+  });
 
   results.raw_probe_count = probes.length;
-  results.raw_sequential_estimate_seconds = Math.round(
-    probes.reduce((sum, p) => sum + p.duration, 0) * 100
-  ) / 100;
+  results.raw_sequential_estimate_seconds =
+    Math.round(probes.reduce((sum, p) => sum + p.duration, 0) * 100) / 100;
   // The probes ran sequentially, so total wall time ≈ sequential estimate
   results.raw_total_wall_time_seconds = results.raw_sequential_estimate_seconds;
-  results.raw_speedup_factor = 1.0;  // sequential-only in this source harness
+  results.raw_speedup_factor = 1.0; // sequential-only in this source harness
   results.raw_service_stability = 'stable';
   results._probe_details = probes;
-  results._probe_note = 'Sequential execution in source-only harness. ' +
+  results._probe_note =
+    'Sequential execution in source-only harness. ' +
     'Parallel execution is expected on a live agent with concurrency support.';
 
   return results;
@@ -311,7 +342,8 @@ function generateCaveats(hwProfile, runProfile, iterationIndex, totalIterations)
   caveats.push({
     id: 'source-only-harness',
     severity: 'info',
-    message: 'Source-only harness: probes run sequentially, not in parallel. ' +
+    message:
+      'Source-only harness: probes run sequentially, not in parallel. ' +
       'Wall times reflect local container execution, not a live agent runtime.',
     machine_key: 'execution_mode',
     machine_value: 'source-only-sequential-probes',
@@ -321,9 +353,10 @@ function generateCaveats(hwProfile, runProfile, iterationIndex, totalIterations)
   caveats.push({
     id: `iteration-${iterationIndex + 1}-cache-effect`,
     severity: iterationIndex === 0 ? 'warn' : 'info',
-    message: iterationIndex === 0
-      ? `Iteration ${iterationIndex + 1}: Cold cache — first iteration includes filesystem cache warming.`
-      : `Iteration ${iterationIndex + 1}: Warm cache — likely faster than iteration 1 due to OS caching.`,
+    message:
+      iterationIndex === 0
+        ? `Iteration ${iterationIndex + 1}: Cold cache — first iteration includes filesystem cache warming.`
+        : `Iteration ${iterationIndex + 1}: Warm cache — likely faster than iteration 1 due to OS caching.`,
     machine_key: 'cache_state',
     machine_value: iterationIndex === 0 ? 'cold' : 'warm',
   });
@@ -332,7 +365,8 @@ function generateCaveats(hwProfile, runProfile, iterationIndex, totalIterations)
   caveats.push({
     id: 'harness-hardware',
     severity: 'info',
-    message: `Hardware: ${hwProfile.cpu_cores} vCPU, ${hwProfile.memory_gb} GB RAM, ` +
+    message:
+      `Hardware: ${hwProfile.cpu_cores} vCPU, ${hwProfile.memory_gb} GB RAM, ` +
       `${hwProfile.storage_class} storage. Raw measurements reflect this profile ` +
       'and should only be compared with scored values across hardware classes.',
     machine_key: 'hardware_profile',
@@ -343,7 +377,8 @@ function generateCaveats(hwProfile, runProfile, iterationIndex, totalIterations)
   caveats.push({
     id: 'container-runtime',
     severity: 'warn',
-    message: 'Running inside a container — resource limits, filesystem caching, ' +
+    message:
+      'Running inside a container — resource limits, filesystem caching, ' +
       'and CPU throttling may differ from dedicated host execution. ' +
       'Treat as approximate baseline, not production-grade measurement.',
     machine_key: 'runtime_environment',
@@ -355,7 +390,8 @@ function generateCaveats(hwProfile, runProfile, iterationIndex, totalIterations)
     caveats.push({
       id: 'iteration-variance',
       severity: 'info',
-      message: `Iteration ${iterationIndex + 1} of ${totalIterations} — ` +
+      message:
+        `Iteration ${iterationIndex + 1} of ${totalIterations} — ` +
         'compare with other iterations to assess measurement stability.',
       machine_key: 'iteration_of_total',
       machine_value: `${iterationIndex + 1}/${totalIterations}`,
@@ -447,19 +483,27 @@ function main() {
     // Run all four phases
     console.log(`  Phase A: Repo scan...`);
     const repoResults = phaseRepoScan();
-    console.log(`    git_commit_count=${repoResults.raw_git_commit_count}, scan=${repoResults.raw_scan_wall_time_seconds}s`);
+    console.log(
+      `    git_commit_count=${repoResults.raw_git_commit_count}, scan=${repoResults.raw_scan_wall_time_seconds}s`
+    );
 
     console.log(`  Phase B: Validation...`);
     const valResults = phaseValidation();
-    console.log(`    validated=${valResults.raw_passed_count}/${valResults.raw_validated_file_count}, wall=${valResults.raw_validation_wall_time_seconds}s`);
+    console.log(
+      `    validated=${valResults.raw_passed_count}/${valResults.raw_validated_file_count}, wall=${valResults.raw_validation_wall_time_seconds}s`
+    );
 
     console.log(`  Phase C: Tests...`);
     const testResults = phaseTests();
-    console.log(`    passed=${testResults.raw_test_passed}/${testResults.raw_test_count}, wall=${testResults.raw_test_wall_time_seconds}s, throughput=${testResults.raw_test_throughput}/s`);
+    console.log(
+      `    passed=${testResults.raw_test_passed}/${testResults.raw_test_count}, wall=${testResults.raw_test_wall_time_seconds}s, throughput=${testResults.raw_test_throughput}/s`
+    );
 
     console.log(`  Phase D: Probes...`);
     const probeResults = phaseProbes();
-    console.log(`    probes=${probeResults.raw_probe_count}, sequential=${probeResults.raw_sequential_estimate_seconds}s`);
+    console.log(
+      `    probes=${probeResults.raw_probe_count}, sequential=${probeResults.raw_sequential_estimate_seconds}s`
+    );
 
     const iterationEnd = process.hrtime.bigint();
     const wallSeconds = Math.round(Number(iterationEnd - iterationStart) / 1e6) / 1000;
@@ -492,7 +536,7 @@ function main() {
       efficiency_score: efficiency,
       evidence_quality_score: 0.85,
       safety_score: 0.95,
-      execution_score: 0.90,
+      execution_score: 0.9,
       normalization: 'wall_time_seconds / (cpu_cores / 4 * memory_gb / 8)',
     };
 
@@ -514,29 +558,43 @@ function main() {
 
     report.iterations.push(iter);
     if (!jsonOnly) {
-      console.log(`  → Iteration ${i + 1} complete: ${wallSeconds}s wall time, efficiency=${efficiency}`);
+      console.log(
+        `  → Iteration ${i + 1} complete: ${wallSeconds}s wall time, efficiency=${efficiency}`
+      );
     }
   }
 
   // --- Compute summary statistics across iterations ---
-  const rawKeys = ['wall_time_seconds', 'raw_scan_wall_time_seconds', 'raw_validation_wall_time_seconds',
-    'raw_test_wall_time_seconds', 'raw_test_throughput', 'raw_speedup_factor',
-    'raw_validation_latency_ms', 'raw_total_wall_time_seconds'];
-  const scoredKeys = ['efficiency_score', 'evidence_quality_score', 'safety_score', 'execution_score'];
+  const rawKeys = [
+    'wall_time_seconds',
+    'raw_scan_wall_time_seconds',
+    'raw_validation_wall_time_seconds',
+    'raw_test_wall_time_seconds',
+    'raw_test_throughput',
+    'raw_speedup_factor',
+    'raw_validation_latency_ms',
+    'raw_total_wall_time_seconds',
+  ];
+  const scoredKeys = [
+    'efficiency_score',
+    'evidence_quality_score',
+    'safety_score',
+    'execution_score',
+  ];
 
   const iterCount = report.iterations.length;
 
   const summaryStats = {};
 
   for (const key of rawKeys) {
-    const vals = report.iterations.map(it => it.raw_measurements[key]).filter(v => v != null);
+    const vals = report.iterations.map((it) => it.raw_measurements[key]).filter((v) => v != null);
     if (vals.length === 0) continue;
     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
     const min = Math.min(...vals);
     const max = Math.max(...vals);
     const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
     const stddev = Math.sqrt(variance);
-    const cv = mean > 0 ? stddev / mean : 0;  // coefficient of variation
+    const cv = mean > 0 ? stddev / mean : 0; // coefficient of variation
     summaryStats[key] = {
       mean: Math.round(mean * 100) / 100,
       min: Math.round(min * 100) / 100,
@@ -548,7 +606,7 @@ function main() {
   }
 
   for (const key of scoredKeys) {
-    const vals = report.iterations.map(it => it.scored_values[key]).filter(v => v != null);
+    const vals = report.iterations.map((it) => it.scored_values[key]).filter((v) => v != null);
     if (vals.length === 0) continue;
     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
     const min = Math.min(...vals);
@@ -571,7 +629,8 @@ function main() {
     {
       id: 'harness-execution-mode',
       severity: 'info',
-      message: `Source-only harness: ${iterCount} iterations of perf-001 workload. ` +
+      message:
+        `Source-only harness: ${iterCount} iterations of perf-001 workload. ` +
         'Raw measurements include local container overhead. ' +
         'Scored values use the standard normalization documented in docs/performance-scoring.md.',
       machine_key: 'execution_mode',
@@ -580,7 +639,8 @@ function main() {
     {
       id: 'scored-separation',
       severity: 'info',
-      message: 'Raw measurements and scored values are in separate namespaces per iteration. ' +
+      message:
+        'Raw measurements and scored values are in separate namespaces per iteration. ' +
         'No field name collision: raw_ prefixed fields appear only in raw_measurements; ' +
         '_score suffixed fields appear only in scored_values.',
       machine_key: 'separation_status',
@@ -588,13 +648,14 @@ function main() {
     },
     {
       id: 'iteration-variance-summary',
-      severity: rawKeys.some(k => summaryStats[k] && summaryStats[k].cv > 0.3) ? 'warn' : 'info',
-      message: 'Coefficient of variation (CV) per metric indicates measurement stability. ' +
+      severity: rawKeys.some((k) => summaryStats[k] && summaryStats[k].cv > 0.3) ? 'warn' : 'info',
+      message:
+        'Coefficient of variation (CV) per metric indicates measurement stability. ' +
         'CV > 0.3 suggests high variance — interpret with caution.',
       machine_key: 'variance_level',
       machine_value: rawKeys
-        .filter(k => summaryStats[k])
-        .map(k => `${k}:${summaryStats[k].cv}`)
+        .filter((k) => summaryStats[k])
+        .map((k) => `${k}:${summaryStats[k].cv}`)
         .join(','),
     },
   ];
@@ -608,7 +669,8 @@ function main() {
     caveats: allCaveats,
     raw_vs_scored_separation: {
       status: 'clean',
-      description: 'All raw_ prefixed fields isolated to raw_measurements; ' +
+      description:
+        'All raw_ prefixed fields isolated to raw_measurements; ' +
         'all normalized values in scored_values. No cross-contamination detected.',
     },
   };
@@ -639,13 +701,17 @@ function main() {
     for (const key of rawKeys) {
       if (summaryStats[key]) {
         const s = summaryStats[key];
-        console.log(`  ${key.padEnd(28)} ${String(s.mean).padStart(6)} ${String(s.min).padStart(6)} ${String(s.max).padStart(6)} ${String(s.cv).padStart(5)}`);
+        console.log(
+          `  ${key.padEnd(28)} ${String(s.mean).padStart(6)} ${String(s.min).padStart(6)} ${String(s.max).padStart(6)} ${String(s.cv).padStart(5)}`
+        );
       }
     }
     for (const key of scoredKeys) {
       if (summaryStats[key]) {
         const s = summaryStats[key];
-        console.log(`  ${key.padEnd(28)} ${String(s.mean).padStart(6)} ${String(s.min).padStart(6)} ${String(s.max).padStart(6)} ${String(s.cv).padStart(5)}`);
+        console.log(
+          `  ${key.padEnd(28)} ${String(s.mean).padStart(6)} ${String(s.min).padStart(6)} ${String(s.max).padStart(6)} ${String(s.cv).padStart(5)}`
+        );
       }
     }
     console.log('───────────────────────────────────────────────────────');
@@ -657,7 +723,8 @@ function main() {
     const yamlArtifact = buildYamlArtifact(report, jsonPath);
     const yamlPath = path.join(RESULTS_DIR, `perf-harness-report-${TIMESTAMP}.yaml`);
     const yaml = require('js-yaml');
-    const yamlBody = '# YAML artifact generated by scripts/perf-harness.js\n' +
+    const yamlBody =
+      '# YAML artifact generated by scripts/perf-harness.js\n' +
       yaml.dump(yamlArtifact, { indent: 2, lineWidth: 120 });
     fs.writeFileSync(yamlPath, yamlBody, 'utf8');
     console.log(`✅ Human report written: ${yamlPath}`);
@@ -667,10 +734,11 @@ function main() {
   if (validateReport) {
     console.log('\n--- Validating report ---');
     try {
-      execSync(
-        `node "${path.join(ROOT, 'scripts', 'validate.js')}" "${jsonPath}"`,
-        { cwd: ROOT, stdio: 'inherit', timeout: 30_000 }
-      );
+      execSync(`node "${path.join(ROOT, 'scripts', 'validate.js')}" "${jsonPath}"`, {
+        cwd: ROOT,
+        stdio: 'inherit',
+        timeout: 30_000,
+      });
       console.log(`✅ Report validated: ${jsonPath}`);
     } catch {
       console.warn(`⚠  Report validation warnings (non-fatal): ${jsonPath}`);
@@ -685,33 +753,31 @@ function main() {
  * Build a v2 result-packet style YAML artifact from the harness report.
  * This creates a human-readable document that mirrors the existing packet format.
  */
-function buildYamlArtifact(report, jsonPath) {
+function buildYamlArtifact(report, _jsonPath) {
   const hw = report.hardware_profile;
-  const first = report.iterations[0] || {};
-  const raw = first.raw_measurements || {};
 
   return {
-    'schema_version': 2,
-    'packet_id': `pkt-${report.run_id}`,
-    'task_id': 'perf-001',
-    'agent_id': 'perf-harness',
-    'runtime': 'source-harness',
-    'runtime_version': `node-${process.version}`,
-    'adapter': 'none',
-    'division': 'source-only',
-    'validity': 'valid',
-    'publishable': true,
+    schema_version: 2,
+    packet_id: `pkt-${report.run_id}`,
+    task_id: 'perf-001',
+    agent_id: 'perf-harness',
+    runtime: 'source-harness',
+    runtime_version: `node-${process.version}`,
+    adapter: 'none',
+    division: 'source-only',
+    validity: 'valid',
+    publishable: true,
 
-    'hardware_profile': hw,
+    hardware_profile: hw,
 
-    'harness_config': {
+    harness_config: {
       iterations: report.iterations_total,
       probe_mode: 'sequential',
       cache_policy: 'default',
     },
 
     // Each iteration as a separate measurement block
-    'iterations': report.iterations.map(it => ({
+    iterations: report.iterations.map((it) => ({
       iteration: it.iteration,
       raw_measurements: it.raw_measurements,
       scored_values: it.scored_values,
@@ -720,26 +786,36 @@ function buildYamlArtifact(report, jsonPath) {
     })),
 
     // Summary statistics across all iterations
-    'summary_statistics': report.summary.statistics,
+    summary_statistics: report.summary.statistics,
 
     // Machine/human visible caveats about the harness run
-    'harness_caveats': report.summary.caveats,
+    harness_caveats: report.summary.caveats,
 
     // Raw/Scored separation guarantee
-    'raw_vs_scored_separation': report.summary.raw_vs_scored_separation,
+    raw_vs_scored_separation: report.summary.raw_vs_scored_separation,
 
-    'started_at': new Date().toISOString(),
-    'status': 'completed',
+    started_at: new Date().toISOString(),
+    status: 'completed',
 
-    'summary': `Multi-iteration harness report: ${report.iterations_total} iterations of ` +
+    summary:
+      `Multi-iteration harness report: ${report.iterations_total} iterations of ` +
       `perf-001 workload on ${hw.cpu_class} (${hw.cpu_cores} vCPU, ${hw.memory_gb} GB RAM). ` +
       `Raw measurements separated from scored values per iteration. ` +
       `Summary statistics include mean/min/max/stddev/CV for stability assessment.`,
 
-    'findings': [
-      { claim: `Completed ${report.iterations_total} iterations of perf-001 workload.`, confidence: 'high' },
-      { claim: 'Raw/scored separation maintained across all iterations — no namespace collision.', confidence: 'high' },
-      { claim: 'Harness runs in source-only mode; probes execute sequentially.', confidence: 'high' },
+    findings: [
+      {
+        claim: `Completed ${report.iterations_total} iterations of perf-001 workload.`,
+        confidence: 'high',
+      },
+      {
+        claim: 'Raw/scored separation maintained across all iterations — no namespace collision.',
+        confidence: 'high',
+      },
+      {
+        claim: 'Harness runs in source-only mode; probes execute sequentially.',
+        confidence: 'high',
+      },
     ],
   };
 }

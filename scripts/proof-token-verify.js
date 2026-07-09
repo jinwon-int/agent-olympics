@@ -43,7 +43,10 @@ function repoPath(relPath) {
 }
 
 function sha256File(relPath) {
-  return crypto.createHash('sha256').update(fs.readFileSync(repoPath(relPath))).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(fs.readFileSync(repoPath(relPath)))
+    .digest('hex');
 }
 
 function verify(packetPath, challengeSetPath) {
@@ -165,4 +168,3 @@ try {
   console.error(error.message);
   process.exit(1);
 }
-

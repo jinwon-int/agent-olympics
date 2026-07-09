@@ -144,11 +144,7 @@ function selftest() {
     '  --toolsets TOOLSETS  Comma-separated toolsets to enable',
     '  --shell-completion   Generate shell completion script',
   ].join('\n');
-  const toolsListVps6 = [
-    'file enabled',
-    'terminal enabled',
-    'code_execution enabled',
-  ].join('\n');
+  const toolsListVps6 = ['file enabled', 'terminal enabled', 'code_execution enabled'].join('\n');
   const helpWithTerminal = [
     'Usage: hermes chat [flags]',
     '  --toolsets strings   Toolsets to enable, comma-separated.',
@@ -159,32 +155,62 @@ function selftest() {
   const cases = [
     {
       name: 'operator override wins verbatim',
-      args: { envelope: benchEnvelope, override: 'file,exec', helpText: helpVps6, toolsListText: '' },
+      args: {
+        envelope: benchEnvelope,
+        override: 'file,exec',
+        helpText: helpVps6,
+        toolsListText: '',
+      },
       want: { toolsets: 'file,exec', source: 'operator_env' },
     },
     {
       name: 'no repo_path stays file-only by design',
-      args: { envelope: opsEnvelope, override: '', helpText: helpWithTerminal, toolsListText: toolsListVps6 },
+      args: {
+        envelope: opsEnvelope,
+        override: '',
+        helpText: helpWithTerminal,
+        toolsListText: toolsListVps6,
+      },
       want: { toolsets: 'file', source: 'default_file' },
     },
     {
       name: 'vps6 shape: tools list confirms terminal even though help names no toolsets',
-      args: { envelope: benchEnvelope, override: '', helpText: helpVps6, toolsListText: toolsListVps6 },
+      args: {
+        envelope: benchEnvelope,
+        override: '',
+        helpText: helpVps6,
+        toolsListText: toolsListVps6,
+      },
       want: { toolsets: 'file,terminal', source: 'tools_list_exec' },
     },
     {
       name: 'help text listing terminal works without a tools list',
-      args: { envelope: benchEnvelope, override: '', helpText: helpWithTerminal, toolsListText: '' },
+      args: {
+        envelope: benchEnvelope,
+        override: '',
+        helpText: helpWithTerminal,
+        toolsListText: '',
+      },
       want: { toolsets: 'file,terminal', source: 'help_text_exec' },
     },
     {
       name: 'disabled tools-list entry does not count',
-      args: { envelope: benchEnvelope, override: '', helpText: helpVps6, toolsListText: 'file enabled\nterminal disabled' },
+      args: {
+        envelope: benchEnvelope,
+        override: '',
+        helpText: helpVps6,
+        toolsListText: 'file enabled\nterminal disabled',
+      },
       want: { toolsets: 'file', source: 'probe_fallback_file' },
     },
     {
       name: 'probes present but lacking the toolset fall back (shell-completion is not a toolset)',
-      args: { envelope: benchEnvelope, override: '', helpText: helpVps6, toolsListText: 'file enabled' },
+      args: {
+        envelope: benchEnvelope,
+        override: '',
+        helpText: helpVps6,
+        toolsListText: 'file enabled',
+      },
       want: { toolsets: 'file', source: 'probe_fallback_file' },
     },
     {
@@ -240,10 +266,15 @@ function main() {
     else if (args[i] === '--help-text-file') helpTextFile = args[++i] || null;
     else if (args[i] === '--tools-list-file') toolsListFile = args[++i] || null;
     else if (!envelopePath) envelopePath = args[i];
-    else { console.error(`Unknown argument: ${args[i]}`); process.exit(2); }
+    else {
+      console.error(`Unknown argument: ${args[i]}`);
+      process.exit(2);
+    }
   }
   if (!envelopePath) {
-    console.error('Usage: mission-toolsets.js <envelope> [--override <toolsets>] [--exec-toolset <name>] [--tools-list-file <path>|-] [--help-text-file <path>|-] | selftest');
+    console.error(
+      'Usage: mission-toolsets.js <envelope> [--override <toolsets>] [--exec-toolset <name>] [--tools-list-file <path>|-] [--help-text-file <path>|-] | selftest'
+    );
     process.exit(2);
   }
   const envelope = yaml.load(fs.readFileSync(path.resolve(envelopePath), 'utf8'));
@@ -253,7 +284,9 @@ function main() {
   };
   const helpText = readProbe(helpTextFile);
   const toolsListText = readProbe(toolsListFile);
-  process.stdout.write(`${JSON.stringify(deriveHermesToolsets({ envelope, override, execToolset, helpText, toolsListText }))}\n`);
+  process.stdout.write(
+    `${JSON.stringify(deriveHermesToolsets({ envelope, override, execToolset, helpText, toolsListText }))}\n`
+  );
 }
 
 if (require.main === module) main();

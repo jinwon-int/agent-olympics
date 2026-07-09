@@ -121,12 +121,18 @@ function runScript(scriptPath, args) {
 function findResultYamls(dir) {
   const fullPath = path.resolve(ROOT, dir);
   if (!fs.existsSync(fullPath)) return [];
-  return fs.readdirSync(fullPath)
-    .filter(f => /\.ya?ml$/.test(f) &&
-      !f.includes('judge') && !f.includes('trace') &&
-      !f.includes('evidence') && !f.includes('scoreboard') &&
-      !f.includes('.git'))
-    .map(f => path.join(fullPath, f));
+  return fs
+    .readdirSync(fullPath)
+    .filter(
+      (f) =>
+        /\.ya?ml$/.test(f) &&
+        !f.includes('judge') &&
+        !f.includes('trace') &&
+        !f.includes('evidence') &&
+        !f.includes('scoreboard') &&
+        !f.includes('.git')
+    )
+    .map((f) => path.join(fullPath, f));
 }
 
 /**
@@ -135,9 +141,10 @@ function findResultYamls(dir) {
 function findJudgeYamls(dir) {
   const fullPath = path.resolve(ROOT, dir);
   if (!fs.existsSync(fullPath)) return [];
-  return fs.readdirSync(fullPath)
-    .filter(f => /\.ya?ml$/.test(f) && /-judge/.test(f))
-    .map(f => path.join(fullPath, f));
+  return fs
+    .readdirSync(fullPath)
+    .filter((f) => /\.ya?ml$/.test(f) && /-judge/.test(f))
+    .map((f) => path.join(fullPath, f));
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +199,12 @@ class GateRunner {
         }
         return true;
       } else {
-        this.results.push({ gate: gateId, description, status: 'fail', detail: 'Condition not met' });
+        this.results.push({
+          gate: gateId,
+          description,
+          status: 'fail',
+          detail: 'Condition not met',
+        });
         this.failCount++;
         if (!this.options.quiet) {
           console.log(`  ✗ ${gateId}: ${description}`);
@@ -258,14 +270,17 @@ function readinessGates(runner, manifestPath) {
     if (!m.participants || m.participants.length === 0) {
       return { ok: false, output: 'No participants in manifest' };
     }
-    const ids = m.participants.map(p => p.agent_id);
+    const ids = m.participants.map((p) => p.agent_id);
     const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
     if (dups.length) {
       return { ok: false, output: `Duplicate agent_ids: ${dups.join(', ')}` };
     }
-    const incomplete = m.participants.filter(p => !p.agent_id || !p.runtime || !p.label);
+    const incomplete = m.participants.filter((p) => !p.agent_id || !p.runtime || !p.label);
     if (incomplete.length) {
-      return { ok: false, output: `Incomplete participants: ${incomplete.map(p => p.agent_id || '?').join(', ')}` };
+      return {
+        ok: false,
+        output: `Incomplete participants: ${incomplete.map((p) => p.agent_id || '?').join(', ')}`,
+      };
     }
     return { ok: true, output: `Participants (${ids.length}): ${ids.join(', ')}` };
   });
@@ -297,9 +312,10 @@ function publicationGates(runner, options) {
   if (runsDir && dirExists(runsDir)) {
     runner.run('P3.1', 'All runs in terminal state', () => {
       const terminal = new Set(['completed', 'partial', 'failed', 'blocked', 'disqualified']);
-      const runDirs = fs.readdirSync(runsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory() && e.name.startsWith('run-'))
-        .map(e => e.name);
+      const runDirs = fs
+        .readdirSync(runsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && e.name.startsWith('run-'))
+        .map((e) => e.name);
       const nonTerminal = [];
       for (const dirName of runDirs) {
         let manifest = {};
@@ -323,9 +339,13 @@ function publicationGates(runner, options) {
     });
   } else {
     runner.run('P3.1', 'All result packets present', () => {
-      const files = findResultYamls(resultsDir).map(f => path.basename(f));
-      if (files.length === 0) return { ok: false, output: `No result packets found in ${resultsDir}` };
-      return { ok: true, output: `Found ${files.length} result packets: ${files.slice(0, 5).join(', ')}...` };
+      const files = findResultYamls(resultsDir).map((f) => path.basename(f));
+      if (files.length === 0)
+        return { ok: false, output: `No result packets found in ${resultsDir}` };
+      return {
+        ok: true,
+        output: `Found ${files.length} result packets: ${files.slice(0, 5).join(', ')}...`,
+      };
     });
 
     runner.run('P3.1b', 'No manifest lifecycle issues', () => {
@@ -346,10 +366,11 @@ function publicationGates(runner, options) {
     }
     const sb = loadJson(scoreboardPath);
     if (!sb) return { ok: false, output: 'scoreboard.json is not valid JSON' };
-    if (!sb.entries || sb.entries.length === 0) return { ok: false, output: 'scoreboard has no entries' };
+    if (!sb.entries || sb.entries.length === 0)
+      return { ok: false, output: 'scoreboard has no entries' };
     return {
       ok: true,
-      output: `Scoreboard: ${sb.entries.length} entries, ${new Set(sb.entries.map(e => e.task_id)).size} tasks, ${new Set(sb.entries.map(e => e.agent_id)).size} participants`
+      output: `Scoreboard: ${sb.entries.length} entries, ${new Set(sb.entries.map((e) => e.task_id)).size} tasks, ${new Set(sb.entries.map((e) => e.agent_id)).size} participants`,
     };
   });
 
@@ -363,13 +384,25 @@ function publicationGates(runner, options) {
     if (!sb || !sb.entries) return { ok: false, output: 'Cannot parse scoreboard' };
     let missing = 0;
     for (const e of sb.entries) {
-      if (!e.agent_id) { missing++; }
-      if (!e.score && e.judge_type !== 'pending') { missing++; }
-      if (!e.packet_ref) { missing++; }
-      if (!e.task_id) { missing++; }
+      if (!e.agent_id) {
+        missing++;
+      }
+      if (!e.score && e.judge_type !== 'pending') {
+        missing++;
+      }
+      if (!e.packet_ref) {
+        missing++;
+      }
+      if (!e.task_id) {
+        missing++;
+      }
     }
-    if (missing > 0) return { ok: false, output: `${missing} entries missing required web-display fields` };
-    return { ok: true, output: `All ${sb.entries.length} entries have required web-display fields` };
+    if (missing > 0)
+      return { ok: false, output: `${missing} entries missing required web-display fields` };
+    return {
+      ok: true,
+      output: `All ${sb.entries.length} entries have required web-display fields`,
+    };
   });
 
   // Gate 3.10 — Competition-validity fixtures pass
@@ -416,7 +449,10 @@ function redactionCheck(runner, options) {
           if (ev.redacted && (!ev.redaction_reason || ev.redaction_reason.trim() === '')) {
             issues.push(`Evidence ${ev.id}: redacted but missing redaction_reason`);
           }
-          if (ev.redaction_reason && SECRET_VALUE_PATTERNS.some(p => p.test(ev.redaction_reason))) {
+          if (
+            ev.redaction_reason &&
+            SECRET_VALUE_PATTERNS.some((p) => p.test(ev.redaction_reason))
+          ) {
             issues.push(`Evidence ${ev.id}: redaction_reason contains credential pattern`);
           }
         }
@@ -440,18 +476,18 @@ function redactionCheck(runner, options) {
       }
 
       // Scan all string values for credential patterns
-      const scanStrings = (obj, path) => {
+      const scanStrings = (obj, entryPath) => {
         if (!obj || typeof obj !== 'object') return;
         for (const [key, value] of Object.entries(obj)) {
-          const fullPath = path ? `${path}.${key}` : key;
+          const fullPath = entryPath ? `${entryPath}.${key}` : key;
           // Secret-named keys only fail when the value itself looks like a
           // credential — policy descriptors (e.g. credential_values: omitted)
           // are value-free statements about credential handling, not leaks.
-          if (SECRET_KEY_PATTERNS.some(p => p.test(key)) && looksLikeSecretValue(value)) {
+          if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(value)) {
             issues.push(`${fullPath}: secret-bearing field name with credential-like value`);
           }
           if (typeof value === 'string') {
-            if (SECRET_VALUE_PATTERNS.some(p => p.test(value))) {
+            if (SECRET_VALUE_PATTERNS.some((p) => p.test(value))) {
               issues.push(`${fullPath}: contains credential pattern`);
             }
           } else if (typeof value === 'object' && value !== null) {
@@ -497,17 +533,23 @@ function safeMetadataCheck(runner, options) {
 
       // Check comparable_metadata
       const cm = doc.comparable_metadata || {};
-      const unsafeKeys = ['hostname', 'ip_address', 'ssh_host', 'endpoint_url', 'connection_string'];
+      const unsafeKeys = [
+        'hostname',
+        'ip_address',
+        'ssh_host',
+        'endpoint_url',
+        'connection_string',
+      ];
 
-      const scanSafe = (obj, path) => {
+      const scanSafe = (obj, entryPath) => {
         if (!obj || typeof obj !== 'object') return;
         for (const [key, value] of Object.entries(obj)) {
-          const fullPath = path ? `${path}.${key}` : key;
+          const fullPath = entryPath ? `${entryPath}.${key}` : key;
           if (unsafeKeys.includes(key)) {
             issues.push(`${fullPath}: unsafe metadata key '${key}'`);
           }
           if (typeof value === 'string') {
-            if (UNSAFE_VALUE_PATTERNS.some(p => p.test(value))) {
+            if (UNSAFE_VALUE_PATTERNS.some((p) => p.test(value))) {
               issues.push(`${fullPath}: potentially unsafe value '${value}'`);
             }
           } else if (typeof value === 'object' && value !== null) {
@@ -581,11 +623,16 @@ function integrityGate(runner, options) {
     runner.require(`INTEGRITY-AGENT-${rel}`, `agent_id present: ${rel}`, () => !!rp.agent_id);
 
     // 2. Evidence IDs unique
-    const evIds = (rp.evidence || []).map(e => e && e.id).filter(Boolean);
+    const evIds = (rp.evidence || []).map((e) => e && e.id).filter(Boolean);
     const dupIds = evIds.filter((id, i) => evIds.indexOf(id) !== i);
-    runner.require(`INTEGRITY-EVID-UNIQUE-${rel}`, `Evidence IDs unique: ${rel}`, () => dupIds.length === 0);
+    runner.require(
+      `INTEGRITY-EVID-UNIQUE-${rel}`,
+      `Evidence IDs unique: ${rel}`,
+      () => dupIds.length === 0
+    );
     if (dupIds.length > 0) {
-      runner.results[runner.results.length - 1].detail = `Duplicate evidence IDs: ${[...new Set(dupIds)].join(', ')}`;
+      runner.results[runner.results.length - 1].detail =
+        `Duplicate evidence IDs: ${[...new Set(dupIds)].join(', ')}`;
     }
 
     // 3. Finding evidence references resolve
@@ -597,9 +644,14 @@ function integrityGate(runner, options) {
         if (!validEvIds.has(ref)) unresolvedRefs++;
       }
     }
-    runner.require(`INTEGRITY-FINDING-REFS-${rel}`, `Finding evidence refs resolve: ${rel}`, () => unresolvedRefs === 0);
+    runner.require(
+      `INTEGRITY-FINDING-REFS-${rel}`,
+      `Finding evidence refs resolve: ${rel}`,
+      () => unresolvedRefs === 0
+    );
     if (unresolvedRefs > 0) {
-      runner.results[runner.results.length - 1].detail = `${unresolvedRefs} finding evidence reference(s) do not resolve`;
+      runner.results[runner.results.length - 1].detail =
+        `${unresolvedRefs} finding evidence reference(s) do not resolve`;
     }
 
     // 4. Action evidence references resolve
@@ -607,9 +659,14 @@ function integrityGate(runner, options) {
     for (const action of rp.actions || []) {
       if (action.evidence_id && !validEvIds.has(action.evidence_id)) actionRefIssues++;
     }
-    runner.require(`INTEGRITY-ACTION-REFS-${rel}`, `Action evidence refs resolve: ${rel}`, () => actionRefIssues === 0);
+    runner.require(
+      `INTEGRITY-ACTION-REFS-${rel}`,
+      `Action evidence refs resolve: ${rel}`,
+      () => actionRefIssues === 0
+    );
     if (actionRefIssues > 0) {
-      runner.results[runner.results.length - 1].detail = `${actionRefIssues} action evidence reference(s) do not resolve`;
+      runner.results[runner.results.length - 1].detail =
+        `${actionRefIssues} action evidence reference(s) do not resolve`;
     }
 
     // 5. No forbidden metadata / secret leaks
@@ -617,22 +674,22 @@ function integrityGate(runner, options) {
     let forbiddenKeyCount = 0;
     let redactionReasonLeak = 0;
 
-    function scanForSecrets(obj, path) {
+    function scanForSecrets(obj, entryPath) {
       if (!obj || typeof obj !== 'object') return;
       for (const [key, val] of Object.entries(obj)) {
         // Secret-named keys only count when the value looks credential-like;
         // value-free policy descriptors under credential-named keys are fine.
-        if (SECRET_KEY_PATTERNS.some(p => p.test(key)) && looksLikeSecretValue(val)) {
+        if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(val)) {
           forbiddenKeyCount++;
         }
         if (typeof val === 'string') {
-          if (SECRET_VALUE_PATTERNS.some(p => p.test(val))) secretCount++;
+          if (SECRET_VALUE_PATTERNS.some((p) => p.test(val))) secretCount++;
           // redaction_reason containing a secret is a double leak
-          if (key === 'redaction_reason' && SECRET_VALUE_PATTERNS.some(p => p.test(val))) {
+          if (key === 'redaction_reason' && SECRET_VALUE_PATTERNS.some((p) => p.test(val))) {
             redactionReasonLeak++;
           }
         } else if (val && typeof val === 'object') {
-          scanForSecrets(val, path ? `${path}.${key}` : key);
+          scanForSecrets(val, entryPath ? `${entryPath}.${key}` : key);
         }
       }
     }
@@ -640,30 +697,48 @@ function integrityGate(runner, options) {
 
     runner.require(`INTEGRITY-SECRET-${rel}`, `No secret leaks: ${rel}`, () => secretCount === 0);
     if (secretCount > 0) {
-      runner.results[runner.results.length - 1].detail = `${secretCount} secret pattern(s) detected`;
+      runner.results[runner.results.length - 1].detail =
+        `${secretCount} secret pattern(s) detected`;
     }
-    runner.require(`INTEGRITY-FORBIDDEN-KEY-${rel}`, `No secret-bearing field names: ${rel}`, () => forbiddenKeyCount === 0);
-    runner.require(`INTEGRITY-REDACT-LEAK-${rel}`, `Redaction reasons value-free: ${rel}`, () => redactionReasonLeak === 0);
+    runner.require(
+      `INTEGRITY-FORBIDDEN-KEY-${rel}`,
+      `No secret-bearing field names: ${rel}`,
+      () => forbiddenKeyCount === 0
+    );
+    runner.require(
+      `INTEGRITY-REDACT-LEAK-${rel}`,
+      `Redaction reasons value-free: ${rel}`,
+      () => redactionReasonLeak === 0
+    );
 
     // 6. Destructive actions have approval evidence
     const destructivePatterns = [/delete/i, /destroy/i, /reset/i, /reinstall/i, /reboot/i];
     let unapprovedDestructive = 0;
     for (const action of rp.actions || []) {
       const summary = `${action.type || ''} ${action.command_summary || action.summary || ''}`;
-      if (destructivePatterns.some(p => p.test(summary))) {
+      if (destructivePatterns.some((p) => p.test(summary))) {
         if (!action.evidence_id && !action.approval_ref) {
           unapprovedDestructive++;
         }
       }
     }
-    runner.require(`INTEGRITY-APPROVAL-${rel}`, `Destructive actions have approval: ${rel}`, () => unapprovedDestructive === 0);
+    runner.require(
+      `INTEGRITY-APPROVAL-${rel}`,
+      `Destructive actions have approval: ${rel}`,
+      () => unapprovedDestructive === 0
+    );
     if (unapprovedDestructive > 0) {
-      runner.results[runner.results.length - 1].detail = `${unapprovedDestructive} destructive action(s) missing approval evidence`;
+      runner.results[runner.results.length - 1].detail =
+        `${unapprovedDestructive} destructive action(s) missing approval evidence`;
     }
 
     // 7. Hidden judge material not in participant artifacts
     const hasJudgeNotes = !!rp.hidden_judge_notes;
-    runner.require(`INTEGRITY-JUDGE-LEAK-${rel}`, `No hidden judge notes leak: ${rel}`, () => !hasJudgeNotes);
+    runner.require(
+      `INTEGRITY-JUDGE-LEAK-${rel}`,
+      `No hidden judge notes leak: ${rel}`,
+      () => !hasJudgeNotes
+    );
   }
 
   return runner;
@@ -710,32 +785,39 @@ function provisionalScoringGate(runner, options) {
     if (!rp || typeof rp !== 'object') continue;
 
     // validity may be the object form supported by appealsGate; use its state field
-    const validityRaw = (rp.validity && typeof rp.validity === 'object')
-      ? rp.validity.state
-      : rp.validity;
+    const validityRaw =
+      rp.validity && typeof rp.validity === 'object' ? rp.validity.state : rp.validity;
     const validity = String(validityRaw || rp.status || 'unknown');
     const publishable = rp.publishable;
 
     // 1. publishable: true requires valid/partial_valid validity
     if (publishable === true) {
       const nonPublishableStates = ['invalid', 'appealed', 'disqualified'];
-      const inNonPublishableState = nonPublishableStates.some(s =>
-        validity.toLowerCase() === s.toLowerCase()
+      const inNonPublishableState = nonPublishableStates.some(
+        (s) => validity.toLowerCase() === s.toLowerCase()
       );
-      runner.require(`PUBLISH-STATE-${rel}`, `publishable validity check: ${rel}`, () => !inNonPublishableState);
+      runner.require(
+        `PUBLISH-STATE-${rel}`,
+        `publishable validity check: ${rel}`,
+        () => !inNonPublishableState
+      );
       if (inNonPublishableState) {
         runner.results[runner.results.length - 1].detail =
           `publishable: true is rejected for state "${validity}"`;
       }
 
       // 2. publishable: true requires redaction evidence
-      const hasRedactionEvidence = (rp.evidence || []).some(e =>
-        (e.redacted && e.redaction_reason) ||
-        (e.id && /redact|review|sanitize/i.test(String(e.id)))
+      const hasRedactionEvidence = (rp.evidence || []).some(
+        (e) =>
+          (e.redacted && e.redaction_reason) ||
+          (e.id && /redact|review|sanitize/i.test(String(e.id)))
       );
-      const hasRedactionPolicy = !!(rp.redaction_policy);
-      runner.require(`PUBLISH-REDACT-${rel}`, `Redaction evidence for publishable: ${rel}`,
-        () => hasRedactionEvidence || hasRedactionPolicy);
+      const hasRedactionPolicy = !!rp.redaction_policy;
+      runner.require(
+        `PUBLISH-REDACT-${rel}`,
+        `Redaction evidence for publishable: ${rel}`,
+        () => hasRedactionEvidence || hasRedactionPolicy
+      );
       if (!hasRedactionEvidence && !hasRedactionPolicy) {
         runner.results[runner.results.length - 1].detail =
           'publishable: true but no redaction evidence or redaction_policy found';
@@ -748,16 +830,21 @@ function provisionalScoringGate(runner, options) {
       if (fs.existsSync(scoreboardPath)) {
         try {
           const sb = JSON.parse(fs.readFileSync(scoreboardPath, 'utf8'));
-          const entry = (sb.entries || []).find(e => e.packet_ref && file.endsWith(e.packet_ref));
+          const entry = (sb.entries || []).find((e) => e.packet_ref && file.endsWith(e.packet_ref));
           if (entry && entry.judge_type === 'pending') {
-            runner.require(`PUBLISH-PENDING-JUDGE-${rel}`, `Pending human judge: ${rel}`, () =>
-              publishable === false || publishable === undefined);
+            runner.require(
+              `PUBLISH-PENDING-JUDGE-${rel}`,
+              `Pending human judge: ${rel}`,
+              () => publishable === false || publishable === undefined
+            );
             if (publishable === true) {
               runner.results[runner.results.length - 1].detail =
                 'publishable: true but result has pending human-judge dimensions — should be provisional';
             }
           }
-        } catch { /* scoreboard may not exist yet */ }
+        } catch {
+          /* scoreboard may not exist yet */
+        }
       }
     }
   }
@@ -824,8 +911,12 @@ function appealsGate(runner, options) {
     // Check state machine: if validity=appealed, must have appeal block
     const validity = rp.validity || '';
     if (typeof validity === 'string' && validity.toLowerCase() === 'appealed') {
-      runner.require(`APPEAL-REQUIRED-${rel}`, `appeal block for appealed state: ${rel}`,
-        () => !!(rp.appeal || (rp.validity && typeof rp.validity === 'object' && rp.validity.appeal)));
+      runner.require(
+        `APPEAL-REQUIRED-${rel}`,
+        `appeal block for appealed state: ${rel}`,
+        () =>
+          !!(rp.appeal || (rp.validity && typeof rp.validity === 'object' && rp.validity.appeal))
+      );
       if (!rp.appeal) {
         runner.results[runner.results.length - 1].detail =
           'validity is "appealed" but no appeal block found';
@@ -838,8 +929,9 @@ function appealsGate(runner, options) {
   }
 
   // Also check judge records
-  const judgeFiles = fs.readdirSync(path.resolve(ROOT, resultsDir))
-    .filter(f => /-judge/.test(f) && /\.ya?ml$/.test(f));
+  const judgeFiles = fs
+    .readdirSync(path.resolve(ROOT, resultsDir))
+    .filter((f) => /-judge/.test(f) && /\.ya?ml$/.test(f));
 
   for (const file of judgeFiles) {
     const rel = path.join(resultsDir, file);
@@ -849,7 +941,9 @@ function appealsGate(runner, options) {
         totalAppeals++;
         validateAppealRecord(runner, jdoc.appeal, rel, 'judge_record.appeal');
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   return runner;
@@ -870,8 +964,11 @@ function validateAppealRecord(runner, appeal, fileRef, contextPath) {
   };
 
   for (const [field, desc] of Object.entries(requiredFields)) {
-    runner.require(`APPEAL-FIELD-${field}-${label}`, `Appeal has ${field} (${desc}): ${label}`,
-      () => !!appeal[field]);
+    runner.require(
+      `APPEAL-FIELD-${field}-${label}`,
+      `Appeal has ${field} (${desc}): ${label}`,
+      () => !!appeal[field]
+    );
     if (!appeal[field]) {
       runner.results[runner.results.length - 1].detail =
         `Appeal missing required field "${field}" — ${desc}`;
@@ -881,8 +978,9 @@ function validateAppealRecord(runner, appeal, fileRef, contextPath) {
   // Valid status values
   const validStatuses = ['filed', 'under_review', 'upheld', 'denied', 'remanded', 'dismissed'];
   if (appeal.status) {
-    runner.require(`APPEAL-STATUS-${label}`, `Appeal status valid: ${label}`,
-      () => validStatuses.includes(appeal.status));
+    runner.require(`APPEAL-STATUS-${label}`, `Appeal status valid: ${label}`, () =>
+      validStatuses.includes(appeal.status)
+    );
     if (!validStatuses.includes(appeal.status)) {
       runner.results[runner.results.length - 1].detail =
         `Invalid appeal status "${appeal.status}"; expected one of: ${validStatuses.join(', ')}`;
@@ -891,8 +989,11 @@ function validateAppealRecord(runner, appeal, fileRef, contextPath) {
     // Status transitions: under_review or beyond must have reviewed_by
     const needsReviewer = ['under_review', 'upheld', 'denied', 'remanded', 'dismissed'];
     if (needsReviewer.includes(appeal.status)) {
-      runner.require(`APPEAL-REVIEWER-${label}`, `Appeal has reviewer for ${appeal.status}: ${label}`,
-        () => !!appeal.reviewed_by);
+      runner.require(
+        `APPEAL-REVIEWER-${label}`,
+        `Appeal has reviewer for ${appeal.status}: ${label}`,
+        () => !!appeal.reviewed_by
+      );
       if (!appeal.reviewed_by) {
         runner.results[runner.results.length - 1].detail =
           `Appeal status is "${appeal.status}" but reviewed_by is missing`;
@@ -903,8 +1004,9 @@ function validateAppealRecord(runner, appeal, fileRef, contextPath) {
   // Valid outcome values
   const validOutcomes = ['upheld', 'denied', 'remanded', 'dismissed'];
   if (appeal.outcome) {
-    runner.require(`APPEAL-OUTCOME-${label}`, `Appeal outcome valid: ${label}`,
-      () => validOutcomes.includes(appeal.outcome));
+    runner.require(`APPEAL-OUTCOME-${label}`, `Appeal outcome valid: ${label}`, () =>
+      validOutcomes.includes(appeal.outcome)
+    );
     if (!validOutcomes.includes(appeal.outcome)) {
       runner.results[runner.results.length - 1].detail =
         `Invalid appeal outcome "${appeal.outcome}"; expected one of: ${validOutcomes.join(', ')}`;
@@ -913,17 +1015,22 @@ function validateAppealRecord(runner, appeal, fileRef, contextPath) {
 
   // Timestamp presence for key fields
   if (appeal.filed_at) {
-    runner.require(`APPEAL-TS-FILED-${label}`, `Appeal filed_at valid date: ${label}`,
-      () => !isNaN(new Date(appeal.filed_at).getTime()));
+    runner.require(
+      `APPEAL-TS-FILED-${label}`,
+      `Appeal filed_at valid date: ${label}`,
+      () => !isNaN(new Date(appeal.filed_at).getTime())
+    );
   }
   if (appeal.reviewed_at) {
-    runner.require(`APPEAL-TS-REVIEWED-${label}`, `Appeal reviewed_at valid date: ${label}`,
-      () => !isNaN(new Date(appeal.reviewed_at).getTime()));
+    runner.require(
+      `APPEAL-TS-REVIEWED-${label}`,
+      `Appeal reviewed_at valid date: ${label}`,
+      () => !isNaN(new Date(appeal.reviewed_at).getTime())
+    );
   }
 
   // filed_by is required
-  runner.require(`APPEAL-FILER-${label}`, `Appeal has filed_by: ${label}`,
-    () => !!appeal.filed_by);
+  runner.require(`APPEAL-FILER-${label}`, `Appeal has filed_by: ${label}`, () => !!appeal.filed_by);
 }
 
 // ---------------------------------------------------------------------------
@@ -971,19 +1078,27 @@ function judgeWorkflowGate(runner, options) {
     if (!doc || typeof doc !== 'object') continue;
 
     // Check judge record ID
-    runner.require(`JUDGE-ID-${rel}`, `Judge record has judge_record_id: ${rel}`, () => !!doc.judge_record_id);
+    runner.require(
+      `JUDGE-ID-${rel}`,
+      `Judge record has judge_record_id: ${rel}`,
+      () => !!doc.judge_record_id
+    );
 
     // Schema version
     if (doc.schema_version === undefined || doc.schema_version === null) {
       runner.require(`JUDGE-VERSION-${rel}`, `Schema version present: ${rel}`, () => false);
     } else {
-      runner.require(`JUDGE-VERSION-${rel}`, `Schema version present: ${rel}`, () =>
-        typeof doc.schema_version === 'number');
+      runner.require(
+        `JUDGE-VERSION-${rel}`,
+        `Schema version present: ${rel}`,
+        () => typeof doc.schema_version === 'number'
+      );
     }
 
     // Judge type validity
     runner.require(`JUDGE-TYPE-${rel}`, `Judge type valid: ${rel}`, () =>
-      validJudgeTypes.includes(doc.judge_type || 'automated'));
+      validJudgeTypes.includes(doc.judge_type || 'automated')
+    );
     if (doc.judge_type && !validJudgeTypes.includes(doc.judge_type)) {
       runner.results[runner.results.length - 1].detail =
         `Invalid judge_type "${doc.judge_type}"; expected one of: ${validJudgeTypes.join(', ')}`;
@@ -992,7 +1107,11 @@ function judgeWorkflowGate(runner, options) {
     // Score dimensions present and within bounds
     const dims = doc.score_dimensions || {};
     const dimKeys = Object.keys(dims);
-    runner.require(`JUDGE-DIMS-${rel}`, `Score dimensions present: ${rel}`, () => dimKeys.length > 0);
+    runner.require(
+      `JUDGE-DIMS-${rel}`,
+      `Score dimensions present: ${rel}`,
+      () => dimKeys.length > 0
+    );
 
     let computedTotal = 0;
     let maxTotal = 0;
@@ -1002,12 +1121,20 @@ function judgeWorkflowGate(runner, options) {
       const max = dim.max;
       if (typeof score === 'number' && typeof max === 'number') {
         if (score > max) {
-          runner.require(`JUDGE-DIM-OVER-${rel}-${dimName}`, `${dimName} score ≤ max: ${rel}`, () => false);
+          runner.require(
+            `JUDGE-DIM-OVER-${rel}-${dimName}`,
+            `${dimName} score ≤ max: ${rel}`,
+            () => false
+          );
           runner.results[runner.results.length - 1].detail =
             `Dimension ${dimName} score (${score}) exceeds max (${max})`;
         }
         if (score < 0) {
-          runner.require(`JUDGE-DIM-NEG-${rel}-${dimName}`, `${dimName} score ≥ 0: ${rel}`, () => false);
+          runner.require(
+            `JUDGE-DIM-NEG-${rel}-${dimName}`,
+            `${dimName} score ≥ 0: ${rel}`,
+            () => false
+          );
           runner.results[runner.results.length - 1].detail =
             `Dimension ${dimName} score (${score}) is negative`;
         }
@@ -1019,7 +1146,11 @@ function judgeWorkflowGate(runner, options) {
     // total_score matches sum of dimensions
     if (typeof doc.total_score === 'number' && maxTotal > 0) {
       const diff = Math.abs(doc.total_score - computedTotal);
-      runner.require(`JUDGE-TOTAL-${rel}`, `total_score matches dimensions: ${rel}`, () => diff < 0.01);
+      runner.require(
+        `JUDGE-TOTAL-${rel}`,
+        `total_score matches dimensions: ${rel}`,
+        () => diff < 0.01
+      );
       if (diff >= 0.01) {
         runner.results[runner.results.length - 1].detail =
           `total_score (${doc.total_score}) != sum of dimensions (${computedTotal})`;
@@ -1028,26 +1159,39 @@ function judgeWorkflowGate(runner, options) {
 
     // Verdict validity
     runner.require(`JUDGE-VERDICT-${rel}`, `Verdict valid: ${rel}`, () =>
-      validVerdicts.includes(doc.verdict || 'pass'));
+      validVerdicts.includes(doc.verdict || 'pass')
+    );
 
     // Verdict consistency with score
     if (doc.verdict === 'pass' && typeof doc.total_score === 'number' && doc.total_score <= 0) {
-      runner.require(`JUDGE-VERDICT-SCORE-${rel}`, `Verdict consistent with score: ${rel}`, () => false);
+      runner.require(
+        `JUDGE-VERDICT-SCORE-${rel}`,
+        `Verdict consistent with score: ${rel}`,
+        () => false
+      );
       runner.results[runner.results.length - 1].detail =
         `Verdict is "${doc.verdict}" but total_score is ${doc.total_score} (≤ 0)`;
     }
     if (doc.verdict === 'fail' && typeof doc.total_score === 'number' && doc.total_score > 0) {
-      runner.require(`JUDGE-VERDICT-SCORE-${rel}`, `Verdict consistent with score: ${rel}`, () => false);
+      runner.require(
+        `JUDGE-VERDICT-SCORE-${rel}`,
+        `Verdict consistent with score: ${rel}`,
+        () => false
+      );
       runner.results[runner.results.length - 1].detail =
         `Verdict is "${doc.verdict}" but total_score is ${doc.total_score} (> 0)`;
     }
 
     // Automated judge records should document pending human dimensions
     if (doc.judge_type === 'automated' || !doc.judge_type) {
-      const hasPendingNote = (doc.judge_notes || '').toLowerCase().includes('pending') ||
+      const hasPendingNote =
+        (doc.judge_notes || '').toLowerCase().includes('pending') ||
         (doc.judge_notes || '').toLowerCase().includes('human');
-      runner.require(`JUDGE-PENDING-NOTE-${rel}`, `Auto-judge documents pending dimensions: ${rel}`,
-        () => hasPendingNote);
+      runner.require(
+        `JUDGE-PENDING-NOTE-${rel}`,
+        `Auto-judge documents pending dimensions: ${rel}`,
+        () => hasPendingNote
+      );
       if (!hasPendingNote) {
         runner.results[runner.results.length - 1].detail =
           'Automated judge record should document which dimensions are pending human review';
@@ -1059,8 +1203,11 @@ function judgeWorkflowGate(runner, options) {
 
     // created_at validity
     if (doc.created_at) {
-      runner.require(`JUDGE-CREATED-${rel}`, `created_at valid date: ${rel}`,
-        () => !isNaN(new Date(doc.created_at).getTime()));
+      runner.require(
+        `JUDGE-CREATED-${rel}`,
+        `created_at valid date: ${rel}`,
+        () => !isNaN(new Date(doc.created_at).getTime())
+      );
     }
   }
 
@@ -1105,7 +1252,9 @@ function listGates() {
   console.log('  finalizer-ready      — Run ALL gates (readiness + publication + checks)');
   console.log('  list                 — Show this list\n');
   console.log('Options:');
-  console.log('  --manifest <path>    Round manifest path (default: rounds/season-001-round-001.yaml)');
+  console.log(
+    '  --manifest <path>    Round manifest path (default: rounds/season-001-round-001.yaml)'
+  );
   console.log('  --results-dir <path> Results directory (default: results/)');
   console.log('  --runs-dir <path>    Runs directory for competition-validity checks');
   console.log('  --output <path>      Write JSON evidence to file');
@@ -1155,14 +1304,26 @@ Exit: 0 = all gates pass, 1 = any gate fails, 2 = usage error
   // Parse options
   const options = { manifest: 'rounds/season-001-round-001.yaml' };
   for (let i = 1; i < args.length; i++) {
-    if (args[i] === '--manifest' && i + 1 < args.length) { options.manifest = args[++i]; }
-    else if (args[i] === '--results-dir' && i + 1 < args.length) { options['results-dir'] = args[++i]; }
-    else if (args[i] === '--runs-dir' && i + 1 < args.length) { options['runs-dir'] = args[++i]; }
-    else if (args[i] === '--output' && i + 1 < args.length) { options.output = args[++i]; }
-    else if (args[i] === '--quiet' || args[i] === '-q') { options.quiet = true; }
-    else if (args[i] === '--manifest' && !args[i + 1]) { console.error('--manifest requires a path'); process.exit(2); }
-    else if (args[i] === '--results-dir' && !args[i + 1]) { console.error('--results-dir requires a path'); process.exit(2); }
-    else if (args[i] === '--runs-dir' && !args[i + 1]) { console.error('--runs-dir requires a path'); process.exit(2); }
+    if (args[i] === '--manifest' && i + 1 < args.length) {
+      options.manifest = args[++i];
+    } else if (args[i] === '--results-dir' && i + 1 < args.length) {
+      options['results-dir'] = args[++i];
+    } else if (args[i] === '--runs-dir' && i + 1 < args.length) {
+      options['runs-dir'] = args[++i];
+    } else if (args[i] === '--output' && i + 1 < args.length) {
+      options.output = args[++i];
+    } else if (args[i] === '--quiet' || args[i] === '-q') {
+      options.quiet = true;
+    } else if (args[i] === '--manifest' && !args[i + 1]) {
+      console.error('--manifest requires a path');
+      process.exit(2);
+    } else if (args[i] === '--results-dir' && !args[i + 1]) {
+      console.error('--results-dir requires a path');
+      process.exit(2);
+    } else if (args[i] === '--runs-dir' && !args[i + 1]) {
+      console.error('--runs-dir requires a path');
+      process.exit(2);
+    }
   }
 
   if (command === 'list') {
@@ -1178,7 +1339,10 @@ Exit: 0 = all gates pass, 1 = any gate fails, 2 = usage error
 
   switch (command) {
     case 'readiness':
-      if (!options.manifest) { console.error('--manifest is required for readiness'); process.exit(2); }
+      if (!options.manifest) {
+        console.error('--manifest is required for readiness');
+        process.exit(2);
+      }
       readinessGates(runner, options.manifest);
       break;
 

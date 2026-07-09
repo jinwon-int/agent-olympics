@@ -93,7 +93,10 @@ function mkdirp(p) {
  * timestamps) keep the full ISO 8601 string via new Date().toISOString().
  */
 function generateTimestamp(now = new Date()) {
-  return now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'UTC');
+  return now
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d+Z$/, 'UTC');
 }
 
 function renderRunId(manifest, task, participant, timestamp) {
@@ -130,7 +133,7 @@ const VALID_RUN_LIFECYCLE_STATES = [
   'partial',
   'failed',
   'blocked',
-  'disqualified'
+  'disqualified',
 ];
 
 const VALID_ROUND_LIFECYCLE_STATES = [
@@ -139,7 +142,7 @@ const VALID_ROUND_LIFECYCLE_STATES = [
   'running',
   'completed',
   'scored',
-  'archived'
+  'archived',
 ];
 
 /**
@@ -147,10 +150,14 @@ const VALID_ROUND_LIFECYCLE_STATES = [
  */
 function exitCodeToStatus(exitCode) {
   switch (exitCode) {
-    case 0: return 'completed';
-    case 1: return 'failed';
-    case 2: return 'partial';
-    default: return 'blocked';
+    case 0:
+      return 'completed';
+    case 1:
+      return 'failed';
+    case 2:
+      return 'partial';
+    default:
+      return 'blocked';
   }
 }
 
@@ -223,7 +230,7 @@ function printCheckResult(verbose) {
   }
 }
 
-function validateRoundManifest(manifestPath, strict) {
+function validateRoundManifest(manifestPath, _strict) {
   const manifest = loadYaml(manifestPath);
 
   // Schema version
@@ -234,7 +241,15 @@ function validateRoundManifest(manifestPath, strict) {
   );
 
   // Required top-level fields
-  const required = ['round_id', 'season', 'title', 'lifecycle', 'tasks', 'participants', 'run_directory'];
+  const required = [
+    'round_id',
+    'season',
+    'title',
+    'lifecycle',
+    'tasks',
+    'participants',
+    'run_directory',
+  ];
   for (const field of required) {
     check(
       `field "${field}" present`,
@@ -280,11 +295,7 @@ function validateRoundManifest(manifestPath, strict) {
       // envelope exists
       const envPath = t.envelope_path;
       if (envPath) {
-        warn(
-          `task #${idx} envelope exists`,
-          fileExists(envPath),
-          `envelope not found: ${envPath}`
-        );
+        warn(`task #${idx} envelope exists`, fileExists(envPath), `envelope not found: ${envPath}`);
       }
 
       // fixture bundle ref exists
@@ -347,19 +358,32 @@ function validateRoundManifest(manifestPath, strict) {
 
   const runIdTemplate = manifest.run_id_template || DEFAULT_RUN_ID_TEMPLATE;
   const templateVariables = runIdTemplateVariables(runIdTemplate);
-  const unknownVariables = templateVariables.filter((name) => !SUPPORTED_RUN_ID_TEMPLATE_VARIABLES.has(name));
+  const unknownVariables = templateVariables.filter(
+    (name) => !SUPPORTED_RUN_ID_TEMPLATE_VARIABLES.has(name)
+  );
   check(
     'run_id_template variables are supported',
     unknownVariables.length === 0,
     `unsupported variables: ${unknownVariables.join(', ')}`
   );
-  if (unknownVariables.length === 0 && Array.isArray(manifest.tasks) && manifest.tasks.length > 0 &&
-      Array.isArray(manifest.participants) && manifest.participants.length > 0) {
-    const sampleParticipant = manifest.participants.find((p) => p.enabled !== false) || manifest.participants[0];
-    const sampleRunId = renderRunId(manifest, manifest.tasks[0], sampleParticipant, '20260101T000000UTC');
+  if (
+    unknownVariables.length === 0 &&
+    Array.isArray(manifest.tasks) &&
+    manifest.tasks.length > 0 &&
+    Array.isArray(manifest.participants) &&
+    manifest.participants.length > 0
+  ) {
+    const sampleParticipant =
+      manifest.participants.find((p) => p.enabled !== false) || manifest.participants[0];
+    const sampleRunId = renderRunId(
+      manifest,
+      manifest.tasks[0],
+      sampleParticipant,
+      '20260101T000000UTC'
+    );
     check(
       'run_id_template renders a safe run id',
-      !/[{}\/\s]/.test(sampleRunId) && sampleRunId.length > 0,
+      !/[{}/\s]/.test(sampleRunId) && sampleRunId.length > 0,
       `rendered "${sampleRunId}" from template "${runIdTemplate}"`
     );
   }
@@ -419,7 +443,7 @@ Round Lifecycle States:
  * validates only that adapter's sample files by passing individual
  * file paths through validate.js.
  */
-function cmdValidateAdapterOutputs(adapterArg, options) {
+function cmdValidateAdapterOutputs(adapterArg, _options) {
   const { spawnSync } = require('child_process');
   const VALIDATE_JS = path.resolve(__dirname, 'validate.js');
 
@@ -472,7 +496,7 @@ function cmdValidateAdapterOutputs(adapterArg, options) {
     process.exit(1);
   }
 
-  const files = fs.readdirSync(fullDir).filter(f => /\.ya?ml$/.test(f));
+  const files = fs.readdirSync(fullDir).filter((f) => /\.ya?ml$/.test(f));
   if (files.length === 0) {
     console.log(`No YAML files found in ${dir}`);
     process.exit(0);
@@ -560,7 +584,9 @@ function cmdPlan(manifestArg, options) {
   for (const t of manifest.tasks || []) {
     const envOk = fileExists(t.envelope_path) ? '✓' : '⚠ missing';
     const fixOk = dirExists(t.fixture_bundle_ref) ? '✓' : '⚠ missing';
-    console.log(`    ${t.task_id.padEnd(12)} ${(t.title || '').slice(0, 50).padEnd(52)} ${envOk} env  ${fixOk} fixtures`);
+    console.log(
+      `    ${t.task_id.padEnd(12)} ${(t.title || '').slice(0, 50).padEnd(52)} ${envOk} env  ${fixOk} fixtures`
+    );
   }
 
   console.log(`\n  Participants:`);
@@ -652,16 +678,14 @@ function cmdInit(manifestArg, options) {
   console.log(`  Manifest updated: ${manifestArg}`);
 }
 
-function cmdList(seasonFilter, options) {
+function cmdList(seasonFilter, _options) {
   const roundDir = path.resolve(ROOT, 'rounds');
   if (!dirExists('rounds')) {
     console.log('No rounds directory found.');
     return;
   }
 
-  const files = fs.readdirSync(roundDir).filter(
-    (f) => f.endsWith('.yaml') || f.endsWith('.yml')
-  );
+  const files = fs.readdirSync(roundDir).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
 
   if (files.length === 0) {
     console.log('No round manifests found in rounds/.');
@@ -687,7 +711,7 @@ function cmdList(seasonFilter, options) {
   }
 }
 
-function cmdStatus(roundIdArg, options) {
+function cmdStatus(roundIdArg, _options) {
   if (!roundIdArg) {
     console.error('Usage: node scripts/round.js status <round_id>');
     process.exit(1);
@@ -699,9 +723,7 @@ function cmdStatus(roundIdArg, options) {
     process.exit(1);
   }
 
-  const files = fs.readdirSync(roundDir).filter(
-    (f) => f.endsWith('.yaml') || f.endsWith('.yml')
-  );
+  const files = fs.readdirSync(roundDir).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
 
   let found = false;
   for (const f of files) {
@@ -779,16 +801,18 @@ function saveRunManifest(runDirPath, manifest) {
  */
 function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOverride, timeoutMs) {
   const resolve = (p) => path.resolve(ROOT, p);
-  const adapterTimeoutMs = Number.isInteger(timeoutMs) && timeoutMs > 0
-    ? timeoutMs
-    : DEFAULT_ADAPTER_TIMEOUT_MS;
+  const adapterTimeoutMs =
+    Number.isInteger(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_ADAPTER_TIMEOUT_MS;
 
   const args = [
     resolve('scripts/stub-adapter.js'),
     resolve(envelopePath),
-    '--run-dir', resolve(runDir),
-    '--agent-id', agentId,
-    '--runtime', runtime,
+    '--run-dir',
+    resolve(runDir),
+    '--agent-id',
+    agentId,
+    '--runtime',
+    runtime,
   ];
 
   if (seed) {
@@ -798,16 +822,12 @@ function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOve
     args.push('--exit', String(exitOverride));
   }
 
-  const cp = require('child_process').spawnSync(
-    process.execPath,
-    args,
-    {
-      cwd: ROOT,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      encoding: 'utf8',
-      timeout: adapterTimeoutMs,
-    }
-  );
+  const cp = require('child_process').spawnSync(process.execPath, args, {
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    timeout: adapterTimeoutMs,
+  });
 
   const stdout = (cp.stdout || '').trim();
   const stderr = (cp.stderr || '').trim();
@@ -818,8 +838,14 @@ function invokeStubAdapter(envelopePath, runDir, agentId, runtime, seed, exitOve
 
   if (cp.error) {
     if (cp.error.code === 'ETIMEDOUT') {
-      console.warn(`  ⚠ Adapter exceeded ${adapterTimeoutMs} ms timeout — downgrading run status to "partial" (configure with --adapter-timeout-ms or AGENT_OLYMPICS_ADAPTER_TIMEOUT_MS)`);
-      return { status: 'partial', exitCode: 2, error: `Adapter timed out after ${adapterTimeoutMs} ms` };
+      console.warn(
+        `  ⚠ Adapter exceeded ${adapterTimeoutMs} ms timeout — downgrading run status to "partial" (configure with --adapter-timeout-ms or AGENT_OLYMPICS_ADAPTER_TIMEOUT_MS)`
+      );
+      return {
+        status: 'partial',
+        exitCode: 2,
+        error: `Adapter timed out after ${adapterTimeoutMs} ms`,
+      };
     }
     return { status: 'blocked', exitCode: 3, error: cp.error.message };
   }
@@ -889,7 +915,9 @@ function validateRunOutput(runDir) {
           break;
         }
       }
-    } catch { /* skip scan errors */ }
+    } catch {
+      /* skip scan errors */
+    }
   }
 
   return {
@@ -925,7 +953,6 @@ function transitionRunState(runManifest, runDir, newStatus, note) {
  */
 function executeSingleRun(runDir, runManifest, roundManifest, options) {
   const runId = runManifest.run_id;
-  const taskId = runManifest.task_id;
   const agentId = runManifest.agent_id;
   const runtime = runManifest.runtime || 'cli';
   const envelopeRef = runManifest.envelope_ref;
@@ -1001,8 +1028,8 @@ function executeSingleRun(runDir, runManifest, roundManifest, options) {
     }
 
     // If validation found secrets, escalate to disqualified
-    const hasSecretExposure = validation.errors.some(e =>
-      e.includes('SECRET DETECTED') || e.includes('secret')
+    const hasSecretExposure = validation.errors.some(
+      (e) => e.includes('SECRET DETECTED') || e.includes('secret')
     );
     if (hasSecretExposure) {
       runStatus = 'disqualified';
@@ -1113,7 +1140,9 @@ function cmdExecute(manifestArg, options) {
   // Collect runs
   const allRuns = collectRuns(manifest, options);
   if (options.runId && allRuns.length === 0) {
-    console.error(`\nNo run found matching --run-id "${options.runId}" in ${manifest.run_directory}`);
+    console.error(
+      `\nNo run found matching --run-id "${options.runId}" in ${manifest.run_directory}`
+    );
     process.exit(1);
   }
   if (allRuns.length === 0) {
@@ -1122,9 +1151,9 @@ function cmdExecute(manifestArg, options) {
   }
 
   // Separate pending vs interrupted
-  const pending = allRuns.filter(r => r.manifest.lifecycle === 'pending');
-  const interrupted = allRuns.filter(r => r.manifest.lifecycle === 'running');
-  const alreadyDone = allRuns.filter(r => isTerminalRunState(r.manifest.lifecycle));
+  const pending = allRuns.filter((r) => r.manifest.lifecycle === 'pending');
+  const interrupted = allRuns.filter((r) => r.manifest.lifecycle === 'running');
+  const alreadyDone = allRuns.filter((r) => isTerminalRunState(r.manifest.lifecycle));
 
   console.log(`\n=== Execute Round: ${manifest.round_id} ===`);
   console.log(`  Round lifecycle: ${roundLifecycle}`);
@@ -1134,7 +1163,9 @@ function cmdExecute(manifestArg, options) {
   console.log(`  Already done:    ${alreadyDone.length}`);
 
   if (interrupted.length > 0 && !options.resume) {
-    console.warn(`\n  ⚠ ${interrupted.length} run(s) are in "running" state (possibly interrupted).`);
+    console.warn(
+      `\n  ⚠ ${interrupted.length} run(s) are in "running" state (possibly interrupted).`
+    );
     console.warn('  Use --resume to resume them, or reinitialize the round.');
   }
 
@@ -1144,9 +1175,7 @@ function cmdExecute(manifestArg, options) {
   }
 
   // Determine which runs to process
-  const toProcess = options.resume
-    ? [...pending, ...interrupted]
-    : pending;
+  const toProcess = options.resume ? [...pending, ...interrupted] : pending;
 
   if (toProcess.length === 0) {
     console.log('\n✓ Nothing to execute.');
@@ -1154,7 +1183,6 @@ function cmdExecute(manifestArg, options) {
   }
 
   // Update round lifecycle to running
-  const origRoundStatus = manifest.lifecycle.status;
   manifest.lifecycle.status = 'running';
   if (!Array.isArray(manifest.lifecycle.status_history)) {
     manifest.lifecycle.status_history = [];
@@ -1164,7 +1192,10 @@ function cmdExecute(manifestArg, options) {
     timestamp: new Date().toISOString(),
     note: `Round execution started (${toProcess.length} runs)`,
   });
-  fs.writeFileSync(path.resolve(ROOT, manifestPath), yaml.dump(manifest, { indent: 2, lineWidth: 120 }));
+  fs.writeFileSync(
+    path.resolve(ROOT, manifestPath),
+    yaml.dump(manifest, { indent: 2, lineWidth: 120 })
+  );
 
   // Execute each run
   let completed = 0;
@@ -1172,12 +1203,7 @@ function cmdExecute(manifestArg, options) {
   const results = [];
 
   for (const run of toProcess) {
-    const result = executeSingleRun(
-      run.dir,
-      run.manifest,
-      manifest,
-      options
-    );
+    const result = executeSingleRun(run.dir, run.manifest, manifest, options);
     results.push(result);
     if (result.success) {
       completed++;
@@ -1193,7 +1219,7 @@ function cmdExecute(manifestArg, options) {
   // Drop the runId filter here: completion must consider ALL runs in the
   // round, not just the one selected via --run-id.
   const allRunsUpdated = collectRuns(updatedManifest, { ...options, runId: null });
-  const allTerminal = allRunsUpdated.every(r => isTerminalRunState(r.manifest.lifecycle));
+  const allTerminal = allRunsUpdated.every((r) => isTerminalRunState(r.manifest.lifecycle));
 
   if (allTerminal) {
     updatedManifest.lifecycle.status = 'completed';
@@ -1205,11 +1231,16 @@ function cmdExecute(manifestArg, options) {
       timestamp: new Date().toISOString(),
       note: `All ${allRunsUpdated.length} runs completed`,
     });
-    fs.writeFileSync(path.resolve(ROOT, manifestPath), yaml.dump(updatedManifest, { indent: 2, lineWidth: 120 }));
+    fs.writeFileSync(
+      path.resolve(ROOT, manifestPath),
+      yaml.dump(updatedManifest, { indent: 2, lineWidth: 120 })
+    );
     console.log(`\n✓ Round lifecycle → completed (all runs in terminal states)`);
   } else {
     // Some runs may still be pending if we filtered by --run-id
-    console.log(`\n  Round lifecycle remains "running" (${allRunsUpdated.filter(r => !isTerminalRunState(r.manifest.lifecycle)).length} runs still non-terminal)`);
+    console.log(
+      `\n  Round lifecycle remains "running" (${allRunsUpdated.filter((r) => !isTerminalRunState(r.manifest.lifecycle)).length} runs still non-terminal)`
+    );
   }
 
   // Print summary
@@ -1302,7 +1333,9 @@ function main() {
         i++;
         adapterTimeoutMs = parseInt(raw, 10);
         if (!Number.isInteger(adapterTimeoutMs) || adapterTimeoutMs <= 0) {
-          console.error(`Invalid --adapter-timeout-ms value: "${raw}" — expected a positive integer (milliseconds)`);
+          console.error(
+            `Invalid --adapter-timeout-ms value: "${raw}" — expected a positive integer (milliseconds)`
+          );
           process.exit(1);
         }
         break;
@@ -1318,13 +1351,13 @@ function main() {
 
   const cmd = filtered[0];
   const cmdArg = filtered[1];
-  const cmdArg2 = filtered[2];
 
   // Adapter timeout: --adapter-timeout-ms flag, else env var, else 2-minute default.
   const envTimeout = parseInt(process.env.AGENT_OLYMPICS_ADAPTER_TIMEOUT_MS || '', 10);
-  const resolvedAdapterTimeoutMs = adapterTimeoutMs
-    || (Number.isInteger(envTimeout) && envTimeout > 0 ? envTimeout : null)
-    || DEFAULT_ADAPTER_TIMEOUT_MS;
+  const resolvedAdapterTimeoutMs =
+    adapterTimeoutMs ||
+    (Number.isInteger(envTimeout) && envTimeout > 0 ? envTimeout : null) ||
+    DEFAULT_ADAPTER_TIMEOUT_MS;
 
   // Execution options (shared by execute and resume)
   const execOptions = {

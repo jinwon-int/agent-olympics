@@ -64,10 +64,10 @@ function shortId(seed) {
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
       const chr = seed.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
+      hash = (hash << 5) - hash + chr;
       hash |= 0;
     }
-    return (Math.abs(hash) % 0xFFFFFF).toString(16).padStart(6, '0');
+    return (Math.abs(hash) % 0xffffff).toString(16).padStart(6, '0');
   }
   return Math.random().toString(16).slice(2, 8);
 }
@@ -100,11 +100,11 @@ function pseudoHash(seed, length = 64) {
 
 /** Options shared by every adapter (including the stub adapter). */
 const COMMON_OPTIONS = Object.freeze({
-  '--run-dir':   { key: 'runDir',    kind: 'path' },
-  '--agent-id':  { key: 'agentId',   kind: 'string' },
-  '--runtime':   { key: 'runtime',   kind: 'string' },
-  '--exit':      { key: 'exitCode',  kind: 'int' },
-  '--seed':      { key: 'seed',      kind: 'string' },
+  '--run-dir': { key: 'runDir', kind: 'path' },
+  '--agent-id': { key: 'agentId', kind: 'string' },
+  '--runtime': { key: 'runtime', kind: 'string' },
+  '--exit': { key: 'exitCode', kind: 'int' },
+  '--seed': { key: 'seed', kind: 'string' },
   '--timestamp': { key: 'timestamp', kind: 'string' },
 });
 
@@ -112,11 +112,11 @@ const COMMON_OPTIONS = Object.freeze({
 const RUNTIME_ADAPTER_OPTIONS = Object.freeze({
   ...COMMON_OPTIONS,
   '--runtime-version': { key: 'runtimeVersion', kind: 'string' },
-  '--mode':            { key: 'mode',           kind: 'string' },
-  '--event-family':    { key: 'eventFamily',    kind: 'string' },
-  '--model':           { key: 'model',          kind: 'string' },
-  '--model-provider':  { key: 'modelProvider',  kind: 'string' },
-  '--publishable':     { key: 'publishable',    kind: 'flag' },
+  '--mode': { key: 'mode', kind: 'string' },
+  '--event-family': { key: 'eventFamily', kind: 'string' },
+  '--model': { key: 'model', kind: 'string' },
+  '--model-provider': { key: 'modelProvider', kind: 'string' },
+  '--publishable': { key: 'publishable', kind: 'flag' },
 });
 
 /**
@@ -149,10 +149,18 @@ function parseAdapterArgs(config) {
       process.exit(3);
     }
     switch (spec.kind) {
-      case 'path':   opts[spec.key] = path.resolve(args[++i]); break;
-      case 'int':    opts[spec.key] = parseInt(args[++i], 10); break;
-      case 'flag':   opts[spec.key] = true; break;
-      default:       opts[spec.key] = args[++i]; break;
+      case 'path':
+        opts[spec.key] = path.resolve(args[++i]);
+        break;
+      case 'int':
+        opts[spec.key] = parseInt(args[++i], 10);
+        break;
+      case 'flag':
+        opts[spec.key] = true;
+        break;
+      default:
+        opts[spec.key] = args[++i];
+        break;
     }
   }
 
@@ -200,20 +208,26 @@ function loadEnvelope(envelopePath) {
 function validateModeAndFamily(mode, eventFamily, adapterMetadata, capabilityMatrix) {
   // Validate mode
   if (!adapterMetadata.modes[mode]) {
-    console.error(`ERROR: Unknown adapter mode "${mode}". Supported modes: ${Object.keys(adapterMetadata.modes).join(', ')}`);
+    console.error(
+      `ERROR: Unknown adapter mode "${mode}". Supported modes: ${Object.keys(adapterMetadata.modes).join(', ')}`
+    );
     process.exit(3);
   }
 
   // Validate event family
   if (!capabilityMatrix[eventFamily]) {
-    console.error(`ERROR: Unknown event family "${eventFamily}". Supported families: ${Object.keys(capabilityMatrix).join(', ')}`);
+    console.error(
+      `ERROR: Unknown event family "${eventFamily}". Supported families: ${Object.keys(capabilityMatrix).join(', ')}`
+    );
     process.exit(3);
   }
 
   // Validate that this mode supports this event family
   const capEntry = capabilityMatrix[eventFamily];
   if (!capEntry.supported_modes.includes(mode)) {
-    console.error(`ERROR: Mode "${mode}" does not support event family "${eventFamily}". Supported modes for this family: ${capEntry.supported_modes.join(', ')}`);
+    console.error(
+      `ERROR: Mode "${mode}" does not support event family "${eventFamily}". Supported modes for this family: ${capEntry.supported_modes.join(', ')}`
+    );
     process.exit(3);
   }
 }
@@ -247,9 +261,18 @@ function captureConsole() {
   const origLog = console.log;
   const origWarn = console.warn;
   const origError = console.error;
-  console.log = (...args) => { logLines.push(['STDOUT', ...args].join(' ')); origLog(...args); };
-  console.warn = (...args) => { logLines.push(['STDERR', ...args].join(' ')); origWarn(...args); };
-  console.error = (...args) => { logLines.push(['STDERR', ...args].join(' ')); origError(...args); };
+  console.log = (...args) => {
+    logLines.push(['STDOUT', ...args].join(' '));
+    origLog(...args);
+  };
+  console.warn = (...args) => {
+    logLines.push(['STDERR', ...args].join(' '));
+    origWarn(...args);
+  };
+  console.error = (...args) => {
+    logLines.push(['STDERR', ...args].join(' '));
+    origError(...args);
+  };
   return {
     logLines,
     restore() {
@@ -266,9 +289,7 @@ function captureConsole() {
  */
 function writeAdapterLog(runDir, capture) {
   capture.restore();
-  fs.writeFileSync(path.join(runDir, 'adapter.log'),
-    capture.logLines.join('\n') + '\n',
-    'utf8');
+  fs.writeFileSync(path.join(runDir, 'adapter.log'), capture.logLines.join('\n') + '\n', 'utf8');
 }
 
 // ---------------------------------------------------------------------------
@@ -278,9 +299,11 @@ function writeAdapterLog(runDir, capture) {
 /** Returns a writeYaml(filename, data) function bound to the run directory. */
 function makeWriteYaml(runDir) {
   return (filename, data) => {
-    fs.writeFileSync(path.join(runDir, filename),
+    fs.writeFileSync(
+      path.join(runDir, filename),
       yaml.dump(data, { indent: 2, lineWidth: 120, noRefs: true, sortKeys: true }),
-      'utf8');
+      'utf8'
+    );
   };
 }
 
@@ -291,8 +314,9 @@ function makeWriteYaml(runDir) {
  */
 function buildOutputs(envelope, adapter, mode, eventFamily, status, suffix = '') {
   const outputs = {};
-  for (const key of (envelope.required_outputs || [])) {
-    outputs[key] = `[${adapter}-adapter:${mode}/${eventFamily}] Output for ${key}. Status: ${status}.${suffix}`;
+  for (const key of envelope.required_outputs || []) {
+    outputs[key] =
+      `[${adapter}-adapter:${mode}/${eventFamily}] Output for ${key}. Status: ${status}.${suffix}`;
   }
   return outputs;
 }
@@ -301,8 +325,22 @@ function buildOutputs(envelope, adapter, mode, eventFamily, status, suffix = '')
  * Build the run.yaml metadata record shared by the runtime adapters.
  * config: { adapterType, adapterVersion, notes }
  */
-function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-  startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths, config) {
+function generateRunMetadata(
+  envelopePath,
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  status,
+  exitCode,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily,
+  runtimeVersion,
+  artifactPaths,
+  config
+) {
   return {
     schema_version: 1,
     run_id: runId,
@@ -318,7 +356,7 @@ function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, st
     started_at: startedAt,
     ended_at: endedAt,
     duration_seconds: Math.round((new Date(endedAt) - new Date(startedAt)) / 1000),
-    artifacts: artifactPaths.map(p => path.basename(p)),
+    artifacts: artifactPaths.map((p) => path.basename(p)),
     adapter_type: config.adapterType,
     adapter_version: config.adapterVersion,
     notes: config.notes,
@@ -330,7 +368,10 @@ function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, st
 // ---------------------------------------------------------------------------
 
 const DEFAULT_VALIDATED_FILES = Object.freeze([
-  'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'manifest.yaml',
+  'result-packet.yaml',
+  'trace.yaml',
+  'evidence-bundle.yaml',
+  'manifest.yaml',
 ]);
 
 /**
@@ -378,7 +419,9 @@ function validateOutput(runDir, options) {
   }
 
   if (!allPassed) {
-    console.warn(`[${logPrefix}] WARNING: Some output files failed validation. See warnings above.`);
+    console.warn(
+      `[${logPrefix}] WARNING: Some output files failed validation. See warnings above.`
+    );
   }
   return allPassed;
 }
@@ -391,15 +434,20 @@ function validateOutput(runDir, options) {
  * Returns the array of missing kinds.
  */
 function checkRequiredEvidence(resultPacket, capabilityEntry, status, logPrefix) {
-  const required = capabilityEntry
-    && capabilityEntry.required_evidence_per_status
-    && capabilityEntry.required_evidence_per_status[status];
+  const required =
+    capabilityEntry &&
+    capabilityEntry.required_evidence_per_status &&
+    capabilityEntry.required_evidence_per_status[status];
   if (!required) return [];
 
-  const presentKinds = new Set((resultPacket.evidence || []).map(e => e && e.kind).filter(Boolean));
-  const missing = required.filter(kind => !presentKinds.has(kind));
+  const presentKinds = new Set(
+    (resultPacket.evidence || []).map((e) => e && e.kind).filter(Boolean)
+  );
+  const missing = required.filter((kind) => !presentKinds.has(kind));
   for (const kind of missing) {
-    console.warn(`[${logPrefix}] WARNING: capability matrix requires evidence kind "${kind}" for status "${status}" but the packet does not include it.`);
+    console.warn(
+      `[${logPrefix}] WARNING: capability matrix requires evidence kind "${kind}" for status "${status}" but the packet does not include it.`
+    );
   }
   return missing;
 }

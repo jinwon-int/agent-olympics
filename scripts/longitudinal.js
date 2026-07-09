@@ -118,7 +118,11 @@ function loadBlindAnonymizer() {
 
 function gitRevision() {
   try {
-    const out = cp.execSync('git rev-parse HEAD', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = cp.execSync('git rev-parse HEAD', {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
     return out.trim() || 'unknown';
   } catch {
     return 'unknown';
@@ -211,13 +215,16 @@ function buildSnapshot(scoreboard, opts = {}) {
 
   // Stable ordering: task then participant, so two snapshots of the same round
   // serialize identically regardless of scoreboard entry order.
-  results.sort((a, b) =>
-    (a.task_id || '').localeCompare(b.task_id || '') ||
-    (a.participant_id || '').localeCompare(b.participant_id || ''));
+  results.sort(
+    (a, b) =>
+      (a.task_id || '').localeCompare(b.task_id || '') ||
+      (a.participant_id || '').localeCompare(b.participant_id || '')
+  );
 
   return {
     schema_version: 1,
-    schema_description: 'Agent Olympics longitudinal snapshot — one immutable round outcome (additive, append-only).',
+    schema_description:
+      'Agent Olympics longitudinal snapshot — one immutable round outcome (additive, append-only).',
     snapshot_id: `snap-${roundId}-${capturedAt}`,
     captured_at: capturedAt,
     round_id: roundId,
@@ -245,7 +252,8 @@ function snapshotFilename(snapshot) {
  */
 function loadSnapshots(dir) {
   if (!fs.existsSync(dir)) return [];
-  const files = fs.readdirSync(dir)
+  const files = fs
+    .readdirSync(dir)
     .filter((f) => /^snapshot-.*\.ya?ml$/.test(f))
     .map((f) => path.join(dir, f));
   const snapshots = [];
@@ -253,7 +261,9 @@ function loadSnapshots(dir) {
     const doc = yaml.load(fs.readFileSync(f, 'utf8'));
     const { valid, errors } = validateSnapshot(doc);
     if (!valid) {
-      const err = new Error(`schema-invalid snapshot ${path.relative(ROOT, f)}:\n  ${errors.join('\n  ')}`);
+      const err = new Error(
+        `schema-invalid snapshot ${path.relative(ROOT, f)}:\n  ${errors.join('\n  ')}`
+      );
       err.schemaInvalid = true;
       throw err;
     }
@@ -267,7 +277,6 @@ function loadSnapshots(dir) {
 // Drift detection
 // ---------------------------------------------------------------------------
 
-const CLEAN_STATUSES = new Set(['completed', 'partial', 'blocked', 'failed']);
 const REJECTED_STATUSES = new Set(['quarantined', 'disqualified']);
 
 /**
@@ -300,7 +309,11 @@ function classifyDrift(prev, curr, threshold) {
 
   // Both rejected — still drift territory but no clean numeric comparison.
   if (prevRejected && currRejected) {
-    return { verdict: 'STATUS_DRIFT', delta: null, failure_code: curr.failure_code || prev.failure_code || null };
+    return {
+      verdict: 'STATUS_DRIFT',
+      delta: null,
+      failure_code: curr.failure_code || prev.failure_code || null,
+    };
   }
 
   // Both clean — compare numeric totals.
@@ -360,9 +373,11 @@ function buildTrends(snapshots, threshold, filters = {}) {
     }
     trends.push(s);
   }
-  trends.sort((a, b) =>
-    (a.task_id || '').localeCompare(b.task_id || '') ||
-    (a.participant_id || '').localeCompare(b.participant_id || ''));
+  trends.sort(
+    (a, b) =>
+      (a.task_id || '').localeCompare(b.task_id || '') ||
+      (a.participant_id || '').localeCompare(b.participant_id || '')
+  );
   return trends;
 }
 
@@ -391,10 +406,18 @@ function fmtDelta(d) {
 function printReport(trends, opts) {
   const threshold = opts.threshold;
   console.log(`Agent Olympics — Longitudinal trend report${opts.blind ? ' (blind)' : ''}`);
-  console.log(`Drift thresholds: REGRESSION when Δscore <= -${threshold}; RECOVERY when Δscore >= +${threshold} (or status returns to clean);`);
-  console.log(`STATUS_DRIFT when a clean entry becomes quarantined/disqualified (carries failure_code); STABLE otherwise.`);
-  console.log(`Conceptual tie: these map to ops-002's drift classes — the fleet can drift the same way a node does.`);
-  console.log(`Signal not proof: a drop may be task variance or backend flakiness — investigate, don't assume regression.\n`);
+  console.log(
+    `Drift thresholds: REGRESSION when Δscore <= -${threshold}; RECOVERY when Δscore >= +${threshold} (or status returns to clean);`
+  );
+  console.log(
+    `STATUS_DRIFT when a clean entry becomes quarantined/disqualified (carries failure_code); STABLE otherwise.`
+  );
+  console.log(
+    `Conceptual tie: these map to ops-002's drift classes — the fleet can drift the same way a node does.`
+  );
+  console.log(
+    `Signal not proof: a drop may be task variance or backend flakiness — investigate, don't assume regression.\n`
+  );
 
   if (trends.length === 0) {
     console.log('(no snapshots / no matching (task, participant) series)');
@@ -410,7 +433,7 @@ function printReport(trends, opts) {
       const codeStr = d.failure_code ? `  [${d.failure_code}]` : '';
       console.log(
         `  ${mark} ${pt.captured_at}  score=${fmtScore(pt.total_score).padStart(4)}  ` +
-        `Δ${String(deltaStr).padStart(4)}  status=${pt.status.padEnd(12)} ${d.verdict}${codeStr}`
+          `Δ${String(deltaStr).padStart(4)}  status=${pt.status.padEnd(12)} ${d.verdict}${codeStr}`
       );
     }
     console.log('');
@@ -451,18 +474,24 @@ function cmdSnapshot(args) {
 
   const dir = DEFAULT_DIR;
   fs.mkdirSync(dir, { recursive: true });
-  const outPath = args.output ? path.resolve(args.output) : path.join(dir, snapshotFilename(snapshot));
+  const outPath = args.output
+    ? path.resolve(args.output)
+    : path.join(dir, snapshotFilename(snapshot));
 
   // Append-only: never overwrite an existing snapshot for the same captured_at.
   if (fs.existsSync(outPath)) {
-    console.error(`Refusing to overwrite existing snapshot (append-only): ${path.relative(ROOT, outPath)}`);
+    console.error(
+      `Refusing to overwrite existing snapshot (append-only): ${path.relative(ROOT, outPath)}`
+    );
     process.exitCode = 1;
     return;
   }
 
   fs.writeFileSync(outPath, yaml.dump(snapshot, { lineWidth: 120, noRefs: true, sortKeys: false }));
   console.log(`Wrote snapshot: ${path.relative(ROOT, outPath)}`);
-  console.log(`  round_id=${snapshot.round_id}  captured_at=${snapshot.captured_at}  results=${snapshot.results.length}  revision=${snapshot.source_revision.slice(0, 12)}`);
+  console.log(
+    `  round_id=${snapshot.round_id}  captured_at=${snapshot.captured_at}  results=${snapshot.results.length}  revision=${snapshot.source_revision.slice(0, 12)}`
+  );
 }
 
 function cmdReport(args) {
@@ -483,7 +512,10 @@ function cmdReport(args) {
     snapshots = snapshots.map(blindSnapshot);
   }
 
-  const trends = buildTrends(snapshots, threshold, { task: args.task, participant: args.participant });
+  const trends = buildTrends(snapshots, threshold, {
+    task: args.task,
+    participant: args.participant,
+  });
   printReport(trends, { threshold, blind: !!args.blind });
 }
 
@@ -509,8 +541,9 @@ function blindSnapshot(snap) {
     warnings: [],
     errors: [],
   }));
-  const pseudoParticipants = [...new Set((snap.results || []).map((r) => r.participant_id))]
-    .map((id) => ({ agent_id: id }));
+  const pseudoParticipants = [...new Set((snap.results || []).map((r) => r.participant_id))].map(
+    (id) => ({ agent_id: id })
+  );
   const anon = anonymizeScoreboard({ entries: pseudoEntries, participants: pseudoParticipants });
   const aliasByEntry = new Map(anon.entries.map((e, i) => [pseudoEntries[i].entry_id, e.agent_id]));
 
@@ -538,8 +571,13 @@ function loadFixtureSnapshots() {
 
 function runFixtures() {
   let failures = 0;
-  const fail = (msg) => { console.log(`  FAIL  ${msg}`); failures += 1; };
-  const ok = (msg) => { console.log(`  ok    ${msg}`); };
+  const fail = (msg) => {
+    console.log(`  FAIL  ${msg}`);
+    failures += 1;
+  };
+  const ok = (msg) => {
+    console.log(`  ok    ${msg}`);
+  };
 
   console.log('Longitudinal fixtures');
 
@@ -598,20 +636,29 @@ function runFixtures() {
     if (last.drift.verdict !== 'STATUS_DRIFT') {
       fail(`tool-001/fleet-beta last verdict = ${last.drift.verdict}, expected STATUS_DRIFT`);
     } else if (!last.drift.failure_code || !TAXONOMY_CODES.has(last.drift.failure_code)) {
-      fail(`tool-001/fleet-beta STATUS_DRIFT carries invalid failure_code: ${last.drift.failure_code}`);
+      fail(
+        `tool-001/fleet-beta STATUS_DRIFT carries invalid failure_code: ${last.drift.failure_code}`
+      );
     } else {
-      ok(`tool-001/fleet-beta: clean -> STATUS_DRIFT [${last.drift.failure_code}] classified correctly`);
+      ok(
+        `tool-001/fleet-beta: clean -> STATUS_DRIFT [${last.drift.failure_code}] classified correctly`
+      );
     }
   }
 
   // 4. Blind mode leaks no real participant identity.
-  const realIds = [...new Set(snapshots.flatMap((s) => (s.results || []).map((r) => r.participant_id)))];
+  const realIds = [
+    ...new Set(snapshots.flatMap((s) => (s.results || []).map((r) => r.participant_id))),
+  ];
   const blinded = snapshots.map(blindSnapshot);
   const blindedTrends = buildTrends(blinded, DEFAULT_THRESHOLD);
   const blob = JSON.stringify(blindedTrends);
   let leaked = false;
   for (const id of realIds) {
-    if (blob.includes(id)) { fail(`blind report leaked participant id "${id}"`); leaked = true; }
+    if (blob.includes(id)) {
+      fail(`blind report leaked participant id "${id}"`);
+      leaked = true;
+    }
   }
   if (!leaked) ok(`blind mode: none of ${realIds.length} real participant ids leak`);
   // Blind aliases must be Participant X.
@@ -653,13 +700,30 @@ function runFixtures() {
     scoreboard_id: 'sb-test',
     round_id: 'round-test',
     entries: [
-      { entry_id: 'a-p', task_id: 'a', agent_id: 'p', status: 'completed',
-        score: { total_score: 80, verdict: 'pass', dimensions: { correctness: { score: 25, max: 30 } } } },
-      { entry_id: 'b-q', task_id: 'b', agent_id: 'q', status: 'quarantined',
-        errors: ['finding references unknown evidence id ev-9'] },
+      {
+        entry_id: 'a-p',
+        task_id: 'a',
+        agent_id: 'p',
+        status: 'completed',
+        score: {
+          total_score: 80,
+          verdict: 'pass',
+          dimensions: { correctness: { score: 25, max: 30 } },
+        },
+      },
+      {
+        entry_id: 'b-q',
+        task_id: 'b',
+        agent_id: 'q',
+        status: 'quarantined',
+        errors: ['finding references unknown evidence id ev-9'],
+      },
     ],
   };
-  const built = buildSnapshot(tinyBoard, { capturedAt: '2026-01-01T00:00:00.000Z', revision: 'testrev' });
+  const built = buildSnapshot(tinyBoard, {
+    capturedAt: '2026-01-01T00:00:00.000Z',
+    revision: 'testrev',
+  });
   const builtRes = validateSnapshot(built);
   if (!builtRes.valid) {
     fail(`buildSnapshot produced schema-invalid output: ${builtRes.errors.join('; ')}`);
@@ -715,12 +779,24 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.help) { usage(); return; }
+  if (args.help) {
+    usage();
+    return;
+  }
   const cmd = args._[0];
 
-  if (!cmd || cmd === 'fixtures') { runFixtures(); return; }
-  if (cmd === 'snapshot') { cmdSnapshot(args); return; }
-  if (cmd === 'report') { cmdReport(args); return; }
+  if (!cmd || cmd === 'fixtures') {
+    runFixtures();
+    return;
+  }
+  if (cmd === 'snapshot') {
+    cmdSnapshot(args);
+    return;
+  }
+  if (cmd === 'report') {
+    cmdReport(args);
+    return;
+  }
 
   usage();
   process.exitCode = 1;

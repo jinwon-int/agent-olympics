@@ -43,7 +43,7 @@ function parseModelInfo(text) {
   }
 
   // Bare style: "Model: deepseek-v4-pro (deepseek)" or "Model: deepseek-v4-pro"
-  const bare = body.match(/^([\w.:\/-]+)(?:\s*\(([^)]+)\))?/);
+  const bare = body.match(/^([\w.:/-]+)(?:\s*\(([^)]+)\))?/);
   if (bare && bare[1]) {
     return { model: bare[1], provider: bare[2] || 'unknown' };
   }

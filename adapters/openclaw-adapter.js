@@ -80,28 +80,28 @@ const ADAPTER_METADATA = Object.freeze({
 
   /** Event families this adapter can process */
   supported_event_families: [
-    'ops',           // Operations relay — diagnostics, response, monitoring
-    'code',          // Code assist — writing, reviewing, debugging
-    'smoke',         // Smoke test — readiness verification, capability reports
-    'node',          // Node readiness — hardware/software capability matrix
-    'wiki',          // Wiki/runbook — durable knowledge capture
-    'general',       // General purpose agent tasks
+    'ops', // Operations relay — diagnostics, response, monitoring
+    'code', // Code assist — writing, reviewing, debugging
+    'smoke', // Smoke test — readiness verification, capability reports
+    'node', // Node readiness — hardware/software capability matrix
+    'wiki', // Wiki/runbook — durable knowledge capture
+    'general', // General purpose agent tasks
   ],
 
   /** Required environment variables (described, not exposed) */
   required_environment_variables: [
-    'OPENCLAW_GATEWAY_URL',     // Gateway endpoint for session management
-    'OPENCLAW_API_KEY',         // API key for gateway authentication (REDACTED)
-    'AGENT_OLYMPICS_TASK_DIR',  // Task envelope and fixture directory
+    'OPENCLAW_GATEWAY_URL', // Gateway endpoint for session management
+    'OPENCLAW_API_KEY', // API key for gateway authentication (REDACTED)
+    'AGENT_OLYMPICS_TASK_DIR', // Task envelope and fixture directory
   ],
 
   /** Optional environment variables with safe descriptions */
   optional_environment_variables: [
-    'OPENCLAW_SESSION_LABEL',   // Custom label for the created session
-    'OPENCLAW_TIMEOUT_SECONDS',  // Max session runtime before forced timeout
-    'OPENCLAW_MODEL',           // Model override for the session
-    'OPENCLAW_MODEL_PROVIDER',   // Model provider override
-    'AGENT_OLYMPICS_RUN_DIR',   // Override output directory
+    'OPENCLAW_SESSION_LABEL', // Custom label for the created session
+    'OPENCLAW_TIMEOUT_SECONDS', // Max session runtime before forced timeout
+    'OPENCLAW_MODEL', // Model override for the session
+    'OPENCLAW_MODEL_PROVIDER', // Model provider override
+    'AGENT_OLYMPICS_RUN_DIR', // Override output directory
   ],
 
   /** Redaction rules applied by this adapter */
@@ -134,18 +134,27 @@ const ADAPTER_METADATA = Object.freeze({
 
   /** Evidence kinds this adapter can produce */
   evidence_capabilities: [
-    { kind: 'session_id',          description: 'OpenClaw session UUID' },
-    { kind: 'message_id',          description: 'Telegram/gateway message delivery ID' },
-    { kind: 'gateway_readiness',   description: 'Gateway readiness journal entry (redacted)' },
-    { kind: 'delivery_probe',      description: 'Channel delivery probe result (redacted)' },
-    { kind: 'tool_call_summary',   description: 'Tool call trace with action, target, duration, redaction status' },
-    { kind: 'command_summary',     description: 'Shell command summary with exit code and output status' },
-    { kind: 'session_transcript',  description: 'Session transcript excerpt (redacted, safe lines only)' },
-    { kind: 'wiki_pr_ref',         description: 'Link to a Wiki PR or issue for durable knowledge' },
-    { kind: 'gateway_log',         description: 'Gateway journal log line (redacted for secrets)' },
-    { kind: 'config_snippet',      description: 'Configuration snippet (no secrets)' },
-    { kind: 'probe_result',        description: 'Gateway or channel probe result' },
-    { kind: 'artifact_hash',       description: 'Content hash for tamper detection' },
+    { kind: 'session_id', description: 'OpenClaw session UUID' },
+    { kind: 'message_id', description: 'Telegram/gateway message delivery ID' },
+    { kind: 'gateway_readiness', description: 'Gateway readiness journal entry (redacted)' },
+    { kind: 'delivery_probe', description: 'Channel delivery probe result (redacted)' },
+    {
+      kind: 'tool_call_summary',
+      description: 'Tool call trace with action, target, duration, redaction status',
+    },
+    {
+      kind: 'command_summary',
+      description: 'Shell command summary with exit code and output status',
+    },
+    {
+      kind: 'session_transcript',
+      description: 'Session transcript excerpt (redacted, safe lines only)',
+    },
+    { kind: 'wiki_pr_ref', description: 'Link to a Wiki PR or issue for durable knowledge' },
+    { kind: 'gateway_log', description: 'Gateway journal log line (redacted for secrets)' },
+    { kind: 'config_snippet', description: 'Configuration snippet (no secrets)' },
+    { kind: 'probe_result', description: 'Gateway or channel probe result' },
+    { kind: 'artifact_hash', description: 'Content hash for tamper detection' },
   ],
 
   /** Timeout handling */
@@ -196,10 +205,16 @@ const CAPABILITY_MATRIX = Object.freeze({
     mode_defaults: { openstack: {}, closedstack: {}, human_baseline: {} },
     applicable_statuses: ['completed', 'partial', 'failed', 'blocked'],
     required_evidence_per_status: Object.freeze({
-      completed: ['session_id', 'tool_call_summary', 'gateway_readiness', 'gateway_log', 'delivery_probe'],
-      partial:   ['session_id', 'tool_call_summary', 'gateway_readiness', 'session_transcript'],
-      failed:    ['session_id', 'tool_call_summary', 'gateway_log'],
-      blocked:   ['session_id', 'session_transcript'],
+      completed: [
+        'session_id',
+        'tool_call_summary',
+        'gateway_readiness',
+        'gateway_log',
+        'delivery_probe',
+      ],
+      partial: ['session_id', 'tool_call_summary', 'gateway_readiness', 'session_transcript'],
+      failed: ['session_id', 'tool_call_summary', 'gateway_log'],
+      blocked: ['session_id', 'session_transcript'],
     }),
   },
   code: {
@@ -209,8 +224,8 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'partial', 'failed'],
     required_evidence_per_status: Object.freeze({
       completed: ['session_id', 'tool_call_summary', 'command_summary', 'artifact_hash'],
-      partial:   ['session_id', 'tool_call_summary', 'session_transcript'],
-      failed:    ['session_id', 'tool_call_summary'],
+      partial: ['session_id', 'tool_call_summary', 'session_transcript'],
+      failed: ['session_id', 'tool_call_summary'],
     }),
   },
   smoke: {
@@ -220,7 +235,7 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'failed'],
     required_evidence_per_status: Object.freeze({
       completed: ['session_id', 'gateway_readiness', 'config_snippet', 'probe_result'],
-      failed:    ['session_id', 'gateway_log'],
+      failed: ['session_id', 'gateway_log'],
     }),
   },
   node: {
@@ -230,7 +245,7 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'failed'],
     required_evidence_per_status: Object.freeze({
       completed: ['session_id', 'config_snippet', 'probe_result'],
-      failed:    ['session_id', 'gateway_log'],
+      failed: ['session_id', 'gateway_log'],
     }),
   },
   wiki: {
@@ -240,8 +255,8 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'partial', 'failed'],
     required_evidence_per_status: Object.freeze({
       completed: ['session_id', 'wiki_pr_ref', 'tool_call_summary', 'artifact_hash'],
-      partial:   ['session_id', 'session_transcript', 'tool_call_summary'],
-      failed:    ['session_id', 'tool_call_summary'],
+      partial: ['session_id', 'session_transcript', 'tool_call_summary'],
+      failed: ['session_id', 'tool_call_summary'],
     }),
   },
   general: {
@@ -251,9 +266,9 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'partial', 'failed', 'blocked'],
     required_evidence_per_status: Object.freeze({
       completed: ['session_id', 'tool_call_summary', 'gateway_readiness'],
-      partial:   ['session_id', 'tool_call_summary', 'session_transcript'],
-      failed:    ['session_id', 'tool_call_summary'],
-      blocked:   ['session_id'],
+      partial: ['session_id', 'tool_call_summary', 'session_transcript'],
+      failed: ['session_id', 'tool_call_summary'],
+      blocked: ['session_id'],
     }),
   },
 });
@@ -289,9 +304,18 @@ function parseArgs() {
       '  --publishable             Mark result as publishable (default: false)',
     ],
     defaults: {
-      exitCode: 0, agentId: 'sogyo', runtime: 'openclaw', runtimeVersion: '2.14.0',
-      mode: 'openstack', eventFamily: 'ops', model: 'gpt-5.x', modelProvider: 'openai',
-      seed: null, timestamp: null, runDir: null, publishable: false,
+      exitCode: 0,
+      agentId: 'sogyo',
+      runtime: 'openclaw',
+      runtimeVersion: '2.14.0',
+      mode: 'openstack',
+      eventFamily: 'ops',
+      model: 'gpt-5.x',
+      modelProvider: 'openai',
+      seed: null,
+      timestamp: null,
+      runDir: null,
+      publishable: false,
     },
     options: RUNTIME_ADAPTER_OPTIONS,
   });
@@ -325,21 +349,37 @@ function parseArgs() {
  * Session outcome                → status
  * Redacted data notes            → actions[].redacted, actions[].redaction_reason
  */
-function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
-  mode, eventFamily, model, modelProvider, status, startedAt, endedAt, seed, publishable) {
+function generateResultPacket(
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  runtimeVersion,
+  mode,
+  eventFamily,
+  model,
+  modelProvider,
+  status,
+  startedAt,
+  endedAt,
+  seed,
+  publishable
+) {
   const taskId = envelope.task_id || 'unknown-task';
-  const division = {
-    openstack: 'open_stack',
-    closedstack: 'closed_stack',
-    human_baseline: 'human_baseline',
-  }[mode] || 'open_stack';
-  const validity = {
-    completed: 'valid',
-    partial: 'partial_valid',
-    blocked: 'partial_valid',
-    failed: 'invalid',
-    disqualified: 'disqualified',
-  }[status] || 'invalid';
+  const division =
+    {
+      openstack: 'open_stack',
+      closedstack: 'closed_stack',
+      human_baseline: 'human_baseline',
+    }[mode] || 'open_stack';
+  const validity =
+    {
+      completed: 'valid',
+      partial: 'partial_valid',
+      blocked: 'partial_valid',
+      failed: 'invalid',
+      disqualified: 'disqualified',
+    }[status] || 'invalid';
 
   // Capture OpenClaw-specific raw measurements
   const rawMeasurements = {
@@ -454,9 +494,10 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
       human_assistance: mode === 'human_baseline',
       a2a_workers: [],
       supported_by: [],
-      notes: mode === 'human_baseline'
-        ? 'Manual operator baseline recorded through the OpenClaw adapter.'
-        : 'No subagent or A2A delegation used in this adapter run.',
+      notes:
+        mode === 'human_baseline'
+          ? 'Manual operator baseline recorded through the OpenClaw adapter.'
+          : 'No subagent or A2A delegation used in this adapter run.',
     },
     started_at: startedAt,
     ended_at: endedAt,
@@ -481,8 +522,28 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
 function buildToolUseProfile(mode) {
   const profiles = {
     openstack: {
-      allowed: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch', 'image', 'log'],
-      used: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch', 'image', 'log'],
+      allowed: [
+        'read',
+        'write',
+        'exec',
+        'message',
+        'api_call',
+        'web_search',
+        'web_fetch',
+        'image',
+        'log',
+      ],
+      used: [
+        'read',
+        'write',
+        'exec',
+        'message',
+        'api_call',
+        'web_search',
+        'web_fetch',
+        'image',
+        'log',
+      ],
       disclosure_level: 'representative',
       notes: 'Open stack mode allows broad tool classes under the adapter safety policy.',
     },
@@ -668,7 +729,8 @@ function buildEvidence(mode, eventFamily, runId, status) {
       id: 'ev-tool-calls',
       kind: 'command_output',
       source: 'session tool trace',
-      summary: `Tool call trace: ${mode} mode, ${eventFamily} event family — ` +
+      summary:
+        `Tool call trace: ${mode} mode, ${eventFamily} event family — ` +
         'reads, writes, execs, and API calls performed with redaction applied to sensitive outputs',
       content_ref: 'trace.yaml',
       content_type: 'application/x-yaml',
@@ -745,129 +807,141 @@ function buildOutputs(envelope, mode, eventFamily, status) {
  * Evidence cross-ref              → entries[].evidence_ref
  * Duration per action             → entries[].duration_ms
  */
-function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode, eventFamily, status) {
+function generateTraceRecord(
+  envelope,
+  runId,
+  agentId,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily,
+  status
+) {
   // Human baseline runs record manual operator steps, mirroring buildActions:
   // no automated tool calls and no reference to ev-telegram-delivery.
-  const entries = mode === 'human_baseline' ? [
-    {
-      seq: 0,
-      timestamp: startedAt,
-      action: 'manual',
-      target: 'task_envelope',
-      summary: `Operator reads task envelope "${envelope.task_id || 'unknown'}" and records it in the session log`,
-      duration_ms: 30000,
-      result_summary: `Envelope reviewed for event family "${eventFamily}"`,
-      evidence_ref: 'ev-session-input',
-    },
-    {
-      seq: 1,
-      timestamp: startedAt,
-      action: 'manual',
-      target: 'session',
-      summary: 'Operator opens an OpenClaw session to record manual baseline steps',
-      duration_ms: 45000,
-      result_summary: 'Session opened for manual baseline recording',
-      evidence_ref: 'ev-gateway-readiness',
-    },
-    {
-      seq: 2,
-      timestamp: startedAt,
-      action: 'manual',
-      target: 'session',
-      summary: `Operator documents manual ${eventFamily} steps as session messages`,
-      duration_ms: 120000,
-      result_summary: 'Manual steps recorded in session transcript',
-      evidence_ref: 'ev-message-delivery',
-    },
-    {
-      seq: 3,
-      timestamp: startedAt,
-      action: 'manual',
-      target: 'session',
-      summary: 'Operator records command transcripts in the session log',
-      redacted: true,
-      redaction_reason: 'command_output_contained_sensitive_data',
-      duration_ms: 90000,
-      result_summary: 'Command transcripts recorded, output redacted for secrets',
-      evidence_ref: 'ev-tool-calls',
-    },
-  ] : [
-    {
-      seq: 0,
-      timestamp: startedAt,
-      action: 'read',
-      target: 'task_envelope',
-      summary: `Read task envelope "${envelope.task_id || 'unknown'}" from disk`,
-      duration_ms: 45,
-      result_summary: `Loaded envelope for event family "${eventFamily}"`,
-      evidence_ref: 'ev-session-input',
-    },
-    {
-      seq: 1,
-      timestamp: startedAt,
-      action: 'api_call',
-      target: 'gateway',
-      summary: 'Create OpenClaw session via gateway API',
-      redacted: true,
-      redaction_reason: 'gateway_auth_header_redacted',
-      duration_ms: 320,
-      result_summary: 'Session created successfully',
-      evidence_ref: 'ev-gateway-readiness',
-    },
-    {
-      seq: 2,
-      timestamp: startedAt,
-      action: 'message',
-      target: 'session',
-      summary: 'Send task envelope as first session message',
-      duration_ms: 150,
-      result_summary: 'Task envelope posted to session',
-      evidence_ref: 'ev-message-delivery',
-    },
-    {
-      seq: 3,
-      timestamp: startedAt,
-      action: 'think',
-      target: null,
-      summary: `Process task in ${mode} mode for event family "${eventFamily}"`,
-      duration_ms: 210,
-      result_summary: 'Task objective parsed, execution plan formed',
-    },
-    {
-      seq: 4,
-      timestamp: startedAt,
-      action: 'api_call',
-      target: 'gateway',
-      summary: 'Poll gateway readiness journal for delivery status',
-      redacted: true,
-      redaction_reason: 'gateway_delivery_log_contained_api_token',
-      duration_ms: 200,
-      result_summary: 'Gateway ready, message accepted',
-      evidence_ref: 'ev-gateway-readiness',
-    },
-    {
-      seq: 5,
-      timestamp: startedAt,
-      action: 'message',
-      target: 'telegram',
-      summary: 'Deliver progress update to Telegram channel',
-      duration_ms: 480,
-      result_summary: 'Progress update delivered to Telegram',
-      evidence_ref: 'ev-telegram-delivery',
-    },
-    {
-      seq: 6,
-      timestamp: startedAt,
-      action: 'command',
-      target: 'local',
-      summary: 'Execute diagnostic command for ops task',
-      redacted: true,
-      redaction_reason: 'command_output_contained_sensitive_data',
-      duration_ms: 1200,
-      result_summary: 'Command completed, output redacted for secrets',
-      evidence_ref: 'ev-tool-calls',
-    },
-  ];
+  const entries =
+    mode === 'human_baseline'
+      ? [
+          {
+            seq: 0,
+            timestamp: startedAt,
+            action: 'manual',
+            target: 'task_envelope',
+            summary: `Operator reads task envelope "${envelope.task_id || 'unknown'}" and records it in the session log`,
+            duration_ms: 30000,
+            result_summary: `Envelope reviewed for event family "${eventFamily}"`,
+            evidence_ref: 'ev-session-input',
+          },
+          {
+            seq: 1,
+            timestamp: startedAt,
+            action: 'manual',
+            target: 'session',
+            summary: 'Operator opens an OpenClaw session to record manual baseline steps',
+            duration_ms: 45000,
+            result_summary: 'Session opened for manual baseline recording',
+            evidence_ref: 'ev-gateway-readiness',
+          },
+          {
+            seq: 2,
+            timestamp: startedAt,
+            action: 'manual',
+            target: 'session',
+            summary: `Operator documents manual ${eventFamily} steps as session messages`,
+            duration_ms: 120000,
+            result_summary: 'Manual steps recorded in session transcript',
+            evidence_ref: 'ev-message-delivery',
+          },
+          {
+            seq: 3,
+            timestamp: startedAt,
+            action: 'manual',
+            target: 'session',
+            summary: 'Operator records command transcripts in the session log',
+            redacted: true,
+            redaction_reason: 'command_output_contained_sensitive_data',
+            duration_ms: 90000,
+            result_summary: 'Command transcripts recorded, output redacted for secrets',
+            evidence_ref: 'ev-tool-calls',
+          },
+        ]
+      : [
+          {
+            seq: 0,
+            timestamp: startedAt,
+            action: 'read',
+            target: 'task_envelope',
+            summary: `Read task envelope "${envelope.task_id || 'unknown'}" from disk`,
+            duration_ms: 45,
+            result_summary: `Loaded envelope for event family "${eventFamily}"`,
+            evidence_ref: 'ev-session-input',
+          },
+          {
+            seq: 1,
+            timestamp: startedAt,
+            action: 'api_call',
+            target: 'gateway',
+            summary: 'Create OpenClaw session via gateway API',
+            redacted: true,
+            redaction_reason: 'gateway_auth_header_redacted',
+            duration_ms: 320,
+            result_summary: 'Session created successfully',
+            evidence_ref: 'ev-gateway-readiness',
+          },
+          {
+            seq: 2,
+            timestamp: startedAt,
+            action: 'message',
+            target: 'session',
+            summary: 'Send task envelope as first session message',
+            duration_ms: 150,
+            result_summary: 'Task envelope posted to session',
+            evidence_ref: 'ev-message-delivery',
+          },
+          {
+            seq: 3,
+            timestamp: startedAt,
+            action: 'think',
+            target: null,
+            summary: `Process task in ${mode} mode for event family "${eventFamily}"`,
+            duration_ms: 210,
+            result_summary: 'Task objective parsed, execution plan formed',
+          },
+          {
+            seq: 4,
+            timestamp: startedAt,
+            action: 'api_call',
+            target: 'gateway',
+            summary: 'Poll gateway readiness journal for delivery status',
+            redacted: true,
+            redaction_reason: 'gateway_delivery_log_contained_api_token',
+            duration_ms: 200,
+            result_summary: 'Gateway ready, message accepted',
+            evidence_ref: 'ev-gateway-readiness',
+          },
+          {
+            seq: 5,
+            timestamp: startedAt,
+            action: 'message',
+            target: 'telegram',
+            summary: 'Deliver progress update to Telegram channel',
+            duration_ms: 480,
+            result_summary: 'Progress update delivered to Telegram',
+            evidence_ref: 'ev-telegram-delivery',
+          },
+          {
+            seq: 6,
+            timestamp: startedAt,
+            action: 'command',
+            target: 'local',
+            summary: 'Execute diagnostic command for ops task',
+            redacted: true,
+            redaction_reason: 'command_output_contained_sensitive_data',
+            duration_ms: 1200,
+            result_summary: 'Command completed, output redacted for secrets',
+            evidence_ref: 'ev-tool-calls',
+          },
+        ];
 
   if (status === 'completed') {
     entries.push({
@@ -875,9 +949,10 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode,
       timestamp: endedAt,
       action: mode === 'human_baseline' ? 'manual' : 'message',
       target: 'session',
-      summary: mode === 'human_baseline'
-        ? 'Operator composes and posts final diagnosis message'
-        : 'Compose and post final diagnosis message',
+      summary:
+        mode === 'human_baseline'
+          ? 'Operator composes and posts final diagnosis message'
+          : 'Compose and post final diagnosis message',
       duration_ms: 890,
       result_summary: 'Final report posted to session transcript',
       evidence_ref: 'ev-final-report',
@@ -906,7 +981,7 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode,
     event_family: eventFamily,
     entries: entries,
     redaction_policy: {
-      applied_rules: ADAPTER_METADATA.redaction_rules.map(r => ({
+      applied_rules: ADAPTER_METADATA.redaction_rules.map((r) => ({
         rule_id: r.id,
         pattern_description: r.pattern_description,
         reason: r.reason,
@@ -930,7 +1005,7 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode,
  * Redacted items                  → items[].redacted=true + reason
  * Checksum for integrity          → items[].checksum
  */
-function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFamily, status) {
+function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFamily, _status) {
   const items = [
     {
       id: 'ev-session-input',
@@ -1053,8 +1128,17 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
  * Retention policy                 → retention_policy
  * Runner metadata                  → run_metadata
  */
-function generateManifest(runId, taskId, agentId, envelope, status, startedAt, endedAt, mode, eventFamily) {
-  const runDirName = `run-${taskId}-${agentId}`;
+function generateManifest(
+  runId,
+  taskId,
+  agentId,
+  envelope,
+  status,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily
+) {
   return {
     schema_version: 1,
     manifest_id: `am-${runId}`,
@@ -1066,9 +1150,13 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
     created_at: startedAt,
     updated_at: endedAt,
     status_history: [
-      { status: 'pending',   timestamp: startedAt,  note: 'Run directory created' },
-      { status: 'running',   timestamp: startedAt, note: `OpenClaw adapter execution started (mode: ${mode}, event: ${eventFamily})` },
-      { status: status,      timestamp: endedAt,    note: `OpenClaw adapter completed: ${status}` },
+      { status: 'pending', timestamp: startedAt, note: 'Run directory created' },
+      {
+        status: 'running',
+        timestamp: startedAt,
+        note: `OpenClaw adapter execution started (mode: ${mode}, event: ${eventFamily})`,
+      },
+      { status: status, timestamp: endedAt, note: `OpenClaw adapter completed: ${status}` },
     ],
     artifacts: [
       {
@@ -1155,14 +1243,41 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
   };
 }
 
-function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-  startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths) {
-  return generateCommonRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-    startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths, {
+function generateRunMetadata(
+  envelopePath,
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  status,
+  exitCode,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily,
+  runtimeVersion,
+  artifactPaths
+) {
+  return generateCommonRunMetadata(
+    envelopePath,
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    exitCode,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily,
+    runtimeVersion,
+    artifactPaths,
+    {
       adapterType: 'openclaw',
       adapterVersion: ADAPTER_METADATA.adapter_version,
       notes: `OpenClaw adapter run for lane 1/3 (sogyo). Adapter metadata, artifact mapping, capabilities, and validation examples. Mode: ${mode}, Event family: ${eventFamily}.`,
-    });
+    }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1203,7 +1318,8 @@ function main() {
   const runId = generateRunId(taskId, agentId, seed, startedAt);
 
   // --- Determine output directory (with evidence subdirectory) ---
-  const runDir = opts.runDir || path.resolve(__dirname, '..', 'results', `openclaw-${taskId}-${runId}`);
+  const runDir =
+    opts.runDir || path.resolve(__dirname, '..', 'results', `openclaw-${taskId}-${runId}`);
   const evidenceDir = ensureRunDir(runDir, true);
 
   // --- Capture stdout/stderr ---
@@ -1214,41 +1330,106 @@ function main() {
   const endedAt = overrideTimestamp || isoNow();
 
   // --- Generate output artifacts ---
-  const resultPacket = generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
-    mode, eventFamily, model, modelProvider, status, startedAt, endedAt, seed, publishable);
-  const traceRecord = generateTraceRecord(envelope, runId, agentId, startedAt, endedAt,
-    mode, eventFamily, status);
-  const evidenceBundle = generateEvidenceBundle(envelope, runId, agentId, endedAt,
-    mode, eventFamily, status);
-  const manifest = generateManifest(runId, taskId, agentId, envelope, status, startedAt, endedAt,
-    mode, eventFamily);
-  const runMeta = generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-    startedAt, endedAt, mode, eventFamily, runtimeVersion,
-    ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml',
-      'manifest.yaml', 'run.yaml', 'adapter.log']);
+  const resultPacket = generateResultPacket(
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    runtimeVersion,
+    mode,
+    eventFamily,
+    model,
+    modelProvider,
+    status,
+    startedAt,
+    endedAt,
+    seed,
+    publishable
+  );
+  const traceRecord = generateTraceRecord(
+    envelope,
+    runId,
+    agentId,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily,
+    status
+  );
+  const evidenceBundle = generateEvidenceBundle(
+    envelope,
+    runId,
+    agentId,
+    endedAt,
+    mode,
+    eventFamily,
+    status
+  );
+  const manifest = generateManifest(
+    runId,
+    taskId,
+    agentId,
+    envelope,
+    status,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily
+  );
+  const runMeta = generateRunMetadata(
+    envelopePath,
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    exitCode,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily,
+    runtimeVersion,
+    [
+      'envelope-copy.yaml',
+      'result-packet.yaml',
+      'trace.yaml',
+      'evidence-bundle.yaml',
+      'manifest.yaml',
+      'run.yaml',
+      'adapter.log',
+    ]
+  );
 
   // --- Write artifacts ---
   const writeYaml = makeWriteYaml(runDir);
 
   // Write evidence files
-  fs.writeFileSync(path.join(evidenceDir, 'gateway-journal.txt'),
+  fs.writeFileSync(
+    path.join(evidenceDir, 'gateway-journal.txt'),
     '[GATEWAY JOURNAL — REDACTED]\n' +
-    'api_token values removed per rr-openclaw-001\n' +
-    `Session: ${runId}\n` +
-    `Created: ${startedAt}\n` +
-    'Status: ready\n',
-    'utf8');
-  fs.writeFileSync(path.join(evidenceDir, 'delivery-probe.json'),
-    JSON.stringify({
-      probe_id: `probe-${shortId(`${runId}-dp`)}`,
-      session_id: runId,
-      timestamp: endedAt,
-      success: true,
-      duration_ms: 180,
-      channel: 'telegram',
-      message_id: `msg-${shortId(`${runId}-msg`)}`,
-    }, null, 2) + '\n',
-    'utf8');
+      'api_token values removed per rr-openclaw-001\n' +
+      `Session: ${runId}\n` +
+      `Created: ${startedAt}\n` +
+      'Status: ready\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(evidenceDir, 'delivery-probe.json'),
+    JSON.stringify(
+      {
+        probe_id: `probe-${shortId(`${runId}-dp`)}`,
+        session_id: runId,
+        timestamp: endedAt,
+        success: true,
+        duration_ms: 180,
+        channel: 'telegram',
+        message_id: `msg-${shortId(`${runId}-msg`)}`,
+      },
+      null,
+      2
+    ) + '\n',
+    'utf8'
+  );
 
   writeYaml('envelope-copy.yaml', envelope);
   writeYaml('result-packet.yaml', resultPacket);
@@ -1259,7 +1440,11 @@ function main() {
   // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
   const missingEvidence = checkRequiredEvidence(
-    resultPacket, CAPABILITY_MATRIX[eventFamily], status, 'openclaw-adapter');
+    resultPacket,
+    CAPABILITY_MATRIX[eventFamily],
+    status,
+    'openclaw-adapter'
+  );
 
   // run.yaml is written after validation so the outcome can be recorded
   // alongside the run metadata (run.yaml itself is not schema-validated).

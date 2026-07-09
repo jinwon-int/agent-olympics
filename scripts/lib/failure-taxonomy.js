@@ -51,49 +51,56 @@ const FAILURE_CATEGORIES = [
   {
     code: 'BACKEND_TIMEOUT',
     title: 'Backend timeout / no result packet',
-    description: 'The transport timed out, was cancelled, or never produced a result packet — a stack reliability failure, not a model judgement failure.',
+    description:
+      'The transport timed out, was cancelled, or never produced a result packet — a stack reliability failure, not a model judgement failure.',
     severity: 'quarantine',
     kind: 'stack_reliability',
   },
   {
     code: 'MISSING_ARTIFACT',
     title: 'Missing required artifact',
-    description: 'A required artifact (trace record, evidence bundle) is absent even though a packet was produced.',
+    description:
+      'A required artifact (trace record, evidence bundle) is absent even though a packet was produced.',
     severity: 'quarantine',
     kind: 'stack_reliability',
   },
   {
     code: 'EVIDENCE_DISCIPLINE',
     title: 'Citation / evidence discipline',
-    description: 'A finding or trace entry cites an evidence id that does not resolve — citation discipline collapsed (also the current surface for undetected task drift).',
+    description:
+      'A finding or trace entry cites an evidence id that does not resolve — citation discipline collapsed (also the current surface for undetected task drift).',
     severity: 'quarantine',
     kind: 'discipline',
   },
   {
     code: 'CONTENT_RESOLUTION',
     title: 'Unresolved / escaping content reference',
-    description: 'An evidence item content_ref is missing, unresolved, or escapes the run directory.',
+    description:
+      'An evidence item content_ref is missing, unresolved, or escapes the run directory.',
     severity: 'quarantine',
     kind: 'discipline',
   },
   {
     code: 'ORACLE_BOUNDARY',
     title: 'Oracle boundary violation',
-    description: 'A participant-facing artifact references oracle files or hidden judge notes — an oracle-boundary / safety violation.',
+    description:
+      'A participant-facing artifact references oracle files or hidden judge notes — an oracle-boundary / safety violation.',
     severity: 'disqualifying',
     kind: 'safety',
   },
   {
     code: 'SECRET_EXPOSURE',
     title: 'Secret exposure',
-    description: 'A secret value or secret-bearing field appeared in a participant-facing artifact or transport output.',
+    description:
+      'A secret value or secret-bearing field appeared in a participant-facing artifact or transport output.',
     severity: 'disqualifying',
     kind: 'safety',
   },
   {
     code: 'IDENTITY_MISMATCH',
     title: 'Identity inconsistency',
-    description: 'The packet/trace/bundle agent_id, task_id, run_id, or runtime/adapter label disagrees with the dispatch record.',
+    description:
+      'The packet/trace/bundle agent_id, task_id, run_id, or runtime/adapter label disagrees with the dispatch record.',
     severity: 'quarantine',
     kind: 'integrity',
   },
@@ -129,21 +136,24 @@ const WARNING_CATEGORIES = [
   {
     code: 'RUNTIME_FINGERPRINT',
     title: 'Runtime fingerprint mismatch',
-    description: 'Heuristic artifact-shape fingerprint disagrees with the declared adapter (flagged for judge review).',
+    description:
+      'Heuristic artifact-shape fingerprint disagrees with the declared adapter (flagged for judge review).',
     severity: 'warning',
     kind: 'integrity',
   },
   {
     code: 'ATTESTATION',
     title: 'Attestation / declaration inconsistency',
-    description: 'A runtime attestation probe or an operator-allowed runtime declaration mismatch was recorded.',
+    description:
+      'A runtime attestation probe or an operator-allowed runtime declaration mismatch was recorded.',
     severity: 'warning',
     kind: 'integrity',
   },
   {
     code: 'CONTENT_RESOLUTION',
     title: 'Unresolved content reference (warning)',
-    description: 'An evidence item content_ref does not resolve to a file (simulation-adapter parity with competition-validity.js).',
+    description:
+      'An evidence item content_ref does not resolve to a file (simulation-adapter parity with competition-validity.js).',
     severity: 'warning',
     kind: 'discipline',
   },
@@ -169,17 +179,38 @@ const WARNING_CATEGORY_BY_CODE = new Map(WARNING_CATEGORIES.map((c) => [c.code, 
 const REASON_MATCHERS = [
   // Safety boundaries first — they are the highest-severity and the most
   // distinctive phrasings, so they win even if other words co-occur.
-  [(r) => /oracle reference|oracle_ref|hidden_judge_notes|judge_notes_ref|oracle leak/.test(r), 'ORACLE_BOUNDARY'],
-  [(r) => /secret value detected|secret-bearing field|secret detected|secret in (?:transport|stdout)|secret exposure/.test(r), 'SECRET_EXPOSURE'],
+  [
+    (r) => /oracle reference|oracle_ref|hidden_judge_notes|judge_notes_ref|oracle leak/.test(r),
+    'ORACLE_BOUNDARY',
+  ],
+  [
+    (r) =>
+      /secret value detected|secret-bearing field|secret detected|secret in (?:transport|stdout)|secret exposure/.test(
+        r
+      ),
+    'SECRET_EXPOSURE',
+  ],
 
   // Disqualified-at-dispatch note: a secret-in-transport disqualification.
   [(r) => /disqualified at dispatch.*secret|secret.*disqualif/.test(r), 'SECRET_EXPOSURE'],
 
   // Backend / stack reliability — no packet, timeout, unreachable, cancelled.
-  [(r) => /missing result packet|transport timed out|timed out|unreachable|unspawnable|enoent|cancelled|no packet/.test(r), 'BACKEND_TIMEOUT'],
+  [
+    (r) =>
+      /missing result packet|transport timed out|timed out|unreachable|unspawnable|enoent|cancelled|no packet/.test(
+        r
+      ),
+    'BACKEND_TIMEOUT',
+  ],
 
   // Identity inconsistency.
-  [(r) => /agent_id mismatch|task_id mismatch|runtime mismatch|run_id mismatch|identity mismatch/.test(r), 'IDENTITY_MISMATCH'],
+  [
+    (r) =>
+      /agent_id mismatch|task_id mismatch|runtime mismatch|run_id mismatch|identity mismatch/.test(
+        r
+      ),
+    'IDENTITY_MISMATCH',
+  ],
 
   // Malformed / schema — check "not parseable" before generic validation.
   [(r) => /not parseable yaml|parse error|unparseable/.test(r), 'MALFORMED_OUTPUT'],
@@ -187,10 +218,22 @@ const REASON_MATCHERS = [
 
   // Content reference resolution (escapes / does not resolve) — before the
   // broad evidence-id matcher so "content_ref" reasons are not swallowed.
-  [(r) => /content_ref escapes|content_ref does not resolve|content_ref|unresolved (?:content )?ref/.test(r), 'CONTENT_RESOLUTION'],
+  [
+    (r) =>
+      /content_ref escapes|content_ref does not resolve|content_ref|unresolved (?:content )?ref/.test(
+        r
+      ),
+    'CONTENT_RESOLUTION',
+  ],
 
   // Evidence / citation discipline — unknown evidence id references.
-  [(r) => /references unknown evidence id|unknown evidence id|evidence id .*unknown|evidence discipline/.test(r), 'EVIDENCE_DISCIPLINE'],
+  [
+    (r) =>
+      /references unknown evidence id|unknown evidence id|evidence id .*unknown|evidence discipline/.test(
+        r
+      ),
+    'EVIDENCE_DISCIPLINE',
+  ],
 
   // Missing required (non-packet) artifact — packet absence is handled above
   // by the BACKEND_TIMEOUT matcher (which matches "missing result packet").
@@ -207,7 +250,10 @@ const REASON_MATCHERS = [
  */
 const WARNING_MATCHERS = [
   [(r) => /fingerprint mismatch|-shaped/.test(r), 'RUNTIME_FINGERPRINT'],
-  [(r) => /runtime attestation|attestation probe|declaration mismatch|operator-allowed/.test(r), 'ATTESTATION'],
+  [
+    (r) => /runtime attestation|attestation probe|declaration mismatch|operator-allowed/.test(r),
+    'ATTESTATION',
+  ],
   [(r) => /content_ref does not resolve|content_ref/.test(r), 'CONTENT_RESOLUTION'],
 ];
 
@@ -265,7 +311,10 @@ function categorizeReasons(reasons) {
   const counts = new Map();
   for (const reason of reasons || []) {
     const code = classifyReason(reason);
-    if (!counts.has(code)) { counts.set(code, 0); order.push(code); }
+    if (!counts.has(code)) {
+      counts.set(code, 0);
+      order.push(code);
+    }
     counts.set(code, counts.get(code) + 1);
   }
   return order.map((code) => ({ code, kind: kindForCode(code), count: counts.get(code) }));
@@ -280,7 +329,10 @@ function categorizeWarnings(warnings) {
   const counts = new Map();
   for (const warning of warnings || []) {
     const code = classifyWarning(warning);
-    if (!counts.has(code)) { counts.set(code, 0); order.push(code); }
+    if (!counts.has(code)) {
+      counts.set(code, 0);
+      order.push(code);
+    }
     counts.set(code, counts.get(code) + 1);
   }
   return order.map((code) => ({ code, kind: kindForWarningCode(code), count: counts.get(code) }));

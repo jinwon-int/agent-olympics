@@ -34,13 +34,13 @@ const SECRET_KEY_PATTERNS = [
 
 // Secret value patterns — actual credential leaks (unanchored).
 const SECRET_VALUE_PATTERNS = [
-  /sk-[a-zA-Z0-9]{20,}/,                                  // OpenAI-style keys
-  /ghp_[a-zA-Z0-9]{36}/,                                  // GitHub PAT (legacy)
-  /gho_[a-zA-Z0-9]{36}/,                                  // GitHub PAT (org)
-  /github_pat_[a-zA-Z0-9_]{4,}/,                          // GitHub fine-grained PAT
-  /xox[baprs]-/,                                          // Slack tokens
+  /sk-[a-zA-Z0-9]{20,}/, // OpenAI-style keys
+  /ghp_[a-zA-Z0-9]{36}/, // GitHub PAT (legacy)
+  /gho_[a-zA-Z0-9]{36}/, // GitHub PAT (org)
+  /github_pat_[a-zA-Z0-9_]{4,}/, // GitHub fine-grained PAT
+  /xox[baprs]-/, // Slack tokens
   /-----BEGIN (?:RSA |EC |OPENSSH |ED25519 )?PRIVATE KEY-----/i, // PEM private keys
-  /eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+/,                 // JWT tokens
+  /eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+/, // JWT tokens
 ];
 
 /**

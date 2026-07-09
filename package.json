@@ -33,6 +33,9 @@
     "appeal": "node scripts/appeal.js",
     "longitudinal": "node scripts/longitudinal.js",
     "round": "node scripts/round.js",
+    "lint": "eslint scripts/ adapters/ test/ eslint.config.js",
+    "format": "prettier --write \"scripts/**/*.js\" \"adapters/**/*.js\" \"test/**/*.js\" \"*.js\"",
+    "format:check": "prettier --check \"scripts/**/*.js\" \"adapters/**/*.js\" \"test/**/*.js\" \"*.js\"",
     "test:unit": "node --test test/*.test.js",
     "test": "node --test test/*.test.js && node scripts/validate.js all && node scripts/validate-a2a-effectiveness.js"
   },
@@ -40,5 +43,11 @@
     "ajv": "^8.17.0",
     "ajv-formats": "^3.0.1",
     "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "globals": "^14.0.0",
+    "prettier": "^3.9.4"
   }
 }

@@ -142,13 +142,17 @@ function writeCiManifest(options) {
 
   const selectedTask = tasks.find((entry) => entry.task_id === wantTaskId);
   if (!selectedTask) {
-    throw new Error(`Task not found in ${options.manifest}: ${wantTaskId || '(manifest has no tasks)'}`);
+    throw new Error(
+      `Task not found in ${options.manifest}: ${wantTaskId || '(manifest has no tasks)'}`
+    );
   }
   const task = { ...selectedTask };
 
   const participant = participants.find((entry) => entry.agent_id === wantAgentId);
   if (!participant) {
-    throw new Error(`Participant not found in ${options.manifest}: ${wantAgentId || '(manifest has no participants)'}`);
+    throw new Error(
+      `Participant not found in ${options.manifest}: ${wantAgentId || '(manifest has no participants)'}`
+    );
   }
 
   const workDir = repoPath(options.workDir);
@@ -160,12 +164,13 @@ function writeCiManifest(options) {
   // existed; the v1 Season-001 envelopes were retired in #257, so the stub now
   // exercises the strict v2 result-packet schema directly.)
 
-  const runDirectory = path.posix.join(
-    options.workDir.replace(/\\/g, '/').replace(/\/$/, ''),
-    'runs',
-    manifest.season || 'season-001',
-    'round-001'
-  ) + '/';
+  const runDirectory =
+    path.posix.join(
+      options.workDir.replace(/\\/g, '/').replace(/\/$/, ''),
+      'runs',
+      manifest.season || 'season-001',
+      'round-001'
+    ) + '/';
 
   const ciManifest = {
     ...manifest,
@@ -210,7 +215,8 @@ function runDirectories(runDirectory) {
   if (!fs.existsSync(full)) {
     throw new Error(`Run directory was not created: ${runDirectory}`);
   }
-  return fs.readdirSync(full)
+  return fs
+    .readdirSync(full)
     .filter((entry) => entry.startsWith('run-'))
     .map((entry) => path.posix.join(runDirectory.replace(/\\/g, '/'), entry));
 }
@@ -223,7 +229,9 @@ function assertCompletedRuns(runDirectory) {
 
   const nonCompleted = [];
   for (const runDir of runs) {
-    const manifest = yaml.load(fs.readFileSync(repoPath(path.posix.join(runDir, 'manifest.yaml')), 'utf8'));
+    const manifest = yaml.load(
+      fs.readFileSync(repoPath(path.posix.join(runDir, 'manifest.yaml')), 'utf8')
+    );
     if (manifest.lifecycle !== 'completed') {
       nonCompleted.push(`${manifest.run_id || runDir}:${manifest.lifecycle || 'unknown'}`);
     }
@@ -235,7 +243,9 @@ function assertCompletedRuns(runDirectory) {
 }
 
 function assertScoreboard(runDirectory) {
-  const scoreboardPath = repoPath(path.posix.join(runDirectory.replace(/\\/g, '/'), 'scoreboard.json'));
+  const scoreboardPath = repoPath(
+    path.posix.join(runDirectory.replace(/\\/g, '/'), 'scoreboard.json')
+  );
   if (!fs.existsSync(scoreboardPath)) {
     throw new Error(`Scoreboard was not created: ${path.relative(ROOT, scoreboardPath)}`);
   }
@@ -268,11 +278,21 @@ function main() {
     runStage('validate', ['scripts/validate.js', 'all']);
     runStage('round validate', ['scripts/round.js', 'validate', prepared.manifestPath, '--strict']);
     runStage('init', ['scripts/round.js', 'init', prepared.manifestPath, '--strict']);
-    runStage('execute/stub', ['scripts/round.js', 'execute', prepared.manifestPath, '--seed', options.seed]);
+    runStage('execute/stub', [
+      'scripts/round.js',
+      'execute',
+      prepared.manifestPath,
+      '--seed',
+      options.seed,
+    ]);
     assertCompletedRuns(prepared.runDirectory);
     runStage('score', ['scripts/score.js', 'run', prepared.runDirectory]);
     assertScoreboard(prepared.runDirectory);
-    runStage('competition-validity', ['scripts/competition-validity.js', 'all', prepared.runDirectory]);
+    runStage('competition-validity', [
+      'scripts/competition-validity.js',
+      'all',
+      prepared.runDirectory,
+    ]);
 
     console.log('\nci-round passed: source-only round lifecycle is valid end to end.');
   } catch (err) {

@@ -5,7 +5,12 @@ const Ajv = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
 
 const ROOT = path.resolve(__dirname, '..');
-const SCHEMA_PATH = path.join(ROOT, 'fixtures', 'a2a-effectiveness', 'a2a-effectiveness-record.schema.json');
+const SCHEMA_PATH = path.join(
+  ROOT,
+  'fixtures',
+  'a2a-effectiveness',
+  'a2a-effectiveness-record.schema.json'
+);
 const RECORDS_DIR = path.join(ROOT, 'fixtures', 'a2a-effectiveness', 'records');
 
 function loadJson(filePath) {
@@ -14,17 +19,20 @@ function loadJson(filePath) {
 
 function findJsonlFiles(dir) {
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
+  return fs
+    .readdirSync(dir)
     .filter((name) => name.endsWith('.jsonl'))
     .sort()
     .map((name) => path.join(dir, name));
 }
 
 function formatErrors(errors) {
-  return (errors || []).map((error) => {
-    const field = error.instancePath || '(root)';
-    return `${field} ${error.message || 'invalid'}`;
-  }).join('; ');
+  return (errors || [])
+    .map((error) => {
+      const field = error.instancePath || '(root)';
+      return `${field} ${error.message || 'invalid'}`;
+    })
+    .join('; ');
 }
 
 function main() {
@@ -71,7 +79,9 @@ function main() {
       sampleIds.add(record.sampleId);
       if (record.metrics.workerCount !== record.participants.workers.length) {
         errors += 1;
-        console.error(`ERR   ${rel}:${lineNumber} workerCount does not match participants.workers length`);
+        console.error(
+          `ERR   ${rel}:${lineNumber} workerCount does not match participants.workers length`
+        );
         continue;
       }
       console.log(`OK    ${rel}:${lineNumber} ${record.sampleId}`);

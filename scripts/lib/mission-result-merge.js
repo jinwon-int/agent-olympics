@@ -59,7 +59,10 @@ function redactSecrets(rawText) {
   const appliedRuleIds = [];
   SECRET_VALUE_PATTERNS.forEach((pattern, i) => {
     const ruleId = VALUE_RULE_IDS[i] || `rv-${i}`;
-    const global = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
+    const global = new RegExp(
+      pattern.source,
+      pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g'
+    );
     let count = 0;
     text = text.replace(global, () => {
       count += 1;
@@ -68,19 +71,26 @@ function redactSecrets(rawText) {
     if (count > 0) appliedRuleIds.push(ruleId);
   });
   let keyCount = 0;
-  text = text.replace(/^(\s*"?([A-Za-z0-9_-]+)"?\s*[:=]\s*)(\S.*)$/gm, (line, prefix, key, value) => {
-    if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(value.trim())) {
-      keyCount += 1;
-      return `${prefix}[REDACTED:${KEY_RULE_ID}]`;
+  text = text.replace(
+    /^(\s*"?([A-Za-z0-9_-]+)"?\s*[:=]\s*)(\S.*)$/gm,
+    (line, prefix, key, value) => {
+      if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(value.trim())) {
+        keyCount += 1;
+        return `${prefix}[REDACTED:${KEY_RULE_ID}]`;
+      }
+      return line;
     }
-    return line;
-  });
+  );
   if (keyCount > 0) appliedRuleIds.push(KEY_RULE_ID);
   return { text, appliedRuleIds };
 }
 
 function readText(file, fallback = '') {
-  try { return fs.readFileSync(file, 'utf8'); } catch { return fallback; }
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch {
+    return fallback;
+  }
 }
 
 function writeYaml(file, obj) {
@@ -99,24 +109,36 @@ function sha256(text) {
 
 function truncate(text, max = 6000) {
   if (!text) return '';
-  return text.length > max ? text.slice(0, max) + `\n...[truncated ${text.length - max} chars]` : text;
+  return text.length > max
+    ? text.slice(0, max) + `\n...[truncated ${text.length - max} chars]`
+    : text;
 }
 
 function oneLine(text, max = 300) {
-  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, max);
+  return String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
 }
 
 function extractMissionJson(raw) {
-  const marked = raw.match(/AGENT_OLYMPICS_RESULT_JSON_BEGIN\s*([\s\S]*?)\s*AGENT_OLYMPICS_RESULT_JSON_END/);
+  const marked = raw.match(
+    /AGENT_OLYMPICS_RESULT_JSON_BEGIN\s*([\s\S]*?)\s*AGENT_OLYMPICS_RESULT_JSON_END/
+  );
   const candidates = [];
   if (marked) candidates.push(marked[1]);
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced) candidates.push(fenced[1]);
   const firstBrace = raw.indexOf('{');
   const lastBrace = raw.lastIndexOf('}');
-  if (firstBrace >= 0 && lastBrace > firstBrace) candidates.push(raw.slice(firstBrace, lastBrace + 1));
+  if (firstBrace >= 0 && lastBrace > firstBrace)
+    candidates.push(raw.slice(firstBrace, lastBrace + 1));
   for (const c of candidates) {
-    try { return JSON.parse(c.trim()); } catch { /* try next */ }
+    try {
+      return JSON.parse(c.trim());
+    } catch {
+      /* try next */
+    }
   }
   return null;
 }
@@ -162,18 +184,29 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
   const ep = profile.env_prefix;
   const getEnv = (suffix) => env[`${ep}_${suffix}`];
 
-  const fallbackSummary = oneLine(raw, 500) || `${labels.runtime_display} produced no parseable mission output for ${taskId}.`;
+  const fallbackSummary =
+    oneLine(raw, 500) ||
+    `${labels.runtime_display} produced no parseable mission output for ${taskId}.`;
   const mission = parsed || {
     summary: `${labels.runtime_display} mission output captured but JSON markers were not parseable. ${fallbackSummary}`,
     diagnosis: fallbackSummary,
-    evidence: [{ source: outputPath, summary: `Raw ${labels.runtime_display} output captured in ${labels.transcript_file}` }],
-    risk_assessment: 'Mission output required fallback parsing; human review recommended before competitive scoring.',
+    evidence: [
+      {
+        source: outputPath,
+        summary: `Raw ${labels.runtime_display} output captured in ${labels.transcript_file}`,
+      },
+    ],
+    risk_assessment:
+      'Mission output required fallback parsing; human review recommended before competitive scoring.',
     next_action: `Inspect ${labels.transcript_file} and rerun wrapper if structured JSON is required.`,
     durable_memory_decision: 'No durable memory should be written from fallback parsing alone.',
     findings: [],
   };
 
-  const evidenceItems = normalizeEvidenceItems(mission.evidence, `${labels.runtime_display} mission analysis`);
+  const evidenceItems = normalizeEvidenceItems(
+    mission.evidence,
+    `${labels.runtime_display} mission analysis`
+  );
   const now = new Date().toISOString();
 
   const rp = yaml.load(readText(resultPacketPath));
@@ -190,9 +223,16 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
   }
   rp.outputs.diagnosis = String(mission.diagnosis || mission.summary || fallbackSummary);
   rp.outputs.evidence = evidenceItems.map((e) => `${e.source || e.id}: ${e.summary}`).join('\n');
-  rp.outputs.risk_assessment = String(mission.risk_assessment || `No additional risk assessment returned by ${labels.runtime_display}.`);
-  rp.outputs.next_action = String(mission.next_action || 'Review the captured mission evidence and apply the proposed fix.');
-  rp.outputs.durable_memory_decision = String(mission.durable_memory_decision || 'No durable memory update recommended.');
+  rp.outputs.risk_assessment = String(
+    mission.risk_assessment ||
+      `No additional risk assessment returned by ${labels.runtime_display}.`
+  );
+  rp.outputs.next_action = String(
+    mission.next_action || 'Review the captured mission evidence and apply the proposed fix.'
+  );
+  rp.outputs.durable_memory_decision = String(
+    mission.durable_memory_decision || 'No durable memory update recommended.'
+  );
   // Envelope-declared required outputs: the mission prompt asks the model to
   // fill outputs.<key> for every envelope required_output, and we copy
   // EXACTLY those declared keys (never arbitrary model keys) into the packet,
@@ -200,10 +240,13 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
   // confirmed_facts, ...) carry real mission content instead of the adapter
   // skeleton's placeholder text. Legacy missions without an outputs object
   // are unaffected.
-  const requiredOutputKeys = Array.isArray(envelope.required_outputs) ? envelope.required_outputs : [];
-  const missionOutputs = mission.outputs && typeof mission.outputs === 'object' && !Array.isArray(mission.outputs)
-    ? mission.outputs
-    : {};
+  const requiredOutputKeys = Array.isArray(envelope.required_outputs)
+    ? envelope.required_outputs
+    : [];
+  const missionOutputs =
+    mission.outputs && typeof mission.outputs === 'object' && !Array.isArray(mission.outputs)
+      ? mission.outputs
+      : {};
   for (const key of requiredOutputKeys) {
     const value = missionOutputs[key];
     if (value === undefined || value === null) continue;
@@ -215,12 +258,13 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
     rp.outputs[key] = redactedValue;
   }
 
-  const findings = Array.isArray(mission.findings) && mission.findings.length
-    ? mission.findings
-    : [
-        { claim: rp.outputs.diagnosis, confidence: 'high' },
-        { claim: rp.outputs.next_action, confidence: 'medium' },
-      ];
+  const findings =
+    Array.isArray(mission.findings) && mission.findings.length
+      ? mission.findings
+      : [
+          { claim: rp.outputs.diagnosis, confidence: 'high' },
+          { claim: rp.outputs.next_action, confidence: 'medium' },
+        ];
   // Findings may cite evidence ids the model invented (e.g. ev-config-diff).
   // Only ids that actually exist in the packet's evidence list may become
   // machine links; everything else — file paths AND hallucinated ev-* ids —
@@ -253,9 +297,12 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
   const toolsetSuffix = toolsetsUsed ? `; toolsets=${toolsetsUsed} (${toolsetsSource})` : '';
 
   for (const item of rp.evidence || []) {
-    if (item.id === ev.report) item.summary = `Actual ${labels.runtime_display} mission report: ${oneLine(mission.summary || mission.diagnosis, 220)}`;
-    if (item.id === ev.transcript) item.summary = `Nested ${labels.runtime_display} execution captured with exit code ${agentExit}; parsed_json=${Boolean(parsed)}`;
-    if (item.id === ev.probe) item.summary = `${labels.runtime_display} invoked locally by wrapper; exit code ${agentExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output); model_source=${getEnv('MODEL_SOURCE') || 'unknown'}${toolsetSuffix}`;
+    if (item.id === ev.report)
+      item.summary = `Actual ${labels.runtime_display} mission report: ${oneLine(mission.summary || mission.diagnosis, 220)}`;
+    if (item.id === ev.transcript)
+      item.summary = `Nested ${labels.runtime_display} execution captured with exit code ${agentExit}; parsed_json=${Boolean(parsed)}`;
+    if (item.id === ev.probe)
+      item.summary = `${labels.runtime_display} invoked locally by wrapper; exit code ${agentExit}; output_sha256=${sha256(redactedRaw).slice(0, 16)} (redacted output); model_source=${getEnv('MODEL_SOURCE') || 'unknown'}${toolsetSuffix}`;
   }
 
   // Replace adapter-skeleton comparable metadata with real values. The model
@@ -289,9 +336,12 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
     rp.delegation_profile.notes = labels.delegation_notes;
   }
   if (rp.raw_measurements) {
-    if ('worker_count' in rp.raw_measurements) rp.raw_measurements.worker_count = profile.worker_count;
-    if ('workers_completed' in rp.raw_measurements) rp.raw_measurements.workers_completed = agentExit === 0 || parsed ? profile.worker_count : 0;
-    if ('workers_failed' in rp.raw_measurements) rp.raw_measurements.workers_failed = agentExit === 0 || parsed ? 0 : profile.worker_count;
+    if ('worker_count' in rp.raw_measurements)
+      rp.raw_measurements.worker_count = profile.worker_count;
+    if ('workers_completed' in rp.raw_measurements)
+      rp.raw_measurements.workers_completed = agentExit === 0 || parsed ? profile.worker_count : 0;
+    if ('workers_failed' in rp.raw_measurements)
+      rp.raw_measurements.workers_failed = agentExit === 0 || parsed ? 0 : profile.worker_count;
   }
   if (rp.outputs.workflow) {
     rp.outputs.workflow.worker_count = profile.worker_count;
@@ -359,7 +409,8 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
     schema_version: 1,
     generated_at: now,
     task_id: taskId,
-    durable_memory_decision: mission.durable_memory_decision || 'No durable memory update recommended.',
+    durable_memory_decision:
+      mission.durable_memory_decision || 'No durable memory update recommended.',
     note: `Private ${labels.runtime_display} memory content is not copied into Agent Olympics artifacts.`,
     redacted: true,
   });
@@ -376,8 +427,10 @@ function mergeMissionResult({ envelopePath, runDir, outputPath, agentExitRaw, pr
     const eb = yaml.load(readText(evidenceBundlePath));
     for (const item of eb.items || []) {
       if (item.id === ev.report) item.summary = oneLine(mission.summary || mission.diagnosis, 220);
-      if (item.id === ev.transcript) item.summary = `Nested ${labels.runtime_display} output captured; parsed_json=${Boolean(parsed)}; exit_code=${agentExit}`;
-      if (item.id === ev.memory) item.summary = 'Durable memory decision captured without private memory content.';
+      if (item.id === ev.transcript)
+        item.summary = `Nested ${labels.runtime_display} output captured; parsed_json=${Boolean(parsed)}; exit_code=${agentExit}`;
+      if (item.id === ev.memory)
+        item.summary = 'Durable memory decision captured without private memory content.';
     }
     writeYaml(evidenceBundlePath, eb);
   } catch (err) {
@@ -428,7 +481,8 @@ const PROFILES = {
       transcript_file: 'evidence/worker-traces.yaml',
       report_source: 'nested hermes chat -q invocation',
       command_summary: 'hermes chat -Q -q <generated mission prompt> --toolsets <toolsets>',
-      delegation_notes: 'Mission executed by a single nested local Hermes CLI session invoked by the wrapper.',
+      delegation_notes:
+        'Mission executed by a single nested local Hermes CLI session invoked by the wrapper.',
       synthesize_target: 'nested_hermes_cli_result',
       workflow_steps: [
         'Generate schema-valid Hermes adapter artifacts as a baseline.',
@@ -457,7 +511,8 @@ const PROFILES = {
       transcript_file: 'evidence/cli-transcript.yaml',
       report_source: 'nested coding-agent CLI invocation',
       command_summary: '<cli-agent-bin> <run args> <generated mission prompt>',
-      delegation_notes: 'Mission executed by a single solo coding-agent CLI session invoked by the wrapper (no subagents, no A2A workers).',
+      delegation_notes:
+        'Mission executed by a single solo coding-agent CLI session invoked by the wrapper (no subagents, no A2A workers).',
       synthesize_target: 'nested_cli_agent_result',
       workflow_steps: [
         'Generate schema-valid CLI adapter artifacts as a baseline.',

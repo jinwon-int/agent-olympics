@@ -35,9 +35,8 @@ function runIdTemplateVariables(template) {
  * @returns {string}
  */
 function renderRunIdTemplateValues(template, values) {
-  return String(template).replace(
-    /\{([^{}]+)\}/g,
-    (match, key) => (values[key] !== undefined ? values[key] : match),
+  return String(template).replace(/\{([^{}]+)\}/g, (match, key) =>
+    values[key] !== undefined ? values[key] : match
   );
 }
 

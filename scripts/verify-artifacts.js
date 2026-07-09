@@ -32,7 +32,7 @@ const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const fixChecksums = args.includes('--fix-checksums');
 const skipContent = args.includes('--skip-content');
-const runDirs = args.filter(a => !a.startsWith('--'));
+const runDirs = args.filter((a) => !a.startsWith('--'));
 
 let errors = 0;
 let warnings = 0;
@@ -68,7 +68,7 @@ function computeHash(filePath, algorithm = 'sha256') {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash(algorithm);
     const stream = fs.createReadStream(filePath);
-    stream.on('data', chunk => hash.update(chunk));
+    stream.on('data', (chunk) => hash.update(chunk));
     stream.on('end', () => resolve(hash.digest('hex')));
     stream.on('error', reject);
   });
@@ -135,7 +135,6 @@ async function verifyRunDir(runDir) {
     }
 
     const artifactPath = path.resolve(runDir, artifact.path);
-    const relArtifactPath = path.relative(ROOT, artifactPath);
 
     manifestPaths.add(artifact.path);
 
@@ -152,7 +151,9 @@ async function verifyRunDir(runDir) {
         if (packetRaw.includes('run_id:') && manifest.run_id) {
           const match = packetRaw.match(/^run_id:\s*['"]?([^\s'"]+)['"]?/m);
           if (match && match[1] !== manifest.run_id) {
-            warn(`result-packet.yaml run_id "${match[1]}" does not match manifest run_id "${manifest.run_id}"`);
+            warn(
+              `result-packet.yaml run_id "${match[1]}" does not match manifest run_id "${manifest.run_id}"`
+            );
           }
         }
       } catch (e) {
@@ -165,7 +166,6 @@ async function verifyRunDir(runDir) {
       try {
         const bundleRaw = fs.readFileSync(artifactPath, 'utf8');
         if (bundleRaw.includes('bundle_id:') && manifest.manifest_id) {
-          const match = bundleRaw.match(/^bundle_id:\s*['"]?([^\s'"]+)['"]?/m);
           // Just note the association — bundle_id and manifest_id have different conventions
         }
       } catch (e) {
@@ -214,18 +214,23 @@ async function verifyRunDir(runDir) {
 
   // 4b. Write updated checksums back to the manifest on disk
   if (fixChecksums && checksumsUpdated) {
-    fs.writeFileSync(manifestPath, yaml.dump(manifest, { indent: 2, lineWidth: 120, noRefs: true }));
+    fs.writeFileSync(
+      manifestPath,
+      yaml.dump(manifest, { indent: 2, lineWidth: 120, noRefs: true })
+    );
     ok(`manifest.yaml written back with updated checksums`);
   }
 
   // 5. Check for files on disk not in manifest
   const diskFiles = listDir(runDir)
-    .map(f => path.relative(runDir, f))
-    .filter(f => f !== 'manifest.yaml'); // manifest.yaml is expected
+    .map((f) => path.relative(runDir, f))
+    .filter((f) => f !== 'manifest.yaml'); // manifest.yaml is expected
 
   for (const diskFile of diskFiles) {
     // Check if any manifest entry matches this path
-    const pathPrefixMatch = [...manifestPaths].filter(mp => diskFile.startsWith(mp) || mp.startsWith(diskFile));
+    const pathPrefixMatch = [...manifestPaths].filter(
+      (mp) => diskFile.startsWith(mp) || mp.startsWith(diskFile)
+    );
     if (pathPrefixMatch.length === 0) {
       warn(`File "${diskFile}" exists on disk but is not listed in manifest artifacts`);
     }
@@ -255,17 +260,25 @@ async function verifyRunDir(runDir) {
     const bundle = loadYaml(bundlePath);
     if (bundle && bundle.items && Array.isArray(bundle.items)) {
       for (const item of bundle.items) {
-        if (item.content_ref && !/^https?:\/\//.test(item.content_ref) && !/^data:/.test(item.content_ref)) {
+        if (
+          item.content_ref &&
+          !/^https?:\/\//.test(item.content_ref) &&
+          !/^data:/.test(item.content_ref)
+        ) {
           const contentPath = path.resolve(runDir, item.content_ref);
           if (!fs.existsSync(contentPath)) {
-            warn(`Evidence item "${item.id}" content_ref "${item.content_ref}" does not exist at ${contentPath}`);
+            warn(
+              `Evidence item "${item.id}" content_ref "${item.content_ref}" does not exist at ${contentPath}`
+            );
           }
         }
       }
     }
   }
 
-  console.log(`  --- ${errors - errorsBefore} error(s), ${warnings - warningsBefore} warning(s) ---`);
+  console.log(
+    `  --- ${errors - errorsBefore} error(s), ${warnings - warningsBefore} warning(s) ---`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +339,7 @@ Exit code: 0 = all checks pass, 1 = any check failed.
   process.exit(errors > 0 ? 1 : 0);
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.error(`Fatal error: ${e.message}`);
   process.exit(1);
 });

@@ -69,30 +69,44 @@ const SEVERITY_ERROR = 'ERROR';
 const SEVERITY_WARN = 'WARN';
 
 const VALID_RUN_STATUSES = new Set([
-  'pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified',
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'scored',
+  'archived',
+  'disqualified',
 ]);
 
 const VALID_PACKET_STATUSES = new Set([
-  'completed', 'partial', 'blocked', 'failed', 'disqualified',
+  'completed',
+  'partial',
+  'blocked',
+  'failed',
+  'disqualified',
 ]);
 
-const VALID_JUDGE_TYPES = new Set([
-  'automated', 'human', 'llm-assisted', 'hybrid', 'pending',
-]);
+const VALID_JUDGE_TYPES = new Set(['automated', 'human', 'llm-assisted', 'hybrid', 'pending']);
 
-const VALID_VERDICTS = new Set([
-  'pass', 'conditional_pass', 'fail', 'disqualification',
-]);
+const VALID_VERDICTS = new Set(['pass', 'conditional_pass', 'fail', 'disqualification']);
 
 // Secret key-name and value patterns are shared across validators —
 // see scripts/lib/secret-patterns.js (SECRET_KEY_PATTERNS / SECRET_VALUE_PATTERNS).
 
 // Actions that require documented approval boundaries
 const DESTRUCTIVE_ACTION_PATTERNS = [
-  /delete/i, /destroy/i, /reset/i,
-  /restart/i, /reboot/i, /shutdown/i,
-  /reinstall/i, /rollback/i, /migrate/i,
-  /rotate/i, /revoke/i, /purge/i,
+  /delete/i,
+  /destroy/i,
+  /reset/i,
+  /restart/i,
+  /reboot/i,
+  /shutdown/i,
+  /reinstall/i,
+  /rollback/i,
+  /migrate/i,
+  /rotate/i,
+  /revoke/i,
+  /purge/i,
 ];
 
 // ---------------------------------------------------------------------------
@@ -177,8 +191,8 @@ function printSummary() {
   }
 
   for (const [scope, scopeChecks] of Object.entries(groups)) {
-    const failed = scopeChecks.filter(c => !c.pass);
-    const passed = scopeChecks.filter(c => c.pass);
+    const failed = scopeChecks.filter((c) => !c.pass);
+    const passed = scopeChecks.filter((c) => c.pass);
 
     if (passed.length > 0) {
       console.log(`\n--- ${scope} (passed: ${passed.length}) ---`);
@@ -198,7 +212,7 @@ function printSummary() {
 
   console.log(`\n--- Summary ---`);
   console.log(`Checks:    ${checks.length}`);
-  console.log(`Pass:      ${checks.filter(c => c.pass).length}`);
+  console.log(`Pass:      ${checks.filter((c) => c.pass).length}`);
   console.log(`Errors:    ${errors}`);
   console.log(`Warnings:  ${warnings}`);
 }
@@ -238,7 +252,10 @@ function checkRunManifest(manifestPath) {
 
   // run_id format
   if (doc.run_id && !/^run-[a-z]+-\d{3}-[a-z0-9]+-\d{8}T\d{6}[A-Z]{3,4}$/.test(doc.run_id)) {
-    warn(`manifest:${rel}`, `run_id "${doc.run_id}" does not match standard format 'run-{task_id}-{agent_id}-{timestamp}'`);
+    warn(
+      `manifest:${rel}`,
+      `run_id "${doc.run_id}" does not match standard format 'run-{task_id}-{agent_id}-{timestamp}'`
+    );
   }
 
   // run_id consistency: basename of directory should match
@@ -249,7 +266,10 @@ function checkRunManifest(manifestPath) {
 
   // lifecycle status
   if (doc.lifecycle && !VALID_RUN_STATUSES.has(doc.lifecycle)) {
-    error(`manifest:${rel}`, `Invalid lifecycle status "${doc.lifecycle}"; expected one of: ${[...VALID_RUN_STATUSES].join(', ')}`);
+    error(
+      `manifest:${rel}`,
+      `Invalid lifecycle status "${doc.lifecycle}"; expected one of: ${[...VALID_RUN_STATUSES].join(', ')}`
+    );
   }
 
   // created_at should be a parseable date
@@ -279,7 +299,10 @@ function checkEngineOutputs(runDir, manifest) {
       if (packet) {
         // Packet must have a status
         if (!packet.status || !VALID_PACKET_STATUSES.has(packet.status)) {
-          error(`engine-outputs:${rel}/result-packet.yaml`, `Invalid status "${packet ? packet.status : 'undefined'}"; expected one of: ${[...VALID_PACKET_STATUSES].join(', ')}`);
+          error(
+            `engine-outputs:${rel}/result-packet.yaml`,
+            `Invalid status "${packet ? packet.status : 'undefined'}"; expected one of: ${[...VALID_PACKET_STATUSES].join(', ')}`
+          );
         }
 
         // Must have evidence
@@ -293,13 +316,24 @@ function checkEngineOutputs(runDir, manifest) {
         }
 
         // Must have outputs
-        if (!packet.outputs || typeof packet.outputs !== 'object' || Object.keys(packet.outputs).length === 0) {
+        if (
+          !packet.outputs ||
+          typeof packet.outputs !== 'object' ||
+          Object.keys(packet.outputs).length === 0
+        ) {
           error(`engine-outputs:${rel}/result-packet.yaml`, 'Missing or empty outputs object');
         }
 
         // If status is completed, agent_id must match manifest
-        if (packet.status === 'completed' && manifest.agent_id && packet.agent_id !== manifest.agent_id) {
-          error(`engine-outputs:${rel}/result-packet.yaml`, `agent_id "${packet.agent_id}" does not match manifest agent_id "${manifest.agent_id}"`);
+        if (
+          packet.status === 'completed' &&
+          manifest.agent_id &&
+          packet.agent_id !== manifest.agent_id
+        ) {
+          error(
+            `engine-outputs:${rel}/result-packet.yaml`,
+            `agent_id "${packet.agent_id}" does not match manifest agent_id "${manifest.agent_id}"`
+          );
         }
       }
     } catch (e) {
@@ -332,7 +366,7 @@ function checkEngineOutputs(runDir, manifest) {
   if (!fs.existsSync(evidenceDir)) {
     warn(`engine-outputs:${rel}`, 'Missing evidence/ directory (no evidence artifacts)');
   } else {
-    const evidenceFiles = fs.readdirSync(evidenceDir).filter(f => f !== '.gitkeep');
+    const evidenceFiles = fs.readdirSync(evidenceDir).filter((f) => f !== '.gitkeep');
     if (evidenceFiles.length === 0) {
       warn(`engine-outputs:${rel}/evidence`, 'Evidence directory is empty');
     }
@@ -353,10 +387,16 @@ function checkEngineOutputs(runDir, manifest) {
           error(`engine-outputs:${rel}/judge-record.yaml`, 'Missing or empty score_dimensions');
         }
         if (judge.verdict && !VALID_VERDICTS.has(judge.verdict)) {
-          error(`engine-outputs:${rel}/judge-record.yaml`, `Invalid verdict "${judge.verdict}"; expected one of: ${[...VALID_VERDICTS].join(', ')}`);
+          error(
+            `engine-outputs:${rel}/judge-record.yaml`,
+            `Invalid verdict "${judge.verdict}"; expected one of: ${[...VALID_VERDICTS].join(', ')}`
+          );
         }
         if (judge.judge_type && !VALID_JUDGE_TYPES.has(judge.judge_type)) {
-          warn(`engine-outputs:${rel}/judge-record.yaml`, `Unknown judge_type "${judge.judge_type}"; expected one of: ${[...VALID_JUDGE_TYPES].join(', ')}`);
+          warn(
+            `engine-outputs:${rel}/judge-record.yaml`,
+            `Unknown judge_type "${judge.judge_type}"; expected one of: ${[...VALID_JUDGE_TYPES].join(', ')}`
+          );
         }
       }
     } catch (e) {
@@ -384,24 +424,36 @@ function checkForbiddenMetadata(doc, context, filePath) {
       // `credential_values: omitted` describe credential *handling*, not
       // credentials. Only error when the value itself looks like a credential
       // (secret value pattern or token-like string); otherwise warn.
-      if (SECRET_KEY_PATTERNS.some(r => r.test(key))) {
+      if (SECRET_KEY_PATTERNS.some((r) => r.test(key))) {
         if (looksLikeSecretValue(val)) {
-          error(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" with credential-like value found in participant-facing artifact`);
+          error(
+            `forbidden:${filePath}`,
+            `Secret-bearing field name "${fullPath}" with credential-like value found in participant-facing artifact`
+          );
         } else {
-          warn(`forbidden:${filePath}`, `Secret-bearing field name "${fullPath}" found in participant-facing artifact (value does not look credential-like)`);
+          warn(
+            `forbidden:${filePath}`,
+            `Secret-bearing field name "${fullPath}" found in participant-facing artifact (value does not look credential-like)`
+          );
         }
       }
 
       if (typeof val === 'string') {
         // Check for actual secret values leaked (covers redaction_reason /
         // redaction_rule fields too — a secret in any string value errors here)
-        if (SECRET_VALUE_PATTERNS.some(r => r.test(val))) {
-          error(`forbidden:${filePath}`, `Secret value pattern detected in "${fullPath}" — credential leak`);
+        if (SECRET_VALUE_PATTERNS.some((r) => r.test(val))) {
+          error(
+            `forbidden:${filePath}`,
+            `Secret value pattern detected in "${fullPath}" — credential leak`
+          );
         }
 
         // Long redaction_reasons are suspicious
         if ((key === 'redaction_reason' || key === 'redaction_rule') && val.length > 200) {
-          warn(`forbidden:${filePath}`, `Unusually long redaction_reason in "${fullPath}" (${val.length} chars) — may contain secret data`);
+          warn(
+            `forbidden:${filePath}`,
+            `Unusually long redaction_reason in "${fullPath}" (${val.length} chars) — may contain secret data`
+          );
         }
       }
 
@@ -432,24 +484,25 @@ function checkApprovalBoundaries(doc, filePath) {
     const summary = action.command_summary || action.summary || '';
     const id = action.id || '(unnamed)';
 
-    const isDestructive = DESTRUCTIVE_ACTION_PATTERNS.some(r =>
-      r.test(type) || r.test(summary)
-    );
+    const isDestructive = DESTRUCTIVE_ACTION_PATTERNS.some((r) => r.test(type) || r.test(summary));
 
     if (isDestructive) {
       // Destructive action must reference evidence of approval
       if (!action.evidence_id && !action.approval_ref) {
-        error(`approval:${rel}`, `Destructive action "${id}" (${type}: ${summary.slice(0, 60)}) has no evidence_id or approval_ref — approval boundary not documented`);
+        error(
+          `approval:${rel}`,
+          `Destructive action "${id}" (${type}: ${summary.slice(0, 60)}) has no evidence_id or approval_ref — approval boundary not documented`
+        );
       }
     }
   }
 
   // Check for live mutation claims (status=completed with destructive actions but no approval evidence)
   if (doc.status === 'completed' && actions.length > 0) {
-    const hasDestructive = actions.some(a => {
+    const hasDestructive = actions.some((a) => {
       if (!a || typeof a !== 'object') return false;
-      return DESTRUCTIVE_ACTION_PATTERNS.some(r =>
-        r.test(a.type || '') || r.test(a.command_summary || a.summary || '')
+      return DESTRUCTIVE_ACTION_PATTERNS.some(
+        (r) => r.test(a.type || '') || r.test(a.command_summary || a.summary || '')
       );
     });
 
@@ -457,14 +510,16 @@ function checkApprovalBoundaries(doc, filePath) {
       // Check that findings or risks mention approval
       const findings = doc.findings || [];
       const risks = doc.risks || [];
-      const hasApprovalMention = [...findings, ...(risks || [])].some(item => {
-        const text = typeof item === 'string' ? item :
-                     (item.claim || item || '');
+      const hasApprovalMention = [...findings, ...(risks || [])].some((item) => {
+        const text = typeof item === 'string' ? item : item.claim || item || '';
         return /approval|authorized|permission|allowed|explicit/i.test(text);
       });
 
       if (!hasApprovalMention) {
-        warn(`approval:${rel}`, 'Live mutation actions detected but neither findings nor risks mention approval boundaries');
+        warn(
+          `approval:${rel}`,
+          'Live mutation actions detected but neither findings nor risks mention approval boundaries'
+        );
       }
     }
   }
@@ -485,14 +540,20 @@ function checkHiddenJudgeMaterial(doc, filePath) {
   const isParticipantArtifact = /\b(results|runs)\b/.test(filePath);
 
   if (doc.hidden_judge_notes && !isTaskEnvelope && !isOracleFile) {
-    error(`judge-exposure:${rel}`, 'participant-facing artifact contains hidden_judge_notes — must not be shared with participants');
+    error(
+      `judge-exposure:${rel}`,
+      'participant-facing artifact contains hidden_judge_notes — must not be shared with participants'
+    );
   }
 
   // oracle_ref and judge_notes_ref are fine in envelopes (as external refs) but
   // if they appear in participant-facing artifacts, that's a leak
   if ((doc.oracle_ref || doc.judge_notes_ref) && !isTaskEnvelope && !isOracleFile) {
     if (isParticipantArtifact) {
-      warn(`judge-exposure:${rel}`, 'Participant submission references oracle_ref or judge_notes_ref — possible judge material exposure');
+      warn(
+        `judge-exposure:${rel}`,
+        'Participant submission references oracle_ref or judge_notes_ref — possible judge material exposure'
+      );
     }
   }
 }
@@ -521,7 +582,10 @@ function checkScoreConsistency(judgeDoc, filePath) {
     // Score must not exceed max
     if (typeof score === 'number' && typeof maxScore === 'number') {
       if (score > maxScore) {
-        error(`score-consistency:${rel}`, `Dimension "${dimName}" score (${score}) exceeds max (${maxScore})`);
+        error(
+          `score-consistency:${rel}`,
+          `Dimension "${dimName}" score (${score}) exceeds max (${maxScore})`
+        );
       }
       if (score < 0) {
         error(`score-consistency:${rel}`, `Dimension "${dimName}" score (${score}) is negative`);
@@ -535,17 +599,34 @@ function checkScoreConsistency(judgeDoc, filePath) {
   // total_score should match sum of dimension scores (when dimensions have scores)
   if (hasPartialScores && typeof judgeDoc.total_score === 'number') {
     if (Math.abs(judgeDoc.total_score - computedTotal) > 0.01) {
-      warn(`score-consistency:${rel}`, `total_score (${judgeDoc.total_score}) does not match sum of dimension scores (${computedTotal})`);
+      warn(
+        `score-consistency:${rel}`,
+        `total_score (${judgeDoc.total_score}) does not match sum of dimension scores (${computedTotal})`
+      );
     }
   }
 
   // Verdict consistency with score
   if (judgeDoc.verdict && dims && Object.keys(dims).length > 0) {
-    if (judgeDoc.verdict === 'pass' && typeof judgeDoc.total_score === 'number' && judgeDoc.total_score <= 0) {
-      warn(`score-consistency:${rel}`, `Verdict is "pass" but total_score is ${judgeDoc.total_score} (≤ 0)`);
+    if (
+      judgeDoc.verdict === 'pass' &&
+      typeof judgeDoc.total_score === 'number' &&
+      judgeDoc.total_score <= 0
+    ) {
+      warn(
+        `score-consistency:${rel}`,
+        `Verdict is "pass" but total_score is ${judgeDoc.total_score} (≤ 0)`
+      );
     }
-    if (judgeDoc.verdict === 'fail' && typeof judgeDoc.total_score === 'number' && judgeDoc.total_score > 0) {
-      warn(`score-consistency:${rel}`, `Verdict is "fail" but total_score is ${judgeDoc.total_score} (> 0)`);
+    if (
+      judgeDoc.verdict === 'fail' &&
+      typeof judgeDoc.total_score === 'number' &&
+      judgeDoc.total_score > 0
+    ) {
+      warn(
+        `score-consistency:${rel}`,
+        `Verdict is "fail" but total_score is ${judgeDoc.total_score} (> 0)`
+      );
     }
   }
 
@@ -554,7 +635,10 @@ function checkScoreConsistency(judgeDoc, filePath) {
     for (const penalty of judgeDoc.penalties_applied) {
       if (penalty && typeof penalty === 'object') {
         if (typeof penalty.amount === 'number' && penalty.amount > maxTotal) {
-          warn(`score-consistency:${rel}`, `Penalty "${penalty.reason || penalty.rule || ''}" amount (${penalty.amount}) exceeds max possible score (${maxTotal})`);
+          warn(
+            `score-consistency:${rel}`,
+            `Penalty "${penalty.reason || penalty.rule || ''}" amount (${penalty.amount}) exceeds max possible score (${maxTotal})`
+          );
         }
       }
     }
@@ -588,7 +672,10 @@ function checkEvidenceIntegrity(packetDoc, traceDoc, bundleDoc, filePath) {
       if (finding.evidence && Array.isArray(finding.evidence)) {
         for (const ref of finding.evidence) {
           if (!packetEvidenceIds.has(ref)) {
-            error(`evidence-integrity:${rel}`, `Finding "${(finding.claim || '').slice(0, 50)}..." references unknown evidence ID "${ref}"`);
+            error(
+              `evidence-integrity:${rel}`,
+              `Finding "${(finding.claim || '').slice(0, 50)}..." references unknown evidence ID "${ref}"`
+            );
           }
         }
       }
@@ -599,7 +686,10 @@ function checkEvidenceIntegrity(packetDoc, traceDoc, bundleDoc, filePath) {
   if (traceDoc && traceDoc.entries && Array.isArray(traceDoc.entries)) {
     for (const entry of traceDoc.entries) {
       if (entry.evidence_ref && !packetEvidenceIds.has(entry.evidence_ref)) {
-        warn(`evidence-integrity:${rel}/trace`, `Trace entry seq=${entry.seq} references unknown evidence ID "${entry.evidence_ref}"`);
+        warn(
+          `evidence-integrity:${rel}/trace`,
+          `Trace entry seq=${entry.seq} references unknown evidence ID "${entry.evidence_ref}"`
+        );
       }
     }
   }
@@ -607,20 +697,33 @@ function checkEvidenceIntegrity(packetDoc, traceDoc, bundleDoc, filePath) {
   // Check content_refs resolve to files (when they are relative paths)
   if (bundleDoc && bundleDoc.items && Array.isArray(bundleDoc.items)) {
     for (const item of bundleDoc.items) {
-      if (item.content_ref && !/^https?:\/\//.test(item.content_ref) && !/^data:/.test(item.content_ref)) {
+      if (
+        item.content_ref &&
+        !/^https?:\/\//.test(item.content_ref) &&
+        !/^data:/.test(item.content_ref)
+      ) {
         const resolvedPath = path.resolve(path.dirname(filePath), item.content_ref);
         if (!fs.existsSync(resolvedPath)) {
-          warn(`evidence-integrity:${rel}/evidence-bundle`, `Evidence item "${item.id}" content_ref "${item.content_ref}" does not exist at ${resolvedPath}`);
+          warn(
+            `evidence-integrity:${rel}/evidence-bundle`,
+            `Evidence item "${item.id}" content_ref "${item.content_ref}" does not exist at ${resolvedPath}`
+          );
         }
       }
 
       // Check checksum format
       if (item.checksum && item.checksum.value) {
         if (!isValidHexHash(item.checksum.value)) {
-          warn(`evidence-integrity:${rel}/evidence-bundle`, `Evidence item "${item.id}" checksum "${item.checksum.value}" is not a valid hex hash`);
+          warn(
+            `evidence-integrity:${rel}/evidence-bundle`,
+            `Evidence item "${item.id}" checksum "${item.checksum.value}" is not a valid hex hash`
+          );
         }
         if (!item.checksum.algorithm) {
-          warn(`evidence-integrity:${rel}/evidence-bundle`, `Evidence item "${item.id}" has checksum value but no algorithm`);
+          warn(
+            `evidence-integrity:${rel}/evidence-bundle`,
+            `Evidence item "${item.id}" has checksum value but no algorithm`
+          );
         }
       }
     }
@@ -633,12 +736,18 @@ function checkEvidenceIntegrity(packetDoc, traceDoc, bundleDoc, filePath) {
       if (rule.pattern_description) {
         for (const pattern of SECRET_VALUE_PATTERNS) {
           if (pattern.test(rule.pattern_description)) {
-            error(`evidence-integrity:${rel}`, `Redaction policy rule "${rule.rule_id}" pattern_description contains a secret value — must be value-free`);
+            error(
+              `evidence-integrity:${rel}`,
+              `Redaction policy rule "${rule.rule_id}" pattern_description contains a secret value — must be value-free`
+            );
           }
         }
       }
       if (rule.reason && rule.reason.length > 500) {
-        warn(`evidence-integrity:${rel}`, `Redaction policy rule "${rule.rule_id}" reason is unusually long (${rule.reason.length} chars)`);
+        warn(
+          `evidence-integrity:${rel}`,
+          `Redaction policy rule "${rule.rule_id}" reason is unusually long (${rule.reason.length} chars)`
+        );
       }
     }
   }
@@ -652,16 +761,25 @@ function checkProvisionalPublishability(packetDoc, filePath) {
   if (packetDoc.publishable === true) {
     const validity = String(packetDoc.validity || packetDoc.status || '').toLowerCase();
     if (['invalid', 'appealed', 'disqualified'].includes(validity)) {
-      error(`provisional-publishability:${rel}`, `publishable result cannot have validity/status "${validity}"`);
+      error(
+        `provisional-publishability:${rel}`,
+        `publishable result cannot have validity/status "${validity}"`
+      );
     }
 
-    const hasRedactionEvidence = Array.isArray(packetDoc.evidence) && packetDoc.evidence.some((ev) =>
-      (ev && ev.redacted && ev.redaction_reason) ||
-      (ev && ev.id && /redact|review|sanitize/i.test(String(ev.id)))
-    );
+    const hasRedactionEvidence =
+      Array.isArray(packetDoc.evidence) &&
+      packetDoc.evidence.some(
+        (ev) =>
+          (ev && ev.redacted && ev.redaction_reason) ||
+          (ev && ev.id && /redact|review|sanitize/i.test(String(ev.id)))
+      );
     const hasRedactionPolicy = !!packetDoc.redaction_policy;
     if (!hasRedactionEvidence && !hasRedactionPolicy) {
-      error(`provisional-publishability:${rel}`, 'publishable result requires redaction evidence or redaction_policy');
+      error(
+        `provisional-publishability:${rel}`,
+        'publishable result requires redaction evidence or redaction_policy'
+      );
     }
   }
 }
@@ -692,7 +810,14 @@ function checkAppealRecord(packetDoc, filePath) {
   if (!packetDoc || typeof packetDoc !== 'object' || !packetDoc.appeal) return;
   const rel = path.relative(ROOT, filePath);
   const appeal = packetDoc.appeal;
-  const allowedStatuses = new Set(['filed', 'under_review', 'upheld', 'denied', 'remanded', 'dismissed']);
+  const allowedStatuses = new Set([
+    'filed',
+    'under_review',
+    'upheld',
+    'denied',
+    'remanded',
+    'dismissed',
+  ]);
 
   if (!allowedStatuses.has(appeal.status)) {
     error(`appeal:${rel}`, `appeal status "${appeal.status}" is not allowed`);
@@ -702,7 +827,10 @@ function checkAppealRecord(packetDoc, filePath) {
       error(`appeal:${rel}`, `appeal missing required field "${field}"`);
     }
   }
-  if (['under_review', 'upheld', 'denied', 'remanded', 'dismissed'].includes(appeal.status) && !appeal.reviewed_by) {
+  if (
+    ['under_review', 'upheld', 'denied', 'remanded', 'dismissed'].includes(appeal.status) &&
+    !appeal.reviewed_by
+  ) {
     error(`appeal:${rel}`, `appeal status "${appeal.status}" requires reviewed_by`);
   }
 
@@ -756,9 +884,7 @@ function checkCrossDocumentConsistency(runDir, manifest) {
   if (taskIds.size >= 2) {
     const uniqueIds = new Set(taskIds.values());
     if (uniqueIds.size > 1) {
-      const inconsistencies = [...taskIds.entries()]
-        .map(([src, id]) => `${src}:${id}`)
-        .join(', ');
+      const inconsistencies = [...taskIds.entries()].map(([src, id]) => `${src}:${id}`).join(', ');
       error(`consistency:${rel}`, `task_id mismatch across documents: ${inconsistencies}`);
     }
   }
@@ -772,9 +898,7 @@ function checkCrossDocumentConsistency(runDir, manifest) {
   if (agentIds.size >= 2) {
     const uniqueIds = new Set(agentIds.values());
     if (uniqueIds.size > 1) {
-      const inconsistencies = [...agentIds.entries()]
-        .map(([src, id]) => `${src}:${id}`)
-        .join(', ');
+      const inconsistencies = [...agentIds.entries()].map(([src, id]) => `${src}:${id}`).join(', ');
       error(`consistency:${rel}`, `agent_id mismatch across documents: ${inconsistencies}`);
     }
   }
@@ -787,9 +911,7 @@ function checkCrossDocumentConsistency(runDir, manifest) {
   if (runIds.size >= 2) {
     const uniqueIds = new Set(runIds.values());
     if (uniqueIds.size > 1) {
-      const inconsistencies = [...runIds.entries()]
-        .map(([src, id]) => `${src}:${id}`)
-        .join(', ');
+      const inconsistencies = [...runIds.entries()].map(([src, id]) => `${src}:${id}`).join(', ');
       error(`consistency:${rel}`, `run_id mismatch across documents: ${inconsistencies}`);
     }
   }
@@ -799,9 +921,15 @@ function checkCrossDocumentConsistency(runDir, manifest) {
     const start = new Date(packet.started_at);
     const end = new Date(packet.ended_at);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      warn(`consistency:${rel}`, 'Result packet contains invalid date values in started_at/ended_at');
+      warn(
+        `consistency:${rel}`,
+        'Result packet contains invalid date values in started_at/ended_at'
+      );
     } else if (end < start) {
-      error(`consistency:${rel}`, `ended_at (${packet.ended_at}) is before started_at (${packet.started_at})`);
+      error(
+        `consistency:${rel}`,
+        `ended_at (${packet.ended_at}) is before started_at (${packet.started_at})`
+      );
     }
   }
 
@@ -816,7 +944,11 @@ function checkCrossDocumentConsistency(runDir, manifest) {
   }
 
   // Forbidden metadata checks on all documents
-  for (const [doc, docPath] of [[packet, packetPath], [trace, tracePath], [judge, judgePath]]) {
+  for (const [doc, docPath] of [
+    [packet, packetPath],
+    [trace, tracePath],
+    [judge, judgePath],
+  ]) {
     if (doc) {
       checkForbiddenMetadata(doc, doc.label || '', docPath);
       checkApprovalBoundaries(doc, docPath);
@@ -839,7 +971,7 @@ function cmdRunManifests(roundDir) {
   }
 
   // Find all manifest.yaml files in run subdirectories
-  let runDirs = [];
+  const runDirs = [];
   for (const entry of fs.readdirSync(fullPath, { withFileTypes: true })) {
     if (entry.isDirectory() && entry.name.startsWith('run-')) {
       const manifestPath = path.join(fullPath, entry.name, 'manifest.yaml');
@@ -855,7 +987,7 @@ function cmdRunManifests(roundDir) {
     warn('run-manifests', 'No run directories with manifest.yaml found');
   }
 
-  for (const { dir, manifestPath } of runDirs) {
+  for (const { manifestPath } of runDirs) {
     checkRunManifest(manifestPath);
   }
 
@@ -872,8 +1004,9 @@ function cmdEngineOutputs(roundDir) {
     process.exit(0);
   }
 
-  const runDirs = fs.readdirSync(fullPath)
-    .filter(e => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'));
+  const runDirs = fs
+    .readdirSync(fullPath)
+    .filter((e) => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'));
 
   if (runDirs.length === 0) {
     warn('engine-outputs', 'No run directories found');
@@ -895,12 +1028,15 @@ function cmdConsistency(roundDir) {
   const fullPath = path.resolve(ROOT, roundDir);
 
   if (!fs.existsSync(fullPath)) {
-    console.log(`No directory found at ${roundDir} — no cross-document consistency checks to perform.`);
+    console.log(
+      `No directory found at ${roundDir} — no cross-document consistency checks to perform.`
+    );
     process.exit(0);
   }
 
-  const runDirs = fs.readdirSync(fullPath)
-    .filter(e => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'));
+  const runDirs = fs
+    .readdirSync(fullPath)
+    .filter((e) => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'));
 
   if (runDirs.length === 0) {
     warn('consistency', 'No run directories found');
@@ -936,7 +1072,8 @@ function cmdAll(roundDir) {
     // fixtures/human-baseline negative-* templates carry deliberate violations
     // (a synthetic secret value, an oracle reference) that human-baseline.js
     // finalize must reject; the positive fixture stays in scan scope.
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity|fixtures[\\/]human-baseline[\\/]negative-/;
+    const excludedDirs =
+      /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity|fixtures[\\/]human-baseline[\\/]negative-/;
     for (const f of yamlFiles) {
       if (excludedDirs.test(f)) continue;
       try {
@@ -963,8 +1100,9 @@ function cmdAll(roundDir) {
     process.exit(errors > 0 ? 1 : 0);
   }
 
-  const runDirs = fs.readdirSync(fullPath)
-    .filter(e => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'));
+  const runDirs = fs
+    .readdirSync(fullPath)
+    .filter((e) => fs.statSync(path.join(fullPath, e)).isDirectory() && e.startsWith('run-'));
 
   if (runDirs.length === 0) {
     warn('all', 'No run directories found — checking files in directory path only');
@@ -975,8 +1113,9 @@ function cmdAll(roundDir) {
     // fixtures/human-baseline negative-* templates carry deliberate violations
     // (a synthetic secret value, an oracle reference) that human-baseline.js
     // finalize must reject; the positive fixture stays in scan scope.
-    const excludedDirs = /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity|fixtures[\\/]human-baseline[\\/]negative-/;
-    const yamlFiles = findYamlFiles(roundDir).filter(f => !excludedDirs.test(f));
+    const excludedDirs =
+      /node_modules|\.git|fixtures[\\/]competition-validity|fixtures[\\/]openclaw-validity[\\/]negative|fixtures[\\/]node-profiles[\\/]validity|fixtures[\\/]human-baseline[\\/]negative-/;
+    const yamlFiles = findYamlFiles(roundDir).filter((f) => !excludedDirs.test(f));
     for (const f of yamlFiles) {
       try {
         const doc = loadYaml(f);
@@ -1027,8 +1166,9 @@ function cmdFixtures(fixturesDir) {
     process.exit(1);
   }
 
-  const yamlFiles = findYamlFiles(fixturesDir)
-    .filter(f => !/fixtures[\\/]competition-validity[\\/](run-artifacts|run-lifecycle)[\\/]/.test(f));
+  const yamlFiles = findYamlFiles(fixturesDir).filter(
+    (f) => !/fixtures[\\/]competition-validity[\\/](run-artifacts|run-lifecycle)[\\/]/.test(f)
+  );
   if (yamlFiles.length === 0) {
     warn('fixtures', 'No YAML files found in fixtures directory');
   }
@@ -1082,7 +1222,9 @@ function cmdFixtures(fixturesDir) {
     if (isNegative) {
       // Negative fixture: errors expected (competition-invalid)
       if (newErrors > 0) {
-        console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+        console.log(
+          `OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`
+        );
         expectedFailures++;
       } else {
         console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
@@ -1119,7 +1261,9 @@ function cmdFixtures(fixturesDir) {
 
       if (c.negative) {
         if (newErrors > 0) {
-          console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+          console.log(
+            `OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`
+          );
           expectedFailures++;
         } else {
           console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
@@ -1137,9 +1281,10 @@ function cmdFixtures(fixturesDir) {
 
   const lifecycleRoundDir = path.resolve(ROOT, fixturesDir, 'run-lifecycle/season-001-round-001');
   if (fs.existsSync(lifecycleRoundDir)) {
-    const runDirs = fs.readdirSync(lifecycleRoundDir, { withFileTypes: true })
-      .filter(e => e.isDirectory() && e.name.startsWith('run-'))
-      .map(e => e.name)
+    const runDirs = fs
+      .readdirSync(lifecycleRoundDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && e.name.startsWith('run-'))
+      .map((e) => e.name)
       .sort();
 
     for (const dirName of runDirs) {
@@ -1159,7 +1304,9 @@ function cmdFixtures(fixturesDir) {
 
       if (isNegative) {
         if (newErrors > 0) {
-          console.log(`OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`);
+          console.log(
+            `OK    ${rel}  (expected failure — ${newErrors} error(s), ${newWarnings} warning(s))`
+          );
           expectedFailures++;
         } else {
           console.log(`FAIL  ${rel}  (unexpected pass — negative fixture should fail)`);
@@ -1196,7 +1343,15 @@ function checkArtifactManifestDocument(manifest, filePath) {
     }
   }
 
-  const validStatuses = ['pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified'];
+  const validStatuses = [
+    'pending',
+    'running',
+    'completed',
+    'failed',
+    'scored',
+    'archived',
+    'disqualified',
+  ];
   if (manifest.status && !validStatuses.includes(manifest.status)) {
     error(`artifact-manifest:${rel}`, `Invalid status "${manifest.status}"`);
   }
@@ -1208,20 +1363,33 @@ function checkArtifactManifestDocument(manifest, filePath) {
     }
     if (artifact.checksum) {
       const { algorithm, value } = artifact.checksum;
-      if (!algorithm) warn(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has checksum value but no algorithm`);
+      if (!algorithm)
+        warn(
+          `artifact-manifest:${rel}`,
+          `Artifact "${artifact.path || '<missing>'}" has checksum value but no algorithm`
+        );
       if (!value || typeof value !== 'string' || !/^[a-f0-9]+$/i.test(value)) {
-        error(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has invalid checksum value`);
+        error(
+          `artifact-manifest:${rel}`,
+          `Artifact "${artifact.path || '<missing>'}" has invalid checksum value`
+        );
       }
     }
     if (artifact.retention && !validRetention.includes(artifact.retention)) {
-      error(`artifact-manifest:${rel}`, `Artifact "${artifact.path || '<missing>'}" has invalid retention "${artifact.retention}"`);
+      error(
+        `artifact-manifest:${rel}`,
+        `Artifact "${artifact.path || '<missing>'}" has invalid retention "${artifact.retention}"`
+      );
     }
   }
 
   if (manifest.retention_policy) {
     const defaultRetention = manifest.retention_policy.default_retention;
     if (defaultRetention && !validRetention.includes(defaultRetention)) {
-      error(`artifact-manifest:${rel}`, `Invalid retention_policy.default_retention "${defaultRetention}"`);
+      error(
+        `artifact-manifest:${rel}`,
+        `Invalid retention_policy.default_retention "${defaultRetention}"`
+      );
     }
   }
 }
@@ -1261,7 +1429,10 @@ function checkRunArtifactIntegrity(runDir) {
   ok(`run-artifacts:${rel}/manifest.yaml`, 'Manifest parsed successfully');
 
   if (!Array.isArray(manifest.artifacts) && manifest.lifecycle) {
-    warn(`run-artifacts:${rel}/manifest.yaml`, 'Lifecycle run manifest has no artifact manifest entries; artifact integrity skipped');
+    warn(
+      `run-artifacts:${rel}/manifest.yaml`,
+      'Lifecycle run manifest has no artifact manifest entries; artifact integrity skipped'
+    );
     return true;
   }
 
@@ -1277,11 +1448,18 @@ function checkRunArtifactIntegrity(runDir) {
   // run_id matches directory name
   const dirName = path.basename(runDir);
   if (manifest.run_id && dirName !== manifest.run_id) {
-    warn(`run-artifacts:${rel}/manifest.yaml`, `run_id "${manifest.run_id}" does not match directory "${dirName}"`);
+    warn(
+      `run-artifacts:${rel}/manifest.yaml`,
+      `run_id "${manifest.run_id}" does not match directory "${dirName}"`
+    );
   }
 
   // Validate artifacts array
-  if (!manifest.artifacts || !Array.isArray(manifest.artifacts) || manifest.artifacts.length === 0) {
+  if (
+    !manifest.artifacts ||
+    !Array.isArray(manifest.artifacts) ||
+    manifest.artifacts.length === 0
+  ) {
     error(`run-artifacts:${rel}/manifest.yaml`, 'Missing or empty artifacts array');
     pass = false;
   } else {
@@ -1302,7 +1480,10 @@ function checkRunArtifactIntegrity(runDir) {
 
       // Check file exists
       if (!fs.existsSync(artifactPath)) {
-        error(`run-artifacts:${rel}`, `Artifact "${artifact.path}" listed in manifest but not on disk`);
+        error(
+          `run-artifacts:${rel}`,
+          `Artifact "${artifact.path}" listed in manifest but not on disk`
+        );
         pass = false;
       }
 
@@ -1310,34 +1491,64 @@ function checkRunArtifactIntegrity(runDir) {
       if (artifact.checksum) {
         const { algorithm, value } = artifact.checksum;
         if (!value || typeof value !== 'string' || !/^[a-f0-9]+$/i.test(value)) {
-          error(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has invalid checksum value`);
+          error(
+            `run-artifacts:${rel}/manifest.yaml`,
+            `Artifact "${artifact.path}" has invalid checksum value`
+          );
           pass = false;
         }
         if (!algorithm) {
-          warn(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has checksum value but no algorithm`);
+          warn(
+            `run-artifacts:${rel}/manifest.yaml`,
+            `Artifact "${artifact.path}" has checksum value but no algorithm`
+          );
         }
       }
 
       // Validate retention class
       const validRetention = ['ephemeral', 'round', 'season', 'permanent'];
       if (artifact.retention && !validRetention.includes(artifact.retention)) {
-        error(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has invalid retention "${artifact.retention}"`);
+        error(
+          `run-artifacts:${rel}/manifest.yaml`,
+          `Artifact "${artifact.path}" has invalid retention "${artifact.retention}"`
+        );
         pass = false;
       }
 
       // Check kind validity
-      const validKinds = ['manifest', 'result_packet', 'trace', 'judge_record',
-        'evidence_bundle', 'evidence_file', 'log', 'transcript',
-        'config_snapshot', 'fixture_copy', 'report', 'scoreboard', 'other'];
+      const validKinds = [
+        'manifest',
+        'result_packet',
+        'trace',
+        'judge_record',
+        'evidence_bundle',
+        'evidence_file',
+        'log',
+        'transcript',
+        'config_snapshot',
+        'fixture_copy',
+        'report',
+        'scoreboard',
+        'other',
+      ];
       if (artifact.kind && !validKinds.includes(artifact.kind)) {
-        warn(`run-artifacts:${rel}/manifest.yaml`, `Artifact "${artifact.path}" has unknown kind "${artifact.kind}"`);
+        warn(
+          `run-artifacts:${rel}/manifest.yaml`,
+          `Artifact "${artifact.path}" has unknown kind "${artifact.kind}"`
+        );
       }
     }
 
     // Check for files on disk not in manifest (non-recursive — evidence/ subdirectory is expected)
-    const diskEntries = fs.readdirSync(runDir).filter(f => f !== 'manifest.yaml' && !fs.statSync(path.join(runDir, f)).isDirectory());
+    const diskEntries = fs
+      .readdirSync(runDir)
+      .filter((f) => f !== 'manifest.yaml' && !fs.statSync(path.join(runDir, f)).isDirectory());
     for (const entry of diskEntries) {
-      if (![...manifestPaths].some(p => p === entry || entry.startsWith(p + '/') || p.startsWith(entry + '/'))) {
+      if (
+        ![...manifestPaths].some(
+          (p) => p === entry || entry.startsWith(p + '/') || p.startsWith(entry + '/')
+        )
+      ) {
         warn(`run-artifacts:${rel}`, `File "${entry}" on disk but not listed in manifest`);
       }
     }
@@ -1345,7 +1556,15 @@ function checkRunArtifactIntegrity(runDir) {
 
   // Validate status field
   if (manifest.status) {
-    const validStatuses = ['pending', 'running', 'completed', 'failed', 'scored', 'archived', 'disqualified'];
+    const validStatuses = [
+      'pending',
+      'running',
+      'completed',
+      'failed',
+      'scored',
+      'archived',
+      'disqualified',
+    ];
     if (!validStatuses.includes(manifest.status)) {
       error(`run-artifacts:${rel}/manifest.yaml`, `Invalid status "${manifest.status}"`);
       pass = false;
@@ -1355,15 +1574,21 @@ function checkRunArtifactIntegrity(runDir) {
   // Validate references — required artifacts should exist
   if (manifest.references) {
     const refPaths = [
-      'result_packet_path', 'evidence_bundle_path',
-      'trace_path', 'judge_record_path', 'scoreboard_path',
+      'result_packet_path',
+      'evidence_bundle_path',
+      'trace_path',
+      'judge_record_path',
+      'scoreboard_path',
     ];
     for (const refKey of refPaths) {
       const refValue = manifest.references[refKey];
       if (refValue) {
         const resolved = path.resolve(runDir, refValue);
         if (!fs.existsSync(resolved)) {
-          warn(`run-artifacts:${rel}/manifest.yaml`, `Reference "${refKey}" points to "${refValue}" but file not found`);
+          warn(
+            `run-artifacts:${rel}/manifest.yaml`,
+            `Reference "${refKey}" points to "${refValue}" but file not found`
+          );
         }
       }
     }
@@ -1372,7 +1597,10 @@ function checkRunArtifactIntegrity(runDir) {
     if (manifest.references.evidence_dir) {
       const evidenceDir = path.resolve(runDir, manifest.references.evidence_dir);
       if (!fs.existsSync(evidenceDir)) {
-        warn(`run-artifacts:${rel}/manifest.yaml`, `Evidence dir "${manifest.references.evidence_dir}" referenced but not found`);
+        warn(
+          `run-artifacts:${rel}/manifest.yaml`,
+          `Evidence dir "${manifest.references.evidence_dir}" referenced but not found`
+        );
       }
     }
   }
@@ -1382,7 +1610,10 @@ function checkRunArtifactIntegrity(runDir) {
     const defaultRetention = manifest.retention_policy.default_retention;
     const validRetention = ['ephemeral', 'round', 'season', 'permanent'];
     if (defaultRetention && !validRetention.includes(defaultRetention)) {
-      error(`run-artifacts:${rel}/manifest.yaml`, `Invalid retention_policy.default_retention "${defaultRetention}"`);
+      error(
+        `run-artifacts:${rel}/manifest.yaml`,
+        `Invalid retention_policy.default_retention "${defaultRetention}"`
+      );
       pass = false;
     }
   }
@@ -1409,9 +1640,10 @@ function cmdRunArtifacts(roundDir) {
     checkRunArtifactIntegrity(resolved);
   } else {
     // Round directory — check each subdirectory
-    const entries = fs.readdirSync(resolved, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name)
+    const entries = fs
+      .readdirSync(resolved, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
       .sort();
 
     if (entries.length === 0) {
@@ -1454,9 +1686,10 @@ function cmdLifecycleSummary(roundDir) {
     process.exit(1);
   }
 
-  const runDirs = fs.readdirSync(resolved, { withFileTypes: true })
-    .filter(e => e.isDirectory() && e.name.startsWith('run-'))
-    .map(e => e.name)
+  const runDirs = fs
+    .readdirSync(resolved, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.startsWith('run-'))
+    .map((e) => e.name)
     .sort();
 
   const summary = {
@@ -1501,14 +1734,18 @@ function cmdLifecycleSummary(roundDir) {
     if (packetDoc.started_at && packetDoc.ended_at) {
       const startedAt = new Date(packetDoc.started_at);
       const endedAt = new Date(packetDoc.ended_at);
-      if (!Number.isNaN(startedAt.valueOf()) && !Number.isNaN(endedAt.valueOf()) && endedAt < startedAt) {
+      if (
+        !Number.isNaN(startedAt.valueOf()) &&
+        !Number.isNaN(endedAt.valueOf()) &&
+        endedAt < startedAt
+      ) {
         issues.push('ended_before_started');
       }
     }
 
     let evidenceFileCount = 0;
     if (fs.existsSync(evidenceDir)) {
-      evidenceFileCount = fs.readdirSync(evidenceDir).filter(f => f !== '.gitkeep').length;
+      evidenceFileCount = fs.readdirSync(evidenceDir).filter((f) => f !== '.gitkeep').length;
     }
 
     const runEntry = {
@@ -1537,8 +1774,8 @@ function cmdLifecycleSummary(roundDir) {
     summary.runs.push(runEntry);
   }
 
-  const validRuns = summary.runs.filter(r => r.valid);
-  const invalidRuns = summary.runs.filter(r => !r.valid);
+  const validRuns = summary.runs.filter((r) => r.valid);
+  const invalidRuns = summary.runs.filter((r) => !r.valid);
   summary.valid_run_count = validRuns.length;
   summary.invalid_run_count = invalidRuns.length;
 
@@ -1546,14 +1783,17 @@ function cmdLifecycleSummary(roundDir) {
     const aggregate = {};
     for (const run of summary.runs) {
       const id = run[field] || 'unknown';
-      if (!aggregate[id]) aggregate[id] = { [field]: id, total: 0, valid: 0, invalid: 0, statuses: {} };
+      if (!aggregate[id])
+        aggregate[id] = { [field]: id, total: 0, valid: 0, invalid: 0, statuses: {} };
       aggregate[id].total++;
       if (run.valid) aggregate[id].valid++;
       else aggregate[id].invalid++;
       const status = run.status || 'unknown';
       aggregate[id].statuses[status] = (aggregate[id].statuses[status] || 0) + 1;
     }
-    return Object.values(aggregate).sort((a, b) => String(a[field]).localeCompare(String(b[field])));
+    return Object.values(aggregate).sort((a, b) =>
+      String(a[field]).localeCompare(String(b[field]))
+    );
   };
 
   summary.task_summary = aggregateBy('task_id');

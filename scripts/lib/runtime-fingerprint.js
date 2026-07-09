@@ -53,14 +53,25 @@
 const MIN_SIGNALS = 2;
 
 const HERMES_EVIDENCE_KINDS = new Set([
-  'workflow_plan', 'worker_trace', 'commander_report', 'worker_assignment',
-  'memory_summary', 'contradiction_log', 'workflow_state',
+  'workflow_plan',
+  'worker_trace',
+  'commander_report',
+  'worker_assignment',
+  'memory_summary',
+  'contradiction_log',
+  'workflow_state',
 ]);
 const HERMES_MODES = new Set(['orchestrator', 'coordinator']);
 
 const OPENCLAW_EVIDENCE_KINDS = new Set([
-  'session_id', 'gateway_readiness', 'gateway_log', 'tool_call_summary',
-  'delivery_probe', 'message_id', 'session_transcript', 'wiki_pr_ref',
+  'session_id',
+  'gateway_readiness',
+  'gateway_log',
+  'tool_call_summary',
+  'delivery_probe',
+  'message_id',
+  'session_transcript',
+  'wiki_pr_ref',
 ]);
 const OPENCLAW_MODES = new Set(['openstack', 'closedstack', 'human_baseline']);
 // The committed OpenClaw simulation adapter emits generic v1 evidence kinds
@@ -97,11 +108,12 @@ function asArray(value) {
 function adapterMode(packet) {
   if (!packet || typeof packet !== 'object') return null;
   const fromProfile = packet.configuration_profile && packet.configuration_profile.adapter_mode;
-  const fromMeta = packet.comparable_metadata
-    && packet.comparable_metadata.config
-    && packet.comparable_metadata.config.details
-    && packet.comparable_metadata.config.details.adapter_mode;
-  return (fromProfile || fromMeta || null);
+  const fromMeta =
+    packet.comparable_metadata &&
+    packet.comparable_metadata.config &&
+    packet.comparable_metadata.config.details &&
+    packet.comparable_metadata.config.details.adapter_mode;
+  return fromProfile || fromMeta || null;
 }
 
 function traceText(trace) {
@@ -122,7 +134,10 @@ function traceText(trace) {
  */
 function fingerprintRuntime(packet, trace) {
   const signals = {
-    hermes: new Set(), openclaw: new Set(), stub: new Set(), cli: new Set(),
+    hermes: new Set(),
+    openclaw: new Set(),
+    stub: new Set(),
+    cli: new Set(),
     'human-baseline': new Set(),
   };
 
@@ -188,8 +203,11 @@ function fingerprintRuntime(packet, trace) {
   }
   // A bare CLI coding agent is solo: subagents_used false AND no a2a_workers.
   // (Hermes/openclaw both populate a2a_workers or set subagents_used true.)
-  if (delegation && delegation.subagents_used === false
-      && asArray(delegation.a2a_workers).length === 0) {
+  if (
+    delegation &&
+    delegation.subagents_used === false &&
+    asArray(delegation.a2a_workers).length === 0
+  ) {
     signals.cli.add('solo delegation_profile (no subagents, no a2a_workers)');
   }
   if (/\bcli agent\b|coding-agent cli/i.test(traceBody)) {
@@ -213,9 +231,12 @@ function fingerprintRuntime(packet, trace) {
   }
   // A human operator is solo support, not a delegated subagent: the manual
   // reference packet records human_assistance true with no subagents/A2A.
-  if (delegation && delegation.human_assistance === true
-      && delegation.subagents_used === false
-      && asArray(delegation.a2a_workers).length === 0) {
+  if (
+    delegation &&
+    delegation.human_assistance === true &&
+    delegation.subagents_used === false &&
+    asArray(delegation.a2a_workers).length === 0
+  ) {
     hb.add('solo human-assisted delegation_profile (operator, no subagents/A2A)');
   }
   // The human action timeline: outputs.action_log / operator_action_log, or a
@@ -239,9 +260,8 @@ function fingerprintRuntime(packet, trace) {
     detected = top.runtime;
   }
 
-  const confidence = detected === 'unknown'
-    ? 'none'
-    : (top.count >= 4 ? 'high' : (top.count === 3 ? 'medium' : 'low'));
+  const confidence =
+    detected === 'unknown' ? 'none' : top.count >= 4 ? 'high' : top.count === 3 ? 'medium' : 'low';
 
   const allSignals = [];
   for (const [runtime, set] of Object.entries(signals)) {

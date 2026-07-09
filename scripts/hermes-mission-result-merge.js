@@ -17,7 +17,9 @@
 const { mergeMissionResult, PROFILES } = require('./lib/mission-result-merge');
 
 function usage() {
-  console.error('Usage: node scripts/hermes-mission-result-merge.js <envelope> <run_dir> <mission_output> <hermes_exit>');
+  console.error(
+    'Usage: node scripts/hermes-mission-result-merge.js <envelope> <run_dir> <mission_output> <hermes_exit>'
+  );
   process.exit(3);
 }
 
@@ -33,5 +35,9 @@ const result = mergeMissionResult({
   env: process.env,
 });
 
-console.log(`Merged Hermes mission output into ${require('path').join(runDir, 'result-packet.yaml')}`);
-console.log(`parsed_json=${result.parsed} hermes_exit=${result.agentExit} output_sha256=${result.sha256} redaction_rules=${result.redactionRuleIds.join(',') || 'none'}`);
+console.log(
+  `Merged Hermes mission output into ${require('path').join(runDir, 'result-packet.yaml')}`
+);
+console.log(
+  `parsed_json=${result.parsed} hermes_exit=${result.agentExit} output_sha256=${result.sha256} redaction_rules=${result.redactionRuleIds.join(',') || 'none'}`
+);
