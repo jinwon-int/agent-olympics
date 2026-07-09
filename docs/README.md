@@ -100,5 +100,8 @@ the [end-to-end walkthrough](walkthrough.md), then the [glossary](glossary.md).
 - [Tracker ratification (#15–16)](tracker-ratification-15-16.md)
 - [v1 tracker closeout (#15–16)](v1-tracker-closeout-15-16.md)
 
+## Operations
+- [Artifact retention policy](artifact-retention.md) — what is committed vs. regenerated, and the CI drift guard
+
 ## References
 - [External benchmark references](references.md) — single source of truth for external benchmark citations

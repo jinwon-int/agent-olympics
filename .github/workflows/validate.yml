@@ -90,3 +90,14 @@ jobs:
 
       - name: Check whitespace
         run: git diff --check
+
+      - name: Check committed artifacts are not stale
+        # The generate steps above (make score, make dry-run-finalizer, etc.)
+        # write regenerable output. Committed "scored record" artifacts must
+        # match what the scripts produce — a non-empty diff means a committed
+        # artifact drifted from regeneration. See docs/artifact-retention.md.
+        run: |
+          if ! git diff --exit-code; then
+            echo "A committed artifact drifted from regeneration — commit the regenerated output or move it out of the repo (see docs/artifact-retention.md)." >&2
+            exit 1
+          fi
