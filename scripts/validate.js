@@ -40,16 +40,14 @@ const yaml = require('js-yaml');
 const Ajv = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
 const { SECRET_KEY_PATTERNS, SECRET_VALUE_PATTERNS } = require('./lib/secret-patterns');
+const {
+  DEFAULT_RUN_ID_TEMPLATE,
+  SUPPORTED_RUN_ID_TEMPLATE_VARIABLES,
+  runIdTemplateVariables,
+  renderRunIdTemplateValues,
+} = require('./lib/run-id-template');
 
 const ROOT = path.resolve(__dirname, '..');
-const DEFAULT_RUN_ID_TEMPLATE = 'run-{task_id}-{agent_id}-{timestamp}';
-const SUPPORTED_RUN_ID_TEMPLATE_VARIABLES = new Set([
-  'task_id',
-  'agent_id',
-  'timestamp',
-  'round_id',
-  'season',
-]);
 
 
 
@@ -799,19 +797,14 @@ function detectRoundManifest(doc) {
     && Array.isArray(doc.tasks) && Array.isArray(doc.participants);
 }
 
-function runIdTemplateVariables(template) {
-  return [...String(template || '').matchAll(/\{([^{}]+)\}/g)].map((match) => match[1]);
-}
-
 function renderRunIdTemplate(template, doc, task, participant) {
-  const values = {
+  return renderRunIdTemplateValues(template, {
     task_id: task && task.task_id,
     agent_id: participant && participant.agent_id,
     timestamp: '20260101T000000UTC',
     round_id: doc && doc.round_id,
     season: doc && doc.season,
-  };
-  return template.replace(/\{([^{}]+)\}/g, (match, key) => values[key] !== undefined ? values[key] : match);
+  });
 }
 
 /**
@@ -2489,4 +2482,17 @@ function main() {
   printSummaryAndExit(summaryLines);
 }
 
-main();
+// Only run the CLI when invoked directly; `require()` imports the pure helpers
+// below for unit testing without side effects beyond schema loading.
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  detectKind,
+  getSchemaVersion,
+  renderRunIdTemplate,
+  runIdTemplateVariables,
+  DEFAULT_RUN_ID_TEMPLATE,
+  SUPPORTED_RUN_ID_TEMPLATE_VARIABLES,
+};
