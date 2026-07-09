@@ -1,0 +1,46 @@
+{
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/artifact-submission.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Artifact Submission",
+  "description": "Wrapper for submitting a run's standard artifacts over HTTP/JSON (POST /runs/{run_id}/artifacts). The inner result_packet / trace / evidence_bundle objects are validated separately against result-packet-v2.schema.json, trace-record.schema.json, and evidence-bundle.schema.json (see scripts/validate-participant-protocol.js). This schema validates the envelope and the artifact manifest. See docs/http-json-participant-protocol.md.",
+  "type": "object",
+  "required": ["schema_version", "status", "result_packet", "artifact_manifest"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "partial", "failed", "blocked"],
+      "description": "Terminal run status, mirroring the result-packet status vocabulary."
+    },
+    "result_packet": {
+      "type": "object",
+      "description": "A result-packet-v2 object (validated against result-packet-v2.schema.json)."
+    },
+    "trace": {
+      "type": "object",
+      "description": "A trace-record object (validated against trace-record.schema.json)."
+    },
+    "evidence_bundle": {
+      "type": "object",
+      "description": "An evidence-bundle object (validated against evidence-bundle.schema.json)."
+    },
+    "artifact_manifest": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "content_type"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": {
+            "type": "string",
+            "pattern": "^(sha256:)?[a-f0-9]{64}$"
+          },
+          "content_type": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

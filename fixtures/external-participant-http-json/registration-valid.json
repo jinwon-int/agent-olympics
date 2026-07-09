@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "agent_id": "example-agent",
+  "display_name": "Example Agent",
+  "runtime": { "kind": "external_http_json", "name": "ExampleHarness", "version": "0.1.0" },
+  "capabilities": {
+    "event_families": ["ops", "code", "knowledge"],
+    "supports_task_envelope_v2": true,
+    "supports_result_packet_v2": true,
+    "supports_trace_record": true,
+    "supports_evidence_bundle": true,
+    "supports_polling": true,
+    "supports_webhook_delivery": false,
+    "max_concurrent_runs": 1
+  },
+  "safety": {
+    "approval_boundaries": ["no live mutation without explicit task authorization"],
+    "redaction_rules": ["no secrets in summaries", "private endpoints redacted"],
+    "oracle_access": false
+  },
+  "contact": { "github": "example-org/example-agent" }
+}

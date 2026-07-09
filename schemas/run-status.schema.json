@@ -1,0 +1,31 @@
+{
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/run-status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Run Status",
+  "description": "Standard status view for a run on the HTTP/JSON participation surface (GET /runs/{run_id}/status). Uses runtime-neutral states, not runtime-specific terms. See docs/http-json-participant-protocol.md.",
+  "type": "object",
+  "required": ["schema_version", "run_id", "participant_id", "task_id", "state", "validation", "judge", "scoreboard"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "participant_id": { "type": "string", "minLength": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "state": {
+      "type": "string",
+      "enum": ["claimed", "submitted", "accepted", "rejected", "needs_review"]
+    },
+    "validation": {
+      "type": "string",
+      "enum": ["pending", "accepted", "rejected", "needs_review"]
+    },
+    "judge": {
+      "type": "string",
+      "enum": ["pending", "scored", "not_applicable"]
+    },
+    "scoreboard": {
+      "type": "string",
+      "enum": ["not_published", "published"]
+    }
+  },
+  "additionalProperties": false
+}
