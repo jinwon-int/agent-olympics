@@ -5,7 +5,8 @@
 # quarantine, redaction, and judge-handoff behavior without touching the
 # committed season-001-round-001 run directory.
 #
-# Uses the v1 task envelopes so the stub adapter's v1 result packets validate.
+# Uses the canonical v2 task envelopes; the stub adapter emits schema-valid v2
+# result packets for them (v1 Season-001 envelopes were retired in #257).
 # The extra participants exist only as dispatch targets for the negative
 # transport fixtures in runner-config-negative.yaml.
 schema_version: 1
@@ -26,14 +27,14 @@ lifecycle:
 tasks:
   - task_id: ops-001
     title: Telegram final reply does not appear
-    envelope_path: tasks/season-001/ops-001-telegram-final-reply.yaml
+    envelope_path: tasks/season-001/ops-001-telegram-final-reply-v2.yaml
     time_limit_minutes: 5
     fixture_bundle_ref: fixtures/season-001/ops-001/
     scoring_rubric: rubrics/agent-olympics-v1.yaml
     order: 1
   - task_id: ops-002
     title: Decide whether clean reinstall is needed
-    envelope_path: tasks/season-001/ops-002-clean-reinstall-drift.yaml
+    envelope_path: tasks/season-001/ops-002-clean-reinstall-drift-v2.yaml
     time_limit_minutes: 5
     fixture_bundle_ref: fixtures/season-001/ops-002/
     scoring_rubric: rubrics/agent-olympics-v1.yaml

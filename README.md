@@ -148,12 +148,13 @@ Model identity should be visible for analysis, but it is only one part of the re
 
 ```text
 schemas/
-  task-envelope.schema.json       — Envelope schema (v1)
-  result-packet.schema.json       — Result packet schema (v1)
   judge-record.schema.json        — Judge record schema (v1)
-  task-envelope-v2.schema.json    — Envelope schema (v2)
-  result-packet-v2.schema.json    — Result packet schema (v2)
+  task-envelope-v2.schema.json    — Envelope schema (v2, current)
+  result-packet-v2.schema.json    — Result packet schema (v2, current)
   judge-record-v2.schema.json     — Judge record schema (v2)
+archive/schemas/
+  task-envelope.schema.json       — Retired v1 envelope schema (backward-compat only)
+  result-packet.schema.json       — Retired v1 result-packet schema (backward-compat only)
 oracle/
   season-001/                     — Private judge answer keys (oracle files)
     ops-001-telegram-final-reply.yaml
@@ -162,16 +163,8 @@ rubrics/
 schemas/
   node-capability.schema.json     — Node capability matrix schema
   node-profile-inventory.schema.json — Node profile inventory schema
-tasks/examples/
-  ops-001-telegram-final-reply.yaml
-  ops-002-clean-reinstall-drift.yaml
-  node-001-agent-readiness-audit.yaml
-  perf-001-node-throughput-baseline.yaml
-  code-001-typescript-regression.yaml
-  knowledge-001-wiki-closeout.yaml
-  coord-001-commander-report.yaml
 tasks/season-001/
-  *-v2.yaml                       — v2 migration example(s)
+  *-v2.yaml                       — Canonical v2 season task envelopes
 tasks/smoke/
   smoke-manifest.yaml             — Smoke suite manifest (5+ candidate tasks)
   smoke-001-gateway-liveness.yaml
@@ -260,8 +253,11 @@ npm test
 ### Validate Specific Categories
 
 ```bash
-# Validate all task envelopes (tasks/examples/*.yaml, tasks/season-001/*.yaml)
+# Validate all task envelopes under tasks/ (v1 and v2)
 node scripts/validate.js envelopes
+
+# Validate only the current v2 task envelopes (tasks/season-001/*-v2.yaml)
+node scripts/validate.js envelopes-v2
 
 # Validate only smoke suite tasks (tasks/smoke/*.yaml)
 node scripts/validate.js smoke
@@ -272,15 +268,14 @@ node scripts/validate.js packets
 # Validate all judge records only
 node scripts/validate.js judges
 
-# Validate v2 schemas specifically
-node scripts/validate.js envelopes-v2
+# Validate v2 documents specifically
 node scripts/validate.js all-v2
 ```
 
 ### Validate a Single File
 
 ```bash
-node scripts/validate.js tasks/examples/ops-001-telegram-final-reply.yaml
+node scripts/validate.js tasks/season-001/code-001-typescript-regression-v2.yaml
 node scripts/validate.js tasks/smoke/smoke-manifest.yaml
 node scripts/validate.js fixtures/node-profiles/profile-stub-medium.yaml
 ```
@@ -359,9 +354,11 @@ live runner or A2A transport integration must be implemented and approved as a
 separate execution boundary. See
 [Season 001 Live Runner and A2A Boundary](docs/live-runner-boundary-season-001.md).
 
-The v1 schemas are frozen:
-- `schemas/task-envelope.schema.json` — Task Envelope v1
-- `schemas/result-packet.schema.json` — Result Packet v1
+The v1 schemas are frozen. The v1 Task Envelope and Result Packet schemas have
+been retired to `archive/schemas/` (still loaded by the validator/scorer for
+backward-compat validation of the remaining v1 documents):
+- `archive/schemas/task-envelope.schema.json` — Task Envelope v1 (retired)
+- `archive/schemas/result-packet.schema.json` — Result Packet v1 (retired)
 - `schemas/judge-record.schema.json` — Judge Record v1
 - `schemas/node-capability.schema.json` — Node Capability Matrix v1
 

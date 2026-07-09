@@ -133,8 +133,10 @@ function generateResultPacket(envelope, runId, agentId, runtime, status, started
     outputs[key] = `[stub] Placeholder output for "${key}". Replace with real output from the participant adapter.`;
   }
 
-  return {
-    schema_version: envelope.schema_version || 1,
+  const schemaVersion = envelope.schema_version || 1;
+
+  const packet = {
+    schema_version: schemaVersion,
     task_id: taskId,
     agent_id: agentId,
     runtime: runtime,
@@ -146,6 +148,48 @@ function generateResultPacket(envelope, runId, agentId, runtime, status, started
     findings,
     outputs,
   };
+
+  // v2 result packets require the comparability / governance blocks. The stub
+  // fills them with honest "deterministic stub" defaults so the artifact passes
+  // the strict v2 schema without pretending real work happened.
+  if (schemaVersion >= 2) {
+    packet.division = 'closed_stack';
+    packet.validity = 'valid';
+    packet.publishable = false;
+    packet.tool_use_profile = {
+      classes_allowed: ['read'],
+      classes_used: ['read'],
+      allowed: ['read'],
+      used: ['read'],
+      disclosure_level: 'full',
+      notes: 'Deterministic stub adapter — only read the input envelope; no live tools were invoked.',
+    };
+    packet.operating_policy = {
+      approval_boundaries: 'not_applicable',
+      secret_handling: 'redacted',
+      destructive_action_rules: 'destructive_actions_forbidden_without_explicit_approval',
+      progress_reporting: 'not_applicable',
+      delegation_policy: 'no_subagents_used',
+      notes: 'Stub adapter does not execute a real operating policy.',
+    };
+    packet.delegation_profile = {
+      subagents_used: false,
+      background_jobs_used: false,
+      human_assistance: false,
+      a2a_workers: [],
+      supported_by: [],
+      notes: 'Deterministic stub run — no delegation.',
+    };
+    packet.comparable_metadata = {
+      participant: { agent_id: agentId },
+      runtime: { name: runtime },
+      model: { provider: 'stub', name: 'deterministic-stub' },
+      node: { profile_ref: 'stub' },
+      task: { task_id: taskId },
+    };
+  }
+
+  return packet;
 }
 
 function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, entries) {
