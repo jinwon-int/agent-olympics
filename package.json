@@ -4,6 +4,9 @@
   "private": true,
   "description": "Agent Olympics — platform-neutral agent competition schemas and validation",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "validate:envelopes": "node scripts/validate.js envelopes",
     "validate:packets": "node scripts/validate.js packets",
