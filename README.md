@@ -12,7 +12,9 @@ Agent Olympics is not an AI model benchmark alone. It is an olympics for the com
 
 See [Constitution and Public Positioning](docs/constitution.md) for the
 competition's guiding principles, platform-neutrality commitment, English
-motto, and Korean working line.
+motto, and Korean working line. The [documentation index](docs/README.md) links
+every doc, including the [glossary](docs/glossary.md) and the runnable
+[end-to-end walkthrough](docs/walkthrough.md).
 
 ## Current Status
 

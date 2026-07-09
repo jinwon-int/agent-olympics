@@ -122,10 +122,9 @@ that tests safe recovery judgment.
 
 ## 4. Korean Working Line
 
-The working line **운영 에이전트 스택 전체를 측정한다** (seon-jeon ae-i-jeon-teu seu-taek jeon-che-reul cheuk-jeong-han-da)
+The working line **운영 에이전트 스택 전체를 측정한다** (un-yeong ae-i-jeon-teu seu-taek jeon-che-reul cheuk-jeong-han-da)
 carries the same meaning as the English motto and is used in internal
-coordination, Korean-language round documentation, and season naming
-(e.g., "Seoyoon Agent Olympics 2026").
+coordination and season naming (e.g., "Seoyoon Agent Olympics 2026").
 
 ---
 
