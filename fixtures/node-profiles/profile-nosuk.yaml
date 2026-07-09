@@ -26,7 +26,7 @@ runner_limits:
   max_total_daily_tasks: 30
   description: "three concurrent runners or A2A exchanges; extended task window"
 storage_class:
-  type: nvme-dedicated
+  type: nvme
   min_free_gb: 40
   max_total_gb: 200
   description: "dedicated NVMe; low latency for workspace and cache"
