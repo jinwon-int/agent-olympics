@@ -21,10 +21,11 @@ test('SUPPORTED_RUN_ID_TEMPLATE_VARIABLES covers the documented variables', () =
 });
 
 test('runIdTemplateVariables extracts tokens in order', () => {
-  assert.deepEqual(
-    runIdTemplateVariables('run-{task_id}-{agent_id}-{timestamp}'),
-    ['task_id', 'agent_id', 'timestamp'],
-  );
+  assert.deepEqual(runIdTemplateVariables('run-{task_id}-{agent_id}-{timestamp}'), [
+    'task_id',
+    'agent_id',
+    'timestamp',
+  ]);
 });
 
 test('runIdTemplateVariables tolerates empty/undefined input', () => {
@@ -35,14 +36,17 @@ test('runIdTemplateVariables tolerates empty/undefined input', () => {
 
 test('renderRunIdTemplateValues substitutes known tokens', () => {
   assert.equal(
-    renderRunIdTemplateValues('run-{task_id}-{agent_id}', { task_id: 'ops-001', agent_id: 'sogyo' }),
-    'run-ops-001-sogyo',
+    renderRunIdTemplateValues('run-{task_id}-{agent_id}', {
+      task_id: 'ops-001',
+      agent_id: 'sogyo',
+    }),
+    'run-ops-001-sogyo'
   );
 });
 
 test('renderRunIdTemplateValues leaves unknown tokens untouched', () => {
   assert.equal(
     renderRunIdTemplateValues('run-{task_id}-{unknown}', { task_id: 'x' }),
-    'run-x-{unknown}',
+    'run-x-{unknown}'
   );
 });

@@ -122,10 +122,11 @@ function findOracleFile(taskId, override) {
     return full;
   }
   if (!fs.existsSync(ORACLE_DIR)) return null;
-  const candidates = fs.readdirSync(ORACLE_DIR)
-    .filter(n => /\.ya?ml$/.test(n) && n.startsWith(`${taskId}-`))
+  const candidates = fs
+    .readdirSync(ORACLE_DIR)
+    .filter((n) => /\.ya?ml$/.test(n) && n.startsWith(`${taskId}-`))
     .sort()
-    .map(n => path.join(ORACLE_DIR, n));
+    .map((n) => path.join(ORACLE_DIR, n));
   for (const c of candidates) {
     const doc = loadYamlFile(c);
     if (doc && doc.task_id === taskId) return c;
@@ -140,19 +141,73 @@ function findOracleFile(taskId, override) {
 // Generic English stopwords only — domain words (delivery, gateway, ...)
 // stay distinctive on purpose.
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'for', 'vs', 'not', 'was',
-  'is', 'are', 'were', 'be', 'as', 'on', 'by', 'from', 'it', 'its', 'this',
-  'that', 'with', 'does', 'did', 'at', 'least', 'one', 'any', 'all', 'what',
-  'which', 'who', 'how', 'their', 'they', 'after', 'before', 'than', 'but',
-  'if', 'then', 'no', 'yes', 'per', 'into', 'each', 'must', 'should', 'can',
-  'could', 'may', 'might', 'between', 'instead', 'only', 'when', 'where',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'of',
+  'to',
+  'in',
+  'for',
+  'vs',
+  'not',
+  'was',
+  'is',
+  'are',
+  'were',
+  'be',
+  'as',
+  'on',
+  'by',
+  'from',
+  'it',
+  'its',
+  'this',
+  'that',
+  'with',
+  'does',
+  'did',
+  'at',
+  'least',
+  'one',
+  'any',
+  'all',
+  'what',
+  'which',
+  'who',
+  'how',
+  'their',
+  'they',
+  'after',
+  'before',
+  'than',
+  'but',
+  'if',
+  'then',
+  'no',
+  'yes',
+  'per',
+  'into',
+  'each',
+  'must',
+  'should',
+  'can',
+  'could',
+  'may',
+  'might',
+  'between',
+  'instead',
+  'only',
+  'when',
+  'where',
 ]);
 
 function tokenize(text) {
   return String(text || '')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter(t => t.length >= 3 && !STOPWORDS.has(t));
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 }
 
 /**
@@ -172,11 +227,19 @@ function collectPacketLines(rp) {
     push(`evidence[${e.id || '?'}].kind`, e.kind);
     push(`evidence[${e.id || '?'}].source`, e.source);
   });
-  (rp.actions || []).forEach((a) => push(`actions[${a.id || '?'}].command_summary`, a.command_summary));
+  (rp.actions || []).forEach((a) =>
+    push(`actions[${a.id || '?'}].command_summary`, a.command_summary)
+  );
   (rp.risks || []).forEach((r, i) => push(`risks[${i}]`, r));
   const walkOutputs = (obj, prefix) => {
-    if (typeof obj === 'string') { push(prefix, obj); return; }
-    if (Array.isArray(obj)) { obj.forEach((v, i) => walkOutputs(v, `${prefix}[${i}]`)); return; }
+    if (typeof obj === 'string') {
+      push(prefix, obj);
+      return;
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach((v, i) => walkOutputs(v, `${prefix}[${i}]`));
+      return;
+    }
     if (obj && typeof obj === 'object') {
       for (const [k, v] of Object.entries(obj)) walkOutputs(v, `${prefix}.${k}`);
     }
@@ -195,7 +258,7 @@ function matchTokens(tokens, lines) {
   const hitTokens = [];
   let sampleLine = null;
   for (const tok of unique) {
-    const hit = lines.find(l => l.text.toLowerCase().includes(tok));
+    const hit = lines.find((l) => l.text.toLowerCase().includes(tok));
     if (hit) {
       hitTokens.push(tok);
       if (!sampleLine) sampleLine = hit;
@@ -214,23 +277,30 @@ function runOracleCheck(rp, oracle, oracleFile) {
   const lines = collectPacketLines(rp);
 
   // 1. Expected answer categories: id tokens + distinctive label words.
-  const categories = (oracle.expected_answer_categories || []).map(cat => {
+  const categories = (oracle.expected_answer_categories || []).map((cat) => {
     const tokens = tokenize(cat.id.replace(/-/g, ' ')).concat(tokenize(cat.label));
     const m = matchTokens(tokens, lines);
-    return { id: cat.id, label: cat.label, matched: m.matched, hitTokens: m.hitTokens, sampleLine: m.sampleLine };
+    return {
+      id: cat.id,
+      label: cat.label,
+      matched: m.matched,
+      hitTokens: m.hitTokens,
+      sampleLine: m.sampleLine,
+    };
   });
-  const matchedCategoryIds = new Set(categories.filter(c => c.matched).map(c => c.id));
+  const matchedCategoryIds = new Set(categories.filter((c) => c.matched).map((c) => c.id));
 
   // 2. answer_key_checks: "{id-a, id-b}" lists resolve via category matches;
   //    free-text expectations fall back to keyword matching.
-  const checks = (oracle.answer_key_checks || []).map(check => {
+  const checks = (oracle.answer_key_checks || []).map((check) => {
     const braceMatch = /\{([^}]+)\}/.exec(check.expected || '');
     if (braceMatch) {
-      const ids = braceMatch[1].split(',').map(s => s.trim()).filter(Boolean);
-      const hits = ids.filter(id => matchedCategoryIds.has(id));
-      const sample = hits.length > 0
-        ? categories.find(c => c.id === hits[0]).sampleLine
-        : null;
+      const ids = braceMatch[1]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const hits = ids.filter((id) => matchedCategoryIds.has(id));
+      const sample = hits.length > 0 ? categories.find((c) => c.id === hits[0]).sampleLine : null;
       return {
         question_id: check.question_id,
         question: check.question,
@@ -246,32 +316,49 @@ function runOracleCheck(rp, oracle, oracleFile) {
       matched: m.matched,
       via: m.matched
         ? `keywords: ${m.hitTokens.join(', ')}`
-        : (m.hitTokens.length > 0 ? `insufficient keyword overlap (only: ${m.hitTokens.join(', ')})` : 'no keyword overlap'),
+        : m.hitTokens.length > 0
+          ? `insufficient keyword overlap (only: ${m.hitTokens.join(', ')})`
+          : 'no keyword overlap',
       sampleLine: m.matched ? m.sampleLine : null,
     };
   });
 
   // 3. strong_answer_markers: strings or { marker_id: text } objects.
-  const markers = (oracle.strong_answer_markers || []).map(marker => {
-    let id; let text;
-    if (typeof marker === 'string') { id = marker; text = marker; }
-    else { id = Object.keys(marker)[0]; text = marker[id]; }
+  const markers = (oracle.strong_answer_markers || []).map((marker) => {
+    let id;
+    let text;
+    if (typeof marker === 'string') {
+      id = marker;
+      text = marker;
+    } else {
+      id = Object.keys(marker)[0];
+      text = marker[id];
+    }
     const tokens = tokenize(id.replace(/_/g, ' ')).concat(tokenize(text));
     const m = matchTokens(tokens, lines);
-    return { id, matched: m.matched, hitTokens: m.hitTokens, sampleLine: m.matched ? m.sampleLine : null };
+    return {
+      id,
+      matched: m.matched,
+      hitTokens: m.hitTokens,
+      sampleLine: m.matched ? m.sampleLine : null,
+    };
   });
 
   // 4. Suggested correctness band — heuristic, judge decides.
-  const matchedChecks = checks.filter(c => c.matched).length;
+  const matchedChecks = checks.filter((c) => c.matched).length;
   let band = 'zero';
   if (matchedCategoryIds.size >= 1 && checks.length > 0 && matchedChecks === checks.length) {
     band = 'full';
-  } else if (matchedCategoryIds.size >= 1 || (checks.length > 0 && matchedChecks * 2 >= checks.length)) {
+  } else if (
+    matchedCategoryIds.size >= 1 ||
+    (checks.length > 0 && matchedChecks * 2 >= checks.length)
+  ) {
     band = 'partial';
   }
   const suggestion = {
     suggested_correctness_band: band,
-    rationale: `${matchedCategoryIds.size}/${categories.length} expected categories and ` +
+    rationale:
+      `${matchedCategoryIds.size}/${categories.length} expected categories and ` +
       `${matchedChecks}/${checks.length} answer-key checks matched (keyword heuristic).`,
   };
 
@@ -303,14 +390,16 @@ function printOracleCheck(rp, packetId, report) {
     const mark = c.matched ? 'MATCH ' : 'MISS  ';
     console.log(`  ${mark} ${c.question_id} — ${c.question}`);
     console.log(`         via: ${c.via}`);
-    if (c.sampleLine) console.log(`         line: ${c.sampleLine.source}: "${truncate(c.sampleLine.text, 80)}"`);
+    if (c.sampleLine)
+      console.log(`         line: ${c.sampleLine.source}: "${truncate(c.sampleLine.text, 80)}"`);
   }
 
   console.log('\nStrong answer markers:');
   for (const m of report.markers) {
     const mark = m.matched ? 'MATCH ' : 'MISS  ';
     console.log(`  ${mark} ${m.id}`);
-    if (m.sampleLine) console.log(`         line: ${m.sampleLine.source}: "${truncate(m.sampleLine.text, 80)}"`);
+    if (m.sampleLine)
+      console.log(`         line: ${m.sampleLine.source}: "${truncate(m.sampleLine.text, 80)}"`);
   }
 
   console.log(`\nSUGGESTION (not a final score — human judge decides):`);
@@ -380,8 +469,8 @@ function buildDeclaration(rp, packetId, oracle, oracleReport) {
       note: 'SUGGESTION ONLY — keyword heuristic from oracle-check; the human judge decides the final score.',
       suggested_correctness_band: oracleReport.suggestion.suggested_correctness_band,
       rationale: oracleReport.suggestion.rationale,
-      matched_categories: oracleReport.categories.filter(c => c.matched).map(c => c.id),
-      unmatched_checks: oracleReport.checks.filter(c => !c.matched).map(c => c.question_id),
+      matched_categories: oracleReport.categories.filter((c) => c.matched).map((c) => c.id),
+      unmatched_checks: oracleReport.checks.filter((c) => !c.matched).map((c) => c.question_id),
     };
   }
 
@@ -407,7 +496,9 @@ function validateDeclaration(decl, rp, packetId) {
   }
 
   if (decl.task_id !== rp.task_id) {
-    errors.push(`declaration task_id "${decl.task_id}" does not match packet task_id "${rp.task_id}"`);
+    errors.push(
+      `declaration task_id "${decl.task_id}" does not match packet task_id "${rp.task_id}"`
+    );
   }
   if (decl.packet_id !== packetId) {
     errors.push(`declaration packet_id "${decl.packet_id}" does not match packet_id "${packetId}"`);
@@ -449,18 +540,30 @@ function validateDeclaration(decl, rp, packetId) {
   }
   for (const dim of Object.keys(dims)) {
     if (!pendingDims.includes(dim)) {
-      errors.push(`dimensions.${dim} is not a human-judged dimension (use auto_dimension_overrides for ${autoDims.join('/')})`);
+      errors.push(
+        `dimensions.${dim} is not a human-judged dimension (use auto_dimension_overrides for ${autoDims.join('/')})`
+      );
     }
   }
 
   const overrides = decl.auto_dimension_overrides || {};
   for (const [dim, d] of Object.entries(overrides)) {
     if (!autoDims.includes(dim)) {
-      errors.push(`auto_dimension_overrides.${dim} is not an automatic dimension (${autoDims.join(', ')})`);
+      errors.push(
+        `auto_dimension_overrides.${dim} is not an automatic dimension (${autoDims.join(', ')})`
+      );
       continue;
     }
-    if (!d || typeof d.score !== 'number' || !Number.isFinite(d.score) || d.score < 0 || d.score > rubricDims[dim]) {
-      errors.push(`auto_dimension_overrides.${dim}.score must be a number within [0, ${rubricDims[dim]}]`);
+    if (
+      !d ||
+      typeof d.score !== 'number' ||
+      !Number.isFinite(d.score) ||
+      d.score < 0 ||
+      d.score > rubricDims[dim]
+    ) {
+      errors.push(
+        `auto_dimension_overrides.${dim}.score must be a number within [0, ${rubricDims[dim]}]`
+      );
     }
     if (!d || !d.reason || !String(d.reason).trim()) {
       errors.push(`auto_dimension_overrides.${dim}.reason is required`);
@@ -476,7 +579,8 @@ function validateDeclaration(decl, rp, packetId) {
       if (!p || typeof p.amount !== 'number' || !Number.isFinite(p.amount) || p.amount >= 0) {
         errors.push(`penalties[${i}].amount must be a negative number`);
       }
-      if (!p || !p.reason || !String(p.reason).trim()) errors.push(`penalties[${i}].reason is required`);
+      if (!p || !p.reason || !String(p.reason).trim())
+        errors.push(`penalties[${i}].reason is required`);
     });
   }
 
@@ -492,7 +596,7 @@ function validateDeclaration(decl, rp, packetId) {
  */
 function assertNoOracleLeak(record, oracle) {
   if (!oracle) return;
-  const norm = s => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
+  const norm = (s) => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
   const recordText = norm(JSON.stringify(record));
   const fragments = [];
   for (const g of Object.values(oracle.scoring_guidance || {})) {
@@ -514,7 +618,8 @@ function assertNoOracleLeak(record, oracle) {
     if (probe.length >= 40 && recordText.includes(probe)) {
       throw new JudgeError(
         `Oracle leak: the judge record contains verbatim oracle text ("${probe.slice(0, 50)}…"). ` +
-        'Oracle guidance must stay in the judge-facing declaration only.');
+          'Oracle guidance must stay in the judge-facing declaration only.'
+      );
     }
   }
 }
@@ -533,10 +638,15 @@ function assertBlindClean(record, rp) {
     node: rp.node,
   };
   for (const [field, value] of Object.entries(identity)) {
-    if (typeof value === 'string' && value.length >= 3 && recordText.includes(value.toLowerCase())) {
+    if (
+      typeof value === 'string' &&
+      value.length >= 3 &&
+      recordText.includes(value.toLowerCase())
+    ) {
       throw new JudgeError(
         `Blind violation: record contains the packet's ${field} ("${value}"). ` +
-        'Remove participant identity from declaration reasons/notes before blind finalize.');
+          'Remove participant identity from declaration reasons/notes before blind finalize.'
+      );
     }
   }
 }
@@ -568,11 +678,13 @@ function buildJudgeRecord(rp, packetId, decl, { blind = false } = {}) {
   const autoScores = {
     evidence_quality: {
       ...score.autoScoreEvidenceQuality(rp, semanticIssues),
-      reason: 'Auto-scored: evidence presence, finding references, reference integrity, redaction metadata.',
+      reason:
+        'Auto-scored: evidence presence, finding references, reference integrity, redaction metadata.',
     },
     safety: {
       ...score.autoScoreSafety(rp),
-      reason: 'Auto-scored: secret-pattern scan, redaction practice, destructive-action keyword check.',
+      reason:
+        'Auto-scored: secret-pattern scan, redaction practice, destructive-action keyword check.',
     },
     execution: {
       ...score.autoScoreExecution(rp),
@@ -613,7 +725,7 @@ function buildJudgeRecord(rp, packetId, decl, { blind = false } = {}) {
   // Penalties: automatic semantic errors (same mapping as score.js
   // generateAutoJudge) + judge-declared penalties.
   const penalties = [];
-  for (const issue of semanticIssues.filter(i => i.severity === score.SEVERITY.error)) {
+  for (const issue of semanticIssues.filter((i) => i.severity === score.SEVERITY.error)) {
     penalties.push({
       kind: issue.msg.includes('Duplicate') ? 'unsupported_claim' : 'missing_required_output',
       amount: -5,
@@ -645,19 +757,26 @@ function buildJudgeRecord(rp, packetId, decl, { blind = false } = {}) {
   }
 
   const allAutoOverridden = overriddenCount === autoDims.length;
-  const judgeType = (allAutoOverridden && decl.judge_type === 'human') ? 'human' : 'hybrid';
+  const judgeType = allAutoOverridden && decl.judge_type === 'human' ? 'human' : 'hybrid';
 
-  const blindKey = crypto.createHash('sha256')
-    .update(`${rp.task_id}:${packetId}`).digest('hex').slice(0, 12);
+  const blindKey = crypto
+    .createHash('sha256')
+    .update(`${rp.task_id}:${packetId}`)
+    .digest('hex')
+    .slice(0, 12);
   const judgeRecordId = blind
     ? `jr-blind-${rp.task_id}-${blindKey}`
     : `jr-${rp.task_id}-${rp.agent_id}-${Date.now()}`;
 
   const noteParts = [String(decl.judge_notes).trim()];
   noteParts.push(
-    `Finalized by judge.js: ${autoDims.filter(d => !overrides[d]).join(', ') || '(none)'} machine-scored; ` +
-    `${pendingDims.join(', ')}${overriddenCount > 0 ? ` and ${Object.keys(overrides).join(', ')} (overrides)` : ''} human-scored.`);
-  if (blind) noteParts.push('Blind judging: participant runtime/model/node/agent identity withheld from this record.');
+    `Finalized by judge.js: ${autoDims.filter((d) => !overrides[d]).join(', ') || '(none)'} machine-scored; ` +
+      `${pendingDims.join(', ')}${overriddenCount > 0 ? ` and ${Object.keys(overrides).join(', ')} (overrides)` : ''} human-scored.`
+  );
+  if (blind)
+    noteParts.push(
+      'Blind judging: participant runtime/model/node/agent identity withheld from this record.'
+    );
 
   const record = {
     schema_version: 1,
@@ -683,7 +802,13 @@ function buildJudgeRecord(rp, packetId, decl, { blind = false } = {}) {
 /**
  * Full finalize flow. Returns { record, outputPath }.
  */
-function finalize({ packetPath, declarationPath, blind = false, outputPath = null, force = false }) {
+function finalize({
+  packetPath,
+  declarationPath,
+  blind = false,
+  outputPath = null,
+  force = false,
+}) {
   const { rp, packetId } = resolvePacket(packetPath);
   const decl = loadYamlFile(declarationPath);
   validateDeclaration(decl, rp, packetId);
@@ -692,7 +817,11 @@ function finalize({ packetPath, declarationPath, blind = false, outputPath = nul
 
   // Oracle-leak guard: declarations may quote the oracle, records may not.
   let oracleFile = null;
-  try { oracleFile = findOracleFile(rp.task_id); } catch { /* no oracle dir */ }
+  try {
+    oracleFile = findOracleFile(rp.task_id);
+  } catch {
+    /* no oracle dir */
+  }
   if (oracleFile) assertNoOracleLeak(record, loadYamlFile(oracleFile));
   assertNoSecretLeak(record);
   if (blind) assertBlindClean(record, rp);
@@ -700,7 +829,9 @@ function finalize({ packetPath, declarationPath, blind = false, outputPath = nul
   // Schema validation (judge-record v1) before writing anything.
   const schemaResult = score.validateSchema(record, 'judge-record', 1);
   if (!schemaResult.valid) {
-    throw new JudgeError(`Finalized record failed judge-record schema validation:\n  - ${schemaResult.errors.join('\n  - ')}`);
+    throw new JudgeError(
+      `Finalized record failed judge-record schema validation:\n  - ${schemaResult.errors.join('\n  - ')}`
+    );
   }
 
   const base = path.basename(packetPath, path.extname(packetPath));
@@ -727,7 +858,7 @@ const TIER_RANK = { draft: 0, smoke: 1, verified: 2 };
  */
 function judgeRecordComplete(judgeRecord, rubricDims) {
   if (!judgeRecord || !judgeRecord.score_dimensions) return false;
-  return Object.keys(rubricDims).every(dim => {
+  return Object.keys(rubricDims).every((dim) => {
     const d = judgeRecord.score_dimensions[dim];
     return d && typeof d.score === 'number';
   });
@@ -741,10 +872,17 @@ function promotionCheck({ tasksDir, resultsDir, strict = false }) {
 
   // Load envelopes, preferring -v2 files per task_id.
   const envByTask = new Map();
-  for (const name of fs.readdirSync(absTasks).filter(n => /\.ya?ml$/.test(n)).sort()) {
+  for (const name of fs
+    .readdirSync(absTasks)
+    .filter((n) => /\.ya?ml$/.test(n))
+    .sort()) {
     const full = path.join(absTasks, name);
     let doc;
-    try { doc = loadYamlFile(full); } catch { continue; }
+    try {
+      doc = loadYamlFile(full);
+    } catch {
+      continue;
+    }
     if (!doc || !doc.task_id || !doc.objective || !Array.isArray(doc.allowed_actions)) continue;
     const existing = envByTask.get(doc.task_id);
     const isV2 = doc.schema_version === 2 || /-v2\.ya?ml$/.test(name);
@@ -756,9 +894,13 @@ function promotionCheck({ tasksDir, resultsDir, strict = false }) {
 
   // Index result packets and their judge records by task_id.
   const packetsByTask = new Map();
-  for (const f of (fs.existsSync(absResults) ? score.findResultPackets(absResults) : [])) {
+  for (const f of fs.existsSync(absResults) ? score.findResultPackets(absResults) : []) {
     let doc;
-    try { doc = loadYamlFile(f); } catch { continue; }
+    try {
+      doc = loadYamlFile(f);
+    } catch {
+      continue;
+    }
     if (!doc) continue;
     const rp = doc.result_packet && typeof doc.result_packet === 'object' ? doc.result_packet : doc;
     if (!rp.task_id || !rp.agent_id) continue;
@@ -786,12 +928,18 @@ function promotionCheck({ tasksDir, resultsDir, strict = false }) {
     let judgeFileRef = null;
     for (const { file, rp } of packets) {
       const schemaResult = score.validateSchema(rp, 'result-packet', score.getSchemaVersion(rp));
-      const semErrors = score.semanticPacketChecks(rp).filter(i => i.severity === score.SEVERITY.error);
+      const semErrors = score
+        .semanticPacketChecks(rp)
+        .filter((i) => i.severity === score.SEVERITY.error);
       const isValid = schemaResult.valid && semErrors.length === 0;
       if (isValid && !validPacket) validPacket = file;
       for (const jf of score.findJudgeFiles(path.dirname(file), file)) {
         let jr;
-        try { jr = loadYamlFile(jf); } catch { continue; }
+        try {
+          jr = loadYamlFile(jf);
+        } catch {
+          continue;
+        }
         if (judgeRecordComplete(jr, rubricDims) && isValid && !completeJudge) {
           completeJudge = jf;
           judgeVerdict = jr.verdict;
@@ -807,8 +955,12 @@ function promotionCheck({ tasksDir, resultsDir, strict = false }) {
 
     console.log(`── ${taskId} ──`);
     console.log(`   recorded tier:   ${tierLabel}`);
-    console.log(`   result packet:   ${validPacket ? `valid — ${path.relative(ROOT, validPacket)}` : (packets.length > 0 ? `${packets.length} packet(s), none validating` : 'none')}`);
-    console.log(`   judge record:    ${completeJudge ? `complete (all ${Object.keys(rubricDims).length} dimensions) — ${path.relative(ROOT, judgeFileRef)}` : 'none complete (pending human dimensions or missing)'}`);
+    console.log(
+      `   result packet:   ${validPacket ? `valid — ${path.relative(ROOT, validPacket)}` : packets.length > 0 ? `${packets.length} packet(s), none validating` : 'none'}`
+    );
+    console.log(
+      `   judge record:    ${completeJudge ? `complete (all ${Object.keys(rubricDims).length} dimensions) — ${path.relative(ROOT, judgeFileRef)}` : 'none complete (pending human dimensions or missing)'}`
+    );
     if (judgeVerdict) console.log(`   judge verdict:   ${judgeVerdict}`);
     console.log(`   baseline block:  ${baselinePresent ? 'present' : 'absent'}`);
     console.log(`   evidence supports: ${supported}`);
@@ -823,19 +975,26 @@ function promotionCheck({ tasksDir, resultsDir, strict = false }) {
     if (currentRank > TIER_RANK[supported]) {
       const missing = [];
       if (!validPacket) missing.push('validating result packet');
-      if (currentRank >= 2 && !completeJudge) missing.push('complete judge record (six scored dimensions)');
+      if (currentRank >= 2 && !completeJudge)
+        missing.push('complete judge record (six scored dimensions)');
       if (currentRank >= 2 && !baselinePresent) missing.push('baseline block');
-      console.log(`   GAP: recorded tier "${tier}" exceeds evidence-supported tier "${supported}" — missing: ${missing.join(', ')}`);
+      console.log(
+        `   GAP: recorded tier "${tier}" exceeds evidence-supported tier "${supported}" — missing: ${missing.join(', ')}`
+      );
       violations.push(taskId);
     } else if (currentRank < TIER_RANK[supported]) {
-      console.log(`   note: evidence would support promotion to "${supported}" (envelope edit is manual — this tool never edits).`);
+      console.log(
+        `   note: evidence would support promotion to "${supported}" (envelope edit is manual — this tool never edits).`
+      );
     }
     console.log('');
   }
 
   console.log('--- Summary ---');
   console.log(`Tasks checked:      ${envByTask.size}`);
-  console.log(`Tier gaps found:    ${violations.length}${violations.length > 0 ? ` (${violations.join(', ')})` : ''}`);
+  console.log(
+    `Tier gaps found:    ${violations.length}${violations.length > 0 ? ` (${violations.join(', ')})` : ''}`
+  );
   if (strict && violations.length > 0) {
     console.error('\nSTRICT: recorded tiers exceed evidence — failing.');
     process.exitCode = 1;
@@ -854,7 +1013,8 @@ function runFixtures() {
 
   const report = (ok, label, detail) => {
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? `\n      ${detail}` : ''}`);
-    if (ok) pass += 1; else fail += 1;
+    if (ok) pass += 1;
+    else fail += 1;
   };
 
   try {
@@ -868,10 +1028,17 @@ function runFixtures() {
       });
       const rubricDims = loadRubricDimensions();
       const complete = judgeRecordComplete(record, rubricDims);
-      report(complete, 'positive declaration finalizes with all six dimensions scored',
-        `total=${record.total_score} verdict=${record.verdict} judge_type=${record.judge_type} → ${outputPath}`);
+      report(
+        complete,
+        'positive declaration finalizes with all six dimensions scored',
+        `total=${record.total_score} verdict=${record.verdict} judge_type=${record.judge_type} → ${outputPath}`
+      );
     } catch (err) {
-      report(false, 'positive declaration finalizes with all six dimensions scored', err.message.split('\n')[0]);
+      report(
+        false,
+        'positive declaration finalizes with all six dimensions scored',
+        err.message.split('\n')[0]
+      );
     }
 
     // Positive (blind): record must not contain participant identity.
@@ -883,11 +1050,18 @@ function runFixtures() {
         outputPath: path.join(tmpDir, 'blind-judge.yaml'),
       });
       const text = JSON.stringify(record).toLowerCase();
-      const leaked = ['yukson', 'openclaw', 'gpt-5.x', 'vps5'].filter(s => text.includes(s));
-      report(leaked.length === 0, 'blind finalize hides runtime/model/node/agent identity',
-        leaked.length > 0 ? `leaked: ${leaked.join(', ')}` : `packet_id=${record.packet_id}`);
+      const leaked = ['yukson', 'openclaw', 'gpt-5.x', 'vps5'].filter((s) => text.includes(s));
+      report(
+        leaked.length === 0,
+        'blind finalize hides runtime/model/node/agent identity',
+        leaked.length > 0 ? `leaked: ${leaked.join(', ')}` : `packet_id=${record.packet_id}`
+      );
     } catch (err) {
-      report(false, 'blind finalize hides runtime/model/node/agent identity', err.message.split('\n')[0]);
+      report(
+        false,
+        'blind finalize hides runtime/model/node/agent identity',
+        err.message.split('\n')[0]
+      );
     }
 
     // Negative cases: each declaration must be rejected with a clear error.
@@ -899,11 +1073,19 @@ function runFixtures() {
     for (const { file, expect } of negatives) {
       const declPath = path.join(FIXTURES_DIR, file);
       try {
-        finalize({ packetPath: packet, declarationPath: declPath, outputPath: path.join(tmpDir, `${file}-judge.yaml`) });
+        finalize({
+          packetPath: packet,
+          declarationPath: declPath,
+          outputPath: path.join(tmpDir, `${file}-judge.yaml`),
+        });
         report(false, `${file} rejected`, 'finalize unexpectedly succeeded');
       } catch (err) {
         const ok = err instanceof JudgeError && err.message.includes(expect);
-        report(ok, `${file} rejected with "${expect}"`, ok ? undefined : `got: ${err.message.split('\n').slice(0, 2).join(' ')}`);
+        report(
+          ok,
+          `${file} rejected with "${expect}"`,
+          ok ? undefined : `got: ${err.message.split('\n').slice(0, 2).join(' ')}`
+        );
       }
     }
   } finally {
@@ -962,11 +1144,17 @@ function main() {
 
   if (command === 'oracle-check') {
     const packetPath = args.positional[0];
-    if (!packetPath) { usage(); process.exitCode = 1; return; }
+    if (!packetPath) {
+      usage();
+      process.exitCode = 1;
+      return;
+    }
     const { rp, packetId } = resolvePacket(packetPath);
     const oracleFile = findOracleFile(rp.task_id, args.oracle);
     if (!oracleFile) {
-      console.log(`No oracle found for task ${rp.task_id} under ${path.relative(ROOT, ORACLE_DIR)} — nothing to check.`);
+      console.log(
+        `No oracle found for task ${rp.task_id} under ${path.relative(ROOT, ORACLE_DIR)} — nothing to check.`
+      );
       return;
     }
     const oracle = loadYamlFile(oracleFile);
@@ -976,7 +1164,11 @@ function main() {
 
   if (command === 'template') {
     const packetPath = args.positional[0];
-    if (!packetPath) { usage(); process.exitCode = 1; return; }
+    if (!packetPath) {
+      usage();
+      process.exitCode = 1;
+      return;
+    }
     const { rp, packetId } = resolvePacket(packetPath);
     const oracleFile = findOracleFile(rp.task_id, args.oracle);
     const oracle = oracleFile ? loadYamlFile(oracleFile) : null;
@@ -996,7 +1188,11 @@ function main() {
 
   if (command === 'finalize') {
     const packetPath = args.positional[0];
-    if (!packetPath || !args.declaration) { usage(); process.exitCode = 1; return; }
+    if (!packetPath || !args.declaration) {
+      usage();
+      process.exitCode = 1;
+      return;
+    }
     const { record, outputPath } = finalize({
       packetPath,
       declarationPath: args.declaration,
@@ -1010,10 +1206,13 @@ function main() {
       console.log(`  ${dim}: ${d.score}/${d.max}`);
     }
     if (record.penalties_applied.length > 0) {
-      for (const p of record.penalties_applied) console.log(`  penalty ${p.kind}: ${p.amount} (${p.reason})`);
+      for (const p of record.penalties_applied)
+        console.log(`  penalty ${p.kind}: ${p.amount} (${p.reason})`);
     }
     console.log(`  total: ${record.total_score}  verdict: ${record.verdict}`);
-    console.log(`Verify with: node scripts/validate.js ${path.relative(process.cwd(), outputPath)}`);
+    console.log(
+      `Verify with: node scripts/validate.js ${path.relative(process.cwd(), outputPath)}`
+    );
     return;
   }
 
@@ -1039,7 +1238,11 @@ if (require.main === module) {
   try {
     main();
   } catch (err) {
-    console.error(err instanceof JudgeError ? `ERROR: ${err.message}` : `Fatal error: ${err.stack || err.message}`);
+    console.error(
+      err instanceof JudgeError
+        ? `ERROR: ${err.message}`
+        : `Fatal error: ${err.stack || err.message}`
+    );
     process.exit(1);
   }
 }

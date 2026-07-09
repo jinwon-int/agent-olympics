@@ -53,9 +53,7 @@ const {
 function repoRelative(filePath) {
   const root = path.resolve(__dirname, '..');
   const relative = path.relative(root, filePath);
-  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
-    ? relative
-    : filePath;
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : filePath;
 }
 
 function parseArgs() {
@@ -71,7 +69,14 @@ function parseArgs() {
       '  --seed <string>      Deterministic seed for stable output ids',
       '  --timestamp <time>   ISO timestamp override for all timestamps',
     ],
-    defaults: { exitCode: 0, agentId: 'stub-adapter', runtime: 'cli', seed: null, timestamp: null, runDir: null },
+    defaults: {
+      exitCode: 0,
+      agentId: 'stub-adapter',
+      runtime: 'cli',
+      seed: null,
+      timestamp: null,
+      runDir: null,
+    },
     options: COMMON_OPTIONS,
   });
 }
@@ -80,7 +85,16 @@ function parseArgs() {
 // Core logic — deterministic stub generation
 // ---------------------------------------------------------------------------
 
-function generateResultPacket(envelope, runId, agentId, runtime, status, startedAt, endedAt, seed) {
+function generateResultPacket(
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  status,
+  startedAt,
+  endedAt,
+  _seed
+) {
   const taskId = envelope.task_id || 'unknown-task';
 
   // Build evidence items based on task context
@@ -129,8 +143,9 @@ function generateResultPacket(envelope, runId, agentId, runtime, status, started
   ];
 
   const outputs = {};
-  for (const key of (envelope.required_outputs || [])) {
-    outputs[key] = `[stub] Placeholder output for "${key}". Replace with real output from the participant adapter.`;
+  for (const key of envelope.required_outputs || []) {
+    outputs[key] =
+      `[stub] Placeholder output for "${key}". Replace with real output from the participant adapter.`;
   }
 
   const schemaVersion = envelope.schema_version || 1;
@@ -162,7 +177,8 @@ function generateResultPacket(envelope, runId, agentId, runtime, status, started
       allowed: ['read'],
       used: ['read'],
       disclosure_level: 'full',
-      notes: 'Deterministic stub adapter — only read the input envelope; no live tools were invoked.',
+      notes:
+        'Deterministic stub adapter — only read the input envelope; no live tools were invoked.',
     };
     packet.operating_policy = {
       approval_boundaries: 'not_applicable',
@@ -214,7 +230,8 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, entri
         timestamp: startedAt,
         action: 'think',
         target: null,
-        summary: 'Stub adapter: generating deterministic result artifacts. No live execution performed.',
+        summary:
+          'Stub adapter: generating deterministic result artifacts. No live execution performed.',
         duration_ms: 10,
         result_summary: 'Result packet, trace, and evidence bundle generated.',
       },
@@ -261,7 +278,18 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt) {
   };
 }
 
-function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode, startedAt, endedAt, artifactPaths) {
+function generateRunMetadata(
+  envelopePath,
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  status,
+  exitCode,
+  startedAt,
+  endedAt,
+  artifactPaths
+) {
   return {
     schema_version: 1,
     run_id: runId,
@@ -274,9 +302,10 @@ function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, st
     started_at: startedAt,
     ended_at: endedAt,
     duration_seconds: Math.round((new Date(endedAt) - new Date(startedAt)) / 1000),
-    artifacts: artifactPaths.map(p => path.basename(p)),
+    artifacts: artifactPaths.map((p) => path.basename(p)),
     adapter_type: 'stub',
-    notes: 'This is a deterministic stub adapter result. No live participant executed. Use for runner integration tests and CI validation.',
+    notes:
+      'This is a deterministic stub adapter result. No live participant executed. Use for runner integration tests and CI validation.',
   };
 }
 
@@ -324,11 +353,37 @@ function main() {
   const endedAt = overrideTimestamp || isoNow();
 
   // --- Generate output artifacts ---
-  const resultPacket = generateResultPacket(envelope, runId, agentId, runtime, status, startedAt, endedAt, seed);
+  const resultPacket = generateResultPacket(
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    startedAt,
+    endedAt,
+    seed
+  );
   const traceRecord = generateTraceRecord(envelope, runId, agentId, startedAt, endedAt);
   const evidenceBundle = generateEvidenceBundle(envelope, runId, agentId, endedAt);
-  const runMeta = generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode, startedAt, endedAt,
-    ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'run.yaml', 'adapter.log']);
+  const runMeta = generateRunMetadata(
+    envelopePath,
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    exitCode,
+    startedAt,
+    endedAt,
+    [
+      'envelope-copy.yaml',
+      'result-packet.yaml',
+      'trace.yaml',
+      'evidence-bundle.yaml',
+      'run.yaml',
+      'adapter.log',
+    ]
+  );
 
   // --- Write artifacts ---
   const writeYaml = makeWriteYaml(runDir);

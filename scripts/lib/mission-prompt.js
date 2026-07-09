@@ -50,12 +50,14 @@ const yaml = require('js-yaml');
 
 const PROFILE_BITS = {
   hermes: {
-    intro: (agentId) => `You are the Hermes Agent Olympics participant "${agentId}" running inside the local Hermes instance.`,
+    intro: (agentId) =>
+      `You are the Hermes Agent Olympics participant "${agentId}" running inside the local Hermes instance.`,
     soloLine: null,
     exampleFindingRefs: ['ev-commander-report', 'ev-worker-traces'],
   },
   cli: {
-    intro: (agentId) => `You are the Agent Olympics CLI participant "${agentId}" running as a solo\ncoding-agent CLI session.`,
+    intro: (agentId) =>
+      `You are the Agent Olympics CLI participant "${agentId}" running as a solo\ncoding-agent CLI session.`,
     soloLine: '- You are solo: no subagents, no delegation.',
     exampleFindingRefs: ['ev-cli-report', 'ev-cli-transcript'],
   },
@@ -70,13 +72,19 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
   // session. "file" is the only non-exec toolset name in use.
   let execAvailable = null;
   if (typeof toolsets === 'string' && toolsets.trim()) {
-    execAvailable = toolsets.split(',').map((t) => t.trim()).some((t) => t && t !== 'file');
+    execAvailable = toolsets
+      .split(',')
+      .map((t) => t.trim())
+      .some((t) => t && t !== 'file');
   }
 
-  const objective = String(envelope.objective || '').replace(/\s+/g, ' ').trim();
-  const repoPath = envelope.environment && envelope.environment.repo_path
-    ? String(envelope.environment.repo_path)
-    : null;
+  const objective = String(envelope.objective || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const repoPath =
+    envelope.environment && envelope.environment.repo_path
+      ? String(envelope.environment.repo_path)
+      : null;
   const forbidden = Array.isArray(envelope.forbidden_actions) ? envelope.forbidden_actions : [];
   const requiredOutputs = Array.isArray(envelope.required_outputs) ? envelope.required_outputs : [];
 
@@ -94,22 +102,22 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
         `- Task workspace: ${repoPath} — you MAY create and edit files INSIDE`,
         '  this workspace. Keep changes minimal and task-relevant.',
         '- Outside the workspace, local file inspection is read-only.',
-        '- This session\'s toolset is FILE-ONLY: you cannot execute commands.',
+        "- This session's toolset is FILE-ONLY: you cannot execute commands.",
         '  Diagnose and edit files, and state explicitly in your outputs that',
-        '  you could not run tests in this session.',
+        '  you could not run tests in this session.'
       );
     } else {
       constraints.push(
         `- Task workspace: ${repoPath} — you MAY create and edit files and run the`,
-        '  project\'s own build/test commands INSIDE this workspace. That is the',
+        "  project's own build/test commands INSIDE this workspace. That is the",
         '  mission. Keep changes minimal and task-relevant.',
-        '- Outside the workspace, local file inspection is read-only.',
+        '- Outside the workspace, local file inspection is read-only.'
       );
       if (execAvailable === true) {
         constraints.push(
           '- Command execution IS available in this session: actually run the',
-          '  project\'s relevant test/build commands and include the real (trimmed)',
-          '  failing and passing output in your evidence and required outputs.',
+          "  project's relevant test/build commands and include the real (trimmed)",
+          '  failing and passing output in your evidence and required outputs.'
         );
       }
     }
@@ -119,7 +127,7 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
   constraints.push(
     '- Report only commands you actually executed in this session. Never assert',
     '  test/build/run results you did not produce; if a command could not be run,',
-    '  say so explicitly instead of inferring its output.',
+    '  say so explicitly instead of inferring its output.'
   );
   for (const f of forbidden) {
     constraints.push(`- Envelope forbids: ${String(f).replace(/\s+/g, ' ').trim()}.`);
@@ -148,7 +156,7 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
     '  "findings": [',
     `    {"claim": "claim supported by evidence", "evidence": ${JSON.stringify(bits.exampleFindingRefs)}, "confidence": "high"}`,
     '  ]',
-    '}',
+    '}'
   );
 
   const sections = [
@@ -173,7 +181,7 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
     sections.push(
       '',
       'The envelope requires these outputs — fill EVERY key in "outputs" with your',
-      `real mission answer: ${requiredOutputs.join(', ')}.`,
+      `real mission answer: ${requiredOutputs.join(', ')}.`
     );
   }
   sections.push(
@@ -191,7 +199,7 @@ function buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile
     'Return ONLY this marker-wrapped JSON, with no commentary outside the markers:',
     'AGENT_OLYMPICS_RESULT_JSON_BEGIN',
     jsonLines.join('\n'),
-    'AGENT_OLYMPICS_RESULT_JSON_END',
+    'AGENT_OLYMPICS_RESULT_JSON_END'
   );
   return sections.join('\n') + '\n';
 }
@@ -209,14 +217,21 @@ function main() {
     else if (args[i] === '--profile') profile = args[++i];
     else if (args[i] === '--toolsets') toolsets = args[++i];
     else if (!envelopePath) envelopePath = args[i];
-    else { console.error(`Unknown argument: ${args[i]}`); process.exit(2); }
+    else {
+      console.error(`Unknown argument: ${args[i]}`);
+      process.exit(2);
+    }
   }
   if (!envelopePath || !agentId || !repoRoot || !profile) {
-    console.error('Usage: mission-prompt.js <envelope> --agent-id <id> --repo <root> --profile hermes|cli [--toolsets <list>]');
+    console.error(
+      'Usage: mission-prompt.js <envelope> --agent-id <id> --repo <root> --profile hermes|cli [--toolsets <list>]'
+    );
     process.exit(2);
   }
   const envelope = yaml.load(fs.readFileSync(path.resolve(envelopePath), 'utf8'));
-  process.stdout.write(buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile, toolsets }));
+  process.stdout.write(
+    buildMissionPrompt({ envelope, envelopePath, agentId, repoRoot, profile, toolsets })
+  );
 }
 
 if (require.main === module) main();

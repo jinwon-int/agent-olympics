@@ -56,14 +56,8 @@ const yaml = require('js-yaml');
 
 const ROOT = path.resolve(__dirname, '..');
 
-const {
-  SECRET_VALUE_PATTERNS,
-  looksLikeSecretValue,
-} = require('./lib/secret-patterns');
-const {
-  scanTextForOracleReferences,
-  scanObjectForSecretFields,
-} = require('./live-runner');
+const { SECRET_VALUE_PATTERNS } = require('./lib/secret-patterns');
+const { scanTextForOracleReferences, scanObjectForSecretFields } = require('./live-runner');
 const { fingerprintRuntime } = require('./lib/runtime-fingerprint');
 
 const HUMAN_BASELINE_CAPABILITY = 'fixtures/adapters/capabilities/human-baseline.yaml';
@@ -72,9 +66,9 @@ const FILL = 'FILL_ME';
 // Evidence ids the template seeds and finalize understands. ev-human-* is the
 // distinctive id prefix the runtime fingerprint keys on.
 const HUMAN_EVIDENCE_IDS = Object.freeze({
-  log: 'ev-human-action-log',          // the operator action timeline
-  report: 'ev-human-report',           // the operator's written diagnosis/answer
-  artifact: 'ev-human-artifact',       // produced output files / screenshots
+  log: 'ev-human-action-log', // the operator action timeline
+  report: 'ev-human-report', // the operator's written diagnosis/answer
+  artifact: 'ev-human-artifact', // produced output files / screenshots
 });
 
 // ---------------------------------------------------------------------------
@@ -273,7 +267,10 @@ function buildTemplate(envelope, operatorId, capability) {
       runtime: { name: 'human-baseline', version: 'manual' },
       model: { name: 'human-operator', provider: 'human' },
       node: { profile_ref: 'human-baseline-operator' },
-      config: { profile_ref: 'human-baseline-default', details: { adapter_mode: 'human-baseline' } },
+      config: {
+        profile_ref: 'human-baseline-default',
+        details: { adapter_mode: 'human-baseline' },
+      },
       task: { task_id: taskId, task_version: `v${envelope.schema_version || 1}` },
     },
     configuration_profile: {
@@ -359,20 +356,36 @@ function findUnresolvedPlaceholders(value, pathParts = []) {
 function findSecretValues(value, pathParts = []) {
   const hits = [];
   if (typeof value === 'string') {
-    if (SECRET_VALUE_PATTERNS.some((p) => p.test(value))) hits.push(pathParts.join('.') || '(root)');
+    if (SECRET_VALUE_PATTERNS.some((p) => p.test(value)))
+      hits.push(pathParts.join('.') || '(root)');
   } else if (Array.isArray(value)) {
     value.forEach((v, i) => hits.push(...findSecretValues(v, [...pathParts, String(i)])));
   } else if (value && typeof value === 'object') {
-    for (const [k, v] of Object.entries(value)) hits.push(...findSecretValues(v, [...pathParts, k]));
+    for (const [k, v] of Object.entries(value))
+      hits.push(...findSecretValues(v, [...pathParts, k]));
   }
   return hits;
 }
 
 const REQUIRED_PACKET_FIELDS = [
-  'schema_version', 'task_id', 'agent_id', 'runtime', 'started_at', 'ended_at',
-  'status', 'division', 'validity', 'publishable', 'tool_use_profile',
-  'operating_policy', 'delegation_profile', 'comparable_metadata', 'summary',
-  'evidence', 'findings', 'outputs',
+  'schema_version',
+  'task_id',
+  'agent_id',
+  'runtime',
+  'started_at',
+  'ended_at',
+  'status',
+  'division',
+  'validity',
+  'publishable',
+  'tool_use_profile',
+  'operating_policy',
+  'delegation_profile',
+  'comparable_metadata',
+  'summary',
+  'evidence',
+  'findings',
+  'outputs',
 ];
 
 /**
@@ -396,9 +409,9 @@ function finalizePacket(template) {
   packet.started_at = toIsoString(packet.started_at);
   packet.ended_at = toIsoString(packet.ended_at);
   if (packet.outputs && Array.isArray(packet.outputs.action_log)) {
-    packet.outputs.action_log = packet.outputs.action_log.map((step) => (
+    packet.outputs.action_log = packet.outputs.action_log.map((step) =>
       step && typeof step === 'object' ? { ...step, timestamp: toIsoString(step.timestamp) } : step
-    ));
+    );
   }
 
   // 1. No unresolved placeholders anywhere in the packet body.
@@ -440,11 +453,18 @@ function finalizePacket(template) {
     errors.push('findings must have at least one item');
   }
   for (const [i, f] of (packet.findings || []).entries()) {
-    if (!f || !f.claim) { errors.push(`findings[${i}] missing claim`); continue; }
+    if (!f || !f.claim) {
+      errors.push(`findings[${i}] missing claim`);
+      continue;
+    }
     const refs = Array.isArray(f.evidence) ? f.evidence : [];
-    if (refs.length === 0) { errors.push(`findings[${i}] cites no evidence`); continue; }
+    if (refs.length === 0) {
+      errors.push(`findings[${i}] cites no evidence`);
+      continue;
+    }
     for (const ref of refs) {
-      if (!evidenceIds.has(ref)) errors.push(`findings[${i}] references unknown evidence id "${ref}"`);
+      if (!evidenceIds.has(ref))
+        errors.push(`findings[${i}] references unknown evidence id "${ref}"`);
     }
   }
 
@@ -464,7 +484,8 @@ function finalizePacket(template) {
 
   // 8. No oracle / hidden-judge-material references (same scan as the runner).
   const oracleHits = scanTextForOracleReferences(yaml.dump(packet));
-  if (oracleHits.length > 0) errors.push(`oracle/hidden-judge reference detected (${oracleHits.join(', ')})`);
+  if (oracleHits.length > 0)
+    errors.push(`oracle/hidden-judge reference detected (${oracleHits.join(', ')})`);
 
   return { ok: errors.length === 0, errors, packet };
 }
@@ -515,8 +536,12 @@ function buildCompanions(packet) {
   };
   if (trace.entries.length === 0) {
     trace.entries.push({
-      seq: 0, timestamp: now, action: 'manual', target: 'human-operator',
-      summary: 'Human operator completed the task manually.', result_summary: '',
+      seq: 0,
+      timestamp: now,
+      action: 'manual',
+      target: 'human-operator',
+      summary: 'Human operator completed the task manually.',
+      result_summary: '',
       evidence_ref: HUMAN_EVIDENCE_IDS.log,
     });
   }
@@ -560,14 +585,20 @@ function cmdFinalize(args) {
     const dir = path.dirname(outPath);
     const base = path.basename(outPath).replace(/\.ya?ml$/i, '');
     fs.writeFileSync(path.join(dir, `${base}.trace.yaml`), dumpYaml(trace), 'utf8');
-    fs.writeFileSync(path.join(dir, `${base}.evidence-bundle.yaml`), dumpYaml(evidenceBundle), 'utf8');
+    fs.writeFileSync(
+      path.join(dir, `${base}.evidence-bundle.yaml`),
+      dumpYaml(evidenceBundle),
+      'utf8'
+    );
     console.log(`OK    finalized human-baseline packet: ${args.output}`);
     console.log(`  Task:        ${packet.task_id}`);
     console.log(`  Operator:    ${packet.agent_id}`);
     console.log(`  Status:      ${packet.status}`);
     console.log(`  Fingerprint: ${fp.detected} (confidence ${fp.confidence})`);
     console.log(`  Companions:  ${base}.trace.yaml, ${base}.evidence-bundle.yaml`);
-    console.log('  Submit as a normal results/ packet — the harness judges it like any participant.');
+    console.log(
+      '  Submit as a normal results/ packet — the harness judges it like any participant.'
+    );
   } else {
     process.stdout.write(dumpYaml(packet));
   }
@@ -612,7 +643,8 @@ function entryTotalScore(entry) {
 function isHumanBaselineEntry(entry) {
   const meta = entry.submission_metadata || {};
   const labels = [meta.adapter, meta.runtime, entry.division]
-    .filter(Boolean).map((s) => String(s).toLowerCase());
+    .filter(Boolean)
+    .map((s) => String(s).toLowerCase());
   return labels.some((l) => /human[-_]?baseline/.test(l) || l === 'human_baseline');
 }
 
@@ -675,22 +707,29 @@ function buildAnchorReport(scoreboard, opts = {}) {
 
 function printAnchorReport(report, blind) {
   console.log(`Agent Olympics — Human Baseline Anchor${blind ? ' (blind)' : ''}`);
-  console.log(`Threshold: +/-${report.threshold} pts vs human reference line flags significant out/under-performance.`);
+  console.log(
+    `Threshold: +/-${report.threshold} pts vs human reference line flags significant out/under-performance.`
+  );
   console.log('');
   for (const t of report.tasks) {
     if (!t.has_human_baseline) {
       console.log(`${t.task_id}: no human baseline available — no anchor (not fabricated).`);
       continue;
     }
-    console.log(`${t.task_id}: human baseline "${t.human_agent_id}" scored ${t.human_score} (reference line).`);
+    console.log(
+      `${t.task_id}: human baseline "${t.human_agent_id}" scored ${t.human_score} (reference line).`
+    );
     if (t.agents.length === 0) {
       console.log('  (no agent participants on this task to compare)');
       continue;
     }
     for (const a of t.agents) {
-      const mark = a.flag === 'significantly_above_human' ? 'OVER '
-        : a.flag === 'significantly_below_human' ? 'UNDER'
-        : '  ~  ';
+      const mark =
+        a.flag === 'significantly_above_human'
+          ? 'OVER '
+          : a.flag === 'significantly_below_human'
+            ? 'UNDER'
+            : '  ~  ';
       console.log(`  [${mark}] ${a.agent_id}: ${a.score} (${a.delta_label})`);
     }
   }
@@ -723,7 +762,10 @@ const FIXTURE_DIR = 'fixtures/human-baseline';
 
 function runFixtures() {
   let failures = 0;
-  const fail = (msg) => { console.log(`  FAIL: ${msg}`); failures += 1; };
+  const fail = (msg) => {
+    console.log(`  FAIL: ${msg}`);
+    failures += 1;
+  };
   const ok = (msg) => console.log(`  OK: ${msg}`);
 
   // --- finalize: positive worked fixture ---------------------------------
@@ -736,7 +778,8 @@ function runFixtures() {
     if (res.ok) {
       const { trace } = buildCompanions(res.packet);
       const fp = fingerprintRuntime(res.packet, trace);
-      if (fp.detected === 'human-baseline') ok(`finalized packet fingerprints as human-baseline (confidence ${fp.confidence})`);
+      if (fp.detected === 'human-baseline')
+        ok(`finalized packet fingerprints as human-baseline (confidence ${fp.confidence})`);
       else fail(`finalized packet fingerprints as "${fp.detected}", expected human-baseline`);
     }
   } catch (e) {
@@ -769,27 +812,35 @@ function runFixtures() {
   // --- anchor: delta math + flags + blind --------------------------------
   console.log('anchor — delta math, flags, and blind anonymization:');
   try {
-    const board = JSON.parse(fs.readFileSync(repoPath(`${FIXTURE_DIR}/anchor-scoreboard.json`), 'utf8'));
+    const board = JSON.parse(
+      fs.readFileSync(repoPath(`${FIXTURE_DIR}/anchor-scoreboard.json`), 'utf8')
+    );
     const report = buildAnchorReport(board, { threshold: 10 });
     const task = report.tasks.find((t) => t.task_id === 'ops-001');
-    if (!task) { fail('anchor fixture missing ops-001 task'); }
-    else if (!task.has_human_baseline) { fail('anchor fixture ops-001 should have a human baseline'); }
-    else {
+    if (!task) {
+      fail('anchor fixture missing ops-001 task');
+    } else if (!task.has_human_baseline) {
+      fail('anchor fixture ops-001 should have a human baseline');
+    } else {
       if (task.human_score === 80) ok('human baseline reference score read as 80');
       else fail(`expected human baseline score 80, got ${task.human_score}`);
       const over = task.agents.find((a) => a.agent_id === 'agent-strong');
       const under = task.agents.find((a) => a.agent_id === 'agent-weak');
       const near = task.agents.find((a) => a.agent_id === 'agent-near');
-      if (over && over.delta === 15 && over.flag === 'significantly_above_human') ok('agent-strong flagged significantly_above_human (+15)');
+      if (over && over.delta === 15 && over.flag === 'significantly_above_human')
+        ok('agent-strong flagged significantly_above_human (+15)');
       else fail(`agent-strong delta/flag wrong: ${JSON.stringify(over)}`);
-      if (under && under.delta === -20 && under.flag === 'significantly_below_human') ok('agent-weak flagged significantly_below_human (-20)');
+      if (under && under.delta === -20 && under.flag === 'significantly_below_human')
+        ok('agent-weak flagged significantly_below_human (-20)');
       else fail(`agent-weak delta/flag wrong: ${JSON.stringify(under)}`);
-      if (near && near.delta === 5 && near.flag === 'comparable') ok('agent-near is comparable (+5, within threshold)');
+      if (near && near.delta === 5 && near.flag === 'comparable')
+        ok('agent-near is comparable (+5, within threshold)');
       else fail(`agent-near delta/flag wrong: ${JSON.stringify(near)}`);
     }
     // A task with no human baseline yields has_human_baseline=false (not fabricated).
     const noHuman = report.tasks.find((t) => t.task_id === 'ops-002');
-    if (noHuman && noHuman.has_human_baseline === false) ok('ops-002 correctly reports no human baseline (no anchor fabricated)');
+    if (noHuman && noHuman.has_human_baseline === false)
+      ok('ops-002 correctly reports no human baseline (no anchor fabricated)');
     else fail('ops-002 should report has_human_baseline=false');
 
     // Blind mode must not leak the real participant identities.
@@ -797,14 +848,20 @@ function runFixtures() {
     const blindReport = buildAnchorReport(anonymize(board), { threshold: 10 });
     const blindTask = blindReport.tasks.find((t) => t.task_id === 'ops-001');
     const blob = JSON.stringify(blindReport);
-    const leaked = ['agent-strong', 'agent-weak', 'agent-near', 'human-ref'].filter((id) => blob.includes(id));
+    const leaked = ['agent-strong', 'agent-weak', 'agent-near', 'human-ref'].filter((id) =>
+      blob.includes(id)
+    );
     if (leaked.length === 0 && /^Participant /.test(blindTask.human_agent_id)) {
       ok('blind anchor leaks no real participant identity (aliased to Participant A/B...)');
     } else {
       fail(`blind anchor leaked identities: ${leaked.join(', ') || '(human id not aliased)'}`);
     }
     // Delta math must survive anonymization unchanged.
-    if (blindTask && blindTask.agents.some((a) => a.delta === 15) && blindTask.agents.some((a) => a.delta === -20)) {
+    if (
+      blindTask &&
+      blindTask.agents.some((a) => a.delta === 15) &&
+      blindTask.agents.some((a) => a.delta === -20)
+    ) {
       ok('blind anchor preserves the delta math (+15 / -20)');
     } else {
       fail('blind anchor lost the delta math');
@@ -828,13 +885,28 @@ function runFixtures() {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.help) { usage(); return; }
+  if (args.help) {
+    usage();
+    return;
+  }
   const cmd = args._[0];
 
-  if (!cmd || cmd === 'fixtures') { runFixtures(); return; }
-  if (cmd === 'template') { cmdTemplate(args); return; }
-  if (cmd === 'finalize') { cmdFinalize(args); return; }
-  if (cmd === 'anchor') { cmdAnchor(args); return; }
+  if (!cmd || cmd === 'fixtures') {
+    runFixtures();
+    return;
+  }
+  if (cmd === 'template') {
+    cmdTemplate(args);
+    return;
+  }
+  if (cmd === 'finalize') {
+    cmdFinalize(args);
+    return;
+  }
+  if (cmd === 'anchor') {
+    cmdAnchor(args);
+    return;
+  }
 
   usage();
   process.exitCode = 1;

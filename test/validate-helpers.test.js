@@ -38,7 +38,7 @@ test('renderRunIdTemplate fills task/agent from provided objects', () => {
     'run-{task_id}-{agent_id}-{timestamp}',
     { round_id: 'r1', season: 'season-001' },
     { task_id: 'ops-001' },
-    { agent_id: 'sogyo' },
+    { agent_id: 'sogyo' }
   );
   assert.equal(out, 'run-ops-001-sogyo-20260101T000000UTC');
 });

@@ -149,8 +149,11 @@ pre.evidence-json {
 
 function escapeHtml(s) {
   if (typeof s !== 'string') return String(s == null ? '' : s);
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function dimColor(score, max) {
@@ -168,7 +171,7 @@ function dimBarHtml(score, max) {
 }
 
 function formatScore(score, max) {
-  return `${score}/${max} (${max > 0 ? Math.round(score / max * 100) : 0}%)`;
+  return `${score}/${max} (${max > 0 ? Math.round((score / max) * 100) : 0}%)`;
 }
 
 function formatWallTime(seconds) {
@@ -293,7 +296,9 @@ function anonymizeScoreboard(scoreboard) {
     return anon;
   });
 
-  const participants = (scoreboard.participants || []).map((p) => ({ agent_id: aliasFor(p.agent_id) }));
+  const participants = (scoreboard.participants || []).map((p) => ({
+    agent_id: aliasFor(p.agent_id),
+  }));
 
   return { ...scoreboard, entries, participants };
 }
@@ -305,7 +310,7 @@ function anonymizeScoreboard(scoreboard) {
 function computeRanks(entries) {
   // Filter blocked/disqualified
   const ranked = entries
-    .filter(e => e.status !== 'blocked' && e.status !== 'disqualified')
+    .filter((e) => e.status !== 'blocked' && e.status !== 'disqualified')
     .sort((a, b) => {
       // Sort by total_score desc
       const sa = (a.score && a.score.total_score) || 0;
@@ -332,7 +337,9 @@ function pageHeader(navHtml, blindMode) {
   const blindNote = blindMode
     ? '<div class="blind-banner">⚠ Blind scoring mode — participant identities are anonymized. Identifying metadata is withheld.</div>'
     : '';
-  const nav = navHtml || '<a href="index.html" style="margin-right:20px;" class="nav-title">🏆 Agent Olympics</a>';
+  const nav =
+    navHtml ||
+    '<a href="index.html" style="margin-right:20px;" class="nav-title">🏆 Agent Olympics</a>';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -365,10 +372,10 @@ function renderLeaderboard(scoreboard, blindMode, title) {
 
   // Summary stats
   const totalEntries = entries.length;
-  const entriesWithScore = entries.filter(e => e.score && e.score.total_score != null).length;
-  const entriesPending = entries.filter(e => e.judge_type === 'pending').length;
-  const comparable = entries.filter(e => e.comparable === true).length;
-  const passCount = entries.filter(e => e.score && e.score.verdict === 'pass').length;
+  const entriesWithScore = entries.filter((e) => e.score && e.score.total_score != null).length;
+  const entriesPending = entries.filter((e) => e.judge_type === 'pending').length;
+  const comparable = entries.filter((e) => e.comparable === true).length;
+  const passCount = entries.filter((e) => e.score && e.score.verdict === 'pass').length;
 
   const displayTitle = title || `Agent Olympics ${blindMode ? '(Blind) ' : ''}Leaderboard`;
   const displaySubtitle = `Round: ${escapeHtml(sb.round_id || '—')} | Generated: ${sb.generated_at || '—'}`;
@@ -439,7 +446,9 @@ function renderLeaderboard(scoreboard, blindMode, title) {
   // dimension so the capability signal is visible separately from the
   // mission total. Presentation only — rubric weights, totals, and judge
   // records are unchanged.
-  const scoredEntries = entries.filter(e => e.score && e.score.dimensions && e.score.dimensions.correctness);
+  const scoredEntries = entries.filter(
+    (e) => e.score && e.score.dimensions && e.score.dimensions.correctness
+  );
   if (scoredEntries.length > 0) {
     const byCorrectness = [...scoredEntries].sort((a, b) => {
       const diff = b.score.dimensions.correctness.score - a.score.dimensions.correctness.score;
@@ -498,13 +507,15 @@ function renderDetail(entry, blindMode) {
     blindMode
   );
 
-  const provisionalNote = (entry.schema_validation && !entry.schema_validation.valid)
-    ? '<div class="provisional-banner">⚠ This result has schema validation errors. Shown as provisional only.</div>'
-    : '';
+  const provisionalNote =
+    entry.schema_validation && !entry.schema_validation.valid
+      ? '<div class="provisional-banner">⚠ This result has schema validation errors. Shown as provisional only.</div>'
+      : '';
 
-  const pendingNote = (entry.pending_dimensions && entry.pending_dimensions.length > 0)
-    ? `<div class="pending-note">⏳ Pending human review dimensions: ${entry.pending_dimensions.join(', ')}</div>`
-    : '';
+  const pendingNote =
+    entry.pending_dimensions && entry.pending_dimensions.length > 0
+      ? `<div class="pending-note">⏳ Pending human review dimensions: ${entry.pending_dimensions.join(', ')}</div>`
+      : '';
 
   html += `<h1>${escapeHtml(entry.agent_id)} — ${escapeHtml(entry.task_id)}</h1>
 <div class="subtitle">Entry ID: ${escapeHtml(entry.entry_id)} | Run: ${escapeHtml(entry.run_id)}</div>
@@ -637,8 +648,12 @@ ${entry.packet_ref ? `<div class="field-label">Packet Ref</div><div class="field
   if (warns.length > 0 || errs.length > 0) {
     html += `<div class="card" style="grid-column:1/-1;">
 <h3>Warnings & Errors</h3>`;
-    for (const w of warns) { html += `<div style="color:#b45309;">⚠ ${escapeHtml(w)}</div>`; }
-    for (const e of errs) { html += `<div style="color:#dc2626;">❌ ${escapeHtml(e)}</div>`; }
+    for (const w of warns) {
+      html += `<div style="color:#b45309;">⚠ ${escapeHtml(w)}</div>`;
+    }
+    for (const e of errs) {
+      html += `<div style="color:#dc2626;">❌ ${escapeHtml(e)}</div>`;
+    }
     html += '</div>';
   }
 
@@ -663,7 +678,7 @@ function renderComparison(entries, taskId, blindMode) {
 <div class="subtitle">${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}</div>`;
 
   // Check comparability caveats
-  const allCaveats = entries.flatMap(e => e.comparability_caveats || []);
+  const allCaveats = entries.flatMap((e) => e.comparability_caveats || []);
   if (allCaveats.length > 0) {
     html += '<div class="pending-note">⚠ Comparability notes:<ul>';
     for (const c of [...new Set(allCaveats)]) {
@@ -687,13 +702,16 @@ function renderComparison(entries, taskId, blindMode) {
       for (const pd of e.pending_dimensions) allDims.add(pd);
     }
   }
-  for (const dim of allDims) { html += `<th>${escapeHtml(dim)}</th>`; }
+  for (const dim of allDims) {
+    html += `<th>${escapeHtml(dim)}</th>`;
+  }
   html += `<th>Wall Time</th><th>Verdict</th></tr></thead><tbody>`;
 
   for (const entry of entries) {
     const sc = entry.score || {};
     const dims = sc.dimensions || {};
-    const wallTime = entry.submission_metadata?.performance_profile?.raw_measurements?.wall_time_seconds;
+    const wallTime =
+      entry.submission_metadata?.performance_profile?.raw_measurements?.wall_time_seconds;
     html += `<tr>
 <td><a href="../detail/${encodeURIComponent(safeFilename(entry.entry_id))}.html">${escapeHtml(entry.agent_id)}</a></td>
 <td><strong>${sc.total_score != null ? sc.total_score : '—'}</strong></td>`;
@@ -756,9 +774,10 @@ function main() {
   const title = titleIdx !== -1 && titleIdx + 1 < args.length ? args[titleIdx + 1] : null;
 
   const outIdx = args.indexOf('--output-dir');
-  const outputDir = outIdx !== -1 && outIdx + 1 < args.length
-    ? path.resolve(args[outIdx + 1])
-    : path.resolve('web-output');
+  const outputDir =
+    outIdx !== -1 && outIdx + 1 < args.length
+      ? path.resolve(args[outIdx + 1])
+      : path.resolve('web-output');
 
   // Load scoreboard
   if (!fs.existsSync(scoreboardPath)) {
@@ -817,8 +836,9 @@ function main() {
   console.log(`✓ Comparison views: ${compareCount} task groups → ${compareDir}/`);
 
   // Summary
-  const outputSize = fs.readdirSync(outputDir, { recursive: true })
-    .filter(f => f.endsWith('.html')).length;
+  const outputSize = fs
+    .readdirSync(outputDir, { recursive: true })
+    .filter((f) => f.endsWith('.html')).length;
   console.log(`\n--- Summary ---`);
   console.log(`Output directory: ${outputDir}`);
   console.log(`HTML pages generated: ${outputSize}`);

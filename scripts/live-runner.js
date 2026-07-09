@@ -95,15 +95,26 @@ const EXIT_CANCELLED = 130;
 // Allowed placeholders inside command argv elements (no shell interpolation —
 // each argv element is substituted independently and passed to spawn()).
 const COMMAND_PLACEHOLDERS = new Set([
-  'envelope', 'run_dir', 'agent_id', 'run_id', 'task_id', 'round_id',
-  'time_limit_minutes', 'seed',
+  'envelope',
+  'run_dir',
+  'agent_id',
+  'run_id',
+  'task_id',
+  'round_id',
+  'time_limit_minutes',
+  'seed',
 ]);
 
 // Envelope fields that are judge-only and must never reach participants or
 // participant-facing artifacts (v1 inline notes + v2 private references).
 // v1_compat is migration metadata whose notes quote the private oracle and
 // judge-notes paths, so it is stripped from the participant copy as well.
-const ENVELOPE_PRIVATE_FIELDS = ['hidden_judge_notes', 'judge_notes_ref', 'oracle_ref', 'v1_compat'];
+const ENVELOPE_PRIVATE_FIELDS = [
+  'hidden_judge_notes',
+  'judge_notes_ref',
+  'oracle_ref',
+  'v1_compat',
+];
 
 // Value-free runner redaction rules, kept in sync with the shared
 // SECRET_VALUE_PATTERNS list (same order). Descriptions never include values.
@@ -113,7 +124,10 @@ const VALUE_RULE_META = [
   { id: 'rv-openai-style-key', reason: 'openai_style_api_key_in_transport_output' },
   { id: 'rv-github-pat', reason: 'gh_legacy_personal_access_token_in_transport_output' },
   { id: 'rv-github-pat-org', reason: 'gh_org_personal_access_token_in_transport_output' },
-  { id: 'rv-github-finegrained-pat', reason: 'gh_finegrained_personal_access_token_in_transport_output' },
+  {
+    id: 'rv-github-finegrained-pat',
+    reason: 'gh_finegrained_personal_access_token_in_transport_output',
+  },
   { id: 'rv-slack-token', reason: 'slack_token_in_transport_output' },
   { id: 'rv-pem-private-key', reason: 'pem_private_key_in_transport_output' },
   { id: 'rv-jwt', reason: 'jwt_in_transport_output' },
@@ -121,7 +135,10 @@ const VALUE_RULE_META = [
 const RUNNER_REDACTION_RULES = SECRET_VALUE_PATTERNS.map((pattern, i) => ({
   rule_id: (VALUE_RULE_META[i] || { id: `rv-${i}` }).id,
   reason: (VALUE_RULE_META[i] || { reason: 'secret_value_in_transport_output' }).reason,
-  pattern: new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g'),
+  pattern: new RegExp(
+    pattern.source,
+    pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g'
+  ),
 }));
 const KEY_REDACTION_RULE = {
   rule_id: 'rk-secret-named-field',
@@ -193,23 +210,28 @@ function renderRunId(manifest, task, participant, timestamp) {
     round_id: manifest.round_id,
     season: manifest.season,
   };
-  return template.replace(/\{([^{}]+)\}/g, (match, key) => (values[key] !== undefined ? values[key] : match));
+  return template.replace(/\{([^{}]+)\}/g, (match, key) =>
+    values[key] !== undefined ? values[key] : match
+  );
 }
 
 function gitSourceRevision() {
   try {
     const cp = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
     if (cp.status === 0 && cp.stdout) return cp.stdout.trim();
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
   return null;
 }
 
 function spawnValidate(filePath) {
-  const cp = spawnSync(
-    process.execPath,
-    [path.join(ROOT, 'scripts', 'validate.js'), filePath],
-    { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 60000 }
-  );
+  const cp = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'validate.js'), filePath], {
+    cwd: ROOT,
+    stdio: 'pipe',
+    encoding: 'utf8',
+    timeout: 60000,
+  });
   return {
     ok: cp.status === 0,
     output: `${cp.stdout || ''}${cp.stderr || ''}`.trim(),
@@ -233,7 +255,9 @@ function scanTextForSecrets(text) {
 function scanObjectForSecretFields(value, pathParts = []) {
   const findings = [];
   if (Array.isArray(value)) {
-    value.forEach((entry, i) => findings.push(...scanObjectForSecretFields(entry, [...pathParts, String(i)])));
+    value.forEach((entry, i) =>
+      findings.push(...scanObjectForSecretFields(entry, [...pathParts, String(i)]))
+    );
   } else if (value && typeof value === 'object') {
     for (const [key, entry] of Object.entries(value)) {
       if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(entry)) {
@@ -248,9 +272,9 @@ function scanObjectForSecretFields(value, pathParts = []) {
 }
 
 function scanTextForOracleReferences(text) {
-  return ORACLE_REFERENCE_PATTERNS
-    .filter(({ pattern }) => pattern.test(String(text)))
-    .map(({ id }) => id);
+  return ORACLE_REFERENCE_PATTERNS.filter(({ pattern }) => pattern.test(String(text))).map(
+    ({ id }) => id
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -272,21 +296,29 @@ function redactText(rawText) {
       count += 1;
       return `[REDACTED:${rule.rule_id}]`;
     });
-    if (count > 0) appliedRules.push({ rule_id: rule.rule_id, reason: rule.reason, match_count: count });
+    if (count > 0)
+      appliedRules.push({ rule_id: rule.rule_id, reason: rule.reason, match_count: count });
   }
 
   // Key-named fields ("api_key: <value>", "TOKEN=<value>") with
   // credential-looking values.
   let keyCount = 0;
-  text = text.replace(/^(\s*"?([A-Za-z0-9_-]+)"?\s*[:=]\s*)(\S.*)$/gm, (line, prefix, key, value) => {
-    if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(value.trim())) {
-      keyCount += 1;
-      return `${prefix}[REDACTED:${KEY_REDACTION_RULE.rule_id}]`;
+  text = text.replace(
+    /^(\s*"?([A-Za-z0-9_-]+)"?\s*[:=]\s*)(\S.*)$/gm,
+    (line, prefix, key, value) => {
+      if (SECRET_KEY_PATTERNS.some((p) => p.test(key)) && looksLikeSecretValue(value.trim())) {
+        keyCount += 1;
+        return `${prefix}[REDACTED:${KEY_REDACTION_RULE.rule_id}]`;
+      }
+      return line;
     }
-    return line;
-  });
+  );
   if (keyCount > 0) {
-    appliedRules.push({ rule_id: KEY_REDACTION_RULE.rule_id, reason: KEY_REDACTION_RULE.reason, match_count: keyCount });
+    appliedRules.push({
+      rule_id: KEY_REDACTION_RULE.rule_id,
+      reason: KEY_REDACTION_RULE.reason,
+      match_count: keyCount,
+    });
   }
 
   return { text, appliedRules };
@@ -300,7 +332,9 @@ function loadRunnerConfigSchemaValidator() {
   try {
     const Ajv = require('ajv/dist/2020');
     const addFormats = require('ajv-formats');
-    const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas', 'runner-config.schema.json'), 'utf8'));
+    const schema = JSON.parse(
+      fs.readFileSync(path.join(ROOT, 'schemas', 'runner-config.schema.json'), 'utf8')
+    );
     const ajv = new Ajv({ allErrors: true });
     addFormats(ajv);
     return ajv.compile(schema);
@@ -329,28 +363,41 @@ function validateRunnerConfig(config, configPath) {
   // No credential values anywhere in the config.
   const secretFields = scanObjectForSecretFields(config);
   if (secretFields.length > 0) {
-    errors.push(`credential-looking value detected at: ${secretFields.join(', ')} — credentials must be referenced by class/handle only`);
+    errors.push(
+      `credential-looking value detected at: ${secretFields.join(', ')} — credentials must be referenced by class/handle only`
+    );
   }
 
   for (const [i, p] of (config.participants || []).entries()) {
     const label = `participants[${i}]${p && p.participant_id ? ` (${p.participant_id})` : ''}`;
-    if (!p || typeof p !== 'object') { errors.push(`${label}: not a mapping`); continue; }
+    if (!p || typeof p !== 'object') {
+      errors.push(`${label}: not a mapping`);
+      continue;
+    }
     if (p.transport !== 'local_exec') {
-      errors.push(`${label}: transport "${p.transport}" is not implemented — only local_exec is available in this repository`);
+      errors.push(
+        `${label}: transport "${p.transport}" is not implemented — only local_exec is available in this repository`
+      );
     }
     const validateArgv = (fieldName, argv) => {
       if (!Array.isArray(argv) || argv.length === 0 || argv.some((a) => typeof a !== 'string')) {
-        errors.push(`${label}: ${fieldName} must be a non-empty argv array of strings (no shell strings)`);
+        errors.push(
+          `${label}: ${fieldName} must be a non-empty argv array of strings (no shell strings)`
+        );
         return;
       }
       for (const arg of argv) {
         for (const m of arg.matchAll(/\{([^{}]+)\}/g)) {
           if (!COMMAND_PLACEHOLDERS.has(m[1])) {
-            errors.push(`${label}: unknown ${fieldName} placeholder {${m[1]}} (allowed: ${[...COMMAND_PLACEHOLDERS].join(', ')})`);
+            errors.push(
+              `${label}: unknown ${fieldName} placeholder {${m[1]}} (allowed: ${[...COMMAND_PLACEHOLDERS].join(', ')})`
+            );
           }
         }
         if (/[;&|<>`$]/.test(arg.replace(/\{[^{}]+\}/g, ''))) {
-          errors.push(`${label}: ${fieldName} argument "${arg}" contains shell metacharacters — argv elements are never shell-interpreted, remove them`);
+          errors.push(
+            `${label}: ${fieldName} argument "${arg}" contains shell metacharacters — argv elements are never shell-interpreted, remove them`
+          );
         }
       }
     };
@@ -367,17 +414,27 @@ function validateRunnerConfig(config, configPath) {
         errors.push(`${label}: live profile requires a credential_class (by reference)`);
       }
       if (!creds.ref) {
-        errors.push(`${label}: live profile requires credentials.ref (path/handle reference, never a value)`);
+        errors.push(
+          `${label}: live profile requires credentials.ref (path/handle reference, never a value)`
+        );
       }
       if (!p.readiness_declaration) {
-        errors.push(`${label}: live profile requires readiness_declaration (live-runner-readiness input)`);
+        errors.push(
+          `${label}: live profile requires readiness_declaration (live-runner-readiness input)`
+        );
       }
       // Approval may legitimately be absent — that is a GATE failure at
       // dispatch time, not a config-shape error (the blocked fixture relies
       // on a well-formed config that fails the approval gate).
     } else if (p.execution_profile === 'dry_run') {
-      if (p.credentials && p.credentials.credential_class && p.credentials.credential_class !== 'none') {
-        errors.push(`${label}: dry_run profile must not declare a credential class (use 'none' or omit credentials)`);
+      if (
+        p.credentials &&
+        p.credentials.credential_class &&
+        p.credentials.credential_class !== 'none'
+      ) {
+        errors.push(
+          `${label}: dry_run profile must not declare a credential class (use 'none' or omit credentials)`
+        );
       }
     } else {
       errors.push(`${label}: execution_profile must be dry_run or live`);
@@ -396,7 +453,9 @@ function validateRunnerConfig(config, configPath) {
 
 /** Gate: round manifest must pass schema validation before any dispatch. */
 function gateSchemaValidation(manifestPath, gates) {
-  const result = spawnValidate(path.isAbsolute(manifestPath) ? manifestPath : repoPath(manifestPath));
+  const result = spawnValidate(
+    path.isAbsolute(manifestPath) ? manifestPath : repoPath(manifestPath)
+  );
   gates.push({
     gate: 'schema_validation',
     target: manifestPath,
@@ -421,10 +480,14 @@ function gateStubSmoke(tasks, gates, verbose) {
         [
           path.join(ROOT, 'scripts', 'stub-adapter.js'),
           repoPath(envelopePath),
-          '--run-dir', tmp,
-          '--agent-id', 'live-runner-smoke',
-          '--runtime', 'cli',
-          '--seed', 'live-runner-smoke',
+          '--run-dir',
+          tmp,
+          '--agent-id',
+          'live-runner-smoke',
+          '--runtime',
+          'cli',
+          '--seed',
+          'live-runner-smoke',
         ],
         { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 60000 }
       );
@@ -438,7 +501,9 @@ function gateStubSmoke(tasks, gates, verbose) {
     gates.push({ gate: 'stub_smoke', target: envelopePath, status: ok ? 'pass' : 'fail', detail });
     if (verbose) console.log(`  gate stub_smoke ${envelopePath}: ${ok ? 'pass' : 'FAIL'}`);
     if (!ok) {
-      throw new GateError(`GATE stub_smoke failed for envelope ${envelopePath} — fix the task fixture before dispatch.`);
+      throw new GateError(
+        `GATE stub_smoke failed for envelope ${envelopePath} — fix the task fixture before dispatch.`
+      );
     }
   }
 }
@@ -453,7 +518,9 @@ function gateLiveParticipant(participant, gates) {
 
   const approval = participant.approval || {};
   if (!approval.approver || !approval.approval_ref) {
-    failures.push('operator approval is missing (approval.approver + approval.approval_ref are required for credential-bearing live dispatch)');
+    failures.push(
+      'operator approval is missing (approval.approver + approval.approval_ref are required for credential-bearing live dispatch)'
+    );
   }
   gates.push({
     gate: 'operator_approval',
@@ -474,7 +541,10 @@ function gateLiveParticipant(participant, gates) {
     );
     readinessOk = cp.status === 0; // 0 = decision ready; 2 = blocked; 1 = invalid
     const out = `${cp.stdout || ''}${cp.stderr || ''}`;
-    const blockers = out.split('\n').filter((l) => /^\s+- /.test(l)).map((l) => l.trim());
+    const blockers = out
+      .split('\n')
+      .filter((l) => /^\s+- /.test(l))
+      .map((l) => l.trim());
     readinessDetail = readinessOk
       ? `readiness declaration ${participant.readiness_declaration} → ready`
       : `readiness declaration ${participant.readiness_declaration} → blocked${blockers.length > 0 ? `: ${blockers.join('; ')}` : ''}`;
@@ -508,11 +578,23 @@ function gateRuntimeIdentity(participant, gates, allowMismatch) {
   let detail = `config adapter "${declaredAdapter}" matches manifest runtime "${declaredRuntime}"`;
   if (!consistent) {
     status = allowMismatch ? 'warn' : 'fail';
-    detail = `config adapter "${declaredAdapter}" does not match manifest runtime "${declaredRuntime}" (manifest registration is authoritative)`
-      + (allowMismatch ? ' — dispatched anyway via --allow-runtime-mismatch (recorded warning)' : '');
+    detail =
+      `config adapter "${declaredAdapter}" does not match manifest runtime "${declaredRuntime}" (manifest registration is authoritative)` +
+      (allowMismatch ? ' — dispatched anyway via --allow-runtime-mismatch (recorded warning)' : '');
   }
-  gates.push({ gate: 'runtime_identity', target: participant.config.participant_id, status, detail });
-  return { consistent, allowed: consistent || allowMismatch, detail, declaredRuntime, declaredAdapter };
+  gates.push({
+    gate: 'runtime_identity',
+    target: participant.config.participant_id,
+    status,
+    detail,
+  });
+  return {
+    consistent,
+    allowed: consistent || allowMismatch,
+    detail,
+    declaredRuntime,
+    declaredAdapter,
+  };
 }
 
 /**
@@ -525,7 +607,10 @@ function gateRuntimeIdentity(participant, gates, allowMismatch) {
  * an inconsistent/failed probe is a recorded warning, never a refusal.
  */
 function runRuntimeAttestation(participantConfig, substitutionValues) {
-  if (!Array.isArray(participantConfig.identify_command) || participantConfig.identify_command.length === 0) {
+  if (
+    !Array.isArray(participantConfig.identify_command) ||
+    participantConfig.identify_command.length === 0
+  ) {
     return { record: { command_ran: false }, warning: null };
   }
   const argv = substituteCommand(participantConfig.identify_command, substitutionValues);
@@ -548,8 +633,8 @@ function runRuntimeAttestation(participantConfig, substitutionValues) {
   }
   // Redact before storing anything (value-free attestation record).
   const { text: redacted } = redactText(rawOutput);
-  const consistent = exitCode === 0
-    && redacted.toLowerCase().includes(declaredAdapter.toLowerCase());
+  const consistent =
+    exitCode === 0 && redacted.toLowerCase().includes(declaredAdapter.toLowerCase());
   const record = {
     command_ran: true,
     exit_code: exitCode,
@@ -595,7 +680,9 @@ function installCancelHandler() {
   process.on('SIGINT', () => {
     if (cancelState.cancelled) process.exit(EXIT_CANCELLED); // second ^C: hard exit
     cancelState.cancelled = true;
-    console.error('\nCancellation requested (SIGINT) — terminating active transport and finalizing runs...');
+    console.error(
+      '\nCancellation requested (SIGINT) — terminating active transport and finalizing runs...'
+    );
     if (cancelState.currentChild && !cancelState.currentChild.killed) {
       cancelState.currentChild.kill('SIGTERM');
       setTimeout(() => {
@@ -608,7 +695,9 @@ function installCancelHandler() {
 }
 
 function substituteCommand(template, values) {
-  return template.map((arg) => arg.replace(/\{([^{}]+)\}/g, (m, key) => (values[key] !== undefined ? String(values[key]) : m)));
+  return template.map((arg) =>
+    arg.replace(/\{([^{}]+)\}/g, (m, key) => (values[key] !== undefined ? String(values[key]) : m))
+  );
 }
 
 /**
@@ -633,7 +722,15 @@ function spawnTransport(argv, runDirAbs, timeLimitMs, envExtra) {
         shell: false,
       });
     } catch (err) {
-      resolve({ spawnError: err, stdout: '', stderr: '', exitCode: null, timedOut: false, cancelled: false, durationMs: 0 });
+      resolve({
+        spawnError: err,
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        timedOut: false,
+        cancelled: false,
+        durationMs: 0,
+      });
       return;
     }
 
@@ -643,9 +740,15 @@ function spawnTransport(argv, runDirAbs, timeLimitMs, envExtra) {
     let timedOut = false;
     let spawnError = null;
 
-    child.stdout.on('data', (d) => { stdout += d; });
-    child.stderr.on('data', (d) => { stderr += d; });
-    child.on('error', (err) => { spawnError = err; });
+    child.stdout.on('data', (d) => {
+      stdout += d;
+    });
+    child.stderr.on('data', (d) => {
+      stderr += d;
+    });
+    child.on('error', (err) => {
+      spawnError = err;
+    });
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -674,10 +777,14 @@ function spawnTransport(argv, runDirAbs, timeLimitMs, envExtra) {
 
 function exitCodeToStatus(exitCode) {
   switch (exitCode) {
-    case 0: return 'completed';
-    case 1: return 'failed';
-    case 2: return 'partial';
-    default: return 'blocked';
+    case 0:
+      return 'completed';
+    case 1:
+      return 'failed';
+    case 2:
+      return 'partial';
+    default:
+      return 'blocked';
   }
 }
 
@@ -709,9 +816,14 @@ function mapOutcomeToStatus(outcome, runDirAbs) {
     };
   }
   if (outcome.timedOut || outcome.cancelled) {
-    const cause = outcome.timedOut ? 'timed out at the enforced time limit' : 'cancelled by operator';
+    const cause = outcome.timedOut
+      ? 'timed out at the enforced time limit'
+      : 'cancelled by operator';
     if (packetUsable(runDirAbs)) {
-      return { status: 'partial', note: `transport ${cause}; usable partial result packet present` };
+      return {
+        status: 'partial',
+        note: `transport ${cause}; usable partial result packet present`,
+      };
     }
     return { status: 'failed', note: `transport ${cause}; no usable result packet` };
   }
@@ -721,7 +833,10 @@ function mapOutcomeToStatus(outcome, runDirAbs) {
 
 /** Run-manifest lifecycle helpers (round.js manifest.yaml conventions). */
 function writeRunManifest(runDirAbs, runManifest) {
-  fs.writeFileSync(path.join(runDirAbs, 'manifest.yaml'), yaml.dump(runManifest, { indent: 2, lineWidth: 120 }));
+  fs.writeFileSync(
+    path.join(runDirAbs, 'manifest.yaml'),
+    yaml.dump(runManifest, { indent: 2, lineWidth: 120 })
+  );
 }
 
 function isRunnerRunManifest(doc) {
@@ -741,11 +856,18 @@ function finalizeRunManifest(runDirAbs, runManifest, status, note) {
 
   const manifestPath = path.join(runDirAbs, 'manifest.yaml');
   let onDisk = null;
-  try { onDisk = yaml.load(fs.readFileSync(manifestPath, 'utf8')); } catch { /* missing/unparseable */ }
+  try {
+    onDisk = yaml.load(fs.readFileSync(manifestPath, 'utf8'));
+  } catch {
+    /* missing/unparseable */
+  }
   if (onDisk && !isRunnerRunManifest(onDisk)) {
     // Adapter wrote its artifact manifest to manifest.yaml — keep it and
     // store the lifecycle manifest alongside it.
-    fs.writeFileSync(path.join(runDirAbs, 'run-manifest.yaml'), yaml.dump(runManifest, { indent: 2, lineWidth: 120 }));
+    fs.writeFileSync(
+      path.join(runDirAbs, 'run-manifest.yaml'),
+      yaml.dump(runManifest, { indent: 2, lineWidth: 120 })
+    );
     return { manifestFile: 'run-manifest.yaml', artifactManifestPresent: true };
   }
   writeRunManifest(runDirAbs, runManifest);
@@ -763,15 +885,21 @@ function buildCaptureReport(runDirAbs, runId, status, statusNote, manifestInfo) 
   const artifactManifestPath = manifestInfo.artifactManifestPresent ? 'manifest.yaml' : null;
   const artifacts = [
     {
-      artifact: 'result_packet', path: 'result-packet.yaml', present: expectation('result-packet.yaml'),
+      artifact: 'result_packet',
+      path: 'result-packet.yaml',
+      present: expectation('result-packet.yaml'),
       note: expectation('result-packet.yaml') ? 'emitted by participant transport' : absenceNote,
     },
     {
-      artifact: 'trace_record', path: 'trace.yaml', present: expectation('trace.yaml'),
+      artifact: 'trace_record',
+      path: 'trace.yaml',
+      present: expectation('trace.yaml'),
       note: expectation('trace.yaml') ? 'emitted by participant transport' : absenceNote,
     },
     {
-      artifact: 'evidence_bundle', path: 'evidence-bundle.yaml', present: expectation('evidence-bundle.yaml'),
+      artifact: 'evidence_bundle',
+      path: 'evidence-bundle.yaml',
+      present: expectation('evidence-bundle.yaml'),
       note: expectation('evidence-bundle.yaml') ? 'emitted by participant transport' : absenceNote,
     },
     {
@@ -783,31 +911,47 @@ function buildCaptureReport(runDirAbs, runId, status, statusNote, manifestInfo) 
         : 'absent — this adapter does not emit an artifact manifest (run lifecycle manifest occupies manifest.yaml)',
     },
     {
-      artifact: 'envelope_copy', path: 'envelope.yaml', present: expectation('envelope.yaml'),
+      artifact: 'envelope_copy',
+      path: 'envelope.yaml',
+      present: expectation('envelope.yaml'),
       note: 'public-fields-only envelope copy written by the runner before dispatch',
     },
     {
-      artifact: 'run_manifest', path: manifestInfo.manifestFile, present: expectation(manifestInfo.manifestFile),
+      artifact: 'run_manifest',
+      path: manifestInfo.manifestFile,
+      present: expectation(manifestInfo.manifestFile),
       note: 'runner-maintained run lifecycle manifest (round.js convention)',
     },
     {
-      artifact: 'run_metadata', path: 'run.yaml', present: expectation('run.yaml'),
+      artifact: 'run_metadata',
+      path: 'run.yaml',
+      present: expectation('run.yaml'),
       note: expectation('run.yaml') ? 'adapter run metadata' : absenceNote,
     },
     {
-      artifact: 'adapter_stdout_stderr_summary', path: 'runner-transport.log', present: expectation('runner-transport.log'),
+      artifact: 'adapter_stdout_stderr_summary',
+      path: 'runner-transport.log',
+      present: expectation('runner-transport.log'),
       note: 'captured by the runner from the transport stdout/stderr, redacted before writing (see redaction-report.yaml)',
     },
     {
-      artifact: 'safe_logs', path: 'adapter.log', present: expectation('adapter.log'),
-      note: expectation('adapter.log') ? 'adapter-written safe log' : `${absenceNote} (runner-transport.log remains the safe captured log)`,
+      artifact: 'safe_logs',
+      path: 'adapter.log',
+      present: expectation('adapter.log'),
+      note: expectation('adapter.log')
+        ? 'adapter-written safe log'
+        : `${absenceNote} (runner-transport.log remains the safe captured log)`,
     },
     {
-      artifact: 'dispatch_record', path: 'dispatch-record.yaml', present: expectation('dispatch-record.yaml'),
+      artifact: 'dispatch_record',
+      path: 'dispatch-record.yaml',
+      present: expectation('dispatch-record.yaml'),
       note: 'written by the runner at dispatch time',
     },
     {
-      artifact: 'redaction_report', path: 'redaction-report.yaml', present: expectation('redaction-report.yaml'),
+      artifact: 'redaction_report',
+      path: 'redaction-report.yaml',
+      present: expectation('redaction-report.yaml'),
       note: 'written by the runner after log capture',
     },
   ];
@@ -837,7 +981,9 @@ function selectParticipants(manifest, config, options) {
     if (cp.enabled === false) continue;
     const mp = manifestByAgent.get(cp.participant_id);
     if (!mp) {
-      throw new RunnerError(`Config participant "${cp.participant_id}" is not in the round manifest participants list`);
+      throw new RunnerError(
+        `Config participant "${cp.participant_id}" is not in the round manifest participants list`
+      );
     }
     if (mp.enabled === false) continue;
     if (options.dryRunOnly && cp.execution_profile === 'live') {
@@ -855,7 +1001,8 @@ function selectTasks(manifest, config) {
     const wanted = new Set(config.tasks);
     const known = new Set(tasks.map((t) => t.task_id));
     for (const id of wanted) {
-      if (!known.has(id)) throw new RunnerError(`Config task filter "${id}" is not in the round manifest`);
+      if (!known.has(id))
+        throw new RunnerError(`Config task filter "${id}" is not in the round manifest`);
     }
     tasks = tasks.filter((t) => wanted.has(t.task_id));
   }
@@ -863,7 +1010,17 @@ function selectTasks(manifest, config) {
 }
 
 function buildDispatchRecord(ctx) {
-  const { manifest, manifestPath, task, participant, runId, command, timeLimitMs, envelope, credentials } = ctx;
+  const {
+    manifest,
+    manifestPath,
+    task,
+    participant,
+    runId,
+    command,
+    timeLimitMs,
+    envelope,
+    credentials,
+  } = ctx;
   return {
     schema_version: 1,
     record_kind: 'agent-olympics.live-runner.dispatch-record',
@@ -928,7 +1085,8 @@ function buildCredentialRecord(participantConfig) {
     approval_ref: approval.approval_ref || null,
     participant_may_read: creds.participant_may_read === true,
     redaction_rules: RUNNER_REDACTION_RULES.map(({ rule_id, reason }) => ({ rule_id, reason })),
-    notes: 'live profile — credential passed by reference only; the runner never reads or stores credential values',
+    notes:
+      'live profile — credential passed by reference only; the runner never reads or stores credential values',
   };
 }
 
@@ -941,7 +1099,8 @@ async function dispatchRound(manifestPath, config, options) {
   gateSchemaValidation(manifestPath, gates);
 
   const runDirBase = options.runDirectory || config.run_directory || manifest.run_directory;
-  if (!runDirBase) throw new RunnerError('No run directory: set config.run_directory or pass --run-directory');
+  if (!runDirBase)
+    throw new RunnerError('No run directory: set config.run_directory or pass --run-directory');
   const runDirBaseAbs = path.isAbsolute(runDirBase) ? runDirBase : repoPath(runDirBase);
 
   const tasks = selectTasks(manifest, config);
@@ -964,10 +1123,14 @@ async function dispatchRound(manifestPath, config, options) {
         participant_id: participant.config.participant_id,
         execution_profile: participant.config.execution_profile,
         refused: true,
-        reasons: [`runtime identity mismatch: ${identity.detail} — re-register the participant or fix the runner config (override: --allow-runtime-mismatch)`],
+        reasons: [
+          `runtime identity mismatch: ${identity.detail} — re-register the participant or fix the runner config (override: --allow-runtime-mismatch)`,
+        ],
       };
       gateFailures.push(failure);
-      console.error(`\nGATE BLOCKED — dispatch refused for participant "${participant.config.participant_id}" before any transport was started:`);
+      console.error(
+        `\nGATE BLOCKED — dispatch refused for participant "${participant.config.participant_id}" before any transport was started:`
+      );
       for (const reason of failure.reasons) console.error(`  - ${reason}`);
       continue;
     }
@@ -981,7 +1144,9 @@ async function dispatchRound(manifestPath, config, options) {
         : `OPERATOR OVERRIDE: ${identity.detail}`,
     };
     if (!identity.consistent) {
-      console.warn(`  ⚠ runtime identity mismatch allowed for ${participant.config.participant_id}: ${identity.detail}`);
+      console.warn(
+        `  ⚠ runtime identity mismatch allowed for ${participant.config.participant_id}: ${identity.detail}`
+      );
     }
     if (participant.config.execution_profile === 'live') {
       const result = gateLiveParticipant(participant.config, gates);
@@ -993,7 +1158,9 @@ async function dispatchRound(manifestPath, config, options) {
           reasons: result.failures,
         };
         gateFailures.push(failure);
-        console.error(`\nGATE BLOCKED — live dispatch refused for participant "${participant.config.participant_id}" before any transport was started:`);
+        console.error(
+          `\nGATE BLOCKED — live dispatch refused for participant "${participant.config.participant_id}" before any transport was started:`
+        );
         for (const reason of result.failures) console.error(`  - ${reason}`);
         continue;
       }
@@ -1008,8 +1175,7 @@ async function dispatchRound(manifestPath, config, options) {
   const runResults = [];
   let skippedByFilter = 0;
 
-  outer:
-  for (const participant of dispatchable) {
+  outer: for (const participant of dispatchable) {
     for (const task of tasks) {
       if (cancelState.cancelled) break outer;
 
@@ -1065,7 +1231,14 @@ async function dispatchRound(manifestPath, config, options) {
 
       const credentials = buildCredentialRecord(participant.config);
       const dispatchRecord = buildDispatchRecord({
-        manifest, manifestPath, task, participant, runId, command, timeLimitMs, envelope,
+        manifest,
+        manifestPath,
+        task,
+        participant,
+        runId,
+        command,
+        timeLimitMs,
+        envelope,
         credentials,
         runnerId: config.runner_id,
         sourceRevision,
@@ -1089,12 +1262,16 @@ async function dispatchRound(manifestPath, config, options) {
         lifecycle: 'running',
         envelope_ref: task.envelope_path,
         fixture_ref: task.fixture_bundle_ref,
-        status_history: [{ status: 'running', timestamp: startedAt, note: 'dispatched by live-runner' }],
+        status_history: [
+          { status: 'running', timestamp: startedAt, note: 'dispatched by live-runner' },
+        ],
       };
       writeRunManifest(runDirAbs, runManifest);
 
       console.log(`\n  Dispatching ${runId}`);
-      console.log(`    participant=${participant.config.participant_id} adapter=${participant.config.adapter} profile=${participant.config.execution_profile}`);
+      console.log(
+        `    participant=${participant.config.participant_id} adapter=${participant.config.adapter} profile=${participant.config.execution_profile}`
+      );
       console.log(`    time limit: ${timeLimitMs}ms (${timeLimitSource})`);
       if (options.verbose) console.log(`    argv: ${JSON.stringify(command)}`);
 
@@ -1129,7 +1306,8 @@ async function dispatchRound(manifestPath, config, options) {
             total_redactions: appliedRules.reduce((s, r) => s + r.match_count, 0),
           },
         ],
-        policy: 'Redaction metadata records rule id and reason only — original values are never preserved.',
+        policy:
+          'Redaction metadata records rule id and reason only — original values are never preserved.',
       });
 
       // §3: map the raw outcome to a packet status.
@@ -1145,7 +1323,10 @@ async function dispatchRound(manifestPath, config, options) {
       } else if (oracleHits.length > 0) {
         status = 'disqualified';
         note = `oracle/hidden-judge-material reference detected in transport output (${oracleHits.join(', ')})`;
-      } else if (status === 'completed' && !fs.existsSync(path.join(runDirAbs, 'result-packet.yaml'))) {
+      } else if (
+        status === 'completed' &&
+        !fs.existsSync(path.join(runDirAbs, 'result-packet.yaml'))
+      ) {
         status = 'disqualified';
         note = 'transport exited 0 but produced no result packet — possible fabrication';
       }
@@ -1158,7 +1339,9 @@ async function dispatchRound(manifestPath, config, options) {
       dispatchRecord.exit_code = outcome.exitCode;
       dispatchRecord.timed_out = outcome.timedOut;
       dispatchRecord.cancelled = outcome.cancelled;
-      dispatchRecord.spawn_error = outcome.spawnError ? (outcome.spawnError.code || outcome.spawnError.message) : null;
+      dispatchRecord.spawn_error = outcome.spawnError
+        ? outcome.spawnError.code || outcome.spawnError.message
+        : null;
       dispatchRecord.duration_ms = outcome.durationMs;
       dispatchRecord.status_history.push({ status, timestamp: endedAt, note });
       writeYamlFile(path.join(runDirAbs, 'dispatch-record.yaml'), dispatchRecord);
@@ -1183,7 +1366,9 @@ async function dispatchRound(manifestPath, config, options) {
   }
 
   if (options.runIdFilter && runResults.length === 0 && skippedByFilter > 0) {
-    console.warn(`\n  No runs matched --run-id "${options.runIdFilter}" (${skippedByFilter} combos skipped).`);
+    console.warn(
+      `\n  No runs matched --run-id "${options.runIdFilter}" (${skippedByFilter} combos skipped).`
+    );
   }
 
   const report = {
@@ -1204,10 +1389,15 @@ async function dispatchRound(manifestPath, config, options) {
   writeYamlFile(path.join(runDirBaseAbs, 'dispatch-report.yaml'), report);
 
   console.log(`\n=== Dispatch summary (${manifest.round_id}) ===`);
-  for (const g of gates) console.log(`  gate ${g.gate.padEnd(18)} ${g.status.toUpperCase().padEnd(5)} ${g.target}`);
+  for (const g of gates)
+    console.log(`  gate ${g.gate.padEnd(18)} ${g.status.toUpperCase().padEnd(5)} ${g.target}`);
   for (const r of runResults) console.log(`  run  ${r.run_id} → ${r.status}`);
-  for (const f of gateFailures) console.log(`  REFUSED ${f.execution_profile === 'live' ? 'live ' : ''}dispatch for ${f.participant_id}: ${f.reasons.join('; ')}`);
-  if (cancelState.cancelled) console.log('  CANCELLED by operator — remaining runs were not dispatched.');
+  for (const f of gateFailures)
+    console.log(
+      `  REFUSED ${f.execution_profile === 'live' ? 'live ' : ''}dispatch for ${f.participant_id}: ${f.reasons.join('; ')}`
+    );
+  if (cancelState.cancelled)
+    console.log('  CANCELLED by operator — remaining runs were not dispatched.');
 
   return { manifest, report, runDirBaseAbs, gateBlocked: gateFailures.length > 0 };
 }
@@ -1234,8 +1424,13 @@ function collectDispatchedRuns(runDirBaseAbs) {
 }
 
 const PARTICIPANT_FACING_FILES = [
-  'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml',
-  'envelope.yaml', 'envelope-copy.yaml', 'adapter.log', 'runner-transport.log',
+  'result-packet.yaml',
+  'trace.yaml',
+  'evidence-bundle.yaml',
+  'envelope.yaml',
+  'envelope-copy.yaml',
+  'adapter.log',
+  'runner-transport.log',
 ];
 
 /**
@@ -1263,7 +1458,9 @@ function faninCheckRun(run) {
 
   // 1. Missing result packet (explained absences still do not pass fan-in).
   if (!fs.existsSync(packetPath)) {
-    reasons.push(`missing result packet (run status "${dispatch.status}": ${lastStatusNote(dispatch)})`);
+    reasons.push(
+      `missing result packet (run status "${dispatch.status}": ${lastStatusNote(dispatch)})`
+    );
     return { reasons, warnings, escalateDisqualified, packet: null };
   }
 
@@ -1287,36 +1484,60 @@ function faninCheckRun(run) {
   let packet = null;
   let trace = null;
   let bundle = null;
-  try { packet = yaml.load(fs.readFileSync(packetPath, 'utf8')); } catch { reasons.push('result packet is not parseable YAML'); }
-  try { trace = fs.existsSync(tracePath) ? yaml.load(fs.readFileSync(tracePath, 'utf8')) : null; } catch { reasons.push('trace record is not parseable YAML'); }
-  try { bundle = fs.existsSync(bundlePath) ? yaml.load(fs.readFileSync(bundlePath, 'utf8')) : null; } catch { reasons.push('evidence bundle is not parseable YAML'); }
+  try {
+    packet = yaml.load(fs.readFileSync(packetPath, 'utf8'));
+  } catch {
+    reasons.push('result packet is not parseable YAML');
+  }
+  try {
+    trace = fs.existsSync(tracePath) ? yaml.load(fs.readFileSync(tracePath, 'utf8')) : null;
+  } catch {
+    reasons.push('trace record is not parseable YAML');
+  }
+  try {
+    bundle = fs.existsSync(bundlePath) ? yaml.load(fs.readFileSync(bundlePath, 'utf8')) : null;
+  } catch {
+    reasons.push('evidence bundle is not parseable YAML');
+  }
 
   // 3. Identity consistency vs the dispatch record.
   if (packet) {
     if (packet.task_id !== dispatch.task_id) {
-      reasons.push(`task_id mismatch: packet "${packet.task_id}" vs dispatch "${dispatch.task_id}"`);
+      reasons.push(
+        `task_id mismatch: packet "${packet.task_id}" vs dispatch "${dispatch.task_id}"`
+      );
     }
     if (packet.agent_id !== dispatch.agent_id) {
-      reasons.push(`agent_id mismatch: packet "${packet.agent_id}" vs dispatch "${dispatch.agent_id}"`);
+      reasons.push(
+        `agent_id mismatch: packet "${packet.agent_id}" vs dispatch "${dispatch.agent_id}"`
+      );
     }
     // Runtime identity (same severity as agent_id): the packet's declared
     // runtime/adapter labels must match the adapter the runner dispatched.
     const dispatchAdapter = String(dispatch.adapter || '').toLowerCase();
     if (packet.runtime !== undefined && String(packet.runtime).toLowerCase() !== dispatchAdapter) {
-      reasons.push(`runtime mismatch: packet runtime "${packet.runtime}" vs dispatch adapter "${dispatch.adapter}"`);
+      reasons.push(
+        `runtime mismatch: packet runtime "${packet.runtime}" vs dispatch adapter "${dispatch.adapter}"`
+      );
     }
     if (packet.adapter !== undefined && String(packet.adapter).toLowerCase() !== dispatchAdapter) {
-      reasons.push(`runtime mismatch: packet adapter "${packet.adapter}" vs dispatch adapter "${dispatch.adapter}"`);
+      reasons.push(
+        `runtime mismatch: packet adapter "${packet.adapter}" vs dispatch adapter "${dispatch.adapter}"`
+      );
     }
   }
   if (trace && trace.agent_id !== dispatch.agent_id) {
     reasons.push(`agent_id mismatch: trace "${trace.agent_id}" vs dispatch "${dispatch.agent_id}"`);
   }
   if (bundle && bundle.agent_id !== undefined && bundle.agent_id !== dispatch.agent_id) {
-    reasons.push(`agent_id mismatch: evidence bundle "${bundle.agent_id}" vs dispatch "${dispatch.agent_id}"`);
+    reasons.push(
+      `agent_id mismatch: evidence bundle "${bundle.agent_id}" vs dispatch "${dispatch.agent_id}"`
+    );
   }
   if (trace && bundle && trace.run_id !== bundle.run_id) {
-    reasons.push(`run_id mismatch between trace ("${trace.run_id}") and evidence bundle ("${bundle.run_id}")`);
+    reasons.push(
+      `run_id mismatch between trace ("${trace.run_id}") and evidence bundle ("${bundle.run_id}")`
+    );
   }
 
   // 4. Participant-facing oracle references.
@@ -1341,7 +1562,11 @@ function faninCheckRun(run) {
       escalateDisqualified = true;
     }
   }
-  for (const [label, doc] of [['result packet', packet], ['trace record', trace], ['evidence bundle', bundle]]) {
+  for (const [label, doc] of [
+    ['result packet', packet],
+    ['trace record', trace],
+    ['evidence bundle', bundle],
+  ]) {
     if (!doc) continue;
     const fieldHits = scanObjectForSecretFields(doc);
     if (fieldHits.length > 0) {
@@ -1356,11 +1581,14 @@ function faninCheckRun(run) {
   //    the run; missing content_ref FILES are warnings (the committed
   //    simulation adapters describe runtime evidence files they do not
   //    materialize — competition-validity.js also treats this as WARN).
-  const packetEvidenceIds = new Set(((packet && packet.evidence) || []).map((e) => e && e.id).filter(Boolean));
+  const packetEvidenceIds = new Set(
+    ((packet && packet.evidence) || []).map((e) => e && e.id).filter(Boolean)
+  );
   if (packet) {
     for (const [i, finding] of (packet.findings || []).entries()) {
       for (const ref of (finding && finding.evidence) || []) {
-        if (!packetEvidenceIds.has(ref)) reasons.push(`findings[${i}] references unknown evidence id "${ref}"`);
+        if (!packetEvidenceIds.has(ref))
+          reasons.push(`findings[${i}] references unknown evidence id "${ref}"`);
       }
     }
   }
@@ -1371,7 +1599,9 @@ function faninCheckRun(run) {
     ]);
     for (const entry of trace.entries || []) {
       if (entry && entry.evidence_ref && !knownIds.has(entry.evidence_ref)) {
-        reasons.push(`trace entry seq ${entry.seq} references unknown evidence id "${entry.evidence_ref}"`);
+        reasons.push(
+          `trace entry seq ${entry.seq} references unknown evidence id "${entry.evidence_ref}"`
+        );
       }
     }
   }
@@ -1380,11 +1610,15 @@ function faninCheckRun(run) {
       if (!item || !item.content_ref) continue;
       if (/^https?:\/\//.test(item.content_ref) || /^data:/.test(item.content_ref)) continue;
       if (path.isAbsolute(item.content_ref) || item.content_ref.startsWith('..')) {
-        reasons.push(`evidence item "${item.id}" content_ref escapes the run directory: ${item.content_ref}`);
+        reasons.push(
+          `evidence item "${item.id}" content_ref escapes the run directory: ${item.content_ref}`
+        );
         continue;
       }
       if (!fs.existsSync(path.join(dirAbs, item.content_ref))) {
-        warnings.push(`evidence item "${item.id}" content_ref does not resolve to a file: ${item.content_ref}`);
+        warnings.push(
+          `evidence item "${item.id}" content_ref does not resolve to a file: ${item.content_ref}`
+        );
       }
     }
   }
@@ -1395,18 +1629,24 @@ function faninCheckRun(run) {
   //    - a heuristic artifact fingerprint that disagrees with the declared
   //      adapter (warning, never quarantine — fingerprints are heuristic).
   if (dispatch.runtime_identity && dispatch.runtime_identity.consistent === false) {
-    warnings.push(`runtime declaration mismatch was operator-allowed at dispatch: config adapter "${dispatch.runtime_identity.declared_adapter}" vs manifest runtime "${dispatch.runtime_identity.declared_runtime}"`);
+    warnings.push(
+      `runtime declaration mismatch was operator-allowed at dispatch: config adapter "${dispatch.runtime_identity.declared_adapter}" vs manifest runtime "${dispatch.runtime_identity.declared_runtime}"`
+    );
   }
   const attestation = dispatch.runtime_attestation;
   if (attestation && attestation.command_ran === true && attestation.consistent !== true) {
-    warnings.push(`runtime attestation probe did not confirm the declared adapter "${attestation.declared_adapter}" (exit ${attestation.exit_code}; excerpt: ${JSON.stringify(String(attestation.output_excerpt || '').slice(0, 120))})`);
+    warnings.push(
+      `runtime attestation probe did not confirm the declared adapter "${attestation.declared_adapter}" (exit ${attestation.exit_code}; excerpt: ${JSON.stringify(String(attestation.output_excerpt || '').slice(0, 120))})`
+    );
   }
   let fingerprint = null;
   if (packet) {
     fingerprint = fingerprintRuntime(packet, trace);
     const declaredAdapter = String(dispatch.adapter || '').toLowerCase();
     if (fingerprint.detected !== 'unknown' && fingerprint.detected !== declaredAdapter) {
-      warnings.push(`runtime fingerprint mismatch: artifacts look ${fingerprint.detected}-shaped (confidence ${fingerprint.confidence}) but the declared adapter is "${dispatch.adapter}" — heuristic, flagged for judge review`);
+      warnings.push(
+        `runtime fingerprint mismatch: artifacts look ${fingerprint.detected}-shaped (confidence ${fingerprint.confidence}) but the declared adapter is "${dispatch.adapter}" — heuristic, flagged for judge review`
+      );
     }
   }
 
@@ -1430,7 +1670,7 @@ function quarantineRun(run, runDirBaseAbs, reasons) {
     quarantined_at: isoNow(),
     original_path: path.relative(ROOT, run.dirAbs),
     run_status: run.dispatch.status,
-    reasons,                            // unchanged free text, for humans
+    reasons, // unchanged free text, for humans
     categories: categorizeReasons(reasons), // taxonomy classification (additive)
   });
   return path.relative(ROOT, dest);
@@ -1494,9 +1734,10 @@ function buildJudgeHandoff(run, packet, warnings = [], fingerprint = null) {
     adapter: dispatch.adapter,
     runner_status: dispatch.status,
     packet_status: packet ? packet.status : null,
-    runner_status_note: dispatch.status !== (packet && packet.status)
-      ? `runner-enforced status "${dispatch.status}" overrides the packet's self-reported status for scoring lifecycle purposes`
-      : null,
+    runner_status_note:
+      dispatch.status !== (packet && packet.status)
+        ? `runner-enforced status "${dispatch.status}" overrides the packet's self-reported status for scoring lifecycle purposes`
+        : null,
     rubric_ref: dispatch.scoring_rubric,
     envelope_public_fields: 'envelope-public.yaml',
     judge_reference_source: {
@@ -1525,7 +1766,10 @@ function buildJudgeHandoff(run, packet, warnings = [], fingerprint = null) {
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir)) {
       const p = path.join(dir, entry);
-      if (fs.statSync(p).isDirectory()) { walk(p); continue; }
+      if (fs.statSync(p).isDirectory()) {
+        walk(p);
+        continue;
+      }
       const hits = scanTextForSecrets(fs.readFileSync(p, 'utf8'));
       if (hits.length > 0) leaks.push(`${path.relative(dirAbs, p)} (rules: ${hits.join(', ')})`);
     }
@@ -1563,14 +1807,18 @@ function aggregateFailureSummary(results) {
   return { total, categories, by_kind: byKind };
 }
 
-function faninRound(runDirBaseAbs, options = {}) {
+function faninRound(runDirBaseAbs, _options = {}) {
   const runs = collectDispatchedRuns(runDirBaseAbs);
   if (runs.length === 0) {
-    console.log(`No dispatched runs found under ${path.relative(ROOT, runDirBaseAbs) || runDirBaseAbs}`);
+    console.log(
+      `No dispatched runs found under ${path.relative(ROOT, runDirBaseAbs) || runDirBaseAbs}`
+    );
     return { runs: [], clean: 0, quarantined: 0 };
   }
 
-  console.log(`\n=== Fan-in: ${runs.length} run(s) under ${path.relative(ROOT, runDirBaseAbs)} ===`);
+  console.log(
+    `\n=== Fan-in: ${runs.length} run(s) under ${path.relative(ROOT, runDirBaseAbs)} ===`
+  );
   const results = [];
 
   for (const run of runs) {
@@ -1592,15 +1840,23 @@ function faninRound(runDirBaseAbs, options = {}) {
           rm.lifecycle = 'disqualified';
           rm.updated_at = isoNow();
           (rm.status_history = rm.status_history || []).push({
-            status: 'disqualified', timestamp: rm.updated_at, note: 'fan-in safety escalation',
+            status: 'disqualified',
+            timestamp: rm.updated_at,
+            note: 'fan-in safety escalation',
           });
           fs.writeFileSync(manifestPath, yaml.dump(rm, { indent: 2, lineWidth: 120 }));
         }
-      } catch { /* manifest replaced by adapter artifact manifest */ }
+      } catch {
+        /* manifest replaced by adapter artifact manifest */
+      }
     }
 
     const fingerprintSummary = fingerprint
-      ? { detected: fingerprint.detected, confidence: fingerprint.confidence, declared_adapter: run.dispatch.adapter }
+      ? {
+          detected: fingerprint.detected,
+          confidence: fingerprint.confidence,
+          declared_adapter: run.dispatch.adapter,
+        }
       : null;
 
     const warningCategories = categorizeWarnings(warnings);
@@ -1610,23 +1866,58 @@ function faninRound(runDirBaseAbs, options = {}) {
       const categories = categorizeReasons(reasons);
       console.log(`  ✘ ${run.runId} → QUARANTINED (${dest})`);
       for (const r of reasons) console.log(`      - ${r}`);
-      results.push({ run_id: run.runId, participant_id: run.dispatch.participant_id, decision: 'quarantined', status: run.dispatch.status, reasons, categories, warnings, warning_categories: warningCategories, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
+      results.push({
+        run_id: run.runId,
+        participant_id: run.dispatch.participant_id,
+        decision: 'quarantined',
+        status: run.dispatch.status,
+        reasons,
+        categories,
+        warnings,
+        warning_categories: warningCategories,
+        runtime_fingerprint: fingerprintSummary,
+        quarantine_path: dest,
+      });
       continue;
     }
 
     const handoff = buildJudgeHandoff(run, packet, warnings, fingerprint);
     if (!handoff.ok) {
-      const leakReasons = handoff.leaks.map((l) => `secret detected while assembling judge handoff: ${l}`);
+      const leakReasons = handoff.leaks.map(
+        (l) => `secret detected while assembling judge handoff: ${l}`
+      );
       const dest = quarantineRun(run, runDirBaseAbs, leakReasons);
       const categories = categorizeReasons(leakReasons);
       console.log(`  ✘ ${run.runId} → QUARANTINED at handoff (${dest})`);
-      results.push({ run_id: run.runId, participant_id: run.dispatch.participant_id, decision: 'quarantined', status: run.dispatch.status, reasons: leakReasons, categories, warnings, warning_categories: warningCategories, runtime_fingerprint: fingerprintSummary, quarantine_path: dest });
+      results.push({
+        run_id: run.runId,
+        participant_id: run.dispatch.participant_id,
+        decision: 'quarantined',
+        status: run.dispatch.status,
+        reasons: leakReasons,
+        categories,
+        warnings,
+        warning_categories: warningCategories,
+        runtime_fingerprint: fingerprintSummary,
+        quarantine_path: dest,
+      });
       continue;
     }
 
     console.log(`  ✓ ${run.runId} → clean (judge handoff: ${handoff.handoffDir})`);
     for (const w of warnings) console.log(`      ⚠ ${w}`);
-    results.push({ run_id: run.runId, participant_id: run.dispatch.participant_id, decision: 'clean', status: run.dispatch.status, reasons: [], categories: [], warnings, warning_categories: warningCategories, runtime_fingerprint: fingerprintSummary, handoff: handoff.handoffDir });
+    results.push({
+      run_id: run.runId,
+      participant_id: run.dispatch.participant_id,
+      decision: 'clean',
+      status: run.dispatch.status,
+      reasons: [],
+      categories: [],
+      warnings,
+      warning_categories: warningCategories,
+      runtime_fingerprint: fingerprintSummary,
+      handoff: handoff.handoffDir,
+    });
   }
 
   const clean = results.filter((r) => r.decision === 'clean').length;
@@ -1645,7 +1936,9 @@ function faninRound(runDirBaseAbs, options = {}) {
     failure_summary: failureSummary,
   });
 
-  console.log(`\n  Fan-in summary: ${clean} clean, ${quarantined} quarantined (fanin-report.yaml written)`);
+  console.log(
+    `\n  Fan-in summary: ${clean} clean, ${quarantined} quarantined (fanin-report.yaml written)`
+  );
   if (failureSummary.categories.length > 0) {
     const breakdown = failureSummary.categories.map((c) => `${c.code}×${c.count}`).join(', ');
     console.log(`  Rejections by category: ${breakdown}`);
@@ -1723,13 +2016,29 @@ function parseCliArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     switch (arg) {
-      case '--config': options.config = argv[++i]; break;
-      case '--run-directory': options.runDirectory = argv[++i]; break;
-      case '--run-id': options.runIdFilter = argv[++i]; break;
-      case '--dry-run-only': options.dryRunOnly = true; break;
-      case '--allow-runtime-mismatch': options.allowRuntimeMismatch = true; break;
-      case '--verbose': case '-v': options.verbose = true; break;
-      case '--help': case '-h': options.help = true; break;
+      case '--config':
+        options.config = argv[++i];
+        break;
+      case '--run-directory':
+        options.runDirectory = argv[++i];
+        break;
+      case '--run-id':
+        options.runIdFilter = argv[++i];
+        break;
+      case '--dry-run-only':
+        options.dryRunOnly = true;
+        break;
+      case '--allow-runtime-mismatch':
+        options.allowRuntimeMismatch = true;
+        break;
+      case '--verbose':
+      case '-v':
+        options.verbose = true;
+        break;
+      case '--help':
+      case '-h':
+        options.help = true;
+        break;
       default:
         if (arg.startsWith('--')) throw new RunnerError(`Unknown option: ${arg}`);
         options.positional.push(arg);
@@ -1741,7 +2050,9 @@ function parseCliArgs(argv) {
 async function cmdDispatch(options, withFanin) {
   const manifestPath = options.positional[0];
   if (!manifestPath || !options.config) {
-    console.error(`Usage: node scripts/live-runner.js ${withFanin ? 'run' : 'dispatch'} <round-manifest> --config <runner-config>`);
+    console.error(
+      `Usage: node scripts/live-runner.js ${withFanin ? 'run' : 'dispatch'} <round-manifest> --config <runner-config>`
+    );
     process.exitCode = EXIT_ERROR;
     return;
   }
@@ -1773,7 +2084,7 @@ function cmdFanin(options) {
 /**
  * Build the diagnostic failure report for a round runs directory. Prefers an
  * existing fanin-report.yaml (so it is a cheap read-only view of an already
- * fanned-in round); otherwise scans quarantine/*​/quarantine-reason.yaml files
+ * fanned-in round); otherwise scans quarantine/* /quarantine-reason.yaml files
  * directly. Returns { categories: [{code, kind, count, runs:[{run_id,
  * participant_id}]}], total, sourced_from }.
  */
@@ -1785,7 +2096,8 @@ function buildFailureReport(runDirBaseAbs) {
     const e = byCode.get(code);
     e.count += count;
     const key = runId || '(unknown)';
-    if (!e.runs.has(key)) e.runs.set(key, { run_id: runId || null, participant_id: participantId || null });
+    if (!e.runs.has(key))
+      e.runs.set(key, { run_id: runId || null, participant_id: participantId || null });
   };
 
   let sourcedFrom = 'none';
@@ -1807,9 +2119,10 @@ function buildFailureReport(runDirBaseAbs) {
         if (!fs.existsSync(reasonPath)) continue;
         const doc = yaml.load(fs.readFileSync(reasonPath, 'utf8')) || {};
         // Prefer recorded categories; fall back to classifying reasons live.
-        const cats = (doc.categories && doc.categories.length > 0)
-          ? doc.categories
-          : categorizeReasons(doc.reasons || []);
+        const cats =
+          doc.categories && doc.categories.length > 0
+            ? doc.categories
+            : categorizeReasons(doc.reasons || []);
         for (const cat of cats) bump(cat.code, cat.kind, doc.run_id || entry, null, cat.count || 1);
       }
     }
@@ -1855,24 +2168,27 @@ function cmdFailureReport(options) {
     const runs = c.runs
       .map((r) => (r.participant_id ? `${r.participant_id}(${r.run_id})` : r.run_id))
       .join(', ');
-    console.log(`  ${c.code.padEnd(codeW)}  ${c.kind.padEnd(kindW)}  ${String(c.count).padStart(5)}  ${runs}`);
+    console.log(
+      `  ${c.code.padEnd(codeW)}  ${c.kind.padEnd(kindW)}  ${String(c.count).padStart(5)}  ${runs}`
+    );
     console.log(`  ${' '.repeat(codeW)}  ${titleByCode.get(c.code) || ''}`);
   }
-  console.log(`\n  Total rejections: ${report.total} across ${report.categories.length} categor${report.categories.length === 1 ? 'y' : 'ies'}.`);
+  console.log(
+    `\n  Total rejections: ${report.total} across ${report.categories.length} categor${report.categories.length === 1 ? 'y' : 'ies'}.`
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Fixture suite
 // ---------------------------------------------------------------------------
 
-const FIXTURES_DIR = path.join(ROOT, 'fixtures', 'live-runner');
-
 async function runFixtures() {
   let pass = 0;
   let fail = 0;
   const report = (ok, label, detail) => {
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? `\n      ${detail}` : ''}`);
-    if (ok) pass += 1; else fail += 1;
+    if (ok) pass += 1;
+    else fail += 1;
   };
 
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'live-runner-fixtures-'));
@@ -1889,84 +2205,149 @@ async function runFixtures() {
         loadYamlFile('fixtures/live-runner/runner-config-dryrun.yaml'),
         'fixtures/live-runner/runner-config-dryrun.yaml'
       );
-      const dispatch = await dispatchRound('fixtures/live-runner/round-live-runner-fixture.yaml', config, {
-        runDirectory: runDir, dryRunOnly: false, verbose: false,
-      });
+      const dispatch = await dispatchRound(
+        'fixtures/live-runner/round-live-runner-fixture.yaml',
+        config,
+        {
+          runDirectory: runDir,
+          dryRunOnly: false,
+          verbose: false,
+        }
+      );
       const statuses = dispatch.report.runs.map((r) => r.status);
       report(
-        dispatch.report.runs.length === 6 && statuses.every((s) => s === 'completed') && !dispatch.gateBlocked,
+        dispatch.report.runs.length === 6 &&
+          statuses.every((s) => s === 'completed') &&
+          !dispatch.gateBlocked,
         'dry-run dispatch: 6 runs (3 participants x 2 tasks) all completed',
         `statuses: ${statuses.join(', ')}`
       );
       report(
-        dispatch.report.gates.some((g) => g.gate === 'schema_validation' && g.status === 'pass')
-          && dispatch.report.gates.some((g) => g.gate === 'stub_smoke' && g.status === 'pass'),
+        dispatch.report.gates.some((g) => g.gate === 'schema_validation' && g.status === 'pass') &&
+          dispatch.report.gates.some((g) => g.gate === 'stub_smoke' && g.status === 'pass'),
         'dry-run dispatch: schema_validation and stub_smoke gates passed before dispatch'
       );
 
       // Dispatch record contents (contract §1 + §2).
       const firstRun = dispatch.report.runs[0];
-      const record = yaml.load(fs.readFileSync(path.join(ROOT, firstRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
-      const recordOk = record.round_id === 'season-001-round-901'
-        && record.run_id === firstRun.run_id
-        && record.task_id && record.participant_id && record.adapter
-        && typeof record.source_revision === 'string'
-        && record.started_at && record.time_limit_minutes
-        && Array.isArray(record.action_boundary.allowed_actions) && record.action_boundary.allowed_actions.length > 0
-        && Array.isArray(record.action_boundary.forbidden_actions) && record.action_boundary.forbidden_actions.length > 0;
-      report(recordOk, 'dispatch record carries round/run/task/participant ids, source revision, start time, time limit, action boundary');
+      const record = yaml.load(
+        fs.readFileSync(path.join(ROOT, firstRun.run_dir, 'dispatch-record.yaml'), 'utf8')
+      );
+      const recordOk =
+        record.round_id === 'season-001-round-901' &&
+        record.run_id === firstRun.run_id &&
+        record.task_id &&
+        record.participant_id &&
+        record.adapter &&
+        typeof record.source_revision === 'string' &&
+        record.started_at &&
+        record.time_limit_minutes &&
+        Array.isArray(record.action_boundary.allowed_actions) &&
+        record.action_boundary.allowed_actions.length > 0 &&
+        Array.isArray(record.action_boundary.forbidden_actions) &&
+        record.action_boundary.forbidden_actions.length > 0;
       report(
-        record.credentials.credential_class === 'none' && record.credentials.approver === null
-          && Array.isArray(record.credentials.redaction_rules) && record.credentials.redaction_rules.length > 0
-          && record.credentials.redaction_rules.every((r) => r.rule_id && r.reason && !r.value),
-        'dry_run dispatch record: credential_class none + value-free redaction rules');
+        recordOk,
+        'dispatch record carries round/run/task/participant ids, source revision, start time, time limit, action boundary'
+      );
+      report(
+        record.credentials.credential_class === 'none' &&
+          record.credentials.approver === null &&
+          Array.isArray(record.credentials.redaction_rules) &&
+          record.credentials.redaction_rules.length > 0 &&
+          record.credentials.redaction_rules.every((r) => r.rule_id && r.reason && !r.value),
+        'dry_run dispatch record: credential_class none + value-free redaction rules'
+      );
 
       // Runtime identity layers 1 + 2 on the happy path: declarations agree
       // and sogyo's identify_command probe attests the declared adapter.
       report(
-        record.runtime_identity && record.runtime_identity.consistent === true
-          && record.runtime_attestation && record.runtime_attestation.command_ran === true
-          && record.runtime_attestation.exit_code === 0
-          && record.runtime_attestation.consistent === true
-          && /hermes/i.test(record.runtime_attestation.output_excerpt || ''),
-        'dispatch record carries a consistent runtime_identity block and a consistent runtime attestation (identify_command)');
+        record.runtime_identity &&
+          record.runtime_identity.consistent === true &&
+          record.runtime_attestation &&
+          record.runtime_attestation.command_ran === true &&
+          record.runtime_attestation.exit_code === 0 &&
+          record.runtime_attestation.consistent === true &&
+          /hermes/i.test(record.runtime_attestation.output_excerpt || ''),
+        'dispatch record carries a consistent runtime_identity block and a consistent runtime attestation (identify_command)'
+      );
       const nosukRun = dispatch.report.runs.find((r) => r.participant_id === 'nosuk');
-      const nosukRecord = yaml.load(fs.readFileSync(path.join(ROOT, nosukRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
+      const nosukRecord = yaml.load(
+        fs.readFileSync(path.join(ROOT, nosukRun.run_dir, 'dispatch-record.yaml'), 'utf8')
+      );
       report(
-        nosukRecord.runtime_attestation && nosukRecord.runtime_attestation.command_ran === false
-          && (nosukRun.warnings || []).length === 0,
-        'participant without identify_command records runtime_attestation.command_ran: false and no warning (opt-in)');
+        nosukRecord.runtime_attestation &&
+          nosukRecord.runtime_attestation.command_ran === false &&
+          (nosukRun.warnings || []).length === 0,
+        'participant without identify_command records runtime_attestation.command_ran: false and no warning (opt-in)'
+      );
 
       // Capture report (contract §4).
-      const capture = yaml.load(fs.readFileSync(path.join(ROOT, firstRun.run_dir, 'capture-report.yaml'), 'utf8'));
-      const expectedKinds = ['result_packet', 'trace_record', 'evidence_bundle', 'artifact_manifest',
-        'envelope_copy', 'run_manifest', 'adapter_stdout_stderr_summary', 'safe_logs', 'dispatch_record', 'redaction_report'];
+      const capture = yaml.load(
+        fs.readFileSync(path.join(ROOT, firstRun.run_dir, 'capture-report.yaml'), 'utf8')
+      );
+      const expectedKinds = [
+        'result_packet',
+        'trace_record',
+        'evidence_bundle',
+        'artifact_manifest',
+        'envelope_copy',
+        'run_manifest',
+        'adapter_stdout_stderr_summary',
+        'safe_logs',
+        'dispatch_record',
+        'redaction_report',
+      ];
       report(
-        expectedKinds.every((k) => capture.artifacts.some((a) => a.artifact === k && (a.present || a.note))),
-        'capture report verifies presence or explained absence of every contract artifact');
+        expectedKinds.every((k) =>
+          capture.artifacts.some((a) => a.artifact === k && (a.present || a.note))
+        ),
+        'capture report verifies presence or explained absence of every contract artifact'
+      );
 
       // Sanitized participant envelope.
       const envText = fs.readFileSync(path.join(ROOT, firstRun.run_dir, 'envelope.yaml'), 'utf8');
       report(
         !/hidden_judge_notes|oracle_ref|judge_notes_ref/.test(envText),
-        'participant-facing envelope copy is stripped of hidden_judge_notes / oracle_ref / judge_notes_ref');
+        'participant-facing envelope copy is stripped of hidden_judge_notes / oracle_ref / judge_notes_ref'
+      );
 
       const fanin = faninRound(dispatch.runDirBaseAbs);
-      report(fanin.clean === 6 && fanin.quarantined === 0, 'fan-in: all 6 runs clean, none quarantined',
-        `clean=${fanin.clean} quarantined=${fanin.quarantined}`);
+      report(
+        fanin.clean === 6 && fanin.quarantined === 0,
+        'fan-in: all 6 runs clean, none quarantined',
+        `clean=${fanin.clean} quarantined=${fanin.quarantined}`
+      );
 
       const handoffDir = path.join(ROOT, fanin.runs[0].handoff);
       const handoffFiles = fs.readdirSync(handoffDir);
-      const required = ['result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'envelope-public.yaml',
-        'run-metadata.yaml', 'redaction-report.yaml', 'handoff-manifest.yaml'];
-      report(required.every((f) => handoffFiles.includes(f)),
+      const required = [
+        'result-packet.yaml',
+        'trace.yaml',
+        'evidence-bundle.yaml',
+        'envelope-public.yaml',
+        'run-metadata.yaml',
+        'redaction-report.yaml',
+        'handoff-manifest.yaml',
+      ];
+      report(
+        required.every((f) => handoffFiles.includes(f)),
         'judge handoff contains packet, trace, evidence bundle, public envelope, run metadata, redaction report, manifest',
-        `contents: ${handoffFiles.join(', ')}`);
-      const handoffManifest = yaml.load(fs.readFileSync(path.join(handoffDir, 'handoff-manifest.yaml'), 'utf8'));
-      report(!!handoffManifest.rubric_ref, 'judge handoff manifest carries the rubric reference', `rubric_ref: ${handoffManifest.rubric_ref}`);
+        `contents: ${handoffFiles.join(', ')}`
+      );
+      const handoffManifest = yaml.load(
+        fs.readFileSync(path.join(handoffDir, 'handoff-manifest.yaml'), 'utf8')
+      );
+      report(
+        !!handoffManifest.rubric_ref,
+        'judge handoff manifest carries the rubric reference',
+        `rubric_ref: ${handoffManifest.rubric_ref}`
+      );
       const handoffEnvText = fs.readFileSync(path.join(handoffDir, 'envelope-public.yaml'), 'utf8');
-      report(!/hidden_judge_notes|oracle_ref|judge_notes_ref/.test(handoffEnvText),
-        'judge handoff envelope contains public fields only');
+      report(
+        !/hidden_judge_notes|oracle_ref|judge_notes_ref/.test(handoffEnvText),
+        'judge handoff envelope contains public fields only'
+      );
     }
 
     // -----------------------------------------------------------------
@@ -1980,18 +2361,26 @@ async function runFixtures() {
         'fixtures/live-runner/runner-config-season-001-dryrun.yaml'
       );
       const dispatch = await dispatchRound('rounds/season-001-round-001.yaml', config, {
-        runDirectory: runDir, dryRunOnly: false, verbose: false,
+        runDirectory: runDir,
+        dryRunOnly: false,
+        verbose: false,
       });
       const fanin = faninRound(dispatch.runDirBaseAbs);
       report(
-        dispatch.report.runs.length === 3 && dispatch.report.runs.every((r) => r.status === 'completed')
-          && fanin.clean === 3 && fanin.quarantined === 0,
+        dispatch.report.runs.length === 3 &&
+          dispatch.report.runs.every((r) => r.status === 'completed') &&
+          fanin.clean === 3 &&
+          fanin.quarantined === 0,
         'committed manifest: dispatch → fan-in → handoff clean for sogyo + seoseo + nosuk (all hermes)',
-        `runs: ${dispatch.report.runs.map((r) => `${r.run_id}=${r.status}`).join(', ')}`);
+        `runs: ${dispatch.report.runs.map((r) => `${r.run_id}=${r.status}`).join(', ')}`
+      );
       report(
-        dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').length === 3
-          && dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').every((g) => g.status === 'pass'),
-        'committed manifest: runtime_identity gate passes for all three participants (config adapters match manifest runtimes)');
+        dispatch.report.gates.filter((g) => g.gate === 'runtime_identity').length === 3 &&
+          dispatch.report.gates
+            .filter((g) => g.gate === 'runtime_identity')
+            .every((g) => g.status === 'pass'),
+        'committed manifest: runtime_identity gate passes for all three participants (config adapters match manifest runtimes)'
+      );
     }
 
     // -----------------------------------------------------------------
@@ -2004,77 +2393,126 @@ async function runFixtures() {
       const cp = spawnSync(
         process.execPath,
         [
-          __filename, 'dispatch', 'fixtures/live-runner/round-live-runner-fixture.yaml',
-          '--config', 'fixtures/live-runner/runner-config-live-blocked.yaml',
-          '--run-directory', runDir,
+          __filename,
+          'dispatch',
+          'fixtures/live-runner/round-live-runner-fixture.yaml',
+          '--config',
+          'fixtures/live-runner/runner-config-live-blocked.yaml',
+          '--run-directory',
+          runDir,
         ],
         { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 120000 }
       );
       const out = `${cp.stdout || ''}${cp.stderr || ''}`;
-      report(cp.status === EXIT_GATE_BLOCKED, 'live dispatch without approval exits with gate-blocked code 2', `exit=${cp.status}`);
-      report(/GATE BLOCKED/.test(out) && /approval/.test(out), 'gate failure message names the missing operator approval');
+      report(
+        cp.status === EXIT_GATE_BLOCKED,
+        'live dispatch without approval exits with gate-blocked code 2',
+        `exit=${cp.status}`
+      );
+      report(
+        /GATE BLOCKED/.test(out) && /approval/.test(out),
+        'gate failure message names the missing operator approval'
+      );
       const dispatched = fs.existsSync(runDir)
         ? fs.readdirSync(runDir).filter((e) => e.startsWith('run-'))
         : [];
-      report(dispatched.length === 0, 'no run was dispatched for the gate-blocked live participant', `run dirs: ${dispatched.length}`);
-      const reportDoc = yaml.load(fs.readFileSync(path.join(runDir, 'dispatch-report.yaml'), 'utf8'));
+      report(
+        dispatched.length === 0,
+        'no run was dispatched for the gate-blocked live participant',
+        `run dirs: ${dispatched.length}`
+      );
+      const reportDoc = yaml.load(
+        fs.readFileSync(path.join(runDir, 'dispatch-report.yaml'), 'utf8')
+      );
       report(
         reportDoc.gate_failures.length === 1 && reportDoc.gate_failures[0].refused === true,
         'dispatch report records the refused live participant with reasons',
-        reportDoc.gate_failures[0] ? reportDoc.gate_failures[0].reasons.join('; ') : 'none');
+        reportDoc.gate_failures[0] ? reportDoc.gate_failures[0].reasons.join('; ') : 'none'
+      );
     }
 
     // -----------------------------------------------------------------
     // 4. Negative transports: identity mismatch, secret in stdout,
     //    timeout (partial + failed), unreachable transport (ENOENT).
     // -----------------------------------------------------------------
-    console.log('\n--- fixture: negative transports (mismatch / secret / timeout / unreachable) ---');
+    console.log(
+      '\n--- fixture: negative transports (mismatch / secret / timeout / unreachable) ---'
+    );
     {
       const runDir = path.join(tmpBase, 'negative');
       const config = validateRunnerConfig(
         loadYamlFile('fixtures/live-runner/runner-config-negative.yaml'),
         'fixtures/live-runner/runner-config-negative.yaml'
       );
-      const dispatch = await dispatchRound('fixtures/live-runner/round-live-runner-fixture.yaml', config, {
-        runDirectory: runDir, dryRunOnly: false, verbose: false,
-      });
+      const dispatch = await dispatchRound(
+        'fixtures/live-runner/round-live-runner-fixture.yaml',
+        config,
+        {
+          runDirectory: runDir,
+          dryRunOnly: false,
+          verbose: false,
+        }
+      );
       const byParticipant = new Map(dispatch.report.runs.map((r) => [r.participant_id, r]));
 
       // (b) mismatched agent_id → dispatched fine, quarantined at fan-in.
       const imposter = byParticipant.get('imposter-target');
-      report(!!imposter && imposter.status === 'completed', 'mismatched-identity transport completes at dispatch time',
-        imposter ? `status=${imposter.status}` : 'run missing');
+      report(
+        !!imposter && imposter.status === 'completed',
+        'mismatched-identity transport completes at dispatch time',
+        imposter ? `status=${imposter.status}` : 'run missing'
+      );
 
       // (c) secret in stdout → redacted log + metadata + disqualified.
       const secretRun = byParticipant.get('secret-echo');
-      report(!!secretRun && secretRun.status === 'disqualified',
+      report(
+        !!secretRun && secretRun.status === 'disqualified',
         'transport printing a secret is mapped to disqualified (secret exposure)',
-        secretRun ? `status=${secretRun.status}` : 'run missing');
+        secretRun ? `status=${secretRun.status}` : 'run missing'
+      );
       if (secretRun) {
-        const logText = fs.readFileSync(path.join(ROOT, secretRun.run_dir, 'runner-transport.log'), 'utf8');
-        report(/\[REDACTED:rv-openai-style-key\]/.test(logText) && !/sk-[a-zA-Z0-9]{20,}/.test(logText),
-          'captured transport log is redacted (no secret value, rule marker present)');
-        const redactionReport = yaml.load(fs.readFileSync(path.join(ROOT, secretRun.run_dir, 'redaction-report.yaml'), 'utf8'));
+        const logText = fs.readFileSync(
+          path.join(ROOT, secretRun.run_dir, 'runner-transport.log'),
+          'utf8'
+        );
+        report(
+          /\[REDACTED:rv-openai-style-key\]/.test(logText) && !/sk-[a-zA-Z0-9]{20,}/.test(logText),
+          'captured transport log is redacted (no secret value, rule marker present)'
+        );
+        const redactionReport = yaml.load(
+          fs.readFileSync(path.join(ROOT, secretRun.run_dir, 'redaction-report.yaml'), 'utf8')
+        );
         const rules = redactionReport.targets[0].applied_rules;
-        report(rules.some((r) => r.rule_id === 'rv-openai-style-key' && r.reason && r.match_count > 0)
-          && !JSON.stringify(redactionReport).match(/sk-[a-zA-Z0-9]{20,}/),
-          'redaction report records rule id + reason without the original value');
+        report(
+          rules.some((r) => r.rule_id === 'rv-openai-style-key' && r.reason && r.match_count > 0) &&
+            !JSON.stringify(redactionReport).match(/sk-[a-zA-Z0-9]{20,}/),
+          'redaction report records rule id + reason without the original value'
+        );
       }
 
       // (d) timeout with usable partial output → partial.
       const partialRun = byParticipant.get('sleeper-partial');
-      report(!!partialRun && partialRun.status === 'partial' && partialRun.timed_out === true,
-        'timeout with usable partial output maps to partial', partialRun ? `status=${partialRun.status}` : 'run missing');
+      report(
+        !!partialRun && partialRun.status === 'partial' && partialRun.timed_out === true,
+        'timeout with usable partial output maps to partial',
+        partialRun ? `status=${partialRun.status}` : 'run missing'
+      );
 
       // (d) timeout without usable output → failed.
       const failedRun = byParticipant.get('sleeper-failed');
-      report(!!failedRun && failedRun.status === 'failed' && failedRun.timed_out === true,
-        'timeout without usable output maps to failed', failedRun ? `status=${failedRun.status}` : 'run missing');
+      report(
+        !!failedRun && failedRun.status === 'failed' && failedRun.timed_out === true,
+        'timeout without usable output maps to failed',
+        failedRun ? `status=${failedRun.status}` : 'run missing'
+      );
 
       // unreachable runtime (ENOENT) → blocked.
       const blockedRun = byParticipant.get('missing-binary');
-      report(!!blockedRun && blockedRun.status === 'blocked',
-        'unspawnable transport (ENOENT) maps to blocked', blockedRun ? `status=${blockedRun.status}` : 'run missing');
+      report(
+        !!blockedRun && blockedRun.status === 'blocked',
+        'unspawnable transport (ENOENT) maps to blocked',
+        blockedRun ? `status=${blockedRun.status}` : 'run missing'
+      );
 
       // Fan-in decisions.
       const fanin = faninRound(dispatch.runDirBaseAbs);
@@ -2085,71 +2523,110 @@ async function runFixtures() {
       };
 
       const imposterDecision = findDecision('imposter-target');
-      report(!!imposterDecision && imposterDecision.decision === 'quarantined'
-          && imposterDecision.reasons.some((r) => /agent_id mismatch/.test(r)),
+      report(
+        !!imposterDecision &&
+          imposterDecision.decision === 'quarantined' &&
+          imposterDecision.reasons.some((r) => /agent_id mismatch/.test(r)),
         'fan-in quarantines the mismatched agent_id packet with a reason file',
-        imposterDecision ? imposterDecision.reasons.join('; ') : 'missing');
+        imposterDecision ? imposterDecision.reasons.join('; ') : 'missing'
+      );
       if (imposterDecision) {
-        const reasonFile = path.join(ROOT, imposterDecision.quarantine_path, 'quarantine-reason.yaml');
-        report(fs.existsSync(reasonFile), 'quarantined run carries quarantine-reason.yaml in quarantine/');
+        const reasonFile = path.join(
+          ROOT,
+          imposterDecision.quarantine_path,
+          'quarantine-reason.yaml'
+        );
+        report(
+          fs.existsSync(reasonFile),
+          'quarantined run carries quarantine-reason.yaml in quarantine/'
+        );
         // Taxonomy: agent_id mismatch → IDENTITY_MISMATCH (integrity).
         const reasonDoc = yaml.load(fs.readFileSync(reasonFile, 'utf8'));
         report(
-          Array.isArray(reasonDoc.categories)
-            && reasonDoc.categories.some((c) => c.code === 'IDENTITY_MISMATCH' && c.kind === 'integrity')
-            && Array.isArray(reasonDoc.reasons),
+          Array.isArray(reasonDoc.categories) &&
+            reasonDoc.categories.some(
+              (c) => c.code === 'IDENTITY_MISMATCH' && c.kind === 'integrity'
+            ) &&
+            Array.isArray(reasonDoc.reasons),
           'quarantine-reason.yaml carries categories (IDENTITY_MISMATCH/integrity) alongside the human reasons',
-          reasonDoc.categories ? JSON.stringify(reasonDoc.categories) : 'no categories');
+          reasonDoc.categories ? JSON.stringify(reasonDoc.categories) : 'no categories'
+        );
         report(
           (imposterDecision.categories || []).some((c) => c.code === 'IDENTITY_MISMATCH'),
-          'fan-in run entry carries the IDENTITY_MISMATCH category');
+          'fan-in run entry carries the IDENTITY_MISMATCH category'
+        );
       }
 
       const secretDecision = findDecision('secret-echo');
-      report(!!secretDecision && secretDecision.decision === 'quarantined',
-        'fan-in quarantines the disqualified secret-exposure run');
+      report(
+        !!secretDecision && secretDecision.decision === 'quarantined',
+        'fan-in quarantines the disqualified secret-exposure run'
+      );
       if (secretDecision) {
-        const secretReasonDoc = yaml.load(fs.readFileSync(
-          path.join(ROOT, secretDecision.quarantine_path, 'quarantine-reason.yaml'), 'utf8'));
+        const secretReasonDoc = yaml.load(
+          fs.readFileSync(
+            path.join(ROOT, secretDecision.quarantine_path, 'quarantine-reason.yaml'),
+            'utf8'
+          )
+        );
         report(
-          (secretReasonDoc.categories || []).some((c) => c.code === 'SECRET_EXPOSURE' && c.kind === 'safety'),
+          (secretReasonDoc.categories || []).some(
+            (c) => c.code === 'SECRET_EXPOSURE' && c.kind === 'safety'
+          ),
           'secret-echo quarantine-reason.yaml classified as SECRET_EXPOSURE/safety',
-          JSON.stringify(secretReasonDoc.categories));
+          JSON.stringify(secretReasonDoc.categories)
+        );
       }
 
       const partialDecision = findDecision('sleeper-partial');
-      report(!!partialDecision && partialDecision.decision === 'clean' && !!partialDecision.handoff,
-        'partial (timed-out but usable) run passes fan-in and gets a judge handoff');
+      report(
+        !!partialDecision && partialDecision.decision === 'clean' && !!partialDecision.handoff,
+        'partial (timed-out but usable) run passes fan-in and gets a judge handoff'
+      );
 
       const failedDecision = findDecision('sleeper-failed');
-      report(!!failedDecision && failedDecision.decision === 'quarantined'
-          && failedDecision.reasons.some((r) => /missing result packet/.test(r)),
-        'fan-in rejects the timed-out run with no packet (explained absence recorded)');
+      report(
+        !!failedDecision &&
+          failedDecision.decision === 'quarantined' &&
+          failedDecision.reasons.some((r) => /missing result packet/.test(r)),
+        'fan-in rejects the timed-out run with no packet (explained absence recorded)'
+      );
 
       const blockedDecision = findDecision('missing-binary');
-      report(!!blockedDecision && blockedDecision.decision === 'quarantined'
-          && blockedDecision.reasons.some((r) => /missing result packet/.test(r)),
-        'fan-in rejects the unreachable-transport run (no packet, explained)');
+      report(
+        !!blockedDecision &&
+          blockedDecision.decision === 'quarantined' &&
+          blockedDecision.reasons.some((r) => /missing result packet/.test(r)),
+        'fan-in rejects the unreachable-transport run (no packet, explained)'
+      );
       if (blockedDecision) {
         report(
-          (blockedDecision.categories || []).some((c) => c.code === 'BACKEND_TIMEOUT' && c.kind === 'stack_reliability'),
+          (blockedDecision.categories || []).some(
+            (c) => c.code === 'BACKEND_TIMEOUT' && c.kind === 'stack_reliability'
+          ),
           'missing-packet (unreachable transport) classified as BACKEND_TIMEOUT/stack_reliability',
-          JSON.stringify(blockedDecision.categories));
+          JSON.stringify(blockedDecision.categories)
+        );
       }
 
       // fanin-report.yaml carries the round-level failure_summary aggregation.
-      const faninDoc = yaml.load(fs.readFileSync(path.join(dispatch.runDirBaseAbs, 'fanin-report.yaml'), 'utf8'));
+      const faninDoc = yaml.load(
+        fs.readFileSync(path.join(dispatch.runDirBaseAbs, 'fanin-report.yaml'), 'utf8')
+      );
       report(
-        faninDoc.failure_summary
-          && Array.isArray(faninDoc.failure_summary.categories)
-          && faninDoc.failure_summary.categories.length > 0
-          && faninDoc.failure_summary.categories.some((c) => c.code === 'IDENTITY_MISMATCH')
-          && faninDoc.failure_summary.categories.some((c) => c.code === 'BACKEND_TIMEOUT')
-          && faninDoc.failure_summary.total >= 3
-          && faninDoc.failure_summary.by_kind
-          && typeof faninDoc.failure_summary.by_kind.stack_reliability === 'number',
+        faninDoc.failure_summary &&
+          Array.isArray(faninDoc.failure_summary.categories) &&
+          faninDoc.failure_summary.categories.length > 0 &&
+          faninDoc.failure_summary.categories.some((c) => c.code === 'IDENTITY_MISMATCH') &&
+          faninDoc.failure_summary.categories.some((c) => c.code === 'BACKEND_TIMEOUT') &&
+          faninDoc.failure_summary.total >= 3 &&
+          faninDoc.failure_summary.by_kind &&
+          typeof faninDoc.failure_summary.by_kind.stack_reliability === 'number',
         'fanin-report.yaml has a failure_summary aggregating categories + by_kind across rejected runs',
-        faninDoc.failure_summary ? JSON.stringify(faninDoc.failure_summary.categories) : 'no failure_summary');
+        faninDoc.failure_summary
+          ? JSON.stringify(faninDoc.failure_summary.categories)
+          : 'no failure_summary'
+      );
 
       // failure-report command (read-only diagnostic) over the same runs dir.
       const failCp = spawnSync(
@@ -2159,13 +2636,14 @@ async function runFixtures() {
       );
       const failOut = `${failCp.stdout || ''}${failCp.stderr || ''}`;
       report(
-        failCp.status === 0
-          && /Failure taxonomy report/.test(failOut)
-          && /IDENTITY_MISMATCH/.test(failOut)
-          && /BACKEND_TIMEOUT/.test(failOut)
-          && /Total rejections:/.test(failOut),
+        failCp.status === 0 &&
+          /Failure taxonomy report/.test(failOut) &&
+          /IDENTITY_MISMATCH/.test(failOut) &&
+          /BACKEND_TIMEOUT/.test(failOut) &&
+          /Total rejections:/.test(failOut),
         'failure-report command exits 0 and prints a taxonomy table (IDENTITY_MISMATCH, BACKEND_TIMEOUT)',
-        `exit=${failCp.status}`);
+        `exit=${failCp.status}`
+      );
 
       // Direct classifyReason unit checks against the observed live reasons.
       const { classifyReason } = require('./lib/failure-taxonomy');
@@ -2179,15 +2657,24 @@ async function runFixtures() {
         ['runtime mismatch: packet runtime "cli" vs dispatch adapter "stub"', 'IDENTITY_MISMATCH'],
         ['result packet is not parseable YAML', 'MALFORMED_OUTPUT'],
         ['result packet failed schema validation', 'SCHEMA_INVALID'],
-        ['evidence item "ev-1" content_ref does not resolve to a file: a/b.txt', 'CONTENT_RESOLUTION'],
+        [
+          'evidence item "ev-1" content_ref does not resolve to a file: a/b.txt',
+          'CONTENT_RESOLUTION',
+        ],
         ['missing trace record', 'MISSING_ARTIFACT'],
         ['something the taxonomy has never seen', 'UNCLASSIFIED'],
       ];
-      const wrong = expectations.filter(([reason, code]) => classifyReason(reason) !== code)
-        .map(([reason, code]) => `${JSON.stringify(reason)} → expected ${code} got ${classifyReason(reason)}`);
-      report(wrong.length === 0,
+      const wrong = expectations
+        .filter(([reason, code]) => classifyReason(reason) !== code)
+        .map(
+          ([reason, code]) =>
+            `${JSON.stringify(reason)} → expected ${code} got ${classifyReason(reason)}`
+        );
+      report(
+        wrong.length === 0,
         'classifyReason maps each observed live reason to its taxonomy code',
-        wrong.join(' | '));
+        wrong.join(' | ')
+      );
     }
 
     // -----------------------------------------------------------------
@@ -2196,63 +2683,106 @@ async function runFixtures() {
     //    escape hatch --allow-runtime-mismatch downgrades to a recorded
     //    warning and the run completes with the mismatch noted everywhere.
     // -----------------------------------------------------------------
-    console.log('\n--- fixture: runtime declaration mismatch (gate-refused / operator override) ---');
+    console.log(
+      '\n--- fixture: runtime declaration mismatch (gate-refused / operator override) ---'
+    );
     {
       const runDir = path.join(tmpBase, 'runtime-mismatch');
       const cp = spawnSync(
         process.execPath,
         [
-          __filename, 'dispatch', 'fixtures/live-runner/round-live-runner-fixture.yaml',
-          '--config', 'fixtures/live-runner/runner-config-runtime-mismatch.yaml',
-          '--run-directory', runDir,
+          __filename,
+          'dispatch',
+          'fixtures/live-runner/round-live-runner-fixture.yaml',
+          '--config',
+          'fixtures/live-runner/runner-config-runtime-mismatch.yaml',
+          '--run-directory',
+          runDir,
         ],
         { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 120000 }
       );
       const out = `${cp.stdout || ''}${cp.stderr || ''}`;
-      report(cp.status === EXIT_GATE_BLOCKED, 'adapter ≠ manifest runtime is gate-refused with exit code 2', `exit=${cp.status}`);
-      report(/GATE BLOCKED/.test(out) && /runtime identity mismatch/.test(out),
-        'gate failure message names the runtime identity mismatch');
-      const dispatched = fs.existsSync(runDir) ? fs.readdirSync(runDir).filter((e) => e.startsWith('run-')) : [];
-      report(dispatched.length === 0, 'no run was dispatched for the runtime-mismatched participant', `run dirs: ${dispatched.length}`);
-      const blockedReport = yaml.load(fs.readFileSync(path.join(runDir, 'dispatch-report.yaml'), 'utf8'));
       report(
-        blockedReport.gates.some((g) => g.gate === 'runtime_identity' && g.status === 'fail')
-          && blockedReport.gate_failures.length === 1
-          && blockedReport.gate_failures[0].refused === true
-          && blockedReport.gate_failures[0].reasons.some((r) => /runtime identity mismatch/.test(r)),
-        'dispatch report records the failed runtime_identity gate and the refused participant');
+        cp.status === EXIT_GATE_BLOCKED,
+        'adapter ≠ manifest runtime is gate-refused with exit code 2',
+        `exit=${cp.status}`
+      );
+      report(
+        /GATE BLOCKED/.test(out) && /runtime identity mismatch/.test(out),
+        'gate failure message names the runtime identity mismatch'
+      );
+      const dispatched = fs.existsSync(runDir)
+        ? fs.readdirSync(runDir).filter((e) => e.startsWith('run-'))
+        : [];
+      report(
+        dispatched.length === 0,
+        'no run was dispatched for the runtime-mismatched participant',
+        `run dirs: ${dispatched.length}`
+      );
+      const blockedReport = yaml.load(
+        fs.readFileSync(path.join(runDir, 'dispatch-report.yaml'), 'utf8')
+      );
+      report(
+        blockedReport.gates.some((g) => g.gate === 'runtime_identity' && g.status === 'fail') &&
+          blockedReport.gate_failures.length === 1 &&
+          blockedReport.gate_failures[0].refused === true &&
+          blockedReport.gate_failures[0].reasons.some((r) => /runtime identity mismatch/.test(r)),
+        'dispatch report records the failed runtime_identity gate and the refused participant'
+      );
 
       // Operator escape hatch: same config, --allow-runtime-mismatch.
       const overrideDir = path.join(tmpBase, 'runtime-mismatch-allowed');
       const cp2 = spawnSync(
         process.execPath,
         [
-          __filename, 'run', 'fixtures/live-runner/round-live-runner-fixture.yaml',
-          '--config', 'fixtures/live-runner/runner-config-runtime-mismatch.yaml',
-          '--run-directory', overrideDir,
+          __filename,
+          'run',
+          'fixtures/live-runner/round-live-runner-fixture.yaml',
+          '--config',
+          'fixtures/live-runner/runner-config-runtime-mismatch.yaml',
+          '--run-directory',
+          overrideDir,
           '--allow-runtime-mismatch',
         ],
         { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', timeout: 120000 }
       );
-      report(cp2.status === EXIT_OK, '--allow-runtime-mismatch downgrades the refusal and the run proceeds', `exit=${cp2.status}`);
-      const overrideReport = yaml.load(fs.readFileSync(path.join(overrideDir, 'dispatch-report.yaml'), 'utf8'));
       report(
-        overrideReport.gates.some((g) => g.gate === 'runtime_identity' && g.status === 'warn')
-          && overrideReport.gate_failures.length === 0
-          && overrideReport.runs.length === 1 && overrideReport.runs[0].status === 'completed',
-        'override run: runtime_identity gate records status warn, no gate failures, run completed');
+        cp2.status === EXIT_OK,
+        '--allow-runtime-mismatch downgrades the refusal and the run proceeds',
+        `exit=${cp2.status}`
+      );
+      const overrideReport = yaml.load(
+        fs.readFileSync(path.join(overrideDir, 'dispatch-report.yaml'), 'utf8')
+      );
+      report(
+        overrideReport.gates.some((g) => g.gate === 'runtime_identity' && g.status === 'warn') &&
+          overrideReport.gate_failures.length === 0 &&
+          overrideReport.runs.length === 1 &&
+          overrideReport.runs[0].status === 'completed',
+        'override run: runtime_identity gate records status warn, no gate failures, run completed'
+      );
       const overrideRunDir = path.join(ROOT, overrideReport.runs[0].run_dir);
-      const overrideRecord = yaml.load(fs.readFileSync(path.join(overrideRunDir, 'dispatch-record.yaml'), 'utf8'));
+      const overrideRecord = yaml.load(
+        fs.readFileSync(path.join(overrideRunDir, 'dispatch-record.yaml'), 'utf8')
+      );
       report(
-        overrideRecord.runtime_identity && overrideRecord.runtime_identity.consistent === false
-          && overrideRecord.runtime_identity.mismatch_allowed === true
-          && /OPERATOR OVERRIDE/.test(overrideRecord.runtime_identity.note || ''),
-        'override dispatch record notes the operator-allowed runtime mismatch');
-      const overrideFanin = yaml.load(fs.readFileSync(path.join(overrideDir, 'fanin-report.yaml'), 'utf8'));
+        overrideRecord.runtime_identity &&
+          overrideRecord.runtime_identity.consistent === false &&
+          overrideRecord.runtime_identity.mismatch_allowed === true &&
+          /OPERATOR OVERRIDE/.test(overrideRecord.runtime_identity.note || ''),
+        'override dispatch record notes the operator-allowed runtime mismatch'
+      );
+      const overrideFanin = yaml.load(
+        fs.readFileSync(path.join(overrideDir, 'fanin-report.yaml'), 'utf8')
+      );
       report(
-        overrideFanin.runs.length === 1 && overrideFanin.runs[0].decision === 'clean'
-          && overrideFanin.runs[0].warnings.some((w) => /runtime declaration mismatch was operator-allowed/.test(w)),
-        'fan-in keeps the override run clean but surfaces the allowed mismatch as a warning');
+        overrideFanin.runs.length === 1 &&
+          overrideFanin.runs[0].decision === 'clean' &&
+          overrideFanin.runs[0].warnings.some((w) =>
+            /runtime declaration mismatch was operator-allowed/.test(w)
+          ),
+        'fan-in keeps the override run clean but surfaces the allowed mismatch as a warning'
+      );
     }
 
     // -----------------------------------------------------------------
@@ -2260,31 +2790,46 @@ async function runFixtures() {
     //    mismatch (quarantine), inconsistent attestation probe (warning),
     //    hermes-shaped artifacts declared as stub (fingerprint warning).
     // -----------------------------------------------------------------
-    console.log('\n--- fixture: runtime identity fan-in (packet label / attestation / fingerprint) ---');
+    console.log(
+      '\n--- fixture: runtime identity fan-in (packet label / attestation / fingerprint) ---'
+    );
     {
       const runDir = path.join(tmpBase, 'identity');
       const config = validateRunnerConfig(
         loadYamlFile('fixtures/live-runner/runner-config-identity.yaml'),
         'fixtures/live-runner/runner-config-identity.yaml'
       );
-      const dispatch = await dispatchRound('fixtures/live-runner/round-live-runner-fixture.yaml', config, {
-        runDirectory: runDir, dryRunOnly: false, verbose: false,
-      });
+      const dispatch = await dispatchRound(
+        'fixtures/live-runner/round-live-runner-fixture.yaml',
+        config,
+        {
+          runDirectory: runDir,
+          dryRunOnly: false,
+          verbose: false,
+        }
+      );
       const byParticipant = new Map(dispatch.report.runs.map((r) => [r.participant_id, r]));
       report(
-        dispatch.report.runs.length === 3 && dispatch.report.runs.every((r) => r.status === 'completed') && !dispatch.gateBlocked,
+        dispatch.report.runs.length === 3 &&
+          dispatch.report.runs.every((r) => r.status === 'completed') &&
+          !dispatch.gateBlocked,
         'identity fixtures: all 3 transports complete at dispatch time',
-        `statuses: ${dispatch.report.runs.map((r) => r.status).join(', ')}`);
+        `statuses: ${dispatch.report.runs.map((r) => r.status).join(', ')}`
+      );
 
       // (c) inconsistent attestation probe → recorded warning, not refusal.
       const attestRun = byParticipant.get('attest-probe');
-      const attestRecord = yaml.load(fs.readFileSync(path.join(ROOT, attestRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
+      const attestRecord = yaml.load(
+        fs.readFileSync(path.join(ROOT, attestRun.run_dir, 'dispatch-record.yaml'), 'utf8')
+      );
       report(
-        attestRecord.runtime_attestation && attestRecord.runtime_attestation.command_ran === true
-          && attestRecord.runtime_attestation.consistent === false
-          && attestRecord.runtime_attestation.declared_adapter === 'stub'
-          && (attestRun.warnings || []).some((w) => /runtime attestation/.test(w)),
-        'inconsistent identify_command probe is recorded in the dispatch record + dispatch report warning (no refusal)');
+        attestRecord.runtime_attestation &&
+          attestRecord.runtime_attestation.command_ran === true &&
+          attestRecord.runtime_attestation.consistent === false &&
+          attestRecord.runtime_attestation.declared_adapter === 'stub' &&
+          (attestRun.warnings || []).some((w) => /runtime attestation/.test(w)),
+        'inconsistent identify_command probe is recorded in the dispatch record + dispatch report warning (no refusal)'
+      );
 
       const fanin = faninRound(dispatch.runDirBaseAbs);
       const decisions = new Map(fanin.runs.map((r) => [r.run_id, r]));
@@ -2295,35 +2840,55 @@ async function runFixtures() {
 
       // (b) packet runtime label ≠ dispatched adapter → quarantined.
       const imposterDecision = findDecision('runtime-imposter');
-      report(!!imposterDecision && imposterDecision.decision === 'quarantined'
-          && imposterDecision.reasons.some((r) => /runtime mismatch: packet runtime "cli" vs dispatch adapter "stub"/.test(r)),
+      report(
+        !!imposterDecision &&
+          imposterDecision.decision === 'quarantined' &&
+          imposterDecision.reasons.some((r) =>
+            /runtime mismatch: packet runtime "cli" vs dispatch adapter "stub"/.test(r)
+          ),
         'fan-in quarantines a packet whose runtime label differs from the dispatched adapter (identity severity)',
-        imposterDecision ? imposterDecision.reasons.join('; ') : 'missing');
+        imposterDecision ? imposterDecision.reasons.join('; ') : 'missing'
+      );
 
       // (c) attestation warning surfaces in the fan-in report; run stays clean.
       const attestDecision = findDecision('attest-probe');
-      report(!!attestDecision && attestDecision.decision === 'clean'
-          && attestDecision.warnings.some((w) => /runtime attestation probe did not confirm/.test(w)),
+      report(
+        !!attestDecision &&
+          attestDecision.decision === 'clean' &&
+          attestDecision.warnings.some((w) => /runtime attestation probe did not confirm/.test(w)),
         'fan-in surfaces the inconsistent attestation as a warning on a clean run',
-        attestDecision ? attestDecision.warnings.join('; ') : 'missing');
+        attestDecision ? attestDecision.warnings.join('; ') : 'missing'
+      );
 
       // (d) hermes-shaped artifacts declared as stub → fingerprint WARNING
       //     (clean, not quarantined) + judge handoff metadata.
       const shifterDecision = findDecision('shape-shifter');
-      report(!!shifterDecision && shifterDecision.decision === 'clean'
-          && shifterDecision.warnings.some((w) => /runtime fingerprint mismatch: artifacts look hermes-shaped/.test(w))
-          && shifterDecision.runtime_fingerprint && shifterDecision.runtime_fingerprint.detected === 'hermes',
+      report(
+        !!shifterDecision &&
+          shifterDecision.decision === 'clean' &&
+          shifterDecision.warnings.some((w) =>
+            /runtime fingerprint mismatch: artifacts look hermes-shaped/.test(w)
+          ) &&
+          shifterDecision.runtime_fingerprint &&
+          shifterDecision.runtime_fingerprint.detected === 'hermes',
         'fingerprint mismatch (declared stub, hermes-shaped artifacts) is a fan-in warning, not a quarantine',
-        shifterDecision ? `${JSON.stringify(shifterDecision.runtime_fingerprint)} ${shifterDecision.warnings.join('; ')}` : 'missing');
+        shifterDecision
+          ? `${JSON.stringify(shifterDecision.runtime_fingerprint)} ${shifterDecision.warnings.join('; ')}`
+          : 'missing'
+      );
       if (shifterDecision) {
-        const handoffManifest = yaml.load(fs.readFileSync(path.join(ROOT, shifterDecision.handoff, 'handoff-manifest.yaml'), 'utf8'));
+        const handoffManifest = yaml.load(
+          fs.readFileSync(path.join(ROOT, shifterDecision.handoff, 'handoff-manifest.yaml'), 'utf8')
+        );
         report(
-          handoffManifest.runtime_fingerprint && handoffManifest.runtime_fingerprint.detected === 'hermes'
-            && handoffManifest.runtime_fingerprint.declared_adapter === 'stub'
-            && Array.isArray(handoffManifest.runtime_fingerprint.signals)
-            && handoffManifest.runtime_fingerprint.signals.length >= 2
-            && handoffManifest.fanin_warnings.some((w) => /fingerprint/.test(w)),
-          'judge handoff manifest carries the fingerprint verdict + signals so judges see the discrepancy');
+          handoffManifest.runtime_fingerprint &&
+            handoffManifest.runtime_fingerprint.detected === 'hermes' &&
+            handoffManifest.runtime_fingerprint.declared_adapter === 'stub' &&
+            Array.isArray(handoffManifest.runtime_fingerprint.signals) &&
+            handoffManifest.runtime_fingerprint.signals.length >= 2 &&
+            handoffManifest.fanin_warnings.some((w) => /fingerprint/.test(w)),
+          'judge handoff manifest carries the fingerprint verdict + signals so judges see the discrepancy'
+        );
       }
     }
 
@@ -2343,64 +2908,104 @@ async function runFixtures() {
         loadYamlFile('fixtures/live-runner/runner-config-cli.yaml'),
         'fixtures/live-runner/runner-config-cli.yaml'
       );
-      const dispatch = await dispatchRound('fixtures/live-runner/round-live-runner-fixture.yaml', config, {
-        runDirectory: runDir, dryRunOnly: false, verbose: false,
-      });
+      const dispatch = await dispatchRound(
+        'fixtures/live-runner/round-live-runner-fixture.yaml',
+        config,
+        {
+          runDirectory: runDir,
+          dryRunOnly: false,
+          verbose: false,
+        }
+      );
       report(
-        dispatch.report.runs.length === 1 && dispatch.report.runs[0].status === 'completed' && !dispatch.gateBlocked,
+        dispatch.report.runs.length === 1 &&
+          dispatch.report.runs[0].status === 'completed' &&
+          !dispatch.gateBlocked,
         'cli participant dispatches and completes via the cli mission wrapper',
-        `statuses: ${dispatch.report.runs.map((r) => r.status).join(', ')}`);
+        `statuses: ${dispatch.report.runs.map((r) => r.status).join(', ')}`
+      );
 
       // runtime_identity gate accepts cli as cleanly as hermes (config adapter
       // cli == manifest runtime cli).
       report(
-        dispatch.report.gates.some((g) => g.gate === 'runtime_identity' && g.target === 'claude-cli' && g.status === 'pass'),
-        'runtime_identity gate passes for the cli participant (config adapter cli == manifest runtime cli)');
+        dispatch.report.gates.some(
+          (g) => g.gate === 'runtime_identity' && g.target === 'claude-cli' && g.status === 'pass'
+        ),
+        'runtime_identity gate passes for the cli participant (config adapter cli == manifest runtime cli)'
+      );
 
       const cliRun = dispatch.report.runs[0];
-      const record = yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'dispatch-record.yaml'), 'utf8'));
+      const record = yaml.load(
+        fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'dispatch-record.yaml'), 'utf8')
+      );
       report(
-        record.adapter === 'cli' && record.runtime === 'cli'
-          && record.runtime_identity && record.runtime_identity.consistent === true,
-        'cli dispatch record carries adapter/runtime cli with a consistent runtime_identity block');
+        record.adapter === 'cli' &&
+          record.runtime === 'cli' &&
+          record.runtime_identity &&
+          record.runtime_identity.consistent === true,
+        'cli dispatch record carries adapter/runtime cli with a consistent runtime_identity block'
+      );
 
       // The merged packet's runtime/adapter labels are cli (not hermes), and
       // model attestation recorded a source.
-      const packet = yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'result-packet.yaml'), 'utf8'));
+      const packet = yaml.load(
+        fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'result-packet.yaml'), 'utf8')
+      );
       report(
-        packet.runtime === 'cli' && packet.adapter === 'cli' && packet.schema_version === 2
-          && packet.delegation_profile && packet.delegation_profile.subagents_used === false
-          && (packet.delegation_profile.a2a_workers || []).length === 0,
+        packet.runtime === 'cli' &&
+          packet.adapter === 'cli' &&
+          packet.schema_version === 2 &&
+          packet.delegation_profile &&
+          packet.delegation_profile.subagents_used === false &&
+          (packet.delegation_profile.a2a_workers || []).length === 0,
         'cli packet: runtime/adapter cli, v2 shape, solo delegation_profile (subagents_used:false, no a2a_workers)',
-        `runtime=${packet.runtime} adapter=${packet.adapter} schema=${packet.schema_version}`);
+        `runtime=${packet.runtime} adapter=${packet.adapter} schema=${packet.schema_version}`
+      );
       const probeEvidence = (packet.evidence || []).find((e) => e.id === 'ev-cli-probe');
       report(
-        !!probeEvidence && /model_source=(cli_config|operator_env|unknown)/.test(probeEvidence.summary)
-          && packet.model && packet.model !== 'unknown' && packet.model_provider !== 'unknown',
+        !!probeEvidence &&
+          /model_source=(cli_config|operator_env|unknown)/.test(probeEvidence.summary) &&
+          packet.model &&
+          packet.model !== 'unknown' &&
+          packet.model_provider !== 'unknown',
         'cli packet records an honest model attestation source and a detected model',
-        probeEvidence ? `model=${packet.model}/${packet.model_provider}; ${probeEvidence.summary.match(/model_source=\w+/)}` : 'no probe evidence');
+        probeEvidence
+          ? `model=${packet.model}/${packet.model_provider}; ${probeEvidence.summary.match(/model_source=\w+/)}`
+          : 'no probe evidence'
+      );
 
       // Layer-3 fingerprint detects cli (not unknown/hermes).
-      const fp = fingerprintRuntime(packet, yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'trace.yaml'), 'utf8')));
+      const fp = fingerprintRuntime(
+        packet,
+        yaml.load(fs.readFileSync(path.join(ROOT, cliRun.run_dir, 'trace.yaml'), 'utf8'))
+      );
       report(
         fp.detected === 'cli' && fp.confidence !== 'none' && fp.signals.length >= 2,
         'layer-3 fingerprint detects cli (not unknown/hermes) for the cli participant',
-        `detected=${fp.detected} confidence=${fp.confidence} signals=${fp.signals.length}`);
+        `detected=${fp.detected} confidence=${fp.confidence} signals=${fp.signals.length}`
+      );
 
       const fanin = faninRound(dispatch.runDirBaseAbs);
       report(
-        fanin.clean === 1 && fanin.quarantined === 0
-          && fanin.runs[0].runtime_fingerprint && fanin.runs[0].runtime_fingerprint.detected === 'cli',
+        fanin.clean === 1 &&
+          fanin.quarantined === 0 &&
+          fanin.runs[0].runtime_fingerprint &&
+          fanin.runs[0].runtime_fingerprint.detected === 'cli',
         'cli participant fans in clean; fan-in records the cli fingerprint, no quarantine, no fingerprint warning',
-        `clean=${fanin.clean} quarantined=${fanin.quarantined} warnings=${JSON.stringify(fanin.runs[0].warnings)}`);
+        `clean=${fanin.clean} quarantined=${fanin.quarantined} warnings=${JSON.stringify(fanin.runs[0].warnings)}`
+      );
 
       // Judge handoff carries the cli fingerprint so judges see the runtime.
-      const handoffManifest = yaml.load(fs.readFileSync(path.join(ROOT, fanin.runs[0].handoff, 'handoff-manifest.yaml'), 'utf8'));
+      const handoffManifest = yaml.load(
+        fs.readFileSync(path.join(ROOT, fanin.runs[0].handoff, 'handoff-manifest.yaml'), 'utf8')
+      );
       report(
-        handoffManifest.adapter === 'cli'
-          && handoffManifest.runtime_fingerprint && handoffManifest.runtime_fingerprint.detected === 'cli'
-          && handoffManifest.runtime_fingerprint.declared_adapter === 'cli',
-        'cli judge handoff manifest records adapter cli and a cli fingerprint verdict');
+        handoffManifest.adapter === 'cli' &&
+          handoffManifest.runtime_fingerprint &&
+          handoffManifest.runtime_fingerprint.detected === 'cli' &&
+          handoffManifest.runtime_fingerprint.declared_adapter === 'cli',
+        'cli judge handoff manifest records adapter cli and a cli fingerprint verdict'
+      );
     }
   } finally {
     fs.rmSync(tmpBase, { recursive: true, force: true });

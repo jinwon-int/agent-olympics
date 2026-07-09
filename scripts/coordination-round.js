@@ -59,7 +59,6 @@ const RUNNER_CONFIG_KIND = 'agent-olympics.live-runner.config';
 const COORD_CONFIG_KIND = 'agent-olympics.coordination-round';
 const A2A_BENCHMARK_VERSION = 'agent-olympics-a2a-effectiveness-v1';
 
-const EXIT_OK = 0;
 const EXIT_ERROR = 1;
 
 class CoordinationError extends Error {}
@@ -100,7 +99,9 @@ function validateCoordinationManifest(manifest, manifestPath) {
   const validate = ajvValidator('schemas/coordination-round.schema.json');
   if (!validate(manifest)) {
     const errs = (validate.errors || []).map((e) => `${e.instancePath || '(root)'} ${e.message}`);
-    throw new CoordinationError(`Coordination manifest invalid (${manifestPath}):\n  - ${errs.join('\n  - ')}`);
+    throw new CoordinationError(
+      `Coordination manifest invalid (${manifestPath}):\n  - ${errs.join('\n  - ')}`
+    );
   }
   return manifest;
 }
@@ -122,26 +123,32 @@ function synthRoundManifest(coord, stage, participants, task, runDir) {
     title: `${coord.title} — ${stage} stage`,
     lifecycle: {
       status: 'running',
-      status_history: [{ status: 'running', timestamp: isoNow(), note: `coordination-round ${stage} stage` }],
+      status_history: [
+        { status: 'running', timestamp: isoNow(), note: `coordination-round ${stage} stage` },
+      ],
     },
-    tasks: [{
-      task_id: task.task_id,
-      title: task.title || task.task_id,
-      envelope_path: task.envelope_path,
-      time_limit_minutes: task.time_limit_minutes,
-      fixture_bundle_ref: task.fixture_bundle_ref,
-      scoring_rubric: task.scoring_rubric || coord.scoring_rubric,
-    }],
-    participants: participants.map((p) => ({
-      agent_id: p.agent_id,
-      adapter: p.adapter,
-      runtime: p.runtime,
-      label: p.label || p.agent_id,
-      model: p.model,
-      model_provider: p.model_provider,
-      node: p.node,
-      enabled: true,
-    })).map((p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined))),
+    tasks: [
+      {
+        task_id: task.task_id,
+        title: task.title || task.task_id,
+        envelope_path: task.envelope_path,
+        time_limit_minutes: task.time_limit_minutes,
+        fixture_bundle_ref: task.fixture_bundle_ref,
+        scoring_rubric: task.scoring_rubric || coord.scoring_rubric,
+      },
+    ],
+    participants: participants
+      .map((p) => ({
+        agent_id: p.agent_id,
+        adapter: p.adapter,
+        runtime: p.runtime,
+        label: p.label || p.agent_id,
+        model: p.model,
+        model_provider: p.model_provider,
+        node: p.node,
+        enabled: true,
+      }))
+      .map((p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined))),
     run_directory: path.relative(ROOT, runDir),
     run_id_template: 'run-{task_id}-{agent_id}-{timestamp}',
   };
@@ -177,9 +184,12 @@ async function runStage(coord, stageName, participants, task, runBase, options) 
   writeYaml(manifestPath, manifest);
   writeYaml(path.join(stageDir, 'runner-config.yaml'), config);
 
-  if (options.verbose) console.log(`\n=== Stage: ${stageName} (${participants.length} participant(s)) ===`);
+  if (options.verbose)
+    console.log(`\n=== Stage: ${stageName} (${participants.length} participant(s)) ===`);
   const dispatch = await dispatchRound(manifestPath, config, {
-    runDirectory: stageDir, dryRunOnly: false, verbose: options.verbose,
+    runDirectory: stageDir,
+    dryRunOnly: false,
+    verbose: options.verbose,
   });
   const fanin = faninRound(dispatch.runDirBaseAbs);
   return { dispatch, fanin, stageDir, runDirBaseAbs: dispatch.runDirBaseAbs };
@@ -195,7 +205,6 @@ async function runStage(coord, stageName, participants, task, runBase, options) 
  * { worker, status, summary, findings: [{claim, confidence}] }.
  */
 function collectWorkerFindings(stage) {
-  const handoffRoot = stage.runDirBaseAbs;
   const reports = [];
   for (const run of stage.fanin.runs) {
     if (run.decision !== 'clean' || !run.handoff) continue;
@@ -235,8 +244,8 @@ function buildWorkerReportsEvidence(coordinationId, reports) {
   const oracleHits = scanTextForOracleReferences(serialized);
   if (oracleHits.length > 0) {
     throw new CoordinationError(
-      `Worker-reports injection blocked: oracle/judge reference detected (${oracleHits.join(', ')}). `
-      + 'Only participant-facing worker findings may flow to the finalizer.'
+      `Worker-reports injection blocked: oracle/judge reference detected (${oracleHits.join(', ')}). ` +
+        'Only participant-facing worker findings may flow to the finalizer.'
     );
   }
   const secretFields = scanObjectForSecretFields(evidence);
@@ -334,16 +343,24 @@ function buildA2aRecord(coord, workerStage, finalizerStage, soloStage, workerRep
       reopenCount7d: null,
       boundaryFindingCount: 1,
     },
-    defects: workerReports.length > 0 ? [{
-      id: `finding-worker-independent-${coord.coordination_id}`,
-      kind: uniqueWorkerFindings > 0 ? 'missing_evidence' : 'duplicate_or_low_value',
-      foundBy: workers[0],
-      confirmed: uniqueWorkerFindings > 0,
-    }] : [],
-    boundaryFindings: [{
-      boundary: 'simulated-coordination-no-live-dispatch',
-      observed: 'Worker and finalizer stages ran via the live runner local_exec simulation transport. No network, no live A2A dispatch, no credential movement. Worker findings were injected as a participant-facing envelope field, oracle-scanned before injection.',
-    }],
+    defects:
+      workerReports.length > 0
+        ? [
+            {
+              id: `finding-worker-independent-${coord.coordination_id}`,
+              kind: uniqueWorkerFindings > 0 ? 'missing_evidence' : 'duplicate_or_low_value',
+              foundBy: workers[0],
+              confirmed: uniqueWorkerFindings > 0,
+            },
+          ]
+        : [],
+    boundaryFindings: [
+      {
+        boundary: 'simulated-coordination-no-live-dispatch',
+        observed:
+          'Worker and finalizer stages ran via the live runner local_exec simulation transport. No network, no live A2A dispatch, no credential movement. Worker findings were injected as a participant-facing envelope field, oracle-scanned before injection.',
+      },
+    ],
     outcome: {
       decision: 'no_repair_needed',
       followupWindowComplete: false,
@@ -385,14 +402,23 @@ async function runCoordinationRound(manifestPath, options) {
     : path.join(ROOT, 'runs', 'coordination', coord.coordination_id);
   fs.mkdirSync(runBase, { recursive: true });
 
-  console.log(`\n### Coordination round: ${coord.coordination_id} (mode=${coord.coordination.mode}) ###`);
+  console.log(
+    `\n### Coordination round: ${coord.coordination_id} (mode=${coord.coordination.mode}) ###`
+  );
 
   // --- Stage 1: workers run the probe envelope independently. ---
   const workerStage = await runStage(
-    coord, 'worker', coord.coordination.workers, coord.coordination.worker_probe, runBase, options
+    coord,
+    'worker',
+    coord.coordination.workers,
+    coord.coordination.worker_probe,
+    runBase,
+    options
   );
   if (workerStage.fanin.clean === 0) {
-    throw new CoordinationError('Worker stage produced no clean runs — cannot proceed to finalizer.');
+    throw new CoordinationError(
+      'Worker stage produced no clean runs — cannot proceed to finalizer.'
+    );
   }
 
   // --- Collect worker findings (participant-facing) and build injection. ---
@@ -403,14 +429,21 @@ async function runCoordinationRound(manifestPath, options) {
   const finalizerStageDir = path.join(runBase, 'finalizer');
   fs.mkdirSync(finalizerStageDir, { recursive: true });
   const finalizerEnvPath = writeFinalizerEnvelope(
-    coord.coordination.merge, workerEvidence, finalizerStageDir
+    coord.coordination.merge,
+    workerEvidence,
+    finalizerStageDir
   );
   const mergeTaskWithInjection = {
     ...coord.coordination.merge,
     envelope_path: path.relative(ROOT, finalizerEnvPath),
   };
   const finalizerStage = await runStage(
-    coord, 'finalizer', [coord.coordination.finalizer], mergeTaskWithInjection, runBase, options
+    coord,
+    'finalizer',
+    [coord.coordination.finalizer],
+    mergeTaskWithInjection,
+    runBase,
+    options
   );
 
   // Oracle-isolation assertion: scan the participant-facing finalizer envelope
@@ -423,13 +456,20 @@ async function runCoordinationRound(manifestPath, options) {
   for (const copy of finalizerEnvCopies) {
     const hits = scanTextForOracleReferences(fs.readFileSync(copy, 'utf8'));
     if (hits.length > 0) {
-      throw new CoordinationError(`Oracle reference leaked into finalizer envelope copy ${copy}: ${hits.join(', ')}`);
+      throw new CoordinationError(
+        `Oracle reference leaked into finalizer envelope copy ${copy}: ${hits.join(', ')}`
+      );
     }
   }
 
   // --- Stage 3: solo baseline runs the merge envelope ALONE (no injection). ---
   const soloStage = await runStage(
-    coord, 'solo', [coord.coordination.solo_baseline], coord.coordination.merge, runBase, options
+    coord,
+    'solo',
+    [coord.coordination.solo_baseline],
+    coord.coordination.merge,
+    runBase,
+    options
   );
 
   // --- Emit + validate the A2A-effectiveness record. ---
@@ -472,10 +512,18 @@ async function runCoordinationRound(manifestPath, options) {
   writeYaml(path.join(runBase, 'coordination-report.yaml'), report);
 
   console.log(`\n=== Coordination summary (${coord.coordination_id}) ===`);
-  console.log(`  worker stage   : ${workerStage.fanin.clean} clean / ${workerStage.dispatch.report.runs.length} dispatched`);
-  console.log(`  finalizer stage: ${finalizerStage.fanin.clean} clean, ingested ${workerReports.length} worker report(s)`);
-  console.log(`  solo baseline  : ${soloStage.fanin.clean} clean / ${soloStage.dispatch.report.runs.length} dispatched`);
-  console.log(`  A2A record     : ${path.relative(ROOT, recordPath)} (mode=${record.mode}, validity=${record.validity})`);
+  console.log(
+    `  worker stage   : ${workerStage.fanin.clean} clean / ${workerStage.dispatch.report.runs.length} dispatched`
+  );
+  console.log(
+    `  finalizer stage: ${finalizerStage.fanin.clean} clean, ingested ${workerReports.length} worker report(s)`
+  );
+  console.log(
+    `  solo baseline  : ${soloStage.fanin.clean} clean / ${soloStage.dispatch.report.runs.length} dispatched`
+  );
+  console.log(
+    `  A2A record     : ${path.relative(ROOT, recordPath)} (mode=${record.mode}, validity=${record.validity})`
+  );
 
   return { coord, report, record, recordPath, runBase, workerReports, finalizerEnvCopies };
 }
@@ -491,7 +539,8 @@ async function runFixtures() {
   let fail = 0;
   const check = (ok, label, detail) => {
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? `\n      ${detail}` : ''}`);
-    if (ok) pass += 1; else fail += 1;
+    if (ok) pass += 1;
+    else fail += 1;
   };
 
   // Fixture output must live inside the repo's gitignored runs/ tree: the live
@@ -502,8 +551,11 @@ async function runFixtures() {
   fs.mkdirSync(fixturesRoot, { recursive: true });
   const tmpBase = fs.mkdtempSync(path.join(fixturesRoot, 'fixtures-'));
   try {
-    const result = await runCoordinationRound(FIXTURE_MANIFEST, { runDirectory: tmpBase, verbose: false });
-    const { report, record, recordPath, workerReports, finalizerEnvCopies } = result;
+    const result = await runCoordinationRound(FIXTURE_MANIFEST, {
+      runDirectory: tmpBase,
+      verbose: false,
+    });
+    const { report, recordPath, workerReports, finalizerEnvCopies } = result;
 
     // 1. Two-stage dispatch produced worker packets.
     check(
@@ -514,8 +566,10 @@ async function runFixtures() {
 
     // 2. Finalizer ingested worker findings.
     check(
-      report.stages.finalizer.clean === 1 && report.stages.finalizer.worker_reports_ingested === 2
-        && workerReports.length === 2 && workerReports.every((r) => r.findings.length > 0),
+      report.stages.finalizer.clean === 1 &&
+        report.stages.finalizer.worker_reports_ingested === 2 &&
+        workerReports.length === 2 &&
+        workerReports.every((r) => r.findings.length > 0),
       'finalizer stage: 1 finalizer clean, ingested 2 worker reports with findings',
       `ingested=${report.stages.finalizer.worker_reports_ingested}`
     );
@@ -532,48 +586,82 @@ async function runFixtures() {
       const env = yaml.load(fs.readFileSync(copy, 'utf8'));
       if (env.worker_reports && env.worker_reports.worker_count === 2) envHasReports = true;
     }
-    check(envHasReports, 'finalizer participant-facing envelope copy carries worker_reports (injection path works)');
+    check(
+      envHasReports,
+      'finalizer participant-facing envelope copy carries worker_reports (injection path works)'
+    );
 
     // 5. Oracle material never entered any participant-facing artifact.
     //    Re-scan EVERY participant-facing file across all three stages with
     //    the live runner's oracle scan.
-    const participantFacing = ['result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'envelope.yaml', 'adapter.log', 'runner-transport.log'];
-    let oracleLeaks = [];
+    const participantFacing = [
+      'result-packet.yaml',
+      'trace.yaml',
+      'evidence-bundle.yaml',
+      'envelope.yaml',
+      'adapter.log',
+      'runner-transport.log',
+    ];
+    const oracleLeaks = [];
     const walkStages = (dir) => {
       if (!fs.existsSync(dir)) return;
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) { walkStages(full); continue; }
+        if (entry.isDirectory()) {
+          walkStages(full);
+          continue;
+        }
         if (!participantFacing.includes(entry.name)) continue;
         const hits = scanTextForOracleReferences(fs.readFileSync(full, 'utf8'));
-        if (hits.length > 0) oracleLeaks.push(`${path.relative(tmpBase, full)} (${hits.join(',')})`);
+        if (hits.length > 0)
+          oracleLeaks.push(`${path.relative(tmpBase, full)} (${hits.join(',')})`);
       }
     };
     walkStages(tmpBase);
-    check(oracleLeaks.length === 0,
+    check(
+      oracleLeaks.length === 0,
       'no oracle/judge reference in any participant-facing artifact across all stages',
-      oracleLeaks.length ? oracleLeaks.join('; ') : 'scanned clean');
+      oracleLeaks.length ? oracleLeaks.join('; ') : 'scanned clean'
+    );
 
     // 6. The emitted A2A record validates against the committed schema.
     const recordText = fs.readFileSync(recordPath, 'utf8').trim();
     const parsed = JSON.parse(recordText);
     let schemaOk = true;
-    try { validateA2aRecord(parsed); } catch (err) { schemaOk = false; }
-    check(schemaOk && parsed.benchmarkVersion === A2A_BENCHMARK_VERSION
-      && ['team1', 'a2a_crosscheck'].includes(parsed.mode)
-      && parsed.participants.workers.length === 2 && parsed.participants.finalizer && parsed.participants.soloAgent,
+    try {
+      validateA2aRecord(parsed);
+    } catch (err) {
+      schemaOk = false;
+    }
+    check(
+      schemaOk &&
+        parsed.benchmarkVersion === A2A_BENCHMARK_VERSION &&
+        ['team1', 'a2a_crosscheck'].includes(parsed.mode) &&
+        parsed.participants.workers.length === 2 &&
+        parsed.participants.finalizer &&
+        parsed.participants.soloAgent,
       'emitted A2A-effectiveness record validates against the schema with workers + finalizer + soloAgent',
-      `mode=${parsed.mode} workers=${parsed.participants.workers.join(',')}`);
+      `mode=${parsed.mode} workers=${parsed.participants.workers.join(',')}`
+    );
 
     // 7. A negative injection check: oracle-laced worker reports are blocked.
     let blocked = false;
     try {
-      buildWorkerReportsEvidence('neg', [{ worker: 'w', status: 'completed', summary: 'see oracle/season-001/coord-001-commander-report.yaml', findings: [] }]);
+      buildWorkerReportsEvidence('neg', [
+        {
+          worker: 'w',
+          status: 'completed',
+          summary: 'see oracle/season-001/coord-001-commander-report.yaml',
+          findings: [],
+        },
+      ]);
     } catch (err) {
       blocked = /oracle/.test(err.message);
     }
-    check(blocked, 'worker-reports injection blocks an oracle reference (defense-in-depth guard fires)');
-
+    check(
+      blocked,
+      'worker-reports injection blocks an oracle reference (defense-in-depth guard fires)'
+    );
   } finally {
     fs.rmSync(tmpBase, { recursive: true, force: true });
   }
@@ -619,9 +707,17 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     switch (a) {
-      case '--run-directory': opts.runDirectory = argv[++i]; break;
-      case '--verbose': case '-v': opts.verbose = true; break;
-      case '--help': case '-h': opts.help = true; break;
+      case '--run-directory':
+        opts.runDirectory = argv[++i];
+        break;
+      case '--verbose':
+      case '-v':
+        opts.verbose = true;
+        break;
+      case '--help':
+      case '-h':
+        opts.help = true;
+        break;
       default:
         if (a.startsWith('--')) throw new CoordinationError(`Unknown option: ${a}`);
         opts.positional.push(a);
@@ -633,7 +729,9 @@ function parseArgs(argv) {
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   let opts;
-  try { opts = parseArgs(rest); } catch (err) {
+  try {
+    opts = parseArgs(rest);
+  } catch (err) {
     console.error(`ERROR: ${err.message}`);
     process.exitCode = EXIT_ERROR;
     return;

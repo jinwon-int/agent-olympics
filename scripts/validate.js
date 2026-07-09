@@ -49,8 +49,6 @@ const {
 
 const ROOT = path.resolve(__dirname, '..');
 
-
-
 // ---------------------------------------------------------------------------
 // Load schemas (v1)
 // ---------------------------------------------------------------------------
@@ -59,12 +57,12 @@ const v1Schemas = {
   // archived under archive/schemas/. They are still loaded here to preserve
   // v1 validation *capability* for the remaining v1 task envelopes (smoke +
   // stub-test) and any legacy v1 result packets. See issue #257.
-  'task-envelope':    loadSchema('archive/schemas/task-envelope.schema.json'),
-  'result-packet':    loadSchema('archive/schemas/result-packet.schema.json'),
-  'judge-record':     loadSchema('schemas/judge-record.schema.json'),
-  'trace-record':     loadSchema('schemas/trace-record.schema.json'),
-  'evidence-bundle':  loadSchema('schemas/evidence-bundle.schema.json'),
-  'run-result':       loadSchema('schemas/run-result.schema.json'),
+  'task-envelope': loadSchema('archive/schemas/task-envelope.schema.json'),
+  'result-packet': loadSchema('archive/schemas/result-packet.schema.json'),
+  'judge-record': loadSchema('schemas/judge-record.schema.json'),
+  'trace-record': loadSchema('schemas/trace-record.schema.json'),
+  'evidence-bundle': loadSchema('schemas/evidence-bundle.schema.json'),
+  'run-result': loadSchema('schemas/run-result.schema.json'),
 };
 
 // ---------------------------------------------------------------------------
@@ -80,72 +78,61 @@ let fixtureBundleValidator = null;
 let seasonFixtureManifestValidator = null;
 fixtureBundleValidator = loadOptionalSchema(
   'schemas/fixture-bundle.schema.json',
-  (ajvInstance, schema) => ajvInstance.compile(schema),
+  (ajvInstance, schema) => ajvInstance.compile(schema)
 );
 seasonFixtureManifestValidator = loadOptionalSchema(
   'schemas/season-fixture-manifest.schema.json',
-  (ajvInstance, schema) => ajvInstance.compile(schema),
+  (ajvInstance, schema) => ajvInstance.compile(schema)
 );
 
 // ---------------------------------------------------------------------------
 // Load round manifest schema
 // ---------------------------------------------------------------------------
-let roundManifestValidator = loadOptionalSchema(
+const roundManifestValidator = loadOptionalSchema(
   'schemas/round-manifest.schema.json',
-  (ajvInstance, schema) => ajvInstance.compile(schema),
+  (ajvInstance, schema) => ajvInstance.compile(schema)
 );
 
 // ---------------------------------------------------------------------------
 // Load node profile inventory schema
 // ---------------------------------------------------------------------------
-let nodeProfileSchema = null;
-let nodeProfileValidator = loadOptionalSchema(
+const nodeProfileValidator = loadOptionalSchema(
   'schemas/node-profile-inventory.schema.json',
   (ajvInstance, schema) => {
-    nodeProfileSchema = schema;
     // `forbidden_field_patterns` is an intentional documentation-only annotation
     // (field bans are enforced in application code, not by JSON Schema). Declare
     // it so the schema compiles under strict mode without masking real typos.
     ajvInstance.addKeyword('forbidden_field_patterns');
     return ajvInstance.compile(schema);
-  },
+  }
 );
 
 // ---------------------------------------------------------------------------
 // Load adapter capability declaration schema
 // ---------------------------------------------------------------------------
-let adapterCapSchema = null;
-let adapterCapValidator = loadOptionalSchema(
+const adapterCapValidator = loadOptionalSchema(
   'schemas/adapter-capability-declaration.schema.json',
   (ajvInstance, schema) => {
-    adapterCapSchema = schema;
     return ajvInstance.compile(schema);
-  },
+  }
 );
 
 // ---------------------------------------------------------------------------
 // Load oracle schema
 // ---------------------------------------------------------------------------
-let oracleSchema = null;
-let oracleValidator = loadOptionalSchema(
-  'schemas/oracle.schema.json',
-  (ajvInstance, schema) => {
-    oracleSchema = schema;
-    return ajvInstance.compile(schema);
-  },
-);
+const oracleValidator = loadOptionalSchema('schemas/oracle.schema.json', (ajvInstance, schema) => {
+  return ajvInstance.compile(schema);
+});
 
 // ---------------------------------------------------------------------------
 // Load qualification entry schema
 // ---------------------------------------------------------------------------
-let qualificationSchema = null;
 let qualificationManifestValidator = null;
 let qualificationEntryValidator = null;
 {
   const qualValidators = loadOptionalSchema(
     'schemas/qualification-entry.schema.json',
     (qAjv, schema) => {
-      qualificationSchema = schema;
       // Compile manifest validator from $defs
       const mSchema = JSON.parse(JSON.stringify(schema.$defs.qualification_manifest));
       mSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-manifest';
@@ -155,7 +142,7 @@ let qualificationEntryValidator = null;
       eSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-entry-file';
       const entry = qAjv.compile(eSchema);
       return { manifest, entry };
-    },
+    }
   );
   if (qualValidators) {
     qualificationManifestValidator = qualValidators.manifest;
@@ -165,13 +152,11 @@ let qualificationEntryValidator = null;
 
 // Load accreditation declaration schema
 // ---------------------------------------------------------------------------
-let accreditationSchema = null;
-let accreditationValidator = loadOptionalSchema(
+const accreditationValidator = loadOptionalSchema(
   'schemas/accreditation-declaration.schema.json',
   (ajvInstance, schema) => {
-    accreditationSchema = schema;
     return ajvInstance.compile(schema);
-  },
+  }
 );
 
 // ---------------------------------------------------------------------------
@@ -180,11 +165,11 @@ let accreditationValidator = loadOptionalSchema(
 // v2 schemas are also optional (soft-skip when absent) but must not silently
 // null out when present-but-broken. loadOptionalSchema handles both.
 // ---------------------------------------------------------------------------
-let v2Schemas = {};
+const v2Schemas = {};
 for (const [name, relPath] of Object.entries({
   'task-envelope': 'schemas/task-envelope-v2.schema.json',
   'result-packet': 'schemas/result-packet-v2.schema.json',
-  'judge-record':  'schemas/judge-record-v2.schema.json',
+  'judge-record': 'schemas/judge-record-v2.schema.json',
 })) {
   v2Schemas[name] = loadOptionalSchema(relPath, (ajvInstance, schema) => schema);
 }
@@ -206,12 +191,12 @@ for (const [name, schema] of Object.entries(v2Schemas)) {
 addFormats(ajv);
 
 const v1Validators = {
-  'task-envelope':   ajv.getSchema(v1Schemas['task-envelope'].$id),
-  'result-packet':   ajv.getSchema(v1Schemas['result-packet'].$id),
-  'judge-record':    ajv.getSchema(v1Schemas['judge-record'].$id),
-  'trace-record':    ajv.getSchema(v1Schemas['trace-record'].$id),
+  'task-envelope': ajv.getSchema(v1Schemas['task-envelope'].$id),
+  'result-packet': ajv.getSchema(v1Schemas['result-packet'].$id),
+  'judge-record': ajv.getSchema(v1Schemas['judge-record'].$id),
+  'trace-record': ajv.getSchema(v1Schemas['trace-record'].$id),
   'evidence-bundle': ajv.getSchema(v1Schemas['evidence-bundle'].$id),
-  'run-result':      ajv.getSchema(v1Schemas['run-result'].$id),
+  'run-result': ajv.getSchema(v1Schemas['run-result'].$id),
 };
 
 const v2Validators = {};
@@ -278,12 +263,14 @@ function loadYaml(relPath) {
 }
 
 function formatErrors(errors) {
-  return errors.map(e => {
-    const field = e.instancePath || '(root)';
-    const msg = e.message || 'invalid';
-    const extra = e.params ? JSON.stringify(e.params) : '';
-    return `  ${field}: ${msg} ${extra}`.trim();
-  }).join('\n');
+  return errors
+    .map((e) => {
+      const field = e.instancePath || '(root)';
+      const msg = e.message || 'invalid';
+      const extra = e.params ? JSON.stringify(e.params) : '';
+      return `  ${field}: ${msg} ${extra}`.trim();
+    })
+    .join('\n');
 }
 
 function profileList(profile, preferredKey, legacyKey) {
@@ -302,25 +289,31 @@ function semanticChecks(doc, kind, file, schemaVersion) {
   const issues = [];
 
   if (kind === 'result-packet' || kind === 'run-result') {
-    const rp = kind === 'run-result' ? (doc.result_packet || doc) : doc;
+    const rp = kind === 'run-result' ? doc.result_packet || doc : doc;
 
     // Evidence IDs must be unique
     if (rp.evidence) {
-      const ids = rp.evidence.map(e => e.id);
+      const ids = rp.evidence.map((e) => e.id);
       const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
       if (dups.length) {
-        issues.push({ severity: SEVERITY.error, msg: `Duplicate evidence IDs: ${[...new Set(dups)].join(', ')}` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `Duplicate evidence IDs: ${[...new Set(dups)].join(', ')}`,
+        });
       }
     }
 
     // Findings must reference evidence IDs that exist
     if (rp.findings && rp.evidence) {
-      const validIds = new Set(rp.evidence.map(e => e.id));
+      const validIds = new Set(rp.evidence.map((e) => e.id));
       for (const f of rp.findings) {
         if (f.evidence) {
           for (const ref of f.evidence) {
             if (!validIds.has(ref)) {
-              issues.push({ severity: SEVERITY.warn, msg: `Finding "${f.claim?.slice(0, 50)}..." references unknown evidence ID: ${ref}` });
+              issues.push({
+                severity: SEVERITY.warn,
+                msg: `Finding "${f.claim?.slice(0, 50)}..." references unknown evidence ID: ${ref}`,
+              });
             }
           }
         }
@@ -329,10 +322,13 @@ function semanticChecks(doc, kind, file, schemaVersion) {
 
     // Action evidence references
     if (rp.actions && rp.actions.length && rp.evidence) {
-      const validIds = new Set(rp.evidence.map(e => e.id));
+      const validIds = new Set(rp.evidence.map((e) => e.id));
       for (const a of rp.actions) {
         if (a.evidence_id && !validIds.has(a.evidence_id)) {
-          issues.push({ severity: SEVERITY.warn, msg: `Action "${a.id}" references unknown evidence ID: ${a.evidence_id}` });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: `Action "${a.id}" references unknown evidence ID: ${a.evidence_id}`,
+          });
         }
       }
     }
@@ -340,9 +336,12 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     // Timestamps: ended_at should be >= started_at
     if (rp.started_at && rp.ended_at) {
       const start = new Date(rp.started_at);
-      const end   = new Date(rp.ended_at);
+      const end = new Date(rp.ended_at);
       if (!isNaN(start) && !isNaN(end) && end < start) {
-        issues.push({ severity: SEVERITY.error, msg: `ended_at (${rp.ended_at}) is before started_at (${rp.started_at})` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `ended_at (${rp.ended_at}) is before started_at (${rp.started_at})`,
+        });
       }
     }
 
@@ -350,7 +349,10 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     if (schemaVersion === 2 && doc.oracle_ref) {
       const oraclePath = path.join(ROOT, doc.oracle_ref);
       if (!fs.existsSync(oraclePath)) {
-        issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk`,
+        });
       }
     }
 
@@ -362,59 +364,98 @@ function semanticChecks(doc, kind, file, schemaVersion) {
         // Check participant block
         if (cm.participant) {
           if (cm.participant.agent_id !== doc.agent_id) {
-            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.participant.agent_id ("${cm.participant.agent_id}") differs from top-level agent_id ("${doc.agent_id}")` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `comparable_metadata.participant.agent_id ("${cm.participant.agent_id}") differs from top-level agent_id ("${doc.agent_id}")`,
+            });
           }
         } else {
-          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.participant block' });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: 'v2 result packet missing comparable_metadata.participant block',
+          });
         }
 
         // Check runtime block matches top-level
         if (cm.runtime) {
           if (cm.runtime.name && cm.runtime.name !== doc.runtime) {
-            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.runtime.name ("${cm.runtime.name}") differs from top-level runtime ("${doc.runtime}")` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `comparable_metadata.runtime.name ("${cm.runtime.name}") differs from top-level runtime ("${doc.runtime}")`,
+            });
           }
         } else {
-          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.runtime block' });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: 'v2 result packet missing comparable_metadata.runtime block',
+          });
         }
 
         // Check model block
         if (cm.model) {
           if (cm.model.name && doc.model && cm.model.name !== doc.model) {
-            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.model.name ("${cm.model.name}") differs from top-level model ("${doc.model}")` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `comparable_metadata.model.name ("${cm.model.name}") differs from top-level model ("${doc.model}")`,
+            });
           }
         } else {
-          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.model block' });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: 'v2 result packet missing comparable_metadata.model block',
+          });
         }
 
         // Check node block
         if (cm.node) {
           if (cm.node.profile_ref && doc.node && cm.node.profile_ref !== doc.node) {
-            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.node.profile_ref ("${cm.node.profile_ref}") differs from top-level node ("${doc.node}")` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `comparable_metadata.node.profile_ref ("${cm.node.profile_ref}") differs from top-level node ("${doc.node}")`,
+            });
           }
         } else {
-          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.node block' });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: 'v2 result packet missing comparable_metadata.node block',
+          });
         }
 
         // Check task block
         if (cm.task) {
           if (cm.task.task_id && cm.task.task_id !== doc.task_id) {
-            issues.push({ severity: SEVERITY.warn, msg: `comparable_metadata.task.task_id ("${cm.task.task_id}") differs from top-level task_id ("${doc.task_id}")` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `comparable_metadata.task.task_id ("${cm.task.task_id}") differs from top-level task_id ("${doc.task_id}")`,
+            });
           }
         } else {
-          issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata.task block' });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: 'v2 result packet missing comparable_metadata.task block',
+          });
         }
 
         // Secret scan inside comparable_metadata
         detectSecrets(cm, issues, 'comparable_metadata');
       } else {
-        issues.push({ severity: SEVERITY.warn, msg: 'v2 result packet missing comparable_metadata block' });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: 'v2 result packet missing comparable_metadata block',
+        });
       }
 
       // raw_measurements checks
       if (doc.raw_measurements) {
         if (doc.raw_measurements.wall_time_seconds !== undefined) {
-          if (typeof doc.raw_measurements.wall_time_seconds !== 'number' || doc.raw_measurements.wall_time_seconds < 0) {
-            issues.push({ severity: SEVERITY.warn, msg: 'raw_measurements.wall_time_seconds should be a non-negative number' });
+          if (
+            typeof doc.raw_measurements.wall_time_seconds !== 'number' ||
+            doc.raw_measurements.wall_time_seconds < 0
+          ) {
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: 'raw_measurements.wall_time_seconds should be a non-negative number',
+            });
           }
         }
       }
@@ -431,25 +472,47 @@ function semanticChecks(doc, kind, file, schemaVersion) {
       const usedTools = profileList(doc.tool_use_profile, 'classes_used', 'used');
       for (const tool of usedTools) {
         if (!allowedTools.includes(tool)) {
-          issues.push({ severity: SEVERITY.error, msg: `tool_use_profile lists used tool "${tool}" that is not declared in allowed tools` });
+          issues.push({
+            severity: SEVERITY.error,
+            msg: `tool_use_profile lists used tool "${tool}" that is not declared in allowed tools`,
+          });
         }
       }
       if (doc.actions && usedTools.length) {
         for (const action of doc.actions) {
           if (action.type && !usedTools.includes(action.type)) {
-            issues.push({ severity: SEVERITY.warn, msg: `action "${action.id || '(unnamed)'}" type "${action.type}" is not declared in tool_use_profile used tools` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `action "${action.id || '(unnamed)'}" type "${action.type}" is not declared in tool_use_profile used tools`,
+            });
           }
         }
       }
       if (doc.validity === 'appealed' && !doc.appeal) {
-        issues.push({ severity: SEVERITY.error, msg: 'validity is "appealed" but appeal metadata is missing' });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: 'validity is "appealed" but appeal metadata is missing',
+        });
       }
-      if (doc.publishable === true && ['invalid', 'appealed', 'disqualified'].includes(doc.validity)) {
-        issues.push({ severity: SEVERITY.error, msg: `publishable=true is not allowed for validity="${doc.validity}"` });
+      if (
+        doc.publishable === true &&
+        ['invalid', 'appealed', 'disqualified'].includes(doc.validity)
+      ) {
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `publishable=true is not allowed for validity="${doc.validity}"`,
+        });
       }
-      if (doc.delegation_profile && Array.isArray(doc.delegation_profile.a2a_workers) &&
-          doc.delegation_profile.a2a_workers.length > 0 && !doc.delegation_profile.subagents_used) {
-        issues.push({ severity: SEVERITY.warn, msg: 'delegation_profile lists a2a_workers while subagents_used=false; confirm delegation disclosure' });
+      if (
+        doc.delegation_profile &&
+        Array.isArray(doc.delegation_profile.a2a_workers) &&
+        doc.delegation_profile.a2a_workers.length > 0 &&
+        !doc.delegation_profile.subagents_used
+      ) {
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: 'delegation_profile lists a2a_workers while subagents_used=false; confirm delegation disclosure',
+        });
       }
     }
 
@@ -460,10 +523,13 @@ function semanticChecks(doc, kind, file, schemaVersion) {
   if (kind === 'evidence-bundle') {
     // Check for duplicate evidence item IDs
     if (doc.items) {
-      const ids = doc.items.map(e => e.id);
+      const ids = doc.items.map((e) => e.id);
       const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
       if (dups.length) {
-        issues.push({ severity: SEVERITY.error, msg: `Duplicate evidence item IDs: ${[...new Set(dups)].join(', ')}` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `Duplicate evidence item IDs: ${[...new Set(dups)].join(', ')}`,
+        });
       }
     }
     detectSecrets(doc, issues);
@@ -472,15 +538,21 @@ function semanticChecks(doc, kind, file, schemaVersion) {
   if (kind === 'trace-record') {
     // Check for duplicate seq numbers
     if (doc.entries) {
-      const seqs = doc.entries.map(e => e.seq);
+      const seqs = doc.entries.map((e) => e.seq);
       const dups = seqs.filter((s, i) => seqs.indexOf(s) !== i);
       if (dups.length) {
-        issues.push({ severity: SEVERITY.warn, msg: `Duplicate entry seq numbers: ${[...new Set(dups)].join(', ')}` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `Duplicate entry seq numbers: ${[...new Set(dups)].join(', ')}`,
+        });
       }
       // Check entries are in seq order
       for (let i = 1; i < doc.entries.length; i++) {
         if (doc.entries[i].seq < doc.entries[i - 1].seq) {
-          issues.push({ severity: SEVERITY.warn, msg: `Entries out of sequence order at index ${i}: seq ${doc.entries[i].seq} after ${doc.entries[i - 1].seq}` });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: `Entries out of sequence order at index ${i}: seq ${doc.entries[i].seq} after ${doc.entries[i - 1].seq}`,
+          });
           break;
         }
       }
@@ -493,10 +565,16 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     // on sub-documents, in which case it is inherited from the wrapper)
     const runId = doc.run_id;
     if (doc.trace && doc.trace.run_id && doc.trace.run_id !== runId) {
-      issues.push({ severity: SEVERITY.error, msg: `trace.run_id ("${doc.trace.run_id}") does not match top-level run_id ("${runId}")` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `trace.run_id ("${doc.trace.run_id}") does not match top-level run_id ("${runId}")`,
+      });
     }
     if (doc.evidence_bundle && doc.evidence_bundle.run_id && doc.evidence_bundle.run_id !== runId) {
-      issues.push({ severity: SEVERITY.error, msg: `evidence_bundle.run_id ("${doc.evidence_bundle.run_id}") does not match top-level run_id ("${runId}")` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `evidence_bundle.run_id ("${doc.evidence_bundle.run_id}") does not match top-level run_id ("${runId}")`,
+      });
     }
     // Secret-scan the wrapper fields only; result_packet was already
     // scanned above in the result-packet branch.
@@ -508,49 +586,72 @@ function semanticChecks(doc, kind, file, schemaVersion) {
   if (kind === 'task-envelope') {
     // Check allowed_actions and forbidden_actions aren't empty
     if (!doc.allowed_actions || doc.allowed_actions.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: 'allowed_actions must have at least one entry' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'allowed_actions must have at least one entry',
+      });
     }
     if (!doc.forbidden_actions || doc.forbidden_actions.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: 'forbidden_actions must have at least one entry' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'forbidden_actions must have at least one entry',
+      });
     }
 
     // Check required_outputs
     if (!doc.required_outputs || doc.required_outputs.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: 'required_outputs must have at least one entry' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'required_outputs must have at least one entry',
+      });
     }
 
     // Task ID naming convention
     if (doc.task_id && !/^[a-z]+-\d{3}$/.test(doc.task_id)) {
-      issues.push({ severity: SEVERITY.warn, msg: `task_id "${doc.task_id}" does not match convention 'family-XXX'` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `task_id "${doc.task_id}" does not match convention 'family-XXX'`,
+      });
     }
 
     // Public-facing envelopes MUST NOT contain hidden_judge_notes. Season 001
     // keeps v1 envelopes as private historical/judge material, while v2
     // envelopes are the participant-facing files used for new runs.
-    const pubVis = doc.participant_visibility === 'visible' || doc.participant_visibility === 'blind';
-    const participantFacingFile = schemaVersion === 2 || file.split(/[\\/]/).includes('public') || /-v2\.ya?ml$/.test(file);
+    const pubVis =
+      doc.participant_visibility === 'visible' || doc.participant_visibility === 'blind';
+    const participantFacingFile =
+      schemaVersion === 2 || file.split(/[\\/]/).includes('public') || /-v2\.ya?ml$/.test(file);
     if (participantFacingFile && pubVis && doc.hidden_judge_notes) {
       issues.push({
         severity: SEVERITY.error,
-        msg: `participant_visibility is "${doc.participant_visibility}" but envelope contains hidden_judge_notes — public envelopes must not expose judge-only material; use judge_notes_ref and oracle_ref instead`
+        msg: `participant_visibility is "${doc.participant_visibility}" but envelope contains hidden_judge_notes — public envelopes must not expose judge-only material; use judge_notes_ref and oracle_ref instead`,
       });
     }
 
     // v2: judge_notes_ref and oracle_ref should reference existing files
     if (schemaVersion === 2) {
       if (!doc.judge_notes_ref && !doc.oracle_ref) {
-        issues.push({ severity: SEVERITY.warn, msg: 'v2 envelope should have at least one of judge_notes_ref or oracle_ref' });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: 'v2 envelope should have at least one of judge_notes_ref or oracle_ref',
+        });
       }
       if (doc.judge_notes_ref) {
         const refPath = path.join(ROOT, doc.judge_notes_ref);
         if (!fs.existsSync(refPath)) {
-          issues.push({ severity: SEVERITY.warn, msg: `judge_notes_ref "${doc.judge_notes_ref}" does not exist on disk` });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: `judge_notes_ref "${doc.judge_notes_ref}" does not exist on disk`,
+          });
         }
       }
       if (doc.oracle_ref) {
         const refPath = path.join(ROOT, doc.oracle_ref);
         if (!fs.existsSync(refPath)) {
-          issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk`,
+          });
         }
       }
     }
@@ -558,11 +659,11 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     // Verification tier warning for season-pack tasks
     const tier = doc.tier || 'draft';
     const labels = Array.isArray(doc.labels) ? doc.labels : [];
-    const hasSeasonLabel = labels.some(l => /^season-\d{3}$/.test(l));
+    const hasSeasonLabel = labels.some((l) => /^season-\d{3}$/.test(l));
     if (hasSeasonLabel && tier !== 'verified' && tier !== 'retired') {
       issues.push({
         severity: SEVERITY.warn,
-        msg: `season task "${doc.task_id}" has tier="${tier}" - not yet verified for competitive use. Set tier="verified" only after a human or trusted baseline agent completes it and the judge result matches the intended rubric.`
+        msg: `season task "${doc.task_id}" has tier="${tier}" - not yet verified for competitive use. Set tier="verified" only after a human or trusted baseline agent completes it and the judge result matches the intended rubric.`,
       });
     }
 
@@ -570,7 +671,7 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     if (tier === 'verified' && !doc.baseline) {
       issues.push({
         severity: SEVERITY.warn,
-        msg: `task "${doc.task_id}" is tier="verified" but has no baseline record. Add a baseline entry documenting who completed it and which result packet serves as the reference.`
+        msg: `task "${doc.task_id}" is tier="verified" but has no baseline record. Add a baseline entry documenting who completed it and which result packet serves as the reference.`,
       });
     }
   }
@@ -580,7 +681,10 @@ function semanticChecks(doc, kind, file, schemaVersion) {
     if (schemaVersion === 2 && doc.oracle_ref) {
       const oraclePath = path.join(ROOT, doc.oracle_ref);
       if (!fs.existsSync(oraclePath)) {
-        issues.push({ severity: SEVERITY.warn, msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `oracle_ref "${doc.oracle_ref}" does not exist on disk`,
+        });
       }
     }
   }
@@ -596,18 +700,23 @@ function detectSecrets(obj, issues, keyPath = '') {
     const fp = keyPath ? `${keyPath}.${key}` : key;
     // Check key names regardless of value type (flag the key itself once;
     // nested keys are evaluated on their own during recursion)
-    if (SECRET_KEY_PATTERNS.some(r => r.test(key))) {
-      issues.push({ severity: SEVERITY.warn, msg: `Potential secret exposure in "${fp}": key name suggests credentials` });
+    if (SECRET_KEY_PATTERNS.some((r) => r.test(key))) {
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `Potential secret exposure in "${fp}": key name suggests credentials`,
+      });
     }
     if (typeof val === 'string') {
       // Check values
-      if (SECRET_VALUE_PATTERNS.some(r => r.test(val))) {
+      if (SECRET_VALUE_PATTERNS.some((r) => r.test(val))) {
         issues.push({ severity: SEVERITY.error, msg: `Secret pattern detected in "${fp}"` });
       }
       // Check for redaction_reason that accidentally contains a secret
-      if ((key === 'redaction_reason' || key === 'redaction_rule') &&
-          val.length > 200) {
-        issues.push({ severity: SEVERITY.warn, msg: `Unusually long ${key} (${val.length} chars) - may contain secret data` });
+      if ((key === 'redaction_reason' || key === 'redaction_rule') && val.length > 200) {
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `Unusually long ${key} (${val.length} chars) - may contain secret data`,
+        });
       }
     } else if (typeof val === 'object' && val !== null) {
       detectSecrets(val, issues, fp);
@@ -623,7 +732,11 @@ const FORBIDDEN_PROFILE_PATTERNS = [
   { pattern: /\b(\d{1,3}\.){3}\d{1,3}\b/, description: 'IP address' },
   // Restricted to TLD-ish suffixes so dotted tokens like "Node.js" or
   // "manifest.yaml" in ordinary prose do not trip the scan.
-  { pattern: /\b(?:[a-zA-Z0-9-]+\.)+(?:com|org|net|io|dev|app|cloud|local|internal|corp|lan|prod|staging)\b/i, description: 'potential hostname or domain' },
+  {
+    pattern:
+      /\b(?:[a-zA-Z0-9-]+\.)+(?:com|org|net|io|dev|app|cloud|local|internal|corp|lan|prod|staging)\b/i,
+    description: 'potential hostname or domain',
+  },
   { pattern: /\/home\/[a-z_][a-z0-9_-]*/i, description: 'absolute home path' },
   { pattern: /\/etc\/[a-z_][a-z0-9_-]*/i, description: 'absolute system config path' },
   { pattern: /\/root\/\S+/i, description: 'root home path' },
@@ -638,7 +751,10 @@ function scanForbiddenProfilePatterns(obj, issues, objPath = '') {
     if (typeof val === 'string') {
       for (const bp of FORBIDDEN_PROFILE_PATTERNS) {
         if (bp.pattern.test(val)) {
-          issues.push({ severity: SEVERITY.error, msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern` });
+          issues.push({
+            severity: SEVERITY.error,
+            msg: `Forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive pattern`,
+          });
           break;
         }
       }
@@ -680,8 +796,13 @@ function detectKind(doc) {
   }
 
   // Trace record: has trace_id + entries array
-  if (doc.trace_id && Array.isArray(doc.entries) && doc.entries.length > 0 &&
-      doc.entries[0].seq !== undefined && doc.entries[0].action) {
+  if (
+    doc.trace_id &&
+    Array.isArray(doc.entries) &&
+    doc.entries.length > 0 &&
+    doc.entries[0].seq !== undefined &&
+    doc.entries[0].action
+  ) {
     return 'trace-record';
   }
 
@@ -715,7 +836,13 @@ function detectKind(doc) {
   }
 
   // Round manifest: round_id + season + lifecycle + tasks + participants
-  if (doc.round_id && doc.season && doc.lifecycle && Array.isArray(doc.tasks) && Array.isArray(doc.participants)) {
+  if (
+    doc.round_id &&
+    doc.season &&
+    doc.lifecycle &&
+    Array.isArray(doc.tasks) &&
+    Array.isArray(doc.participants)
+  ) {
     return 'round-manifest';
   }
 
@@ -735,9 +862,14 @@ function detectOracle(doc) {
  */
 function detectAccreditation(doc) {
   if (!doc || typeof doc !== 'object') return false;
-  return doc.schema_version !== undefined && doc.accreditation_id !== undefined
-    && doc.subject !== undefined && doc.accreditation_class !== undefined
-    && doc.granted_zones !== undefined && doc.delegation_boundary !== undefined;
+  return (
+    doc.schema_version !== undefined &&
+    doc.accreditation_id !== undefined &&
+    doc.subject !== undefined &&
+    doc.accreditation_class !== undefined &&
+    doc.granted_zones !== undefined &&
+    doc.delegation_boundary !== undefined
+  );
 }
 
 /**
@@ -761,9 +893,14 @@ function getSchemaVersion(doc) {
  */
 function detectFixtureBundle(doc) {
   if (!doc || typeof doc !== 'object') return false;
-  return doc.schema_version !== undefined && doc.bundle_id !== undefined
-    && doc.season !== undefined && doc.task_id !== undefined
-    && doc.files !== undefined && Array.isArray(doc.files);
+  return (
+    doc.schema_version !== undefined &&
+    doc.bundle_id !== undefined &&
+    doc.season !== undefined &&
+    doc.task_id !== undefined &&
+    doc.files !== undefined &&
+    Array.isArray(doc.files)
+  );
 }
 
 /**
@@ -771,9 +908,13 @@ function detectFixtureBundle(doc) {
  */
 function detectSeasonFixtureManifest(doc) {
   if (!doc || typeof doc !== 'object') return false;
-  return doc.schema_version !== undefined && doc.manifest_id !== undefined
-    && doc.season !== undefined && doc.bundles !== undefined
-    && Array.isArray(doc.bundles);
+  return (
+    doc.schema_version !== undefined &&
+    doc.manifest_id !== undefined &&
+    doc.season !== undefined &&
+    doc.bundles !== undefined &&
+    Array.isArray(doc.bundles)
+  );
 }
 
 /**
@@ -781,10 +922,16 @@ function detectSeasonFixtureManifest(doc) {
  */
 function detectAdapterCapability(doc) {
   if (!doc || typeof doc !== 'object') return false;
-  return doc.schema_version !== undefined && doc.adapter_id !== undefined
-    && doc.adapter_type !== undefined && doc.display_name !== undefined
-    && doc.status !== undefined && doc.evidence_kinds !== undefined
-    && doc.runtime_fields !== undefined && doc.redaction_rules !== undefined;
+  return (
+    doc.schema_version !== undefined &&
+    doc.adapter_id !== undefined &&
+    doc.adapter_type !== undefined &&
+    doc.display_name !== undefined &&
+    doc.status !== undefined &&
+    doc.evidence_kinds !== undefined &&
+    doc.runtime_fields !== undefined &&
+    doc.redaction_rules !== undefined
+  );
 }
 
 /**
@@ -792,9 +939,14 @@ function detectAdapterCapability(doc) {
  */
 function detectRoundManifest(doc) {
   if (!doc || typeof doc !== 'object') return false;
-  return doc.schema_version !== undefined && doc.round_id !== undefined
-    && doc.season !== undefined && doc.lifecycle !== undefined
-    && Array.isArray(doc.tasks) && Array.isArray(doc.participants);
+  return (
+    doc.schema_version !== undefined &&
+    doc.round_id !== undefined &&
+    doc.season !== undefined &&
+    doc.lifecycle !== undefined &&
+    Array.isArray(doc.tasks) &&
+    Array.isArray(doc.participants)
+  );
 }
 
 function renderRunIdTemplate(template, doc, task, participant) {
@@ -812,16 +964,18 @@ function renderRunIdTemplate(template, doc, task, participant) {
  */
 function detectNodeProfile(doc) {
   if (!doc || typeof doc !== 'object') return false;
-  return doc.schema_version !== undefined
-    && doc.profile_id !== undefined
-    && doc.profile_class !== undefined
-    && doc.os_family !== undefined
-    && doc.cpu !== undefined
-    && doc.memory_gb !== undefined
-    && doc.runner_limits !== undefined
-    && doc.storage_class !== undefined
-    && doc.network_class !== undefined
-    && doc.capability_labels !== undefined;
+  return (
+    doc.schema_version !== undefined &&
+    doc.profile_id !== undefined &&
+    doc.profile_class !== undefined &&
+    doc.os_family !== undefined &&
+    doc.cpu !== undefined &&
+    doc.memory_gb !== undefined &&
+    doc.runner_limits !== undefined &&
+    doc.storage_class !== undefined &&
+    doc.network_class !== undefined &&
+    doc.capability_labels !== undefined
+  );
 }
 
 /**
@@ -886,20 +1040,32 @@ function validateNodeProfile(filePath) {
 
   // Ensure capability_labels is non-empty
   if (Array.isArray(doc.capability_labels) && doc.capability_labels.length === 0) {
-    issues.push({ severity: SEVERITY.error, msg: 'capability_labels must have at least one entry' });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: 'capability_labels must have at least one entry',
+    });
   }
 
   // profile_id must be a safe slug (no hostnames, IPs, or paths)
   if (doc.profile_id) {
     if (!/^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/.test(doc.profile_id)) {
-      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" must be a safe slug (lowercase, digits, hyphens, underscores only)` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `profile_id "${doc.profile_id}" must be a safe slug (lowercase, digits, hyphens, underscores only)`,
+      });
     }
     // Additional heuristics: profile_id should not look like a hostname or IP
     if (/^(\d{1,3}\.){3}\d{1,3}$/.test(doc.profile_id)) {
-      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead`,
+      });
     }
     if (/^[a-zA-Z0-9-]+\.(com|org|net|io|dev|local|internal)$/.test(doc.profile_id)) {
-      issues.push({ severity: SEVERITY.warn, msg: `profile_id "${doc.profile_id}" looks like a hostname or domain; use a safe slug instead` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `profile_id "${doc.profile_id}" looks like a hostname or domain; use a safe slug instead`,
+      });
     }
   }
 
@@ -909,7 +1075,7 @@ function validateNodeProfile(filePath) {
   // Additional node-profile-specific forbidden pattern detection
   scanForbiddenProfilePatterns(doc, issues);
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -993,7 +1159,9 @@ function validateFile(filePath, preParsedDoc) {
 
   const schemaVersion = getSchemaVersion(doc);
   if (Number.isNaN(schemaVersion)) {
-    console.error(`FAIL  ${rel}  - invalid schema_version: ${JSON.stringify(doc.schema_version)} (not a number)`);
+    console.error(
+      `FAIL  ${rel}  - invalid schema_version: ${JSON.stringify(doc.schema_version)} (not a number)`
+    );
     totalErrors++;
     fileCount++;
     return;
@@ -1004,8 +1172,14 @@ function validateFile(filePath, preParsedDoc) {
   const validators = schemaVersion === 2 ? v2Validators : v1Validators;
   const versionLabel = schemaVersion === 2 ? 'v2' : 'v1';
 
-  if (kind === 'task-envelope' || kind === 'result-packet' || kind === 'judge-record' ||
-      kind === 'trace-record' || kind === 'evidence-bundle' || kind === 'run-result') {
+  if (
+    kind === 'task-envelope' ||
+    kind === 'result-packet' ||
+    kind === 'judge-record' ||
+    kind === 'trace-record' ||
+    kind === 'evidence-bundle' ||
+    kind === 'run-result'
+  ) {
     validator = validators[kind];
     schemaName = `${kind}-${versionLabel}`;
   }
@@ -1029,10 +1203,12 @@ function validateFile(filePath, preParsedDoc) {
   if (kind === 'smoke-manifest') {
     // Validate manifest structure
     let manifestErrors = 0;
-    const taskIds = doc.tasks.map(t => t.task_id);
+    const taskIds = doc.tasks.map((t) => t.task_id);
     const dups = taskIds.filter((id, i) => taskIds.indexOf(id) !== i);
     if (dups.length) {
-      console.error(`FAIL  ${rel}  - manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`);
+      console.error(
+        `FAIL  ${rel}  - manifest has duplicate task_ids: ${[...new Set(dups)].join(', ')}`
+      );
       totalErrors++;
       manifestErrors++;
     }
@@ -1051,7 +1227,9 @@ function validateFile(filePath, preParsedDoc) {
       if (!task.title) missing.push('title');
       if (!task.envelope) missing.push('envelope');
       if (missing.length) {
-        console.error(`FAIL  ${rel}  - task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`);
+        console.error(
+          `FAIL  ${rel}  - task ${task.task_id || '(no id)'} missing: ${missing.join(', ')}`
+        );
         totalErrors++;
         manifestErrors++;
       }
@@ -1070,7 +1248,6 @@ function validateFile(filePath, preParsedDoc) {
   // Report
   const hasSchemaIssues = !schemaValid;
   const hasSemanticIssues = semantic.length > 0;
-  const hasErrors = hasSchemaIssues || semantic.some(s => s.severity === SEVERITY.error);
 
   if (!hasSchemaIssues && !hasSemanticIssues) {
     console.log(`OK    ${rel}  (${kind} ${versionLabel})`);
@@ -1087,7 +1264,7 @@ function validateFile(filePath, preParsedDoc) {
       if (issue.severity === SEVERITY.error) totalErrors++;
       else totalWarnings++;
     }
-    if (!hasSchemaIssues && !semantic.some(s => s.severity === SEVERITY.error)) {
+    if (!hasSchemaIssues && !semantic.some((s) => s.severity === SEVERITY.error)) {
       // Only warnings - still count as pass
       console.log(`OK    ${rel}  (${kind} ${versionLabel}) - see warnings above`);
     }
@@ -1145,7 +1322,10 @@ function validateOracle(filePath) {
     issues.push({ severity: SEVERITY.error, msg: 'oracle missing oracle_id' });
   }
   if (!doc.expected_answer_categories || !Array.isArray(doc.expected_answer_categories)) {
-    issues.push({ severity: SEVERITY.error, msg: 'oracle missing expected_answer_categories array' });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: 'oracle missing expected_answer_categories array',
+    });
   }
   if (!doc.scoring_guidance || typeof doc.scoring_guidance !== 'object') {
     issues.push({ severity: SEVERITY.error, msg: 'oracle missing scoring_guidance object' });
@@ -1155,12 +1335,15 @@ function validateOracle(filePath) {
   if (doc.answer_key_checks && Array.isArray(doc.answer_key_checks)) {
     for (const check of doc.answer_key_checks) {
       if (!check.question_id || !check.question || !check.expected) {
-        issues.push({ severity: SEVERITY.warn, msg: `oracle check "${check.question_id || '(unnamed)'}" missing required fields (question_id, question, expected)` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `oracle check "${check.question_id || '(unnamed)'}" missing required fields (question_id, question, expected)`,
+        });
       }
     }
   }
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -1193,9 +1376,11 @@ function loadZoneRegistry() {
   try {
     const doc = loadYaml(zoneFile);
     if (doc && Array.isArray(doc.zones)) {
-      zoneRegistry = new Set(doc.zones.map(z => z.zone_id));
+      zoneRegistry = new Set(doc.zones.map((z) => z.zone_id));
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return zoneRegistry;
 }
 
@@ -1232,8 +1417,15 @@ function validateAccreditation(filePath) {
 
   if (!detectAccreditation(doc)) {
     // Check if it's the zone registry or roles file (which have different shapes)
-    if (doc.zone_registry_id || doc.role_registry_id || doc.description === 'Reference examples of delegation boundary configurations per accreditation class') {
-      console.warn(`SKIP  ${rel}  - registry/reference file, not an individual accreditation declaration`);
+    if (
+      doc.zone_registry_id ||
+      doc.role_registry_id ||
+      doc.description ===
+        'Reference examples of delegation boundary configurations per accreditation class'
+    ) {
+      console.warn(
+        `SKIP  ${rel}  - registry/reference file, not an individual accreditation declaration`
+      );
       fileCount++;
       return;
     }
@@ -1261,35 +1453,57 @@ function validateAccreditation(filePath) {
 
   // 1. accreditation_id must be a valid slug
   if (doc.accreditation_id && !/^acc-[a-z0-9-]+-[a-z0-9-]+$/.test(doc.accreditation_id)) {
-    issues.push({ severity: SEVERITY.error, msg: `accreditation_id "${doc.accreditation_id}" must match pattern 'acc-<class>-<identifier>'` });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: `accreditation_id "${doc.accreditation_id}" must match pattern 'acc-<class>-<identifier>'`,
+    });
   }
 
   // 2. Observer class constraints
   if (doc.accreditation_class === 'observer') {
     if (doc.delegation_boundary && doc.delegation_boundary.can_delegate !== false) {
-      issues.push({ severity: SEVERITY.error, msg: 'Observer accreditation must have can_delegate: false' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'Observer accreditation must have can_delegate: false',
+      });
     }
     if (doc.delegation_boundary && doc.delegation_boundary.delegation_scope !== 'none') {
-      issues.push({ severity: SEVERITY.error, msg: 'Observer accreditation must have delegation_scope: "none"' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'Observer accreditation must have delegation_scope: "none"',
+      });
     }
-    if (doc.delegation_boundary && doc.delegation_boundary.max_delegation_depth !== 0 && doc.delegation_boundary.max_delegation_depth !== undefined) {
-      issues.push({ severity: SEVERITY.warn, msg: 'Observer accreditation should have max_delegation_depth: 0' });
+    if (
+      doc.delegation_boundary &&
+      doc.delegation_boundary.max_delegation_depth !== 0 &&
+      doc.delegation_boundary.max_delegation_depth !== undefined
+    ) {
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: 'Observer accreditation should have max_delegation_depth: 0',
+      });
     }
   }
 
   // 3. Judge constraints: audit_required should be true when can_delegate is true
   if (doc.accreditation_class === 'judge' && doc.delegation_boundary) {
     if (doc.delegation_boundary.can_delegate && doc.delegation_boundary.audit_required !== true) {
-      issues.push({ severity: SEVERITY.warn, msg: 'Judge accreditation with can_delegate: true should set audit_required: true' });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: 'Judge accreditation with can_delegate: true should set audit_required: true',
+      });
     }
   }
 
   // 4. Zone references must exist in the zone registry
   const knownZones = loadZoneRegistry();
   if (knownZones && knownZones.size > 0) {
-    for (const zone of (doc.granted_zones || [])) {
+    for (const zone of doc.granted_zones || []) {
       if (zone.zone_id && !knownZones.has(zone.zone_id)) {
-        issues.push({ severity: SEVERITY.error, msg: `granted_zones references unknown zone "${zone.zone_id}" — not defined in fixtures/accreditation/access-zones.yaml` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `granted_zones references unknown zone "${zone.zone_id}" — not defined in fixtures/accreditation/access-zones.yaml`,
+        });
       }
     }
   }
@@ -1298,19 +1512,36 @@ function validateAccreditation(filePath) {
   const validScopes = ['none', 'within_class', 'within_team', 'any_accredited', 'any'];
   if (doc.delegation_boundary && doc.delegation_boundary.delegation_scope) {
     if (!validScopes.includes(doc.delegation_boundary.delegation_scope)) {
-      issues.push({ severity: SEVERITY.error, msg: `delegation_scope "${doc.delegation_boundary.delegation_scope}" is not valid; expected one of: ${validScopes.join(', ')}` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `delegation_scope "${doc.delegation_boundary.delegation_scope}" is not valid; expected one of: ${validScopes.join(', ')}`,
+      });
     }
   }
 
   // 6. Operating surface types must be from the approved list
-  const validSurfaceTypes = ['api', 'filesystem', 'tool', 'network', 'capability', 'database', 'service'];
+  const validSurfaceTypes = [
+    'api',
+    'filesystem',
+    'tool',
+    'network',
+    'capability',
+    'database',
+    'service',
+  ];
   if (Array.isArray(doc.operating_surfaces)) {
     for (const surface of doc.operating_surfaces) {
       if (surface.surface_type && !validSurfaceTypes.includes(surface.surface_type)) {
-        issues.push({ severity: SEVERITY.error, msg: `operating_surfaces[${surface.surface_id}].surface_type "${surface.surface_type}" is not valid; expected one of: ${validSurfaceTypes.join(', ')}` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `operating_surfaces[${surface.surface_id}].surface_type "${surface.surface_type}" is not valid; expected one of: ${validSurfaceTypes.join(', ')}`,
+        });
       }
       if (!Array.isArray(surface.allowed_actions) || surface.allowed_actions.length === 0) {
-        issues.push({ severity: SEVERITY.error, msg: `operating_surfaces[${surface.surface_id}].allowed_actions must be a non-empty array` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `operating_surfaces[${surface.surface_id}].allowed_actions must be a non-empty array`,
+        });
       }
     }
   }
@@ -1323,7 +1554,7 @@ function validateAccreditation(filePath) {
   // 8. Check for forbidden patterns (secrets, credentials, host-specific paths)
   detectSecrets(doc, issues);
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -1366,7 +1597,9 @@ function validateFixtureBundle(filePath) {
   const isSeasonManifest = detectSeasonFixtureManifest(doc);
 
   if (!isBundle && !isSeasonManifest) {
-    console.warn(`SKIP  ${rel}  — not a fixture bundle or season manifest (missing bundle_id+season+task_id+files or manifest_id+season+bundles)`);
+    console.warn(
+      `SKIP  ${rel}  — not a fixture bundle or season manifest (missing bundle_id+season+task_id+files or manifest_id+season+bundles)`
+    );
     fileCount++;
     return;
   }
@@ -1390,7 +1623,10 @@ function validateFixtureBundle(filePath) {
   if (isBundle) {
     // Bundle non-schema checks
     if (!/^season-\d{3}-[a-z]+-\d{3}-v\d+$/.test(doc.bundle_id)) {
-      issues.push({ severity: SEVERITY.warn, msg: `bundle_id "${doc.bundle_id}" does not match convention 'season-XXX-family-NNN-vN'` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `bundle_id "${doc.bundle_id}" does not match convention 'season-XXX-family-NNN-vN'`,
+      });
     }
 
     // Check that referenced files exist relative to the manifest directory
@@ -1399,7 +1635,10 @@ function validateFixtureBundle(filePath) {
       if (f.path && f.path !== '.' && !f.path.endsWith('/')) {
         const fullPath = path.join(bundleDir, f.path);
         if (!fs.existsSync(fullPath)) {
-          issues.push({ severity: SEVERITY.warn, msg: `referenced file "${f.path}" does not exist in bundle directory` });
+          issues.push({
+            severity: SEVERITY.warn,
+            msg: `referenced file "${f.path}" does not exist in bundle directory`,
+          });
         }
       }
     }
@@ -1408,7 +1647,10 @@ function validateFixtureBundle(filePath) {
   if (isSeasonManifest) {
     // Season manifest non-schema checks
     if (!/^season-\d{3}-fixtures-v\d+$/.test(doc.manifest_id)) {
-      issues.push({ severity: SEVERITY.warn, msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-fixtures-vN'` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-fixtures-vN'`,
+      });
     }
 
     // Check that referenced bundle paths exist
@@ -1420,14 +1662,17 @@ function validateFixtureBundle(filePath) {
         } else {
           const bundleManifest = path.join(bundleDir, 'manifest.yaml');
           if (!fs.existsSync(bundleManifest)) {
-            issues.push({ severity: SEVERITY.warn, msg: `bundle path "${b.path}" is missing manifest.yaml` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `bundle path "${b.path}" is missing manifest.yaml`,
+            });
           }
         }
       }
     }
   }
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -1466,7 +1711,9 @@ function validateRoundManifest(filePath) {
   }
 
   if (!detectRoundManifest(doc)) {
-    console.warn(`SKIP  ${rel}  — not a round manifest (missing round_id, season, lifecycle, tasks, participants)`);
+    console.warn(
+      `SKIP  ${rel}  — not a round manifest (missing round_id, season, lifecycle, tasks, participants)`
+    );
     fileCount++;
     return;
   }
@@ -1487,13 +1734,26 @@ function validateRoundManifest(filePath) {
 
   // round_id format check
   if (doc.round_id && !/^season-\d{3}-round-\d{3}$/.test(doc.round_id)) {
-    issues.push({ severity: SEVERITY.warn, msg: `round_id "${doc.round_id}" does not match convention 'season-XXX-round-XXX'` });
+    issues.push({
+      severity: SEVERITY.warn,
+      msg: `round_id "${doc.round_id}" does not match convention 'season-XXX-round-XXX'`,
+    });
   }
 
   // Lifecycle status
-  const validStatuses = ['pending', 'fixture_preparation', 'running', 'completed', 'scored', 'archived'];
+  const validStatuses = [
+    'pending',
+    'fixture_preparation',
+    'running',
+    'completed',
+    'scored',
+    'archived',
+  ];
   if (doc.lifecycle && !validStatuses.includes(doc.lifecycle.status)) {
-    issues.push({ severity: SEVERITY.error, msg: `lifecycle.status "${doc.lifecycle.status}" is not valid; expected one of: ${validStatuses.join(', ')}` });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: `lifecycle.status "${doc.lifecycle.status}" is not valid; expected one of: ${validStatuses.join(', ')}`,
+    });
   }
 
   // Check referenced envelope paths exist
@@ -1502,39 +1762,56 @@ function validateRoundManifest(filePath) {
     if (t.envelope_path) {
       const full = path.resolve(ROOT, t.envelope_path);
       if (!fs.existsSync(full)) {
-        issues.push({ severity: SEVERITY.warn, msg: `task #${i + 1} envelope_path "${t.envelope_path}" not found` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `task #${i + 1} envelope_path "${t.envelope_path}" not found`,
+        });
       }
     }
     if (t.fixture_bundle_ref) {
       const full = path.resolve(ROOT, t.fixture_bundle_ref);
       if (!fs.existsSync(full)) {
-        issues.push({ severity: SEVERITY.warn, msg: `task #${i + 1} fixture_bundle_ref "${t.fixture_bundle_ref}" not found` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `task #${i + 1} fixture_bundle_ref "${t.fixture_bundle_ref}" not found`,
+        });
       }
     }
   }
 
   const runIdTemplate = doc.run_id_template || DEFAULT_RUN_ID_TEMPLATE;
-  const unknownVariables = runIdTemplateVariables(runIdTemplate)
-    .filter((name) => !SUPPORTED_RUN_ID_TEMPLATE_VARIABLES.has(name));
+  const unknownVariables = runIdTemplateVariables(runIdTemplate).filter(
+    (name) => !SUPPORTED_RUN_ID_TEMPLATE_VARIABLES.has(name)
+  );
   if (unknownVariables.length > 0) {
-    issues.push({ severity: SEVERITY.error, msg: `run_id_template has unsupported variable(s): ${unknownVariables.join(', ')}` });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: `run_id_template has unsupported variable(s): ${unknownVariables.join(', ')}`,
+    });
   } else if ((doc.tasks || []).length > 0 && (doc.participants || []).length > 0) {
-    const participant = (doc.participants || []).find((p) => p.enabled !== false) || doc.participants[0];
+    const participant =
+      (doc.participants || []).find((p) => p.enabled !== false) || doc.participants[0];
     const sampleRunId = renderRunIdTemplate(runIdTemplate, doc, doc.tasks[0], participant);
-    if (/[{}\/\s]/.test(sampleRunId) || sampleRunId.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: `run_id_template renders unsafe run id "${sampleRunId}"` });
+    if (/[{}/\s]/.test(sampleRunId) || sampleRunId.length === 0) {
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `run_id_template renders unsafe run id "${sampleRunId}"`,
+      });
     }
   }
 
   // Participant uniqueness
-  const agentIds = (doc.participants || []).map(p => p.agent_id);
+  const agentIds = (doc.participants || []).map((p) => p.agent_id);
   const uniqueIds = new Set(agentIds);
   if (uniqueIds.size !== agentIds.length) {
     const dups = agentIds.filter((id, i) => agentIds.indexOf(id) !== i);
-    issues.push({ severity: SEVERITY.error, msg: `duplicate participant agent_ids: ${[...new Set(dups)].join(', ')}` });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: `duplicate participant agent_ids: ${[...new Set(dups)].join(', ')}`,
+    });
   }
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -1601,14 +1878,20 @@ function validateAdapterCapabilities(filePath) {
   // Cross-field semantic checks
   // adapter_id must be a safe slug
   if (doc.adapter_id && !/^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/.test(doc.adapter_id)) {
-    issues.push({ severity: SEVERITY.error, msg: `adapter_id "${doc.adapter_id}" must be a safe slug` });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: `adapter_id "${doc.adapter_id}" must be a safe slug`,
+    });
   }
 
   // Check for adapter-specific known limitations linking to issues
   if (Array.isArray(doc.known_limitations) && doc.known_limitations.length > 0) {
     for (let i = 0; i < doc.known_limitations.length; i++) {
       if (doc.known_limitations[i].length < 10) {
-        issues.push({ severity: SEVERITY.warn, msg: `known_limitations[${i}] is too short to be meaningful` });
+        issues.push({
+          severity: SEVERITY.warn,
+          msg: `known_limitations[${i}] is too short to be meaningful`,
+        });
       }
     }
   }
@@ -1616,11 +1899,13 @@ function validateAdapterCapabilities(filePath) {
   // Detect forbidden patterns (no secrets, host-specific paths)
   detectSecrets(doc, issues);
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
-    console.error(`${issue.severity === SEVERITY.error ? 'FAIL' : 'WARN'}  ${rel}  - ${label}: ${issue.msg}`);
+    console.error(
+      `${issue.severity === SEVERITY.error ? 'FAIL' : 'WARN'}  ${rel}  - ${label}: ${issue.msg}`
+    );
     if (issue.severity === SEVERITY.error) totalErrors++;
     else totalWarnings++;
   }
@@ -1661,45 +1946,77 @@ function validateAdapterFixtureFile(filePath) {
 
   // schema_version presence check for all adapter fixture files
   if (doc.schema_version === undefined) {
-    issues.push({ severity: SEVERITY.warn, msg: 'missing schema_version field (recommended for all adapter fixture files)' });
+    issues.push({
+      severity: SEVERITY.warn,
+      msg: 'missing schema_version field (recommended for all adapter fixture files)',
+    });
   } else if (typeof doc.schema_version !== 'number') {
     issues.push({ severity: SEVERITY.error, msg: 'schema_version must be an integer' });
   }
 
   // Type-specific structural checks
   if (fileName === 'sample-workflow-plan.yaml') {
-    if (!doc.workflow_id) issues.push({ severity: SEVERITY.error, msg: 'missing workflow_id for Hermes workflow plan' });
+    if (!doc.workflow_id)
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'missing workflow_id for Hermes workflow plan',
+      });
     if (!Array.isArray(doc.steps) || doc.steps.length === 0) {
       issues.push({ severity: SEVERITY.error, msg: 'workflow plan must have at least one step' });
     }
-    if (!doc.objective) issues.push({ severity: SEVERITY.warn, msg: 'workflow plan missing objective' });
+    if (!doc.objective)
+      issues.push({ severity: SEVERITY.warn, msg: 'workflow plan missing objective' });
   }
 
   if (fileName === 'sample-worker-trace.yaml') {
-    if (!doc.trace_id) issues.push({ severity: SEVERITY.error, msg: 'missing trace_id for Hermes worker trace' });
+    if (!doc.trace_id)
+      issues.push({ severity: SEVERITY.error, msg: 'missing trace_id for Hermes worker trace' });
     if (!Array.isArray(doc.timeline) || doc.timeline.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: 'worker trace must have at least one timeline entry' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'worker trace must have at least one timeline entry',
+      });
     }
-    if (!doc.classification) issues.push({ severity: SEVERITY.warn, msg: 'worker trace missing classification' });
+    if (!doc.classification)
+      issues.push({ severity: SEVERITY.warn, msg: 'worker trace missing classification' });
   }
 
   if (fileName === 'sample-memory-summary.yaml') {
-    if (!doc.memory_summary_id) issues.push({ severity: SEVERITY.error, msg: 'missing memory_summary_id for Hermes memory summary' });
-    if (!doc.worker_id) issues.push({ severity: SEVERITY.error, msg: 'missing worker_id for memory summary' });
+    if (!doc.memory_summary_id)
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'missing memory_summary_id for Hermes memory summary',
+      });
+    if (!doc.worker_id)
+      issues.push({ severity: SEVERITY.error, msg: 'missing worker_id for memory summary' });
     if (!Array.isArray(doc.memory_sources_consulted)) {
-      issues.push({ severity: SEVERITY.warn, msg: 'memory summary missing memory_sources_consulted' });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: 'memory summary missing memory_sources_consulted',
+      });
     }
   }
 
   if (fileName === 'sample-commands.yaml') {
-    if (doc.adapter_id !== 'cli') issues.push({ severity: SEVERITY.warn, msg: 'CLI commands file should have adapter_id: cli' });
+    if (doc.adapter_id !== 'cli')
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: 'CLI commands file should have adapter_id: cli',
+      });
     if (!Array.isArray(doc.commands) || doc.commands.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: 'CLI commands file must have at least one command entry' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'CLI commands file must have at least one command entry',
+      });
     }
   }
 
   if (fileName === 'sample-timestamp-log.yaml') {
-    if (!doc.operator_log_id) issues.push({ severity: SEVERITY.error, msg: 'missing operator_log_id for human baseline timestamp log' });
+    if (!doc.operator_log_id)
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'missing operator_log_id for human baseline timestamp log',
+      });
     if (!Array.isArray(doc.entries) || doc.entries.length === 0) {
       issues.push({ severity: SEVERITY.error, msg: 'timestamp log must have at least one entry' });
     }
@@ -1707,18 +2024,23 @@ function validateAdapterFixtureFile(filePath) {
 
   if (fileName === 'sample-actions.yaml') {
     if (!Array.isArray(doc.operator_actions) || doc.operator_actions.length === 0) {
-      issues.push({ severity: SEVERITY.error, msg: 'operator actions must have at least one action entry' });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: 'operator actions must have at least one action entry',
+      });
     }
   }
 
   // Detect forbidden patterns (no secrets, host-specific paths)
   detectSecrets(doc, issues);
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const label = issue.severity === SEVERITY.error ? '  error' : '  warn';
-    console.error(`${issue.severity === SEVERITY.error ? 'FAIL' : 'WARN'}  ${rel}  - ${label}: ${issue.msg}`);
+    console.error(
+      `${issue.severity === SEVERITY.error ? 'FAIL' : 'WARN'}  ${rel}  - ${label}: ${issue.msg}`
+    );
     if (issue.severity === SEVERITY.error) totalErrors++;
     else totalWarnings++;
   }
@@ -1743,21 +2065,33 @@ const LIVE_PROBE_FORBIDDEN_PATTERNS = [
   // CPU model numbers  e.g. "Intel(R) Xeon(R) Gold", "AMD EPYC", "Apple M1 Pro"
   { pattern: /\bIntel\(R\)\s+[A-Za-z0-9-]+/, description: 'CPU model number (Intel)' },
   { pattern: /\bAMD\s+[A-Z][a-z]+\s+\d+/, description: 'CPU model number (AMD)' },
-  { pattern: /\bApple\s+M\d+(?:\s+(?:Pro|Max|Ultra))?\b/, description: 'CPU model number (Apple Silicon)' },
+  {
+    pattern: /\bApple\s+M\d+(?:\s+(?:Pro|Max|Ultra))?\b/,
+    description: 'CPU model number (Apple Silicon)',
+  },
   // Cloud instance IDs  e.g. "i-0abcd1234efgh5678", "inst-12345"
   { pattern: /\bi-[a-f0-9]{8,}\b/, description: 'cloud instance ID' },
   { pattern: /\b(?:vpc|subnet|sg)-[a-f0-9]{8,}\b/i, description: 'cloud VPC/subnet/SG ID' },
   // MAC addresses
   { pattern: /\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b/, description: 'MAC address' },
   // UUIDs that look like hardware serials
-  { pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i, description: 'UUID (possible hardware serial)' },
+  {
+    pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,
+    description: 'UUID (possible hardware serial)',
+  },
   // Cloud provider region/zone names
-  { pattern: /\b(?:us|eu|ap|sa)-(?:east|west|central|north|south|southeast|northeast)-\d+\b/, description: 'cloud region name' },
+  {
+    pattern: /\b(?:us|eu|ap|sa)-(?:east|west|central|north|south|southeast|northeast)-\d+\b/,
+    description: 'cloud region name',
+  },
   // Exact mount paths with patterns likely from df output
   // Requires the /dev/ prefix so ordinary words like "sdk" do not match.
   { pattern: /\/dev\/(?:sd[a-z]\d*|nvme\d+n\d+)\b/, description: 'raw block device name' },
   // hostname-like patterns with hyphens and short TLD
-  { pattern: /\b[a-z][a-z0-9-]{2,20}\.(?:lan|local|internal|corp|prod|dev|staging)\b/i, description: 'internal hostname with private TLD' },
+  {
+    pattern: /\b[a-z][a-z0-9-]{2,20}\.(?:lan|local|internal|corp|prod|dev|staging)\b/i,
+    description: 'internal hostname with private TLD',
+  },
 ];
 
 /**
@@ -1773,21 +2107,33 @@ function scanLiveProbeForbidden(obj, issues, objPath) {
       // Check against tier-2 forbidden patterns
       for (const bp of LIVE_PROBE_FORBIDDEN_PATTERNS) {
         if (bp.pattern.test(val)) {
-          issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive diagnostic pattern` });
+          issues.push({
+            severity: SEVERITY.error,
+            msg: `Live-probe forbidden pattern (${bp.description}) detected in "${fp}": value matches sensitive diagnostic pattern`,
+          });
           break;
         }
       }
       // Check for raw command output copy-paste
       if (/^(?:\w+)@\w+/.test(val) && /\$\s+\w+/.test(val)) {
-        issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (terminal prompt / command echo) detected in "${fp}": value looks like raw terminal output` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `Live-probe forbidden pattern (terminal prompt / command echo) detected in "${fp}": value looks like raw terminal output`,
+        });
       }
       // Check for values that look like environment variable exports
       if (/^export\s+[A-Z_]+=/.test(val)) {
-        issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (environment variable export) detected in "${fp}": value looks like credential-bearing environment capture` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `Live-probe forbidden pattern (environment variable export) detected in "${fp}": value looks like credential-bearing environment capture`,
+        });
       }
       // Check for raw df output lines
       if (/^\/dev\/\S+\s+\d+/.test(val)) {
-        issues.push({ severity: SEVERITY.error, msg: `Live-probe forbidden pattern (raw filesystem line from df) detected in "${fp}": value must be redacted to safe bands` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `Live-probe forbidden pattern (raw filesystem line from df) detected in "${fp}": value must be redacted to safe bands`,
+        });
       }
     } else if (typeof val === 'object' && val !== null) {
       scanLiveProbeForbidden(val, issues, fp);
@@ -1825,7 +2171,9 @@ function validateQualification(filePath) {
   const isEntry = doc.entry_id && !doc.manifest_id;
 
   if (!isManifest && !isEntry) {
-    console.warn(`SKIP  ${rel}  — not a qualification manifest or entry (needs manifest_id+entries or entry_id)`);
+    console.warn(
+      `SKIP  ${rel}  — not a qualification manifest or entry (needs manifest_id+entries or entry_id)`
+    );
     fileCount++;
     return;
   }
@@ -1847,40 +2195,57 @@ function validateQualification(filePath) {
 
     // Check manifest_id follows convention
     if (!/^season-\d{3}-qualification-v\d+$/.test(doc.manifest_id)) {
-      issues.push({ severity: SEVERITY.warn, msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-qualification-vN'` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `manifest_id "${doc.manifest_id}" does not match convention 'season-XXX-qualification-vN'`,
+      });
     }
 
     // Check for duplicate entry IDs in the manifest
     if (doc.entries) {
-      const entryIds = doc.entries.map(e => e.entry_id);
+      const entryIds = doc.entries.map((e) => e.entry_id);
       const dups = entryIds.filter((id, i) => entryIds.indexOf(id) !== i);
       if (dups.length) {
-        issues.push({ severity: SEVERITY.error, msg: `Duplicate entry IDs in manifest: ${[...new Set(dups)].join(', ')}` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `Duplicate entry IDs in manifest: ${[...new Set(dups)].join(', ')}`,
+        });
       }
 
       // Cross-reference checks against entries/ directory
       const entriesDir = path.join(path.dirname(filePath), 'entries');
       if (fs.existsSync(entriesDir)) {
-        const entryFiles = fs.readdirSync(entriesDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+        const entryFiles = fs
+          .readdirSync(entriesDir)
+          .filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
         for (const entryFile of entryFiles) {
           const entryPath = path.join(entriesDir, entryFile);
           try {
             const entryDoc = loadYaml(entryPath);
             if (entryDoc && entryDoc.entry_id) {
-              const manifestEntry = doc.entries.find(e => e.entry_id === entryDoc.entry_id);
+              const manifestEntry = doc.entries.find((e) => e.entry_id === entryDoc.entry_id);
               if (!manifestEntry) {
-                issues.push({ severity: SEVERITY.warn, msg: `Entry file "${entryFile}" (entry_id: ${entryDoc.entry_id}) not found in manifest entries array` });
+                issues.push({
+                  severity: SEVERITY.warn,
+                  msg: `Entry file "${entryFile}" (entry_id: ${entryDoc.entry_id}) not found in manifest entries array`,
+                });
               }
             }
-          } catch { /* skip unparseable entry files */ }
+          } catch {
+            /* skip unparseable entry files */
+          }
         }
 
         // Check manifest entries have matching files (.yaml or .yml)
         for (const entry of doc.entries) {
-          const hasFile = ['yaml', 'yml'].some(ext =>
-            fs.existsSync(path.join(entriesDir, `${entry.entry_id}.${ext}`)));
+          const hasFile = ['yaml', 'yml'].some((ext) =>
+            fs.existsSync(path.join(entriesDir, `${entry.entry_id}.${ext}`))
+          );
           if (!hasFile) {
-            issues.push({ severity: SEVERITY.warn, msg: `Entry "${entry.entry_id}" in manifest has no matching file: entries/${entry.entry_id}.yaml` });
+            issues.push({
+              severity: SEVERITY.warn,
+              msg: `Entry "${entry.entry_id}" in manifest has no matching file: entries/${entry.entry_id}.yaml`,
+            });
           }
         }
       }
@@ -1907,24 +2272,45 @@ function validateQualification(filePath) {
     // State transitions: seeded must have seeding_score and seeding_group
     if (doc.state === 'seeded') {
       if (doc.seeding_score === undefined || doc.seeding_score === null) {
-        issues.push({ severity: SEVERITY.error, msg: `seeding_score required when state is 'seeded'` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `seeding_score required when state is 'seeded'`,
+        });
       }
       if (!doc.seeding_group) {
-        issues.push({ severity: SEVERITY.error, msg: `seeding_group required when state is 'seeded'` });
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `seeding_group required when state is 'seeded'`,
+        });
       }
-      if (typeof doc.seeding_score === 'number' && (doc.seeding_score < 0 || doc.seeding_score > 10)) {
-        issues.push({ severity: SEVERITY.error, msg: `seeding_score must be between 0 and 10, got ${doc.seeding_score}` });
+      if (
+        typeof doc.seeding_score === 'number' &&
+        (doc.seeding_score < 0 || doc.seeding_score > 10)
+      ) {
+        issues.push({
+          severity: SEVERITY.error,
+          msg: `seeding_score must be between 0 and 10, got ${doc.seeding_score}`,
+        });
       }
     }
 
     // Withdrawn must have withdrawn_at
     if (doc.state === 'withdrawn' && !doc.withdrawn_at) {
-      issues.push({ severity: SEVERITY.warn, msg: `withdrawn_at recommended when state is 'withdrawn'` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `withdrawn_at recommended when state is 'withdrawn'`,
+      });
     }
 
     // Qualified entry must have qualifier_results
-    if (doc.entry_type === 'qualified_entry' && (!doc.qualifier_results || doc.qualifier_results.length === 0)) {
-      issues.push({ severity: SEVERITY.error, msg: `qualifier_results required when entry_type is 'qualified_entry'` });
+    if (
+      doc.entry_type === 'qualified_entry' &&
+      (!doc.qualifier_results || doc.qualifier_results.length === 0)
+    ) {
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `qualifier_results required when entry_type is 'qualified_entry'`,
+      });
     }
 
     // Team quota must have team_id
@@ -1936,7 +2322,7 @@ function validateQualification(filePath) {
     detectSecrets(doc, issues);
   }
 
-  const hasErrors = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasErrors = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -1975,7 +2361,9 @@ function validateLiveProbe(filePath) {
   }
 
   if (!detectNodeProfile(doc)) {
-    console.error(`FAIL  ${rel}  - not a node profile (missing required fields); live-probe mode requires a schema-complete profile`);
+    console.error(
+      `FAIL  ${rel}  - not a node profile (missing required fields); live-probe mode requires a schema-complete profile`
+    );
     totalErrors++;
     fileCount++;
     return;
@@ -2012,19 +2400,31 @@ function validateLiveProbe(filePath) {
     }
   }
   if (Array.isArray(doc.capability_labels) && doc.capability_labels.length === 0) {
-    issues.push({ severity: SEVERITY.error, msg: 'capability_labels must have at least one entry' });
+    issues.push({
+      severity: SEVERITY.error,
+      msg: 'capability_labels must have at least one entry',
+    });
   }
 
   // profile_id safety checks (same as validateNodeProfile)
   if (doc.profile_id) {
     if (!/^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/.test(doc.profile_id)) {
-      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" must be a safe slug (lowercase, digits, hyphens, underscores only)` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `profile_id "${doc.profile_id}" must be a safe slug (lowercase, digits, hyphens, underscores only)`,
+      });
     }
     if (/^(\d{1,3}\.){3}\d{1,3}$/.test(doc.profile_id)) {
-      issues.push({ severity: SEVERITY.error, msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead` });
+      issues.push({
+        severity: SEVERITY.error,
+        msg: `profile_id "${doc.profile_id}" looks like an IP address; use a safe slug instead`,
+      });
     }
     if (/^[a-zA-Z0-9-]+\.(com|org|net|io|dev|local|internal)$/.test(doc.profile_id)) {
-      issues.push({ severity: SEVERITY.warn, msg: `profile_id "${doc.profile_id}" looks like a hostname or domain; use a safe slug instead` });
+      issues.push({
+        severity: SEVERITY.warn,
+        msg: `profile_id "${doc.profile_id}" looks like a hostname or domain; use a safe slug instead`,
+      });
     }
   }
 
@@ -2039,13 +2439,19 @@ function validateLiveProbe(filePath) {
 
   // Check mandatory live-probe fields
   if (!doc.notes) {
-    issues.push({ severity: SEVERITY.warn, msg: 'live-probe profile should include a notes field documenting the probe context and disposal certification' });
+    issues.push({
+      severity: SEVERITY.warn,
+      msg: 'live-probe profile should include a notes field documenting the probe context and disposal certification',
+    });
   }
   if (!doc.last_updated) {
-    issues.push({ severity: SEVERITY.warn, msg: 'live-probe profile should include last_updated timestamp' });
+    issues.push({
+      severity: SEVERITY.warn,
+      msg: 'live-probe profile should include last_updated timestamp',
+    });
   }
 
-  const hasIssues = issues.filter(i => i.severity === SEVERITY.error).length > 0;
+  const hasIssues = issues.filter((i) => i.severity === SEVERITY.error).length > 0;
 
   for (const issue of issues) {
     const prefix = issue.severity === SEVERITY.error ? 'FAIL' : 'WARN';
@@ -2065,18 +2471,33 @@ function validateLiveProbe(filePath) {
 // Mode resolution
 // ---------------------------------------------------------------------------
 const MODES = {
-  'envelopes':     { kinds: ['task-envelope'], versions: [1], roots: ['tasks'] },
-  'envelopes-v2':  { kinds: ['task-envelope'], versions: [2], roots: ['tasks'] },
-  'packets':       { kinds: ['result-packet', 'run-result'], versions: [1], roots: ['results'] },
-  'packets-v2':    { kinds: ['result-packet'], versions: [2], roots: ['results'] },
-  'traces':        { kinds: ['trace-record'], versions: [1], roots: ['results'] },
-  'bundles':       { kinds: ['evidence-bundle'], versions: [1], roots: ['results'] },
-  'runs':          { kinds: ['run-result'], versions: [1], roots: ['results'] },
-  'judges':        { kinds: ['judge-record'], versions: [1], roots: ['results'] },
-  'judges-v2':     { kinds: ['judge-record'], versions: [2], roots: ['results'] },
-  'all':           { kinds: ['task-envelope', 'result-packet', 'run-result', 'trace-record', 'evidence-bundle', 'judge-record'], versions: [1, 2], roots: ['tasks', 'results'] },
-  'all-v2':        { kinds: ['task-envelope', 'result-packet', 'judge-record'], versions: [2], roots: ['tasks', 'results'] },
-  'smoke':         { kinds: ['task-envelope', 'smoke-manifest'], versions: [1], roots: ['tasks-smoke'] },
+  envelopes: { kinds: ['task-envelope'], versions: [1], roots: ['tasks'] },
+  'envelopes-v2': { kinds: ['task-envelope'], versions: [2], roots: ['tasks'] },
+  packets: { kinds: ['result-packet', 'run-result'], versions: [1], roots: ['results'] },
+  'packets-v2': { kinds: ['result-packet'], versions: [2], roots: ['results'] },
+  traces: { kinds: ['trace-record'], versions: [1], roots: ['results'] },
+  bundles: { kinds: ['evidence-bundle'], versions: [1], roots: ['results'] },
+  runs: { kinds: ['run-result'], versions: [1], roots: ['results'] },
+  judges: { kinds: ['judge-record'], versions: [1], roots: ['results'] },
+  'judges-v2': { kinds: ['judge-record'], versions: [2], roots: ['results'] },
+  all: {
+    kinds: [
+      'task-envelope',
+      'result-packet',
+      'run-result',
+      'trace-record',
+      'evidence-bundle',
+      'judge-record',
+    ],
+    versions: [1, 2],
+    roots: ['tasks', 'results'],
+  },
+  'all-v2': {
+    kinds: ['task-envelope', 'result-packet', 'judge-record'],
+    versions: [2],
+    roots: ['tasks', 'results'],
+  },
+  smoke: { kinds: ['task-envelope', 'smoke-manifest'], versions: [1], roots: ['tasks-smoke'] },
 };
 
 // ---------------------------------------------------------------------------
@@ -2084,7 +2505,7 @@ const MODES = {
 // ---------------------------------------------------------------------------
 function main() {
   const args = process.argv.slice(2);
-  let mode = args[0] || 'all';
+  const mode = args[0] || 'all';
 
   // Adapter capabilities mode
   if (mode === 'adapter-capabilities') {
@@ -2114,7 +2535,7 @@ function main() {
     const cliDir = path.join(ROOT, 'fixtures', 'adapters', 'cli');
     const hermesDir = path.join(ROOT, 'fixtures', 'adapters', 'hermes');
     const humanDir = path.join(ROOT, 'fixtures', 'adapters', 'human-baseline');
-    const dirs = [cliDir, hermesDir, humanDir].filter(d => fs.existsSync(d));
+    const dirs = [cliDir, hermesDir, humanDir].filter((d) => fs.existsSync(d));
     if (dirs.length === 0) {
       console.log('No adapter fixture directories found.');
       process.exit(0);
@@ -2383,10 +2804,14 @@ function main() {
     const cvArgs = process.argv.slice(3);
 
     console.log('Delegating to competition-validity.js...\n');
-    const result = spawnSync(process.execPath, [cvPath, ...(cvArgs.length > 0 ? cvArgs : ['all', 'runs/season-001/round-001'])], {
-      stdio: 'inherit',
-      cwd: ROOT,
-    });
+    const result = spawnSync(
+      process.execPath,
+      [cvPath, ...(cvArgs.length > 0 ? cvArgs : ['all', 'runs/season-001/round-001'])],
+      {
+        stdio: 'inherit',
+        cwd: ROOT,
+      }
+    );
 
     const exitCode = result.status !== null ? result.status : 1;
     if (exitCode !== 0) {
@@ -2438,7 +2863,9 @@ function main() {
   // Named mode
   const modeConfig = MODES[mode];
   if (!modeConfig) {
-    console.error(`Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|qualifications|adapter-capabilities|adapter-fixtures|oracle|competition-validity|accreditations|accreditations-validity|all|all-v2|file>`);
+    console.error(
+      `Usage: node scripts/validate.js <envelopes|envelopes-v2|packets|packets-v2|traces|bundles|runs|judges|judges-v2|smoke|rounds|fixtures|profiles|live-probe|qualifications|adapter-capabilities|adapter-fixtures|oracle|competition-validity|accreditations|accreditations-validity|all|all-v2|file>`
+    );
     process.exit(1);
   }
 
@@ -2495,10 +2922,7 @@ function main() {
   }
 
   const skippedCount = files.length - fileCount;
-  const summaryLines = [
-    `Files scanned:  ${files.length}`,
-    `Validated:     ${fileCount}`,
-  ];
+  const summaryLines = [`Files scanned:  ${files.length}`, `Validated:     ${fileCount}`];
   if (skippedCount > 0) {
     summaryLines.push(`Skipped (ver): ${skippedCount}`);
   }

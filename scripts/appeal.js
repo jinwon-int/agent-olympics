@@ -63,7 +63,13 @@ const ROOT = path.resolve(__dirname, '..');
 // ---------------------------------------------------------------------------
 
 const APPEAL_STATUSES = ['filed', 'under_review', 'upheld', 'denied', 'remanded', 'dismissed'];
-const APPEAL_REQUIRED_FIELDS = ['packet_id', 'filed_at', 'filed_by', 'statement', 'desired_outcome'];
+const APPEAL_REQUIRED_FIELDS = [
+  'packet_id',
+  'filed_at',
+  'filed_by',
+  'statement',
+  'desired_outcome',
+];
 // Statuses other than `filed` require a reviewed_by (matches checkAppealRecord).
 const REVIEWED_STATUSES = ['under_review', 'upheld', 'denied', 'remanded', 'dismissed'];
 // Terminal decision statuses produced by `review`.
@@ -104,7 +110,9 @@ function validateAppealRecord(appeal) {
     return ['appeal record is empty or not an object'];
   }
   if (!APPEAL_STATUSES.includes(appeal.status)) {
-    errs.push(`appeal status "${appeal.status}" is not allowed (one of: ${APPEAL_STATUSES.join(', ')})`);
+    errs.push(
+      `appeal status "${appeal.status}" is not allowed (one of: ${APPEAL_STATUSES.join(', ')})`
+    );
   }
   for (const field of APPEAL_REQUIRED_FIELDS) {
     if (!appeal[field]) errs.push(`appeal missing required field "${field}"`);
@@ -139,7 +147,11 @@ function crossCheckWithCompetitionValidity(appeal) {
     );
     return { ok: res.status === 0, output: (res.stdout || '') + (res.stderr || '') };
   } finally {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
   }
 }
 
@@ -177,7 +189,9 @@ function resolveAppealTarget(srcPath) {
   }
   const packetId = doc.packet_id || (doc.result_packet && doc.result_packet.packet_id);
   if (!packetId) {
-    throw new AppealError(`could not resolve packet_id from ${srcPath} (no packet_id / result_packet.packet_id)`);
+    throw new AppealError(
+      `could not resolve packet_id from ${srcPath} (no packet_id / result_packet.packet_id)`
+    );
   }
   const taskId = doc.task_id || (doc.result_packet && doc.result_packet.task_id) || null;
   return { packetId, taskId, source: doc };
@@ -195,7 +209,10 @@ function cmdFile(args) {
   const src = args._[0];
   if (!src) throw new AppealError('file: missing <judge-record-or-packet> argument');
   for (const req of ['filedBy', 'statement', 'desiredOutcome']) {
-    if (!args[req]) throw new AppealError(`file: missing required --${req.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())}`);
+    if (!args[req])
+      throw new AppealError(
+        `file: missing required --${req.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())}`
+      );
   }
 
   const { packetId, taskId } = resolveAppealTarget(src);
@@ -212,7 +229,11 @@ function cmdFile(args) {
     desired_outcome: args.desiredOutcome,
   };
   if (args.ruleRef) appeal.rule_ref = args.ruleRef;
-  if (args.evidenceRefs) appeal.evidence_refs = args.evidenceRefs.split(',').map((s) => s.trim()).filter(Boolean);
+  if (args.evidenceRefs)
+    appeal.evidence_refs = args.evidenceRefs
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   // Drop undefined keys for clean YAML.
   for (const k of Object.keys(appeal)) if (appeal[k] === undefined) delete appeal[k];
 
@@ -247,10 +268,13 @@ function cmdReview(args) {
   // Transition guard: cannot review an already-decided appeal.
   if (DECISION_STATUSES.includes(appeal.status)) {
     throw new AppealError(
-      `invalid transition: appeal is already in terminal status "${appeal.status}"; cannot re-review`);
+      `invalid transition: appeal is already in terminal status "${appeal.status}"; cannot re-review`
+    );
   }
   if (!['filed', 'under_review'].includes(appeal.status)) {
-    throw new AppealError(`invalid transition: cannot review an appeal in status "${appeal.status}"`);
+    throw new AppealError(
+      `invalid transition: cannot review an appeal in status "${appeal.status}"`
+    );
   }
 
   // The pre-decision record must itself be a valid filed appeal.
@@ -258,7 +282,9 @@ function cmdReview(args) {
   // filed-status check excludes reviewed_by; ignore that single field here.
   const realPreErrs = preErrs.filter((e) => !/requires reviewed_by/.test(e));
   if (realPreErrs.length) {
-    throw new AppealError(`review: appeal under review is malformed:\n  - ${realPreErrs.join('\n  - ')}`);
+    throw new AppealError(
+      `review: appeal under review is malformed:\n  - ${realPreErrs.join('\n  - ')}`
+    );
   }
 
   const reviewed = {
@@ -275,11 +301,15 @@ function cmdReview(args) {
 
   const errs = validateAppealRecord(reviewed);
   if (errs.length) {
-    throw new AppealError(`reviewed appeal failed contract validation:\n  - ${errs.join('\n  - ')}`);
+    throw new AppealError(
+      `reviewed appeal failed contract validation:\n  - ${errs.join('\n  - ')}`
+    );
   }
 
   writeOut(reviewed, args.output, 'Reviewed appeal');
-  console.log(`Appeal ${reviewed.appeal_id || '(unnamed)'} reviewed by ${args.reviewedBy}: ${args.decision}.`);
+  console.log(
+    `Appeal ${reviewed.appeal_id || '(unnamed)'} reviewed by ${args.reviewedBy}: ${args.decision}.`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -311,7 +341,8 @@ function cmdApply(args) {
   }
   if (!DECISION_STATUSES.includes(appeal.status)) {
     throw new AppealError(
-      `apply: appeal must be in a decided status (${DECISION_STATUSES.join(', ')}); got "${appeal.status}". Run \`review\` first.`);
+      `apply: appeal must be in a decided status (${DECISION_STATUSES.join(', ')}); got "${appeal.status}". Run \`review\` first.`
+    );
   }
   // A decided appeal must still be contract-valid.
   const aerrs = validateAppealRecord(appeal);
@@ -326,7 +357,8 @@ function cmdApply(args) {
   }
   if (judge.packet_id && appeal.packet_id && judge.packet_id !== appeal.packet_id) {
     throw new AppealError(
-      `apply: appeal packet_id "${appeal.packet_id}" does not match judge record packet_id "${judge.packet_id}"`);
+      `apply: appeal packet_id "${appeal.packet_id}" does not match judge record packet_id "${judge.packet_id}"`
+    );
   }
 
   const priorVerdict = judge.verdict;
@@ -340,7 +372,8 @@ function cmdApply(args) {
   if (appeal.status === 'upheld') {
     // Apply the desired_outcome's machine-actionable effects (verdict / score).
     const desired = parseDesiredOutcome(
-      `${appeal.desired_outcome || ''} ${appeal.decision_reasoning || ''}`);
+      `${appeal.desired_outcome || ''} ${appeal.decision_reasoning || ''}`
+    );
     if (desired.verdict && desired.verdict !== priorVerdict) {
       amended.verdict = desired.verdict;
       newVerdict = desired.verdict;
@@ -395,11 +428,22 @@ function cmdApply(args) {
     }
     writeOut(amended, args.output, 'Amended judge record');
   } finally {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
   }
 
-  const head = appeal.status === 'upheld' && changed ? 'APPLIED' : (appeal.status === 'upheld' ? 'UPHELD (no-op)' : appeal.status.toUpperCase());
-  console.log(`${head}  appeal ${amended.appeal_record.appeal_id}  prior_verdict=${priorVerdict} new_verdict=${newVerdict}`);
+  const head =
+    appeal.status === 'upheld' && changed
+      ? 'APPLIED'
+      : appeal.status === 'upheld'
+        ? 'UPHELD (no-op)'
+        : appeal.status.toUpperCase();
+  console.log(
+    `${head}  appeal ${amended.appeal_record.appeal_id}  prior_verdict=${priorVerdict} new_verdict=${newVerdict}`
+  );
   for (const c of changes) console.log(`  - ${c}`);
 }
 
@@ -447,25 +491,46 @@ function runFixtures() {
       const denied = `${FIXTURE_DIR}/daegyo-oracle-dq-appeal-denied.yaml`;
 
       const deniedDoc = loadYaml(denied);
-      failures += report(validateAppealRecord(deniedDoc).length === 0,
+      failures += report(
+        validateAppealRecord(deniedDoc).length === 0,
         'A: denied appeal validates against contract',
-        `status=${deniedDoc.status}`) ? 0 : 1;
-      failures += report(deniedDoc.status === 'denied',
-        'A: appeal is denied (boundary upheld, not rubber-stamped)') ? 0 : 1;
+        `status=${deniedDoc.status}`
+      )
+        ? 0
+        : 1;
+      failures += report(
+        deniedDoc.status === 'denied',
+        'A: appeal is denied (boundary upheld, not rubber-stamped)'
+      )
+        ? 0
+        : 1;
 
       // apply -> verdict must stay disqualification.
       const out = path.join(tmpDir, 'A-amended-judge.yaml');
-      const res = cp.spawnSync(process.execPath, [__filename, 'apply', denied,
-        '--judge-record', judgeRec, '--output', out], { encoding: 'utf8' });
+      const res = cp.spawnSync(
+        process.execPath,
+        [__filename, 'apply', denied, '--judge-record', judgeRec, '--output', out],
+        { encoding: 'utf8' }
+      );
       const applied = res.status === 0 && fs.existsSync(out) ? loadYaml(out) : null;
-      failures += report(res.status === 0 && applied && applied.verdict === 'disqualification',
+      failures += report(
+        res.status === 0 && applied && applied.verdict === 'disqualification',
         'A: apply leaves verdict disqualification (unchanged)',
-        applied ? `verdict=${applied.verdict}` : 'apply failed') ? 0 : 1;
+        applied ? `verdict=${applied.verdict}` : 'apply failed'
+      )
+        ? 0
+        : 1;
       const ar = applied && applied.appeal_record && applied.appeal_record.appeal_resolution;
-      failures += report(!!ar && ar.decision === 'denied'
-        && ar.prior_verdict === 'disqualification' && ar.new_verdict === 'disqualification',
+      failures += report(
+        !!ar &&
+          ar.decision === 'denied' &&
+          ar.prior_verdict === 'disqualification' &&
+          ar.new_verdict === 'disqualification',
         'A: audit trail present, prior==new verdict',
-        ar ? `${ar.prior_verdict} -> ${ar.new_verdict}` : 'no appeal_resolution') ? 0 : 1;
+        ar ? `${ar.prior_verdict} -> ${ar.new_verdict}` : 'no appeal_resolution'
+      )
+        ? 0
+        : 1;
       const v = applied ? validateJudgeRecordFile(out) : { ok: false };
       failures += report(v.ok, 'A: amended judge record still schema-valid') ? 0 : 1;
     }
@@ -478,26 +543,49 @@ function runFixtures() {
       const upheld = `${FIXTURE_DIR}/pr228-evidence-id-appeal-upheld.yaml`;
 
       const upheldDoc = loadYaml(upheld);
-      failures += report(validateAppealRecord(upheldDoc).length === 0,
+      failures += report(
+        validateAppealRecord(upheldDoc).length === 0,
         'B: upheld appeal validates against contract',
-        `status=${upheldDoc.status}`) ? 0 : 1;
-      failures += report(upheldDoc.status === 'upheld',
-        'B: appeal is upheld (real procedural error corrected)') ? 0 : 1;
+        `status=${upheldDoc.status}`
+      )
+        ? 0
+        : 1;
+      failures += report(
+        upheldDoc.status === 'upheld',
+        'B: appeal is upheld (real procedural error corrected)'
+      )
+        ? 0
+        : 1;
 
       const out = path.join(tmpDir, 'B-amended-judge.yaml');
-      const res = cp.spawnSync(process.execPath, [__filename, 'apply', upheld,
-        '--judge-record', judgeRec, '--output', out], { encoding: 'utf8' });
+      const res = cp.spawnSync(
+        process.execPath,
+        [__filename, 'apply', upheld, '--judge-record', judgeRec, '--output', out],
+        { encoding: 'utf8' }
+      );
       const applied = res.status === 0 && fs.existsSync(out) ? loadYaml(out) : null;
       const priorJudge = loadYaml(judgeRec);
-      failures += report(res.status === 0 && applied
-        && applied.verdict !== priorJudge.verdict && applied.verdict === 'conditional_pass',
+      failures += report(
+        res.status === 0 &&
+          applied &&
+          applied.verdict !== priorJudge.verdict &&
+          applied.verdict === 'conditional_pass',
         'B: apply corrects verdict per desired_outcome',
-        applied ? `${priorJudge.verdict} -> ${applied.verdict}` : 'apply failed') ? 0 : 1;
+        applied ? `${priorJudge.verdict} -> ${applied.verdict}` : 'apply failed'
+      )
+        ? 0
+        : 1;
       const ar = applied && applied.appeal_record && applied.appeal_record.appeal_resolution;
-      failures += report(!!ar && ar.decision === 'upheld'
-        && ar.prior_verdict === priorJudge.verdict && ar.new_verdict === applied.verdict,
+      failures += report(
+        !!ar &&
+          ar.decision === 'upheld' &&
+          ar.prior_verdict === priorJudge.verdict &&
+          ar.new_verdict === applied.verdict,
         'B: audit trail records verdict correction',
-        ar ? `${ar.prior_verdict} -> ${ar.new_verdict}` : 'no appeal_resolution') ? 0 : 1;
+        ar ? `${ar.prior_verdict} -> ${ar.new_verdict}` : 'no appeal_resolution'
+      )
+        ? 0
+        : 1;
       const v = applied ? validateJudgeRecordFile(out) : { ok: false };
       failures += report(v.ok, 'B: amended judge record still schema-valid') ? 0 : 1;
     }
@@ -506,12 +594,28 @@ function runFixtures() {
     // Reviewing an already-decided appeal must fail (non-zero).
     {
       const denied = `${FIXTURE_DIR}/daegyo-oracle-dq-appeal-denied.yaml`;
-      const res = cp.spawnSync(process.execPath, [__filename, 'review', denied,
-        '--reviewed-by', 'judge-x', '--decision', 'upheld', '--reasoning', 'retry'],
-        { encoding: 'utf8' });
-      failures += report(res.status !== 0,
+      const res = cp.spawnSync(
+        process.execPath,
+        [
+          __filename,
+          'review',
+          denied,
+          '--reviewed-by',
+          'judge-x',
+          '--decision',
+          'upheld',
+          '--reasoning',
+          'retry',
+        ],
+        { encoding: 'utf8' }
+      );
+      failures += report(
+        res.status !== 0,
         'C: re-reviewing a decided appeal is rejected',
-        `exit=${res.status}`) ? 0 : 1;
+        `exit=${res.status}`
+      )
+        ? 0
+        : 1;
     }
 
     // ---- Case D: round-trip file -> review -------------------------------
@@ -520,27 +624,72 @@ function runFixtures() {
     {
       const judgeRec = `${FIXTURE_DIR}/daegyo-oracle-dq-judge-record.yaml`;
       const filedOut = path.join(tmpDir, 'D-filed.yaml');
-      const r1 = cp.spawnSync(process.execPath, [__filename, 'file', judgeRec,
-        '--filed-by', 'daegyo', '--statement', 'Diagnosis was correct; exposure was an honest model limitation.',
-        '--desired-outcome', 'reinstate verdict=pass', '--rule-ref', 'docs/rules.md#appeals',
-        '--output', filedOut], { encoding: 'utf8' });
+      const r1 = cp.spawnSync(
+        process.execPath,
+        [
+          __filename,
+          'file',
+          judgeRec,
+          '--filed-by',
+          'daegyo',
+          '--statement',
+          'Diagnosis was correct; exposure was an honest model limitation.',
+          '--desired-outcome',
+          'reinstate verdict=pass',
+          '--rule-ref',
+          'docs/rules.md#appeals',
+          '--output',
+          filedOut,
+        ],
+        { encoding: 'utf8' }
+      );
       const filedDoc = r1.status === 0 && fs.existsSync(filedOut) ? loadYaml(filedOut) : null;
-      failures += report(r1.status === 0 && filedDoc && filedDoc.status === 'filed'
-        && validateAppealRecord(filedDoc).length === 0,
-        'D: file produces a valid filed appeal') ? 0 : 1;
+      failures += report(
+        r1.status === 0 &&
+          filedDoc &&
+          filedDoc.status === 'filed' &&
+          validateAppealRecord(filedDoc).length === 0,
+        'D: file produces a valid filed appeal'
+      )
+        ? 0
+        : 1;
 
       const reviewedOut = path.join(tmpDir, 'D-reviewed.yaml');
-      const r2 = cp.spawnSync(process.execPath, [__filename, 'review', filedOut,
-        '--reviewed-by', 'judge-appeals-01', '--decision', 'denied',
-        '--reasoning', 'Oracle exposure is a safety boundary; it stands regardless of diagnosis quality.',
-        '--output', reviewedOut], { encoding: 'utf8' });
-      const reviewedDoc = r2.status === 0 && fs.existsSync(reviewedOut) ? loadYaml(reviewedOut) : null;
-      failures += report(r2.status === 0 && reviewedDoc && reviewedDoc.status === 'denied'
-        && validateAppealRecord(reviewedDoc).length === 0,
-        'D: review denies the filed appeal, still valid') ? 0 : 1;
+      const r2 = cp.spawnSync(
+        process.execPath,
+        [
+          __filename,
+          'review',
+          filedOut,
+          '--reviewed-by',
+          'judge-appeals-01',
+          '--decision',
+          'denied',
+          '--reasoning',
+          'Oracle exposure is a safety boundary; it stands regardless of diagnosis quality.',
+          '--output',
+          reviewedOut,
+        ],
+        { encoding: 'utf8' }
+      );
+      const reviewedDoc =
+        r2.status === 0 && fs.existsSync(reviewedOut) ? loadYaml(reviewedOut) : null;
+      failures += report(
+        r2.status === 0 &&
+          reviewedDoc &&
+          reviewedDoc.status === 'denied' &&
+          validateAppealRecord(reviewedDoc).length === 0,
+        'D: review denies the filed appeal, still valid'
+      )
+        ? 0
+        : 1;
     }
   } finally {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* best effort */ }
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
   }
 
   if (failures > 0) {
@@ -581,7 +730,10 @@ function parseArgs(argv) {
   const args = { _: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === '--help' || a === '-h') { args.help = true; continue; }
+    if (a === '--help' || a === '-h') {
+      args.help = true;
+      continue;
+    }
     if (Object.prototype.hasOwnProperty.call(FLAG_MAP, a)) {
       args[FLAG_MAP[a]] = argv[++i];
     } else if (a.startsWith('--')) {
@@ -596,17 +748,33 @@ function parseArgs(argv) {
 function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
-  if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') { usage(); return; }
+  if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
+    usage();
+    return;
+  }
 
   const args = parseArgs(argv.slice(1));
-  if (args.help) { usage(); return; }
+  if (args.help) {
+    usage();
+    return;
+  }
 
   switch (cmd) {
-    case 'file': cmdFile(args); break;
-    case 'review': cmdReview(args); break;
-    case 'apply': cmdApply(args); break;
-    case 'validate': cmdValidate(args); break;
-    case 'fixtures': runFixtures(); break;
+    case 'file':
+      cmdFile(args);
+      break;
+    case 'review':
+      cmdReview(args);
+      break;
+    case 'apply':
+      cmdApply(args);
+      break;
+    case 'validate':
+      cmdValidate(args);
+      break;
+    case 'fixtures':
+      runFixtures();
+      break;
     default:
       console.error(`Unknown command: "${cmd}"`);
       usage();

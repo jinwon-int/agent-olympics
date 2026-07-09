@@ -30,13 +30,7 @@ const { parseModelInfo, detect: sharedDetect } = require('./lib/model-detect');
 
 // Candidate info invocations tried in order until one prints a Model line.
 // HERMES_INFO_ARGS / --args overrides the list with a single invocation.
-const CANDIDATE_ARGS = [
-  ['config', 'show'],
-  ['config'],
-  ['status'],
-  ['info'],
-  ['--version'],
-];
+const CANDIDATE_ARGS = [['config', 'show'], ['config'], ['status'], ['info'], ['--version']];
 
 // Backward-compatible aliases (existing imports use these names).
 const parseHermesModelInfo = parseModelInfo;
@@ -80,10 +74,13 @@ function selfTest() {
   let failed = 0;
   for (const c of cases) {
     const got = parseHermesModelInfo(c.text);
-    const ok = c.expect === null
-      ? got === null
-      : !!got && got.model === c.expect.model && got.provider === c.expect.provider;
-    console.log(`${ok ? 'PASS' : 'FAIL'}  ${c.name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(c.expect)}`}`);
+    const ok =
+      c.expect === null
+        ? got === null
+        : !!got && got.model === c.expect.model && got.provider === c.expect.provider;
+    console.log(
+      `${ok ? 'PASS' : 'FAIL'}  ${c.name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(c.expect)}`}`
+    );
     if (!ok) failed += 1;
   }
   console.log(`${cases.length - failed} passed, ${failed} failed`);
@@ -98,12 +95,25 @@ function main() {
   let runSelfTest = false;
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--bin': bin = args[++i]; break;
-      case '--args': overrideArgs = String(args[++i] || '').split(/\s+/).filter(Boolean); break;
-      case '--parse-file': parseFile = args[++i]; break;
-      case '--self-test': runSelfTest = true; break;
-      case '--help': case '-h':
-        console.log('Usage: hermes-model-detect.js [--bin <hermes>] [--args "<info args>"] | --parse-file <file> | --self-test');
+      case '--bin':
+        bin = args[++i];
+        break;
+      case '--args':
+        overrideArgs = String(args[++i] || '')
+          .split(/\s+/)
+          .filter(Boolean);
+        break;
+      case '--parse-file':
+        parseFile = args[++i];
+        break;
+      case '--self-test':
+        runSelfTest = true;
+        break;
+      case '--help':
+      case '-h':
+        console.log(
+          'Usage: hermes-model-detect.js [--bin <hermes>] [--args "<info args>"] | --parse-file <file> | --self-test'
+        );
         process.exit(0);
         break;
       default:

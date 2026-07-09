@@ -61,11 +61,11 @@ const {
 // ---------------------------------------------------------------------------
 
 const CLI_EVIDENCE_IDS = Object.freeze({
-  report: 'ev-cli-report',          // the agent's synthesized answer (commander-report analogue)
-  transcript: 'ev-cli-transcript',  // captured terminal transcript (worker-traces analogue)
-  probe: 'ev-cli-probe',            // CLI invocation probe (exit code, model attestation)
-  input: 'ev-cli-input',            // task envelope copy
-  command: 'ev-cli-command',        // command log
+  report: 'ev-cli-report', // the agent's synthesized answer (commander-report analogue)
+  transcript: 'ev-cli-transcript', // captured terminal transcript (worker-traces analogue)
+  probe: 'ev-cli-probe', // CLI invocation probe (exit code, model attestation)
+  input: 'ev-cli-input', // task envelope copy
+  command: 'ev-cli-command', // command log
 });
 
 function parseArgs() {
@@ -86,12 +86,20 @@ function parseArgs() {
       '  --publishable             Mark result as publishable (default: false)',
     ],
     defaults: {
-      exitCode: 0, agentId: 'cli-agent', runtime: 'cli', runtimeVersion: 'unknown',
-      model: 'unknown', modelProvider: 'unknown',
-      seed: null, timestamp: null, runDir: null, publishable: false,
+      exitCode: 0,
+      agentId: 'cli-agent',
+      runtime: 'cli',
+      runtimeVersion: 'unknown',
+      model: 'unknown',
+      modelProvider: 'unknown',
+      seed: null,
+      timestamp: null,
+      runDir: null,
+      publishable: false,
       // mode/eventFamily are accepted for symmetry with the runtime adapters
       // but the CLI adapter is single-shot; they only flavour summaries.
-      mode: 'cli', eventFamily: 'ops',
+      mode: 'cli',
+      eventFamily: 'ops',
     },
     options: RUNTIME_ADAPTER_OPTIONS,
   });
@@ -101,18 +109,29 @@ function parseArgs() {
 // CLI → RESULT PACKET (v2) MAPPING
 // ---------------------------------------------------------------------------
 
-function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
-  model, modelProvider, status, startedAt, endedAt, publishable) {
-
+function generateResultPacket(
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  runtimeVersion,
+  model,
+  modelProvider,
+  status,
+  startedAt,
+  endedAt,
+  publishable
+) {
   const taskId = envelope.task_id || 'unknown-task';
   const division = 'open_stack';
-  const validity = {
-    completed: 'valid',
-    partial: 'partial_valid',
-    blocked: 'partial_valid',
-    failed: 'invalid',
-    disqualified: 'disqualified',
-  }[status] || 'invalid';
+  const validity =
+    {
+      completed: 'valid',
+      partial: 'partial_valid',
+      blocked: 'partial_valid',
+      failed: 'invalid',
+      disqualified: 'disqualified',
+    }[status] || 'invalid';
 
   const evidence = [
     {
@@ -137,7 +156,8 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
       id: CLI_EVIDENCE_IDS.transcript,
       kind: 'transcript_excerpt',
       source: 'cli terminal transcript',
-      summary: 'Captured terminal transcript of the coding-agent CLI session (redaction applied before persisting).',
+      summary:
+        'Captured terminal transcript of the coding-agent CLI session (redaction applied before persisting).',
       content_ref: 'evidence/cli-transcript.yaml',
       content_type: 'application/x-yaml',
       redacted: false,
@@ -173,7 +193,14 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     },
   ];
 
-  const outputs = buildCommonOutputs(envelope, 'cli', 'cli', 'ops', status, ' CLI agent answer captured.');
+  const outputs = buildCommonOutputs(
+    envelope,
+    'cli',
+    'cli',
+    'ops',
+    status,
+    ' CLI agent answer captured.'
+  );
   if (Object.keys(outputs).length === 0) {
     outputs.cli_report = `[cli-adapter] CLI agent answer. Status: ${status}.`;
   }
@@ -236,7 +263,8 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     tool_use_profile: {
       allowed: ['read', 'write', 'exec'],
       used: ['read', 'exec'],
-      notes: 'Bare coding-agent CLI: workspace-local read/exec. Intentionally avoided: delegate, message, web_search.',
+      notes:
+        'Bare coding-agent CLI: workspace-local read/exec. Intentionally avoided: delegate, message, web_search.',
     },
     operating_policy: {
       approval_boundaries: 'documented',
@@ -270,9 +298,33 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
     },
     summary: `CLI adapter run for task "${taskId}". Solo coding-agent CLI session. Status: ${status}.`,
     actions: [
-      { id: 'act-001', type: 'read', target: 'task_envelope', command_summary: 'Read task envelope from file', redacted: false, duration_seconds: 0.02, evidence_id: CLI_EVIDENCE_IDS.input },
-      { id: 'act-002', type: 'exec', target: 'cli_agent', command_summary: 'Invoke the coding-agent CLI with the public task envelope', redacted: false, duration_seconds: 0.5, evidence_id: CLI_EVIDENCE_IDS.probe },
-      { id: 'act-003', type: 'read', target: 'cli_report', command_summary: 'Capture the CLI agent answer into the result packet', redacted: false, duration_seconds: 0.1, evidence_id: CLI_EVIDENCE_IDS.report },
+      {
+        id: 'act-001',
+        type: 'read',
+        target: 'task_envelope',
+        command_summary: 'Read task envelope from file',
+        redacted: false,
+        duration_seconds: 0.02,
+        evidence_id: CLI_EVIDENCE_IDS.input,
+      },
+      {
+        id: 'act-002',
+        type: 'exec',
+        target: 'cli_agent',
+        command_summary: 'Invoke the coding-agent CLI with the public task envelope',
+        redacted: false,
+        duration_seconds: 0.5,
+        evidence_id: CLI_EVIDENCE_IDS.probe,
+      },
+      {
+        id: 'act-003',
+        type: 'read',
+        target: 'cli_report',
+        command_summary: 'Capture the CLI agent answer into the result packet',
+        redacted: false,
+        duration_seconds: 0.1,
+        evidence_id: CLI_EVIDENCE_IDS.report,
+      },
     ],
     evidence: evidence,
     findings: findings,
@@ -309,7 +361,8 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt) {
         timestamp: startedAt,
         action: 'exec',
         target: 'cli_agent',
-        summary: 'Invoke the coding-agent CLI with the public task envelope and participant-facing fixture paths.',
+        summary:
+          'Invoke the coding-agent CLI with the public task envelope and participant-facing fixture paths.',
         duration_ms: 500,
         result_summary: 'CLI agent session executed; transcript captured.',
         evidence_ref: CLI_EVIDENCE_IDS.probe,
@@ -351,7 +404,8 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt) {
         id: CLI_EVIDENCE_IDS.transcript,
         kind: 'transcript_excerpt',
         source: 'cli terminal transcript',
-        summary: 'Captured terminal transcript of the coding-agent CLI session (redacted before persisting).',
+        summary:
+          'Captured terminal transcript of the coding-agent CLI session (redacted before persisting).',
         content_ref: 'evidence/cli-transcript.yaml',
         content_type: 'application/x-yaml',
         redacted: false,
@@ -402,18 +456,49 @@ function main() {
   const status = STATUS_MAP[exitCode] || 'blocked';
   const endedAt = overrideTimestamp || isoNow();
 
-  const resultPacket = generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
-    model, modelProvider, status, startedAt, endedAt, publishable);
+  const resultPacket = generateResultPacket(
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    runtimeVersion,
+    model,
+    modelProvider,
+    status,
+    startedAt,
+    endedAt,
+    publishable
+  );
   const traceRecord = generateTraceRecord(envelope, runId, agentId, startedAt, endedAt);
   const evidenceBundle = generateEvidenceBundle(envelope, runId, agentId, endedAt);
-  const runMeta = generateCommonRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-    startedAt, endedAt, 'cli', 'ops', runtimeVersion,
-    ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml', 'run.yaml', 'adapter.log'],
+  const runMeta = generateCommonRunMetadata(
+    envelopePath,
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    exitCode,
+    startedAt,
+    endedAt,
+    'cli',
+    'ops',
+    runtimeVersion,
+    [
+      'envelope-copy.yaml',
+      'result-packet.yaml',
+      'trace.yaml',
+      'evidence-bundle.yaml',
+      'run.yaml',
+      'adapter.log',
+    ],
     {
       adapterType: 'cli',
       adapterVersion: '1.0.0',
-      notes: 'CLI adapter skeleton. Solo coding-agent CLI session. The mission wrapper merges real CLI output into these artifacts.',
-    });
+      notes:
+        'CLI adapter skeleton. Solo coding-agent CLI session. The mission wrapper merges real CLI output into these artifacts.',
+    }
+  );
 
   const writeYaml = makeWriteYaml(runDir);
 

@@ -160,7 +160,8 @@ function evaluate(fixture) {
 
   if (!statusReady(timeoutCancel)) blockers.push('timeout/cancel/status mapping is not ready');
   if (!statusReady(artifactFanIn)) blockers.push('artifact fan-in is not ready');
-  if (!statusReady(redaction)) blockers.push('redaction and secret/oracle leak checks are not ready');
+  if (!statusReady(redaction))
+    blockers.push('redaction and secret/oracle leak checks are not ready');
   if (!statusReady(judgeHandoff)) blockers.push('judge handoff/oracle isolation is not ready');
 
   if (blockers.length === 0) {

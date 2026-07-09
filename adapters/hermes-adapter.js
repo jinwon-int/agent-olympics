@@ -84,28 +84,28 @@ const ADAPTER_METADATA = Object.freeze({
 
   /** Event families this adapter can process */
   supported_event_families: [
-    'ops',           // Operations relay — diagnostics, response, monitoring
-    'code',          // Code assist — writing, reviewing, debugging
-    'smoke',         // Smoke test — readiness verification, capability reports
-    'node',          // Node readiness — hardware/software capability matrix
-    'wiki',          // Wiki/runbook — durable knowledge capture
-    'general',       // General purpose agent tasks
-    'coord',         // Coordination drills — multi-agent orchestration
+    'ops', // Operations relay — diagnostics, response, monitoring
+    'code', // Code assist — writing, reviewing, debugging
+    'smoke', // Smoke test — readiness verification, capability reports
+    'node', // Node readiness — hardware/software capability matrix
+    'wiki', // Wiki/runbook — durable knowledge capture
+    'general', // General purpose agent tasks
+    'coord', // Coordination drills — multi-agent orchestration
   ],
 
   /** Required environment variables (described, not exposed) */
   required_environment_variables: [
-    'HERMES_ORCHESTRATOR_URL',    // Hermes orchestrator endpoint
-    'HERMES_API_KEY',             // Hermes orchestrator API key (REDACTED)
-    'AGENT_OLYMPICS_TASK_DIR',    // Task envelope and fixture directory
+    'HERMES_ORCHESTRATOR_URL', // Hermes orchestrator endpoint
+    'HERMES_API_KEY', // Hermes orchestrator API key (REDACTED)
+    'AGENT_OLYMPICS_TASK_DIR', // Task envelope and fixture directory
   ],
 
   /** Optional environment variables with safe descriptions */
   optional_environment_variables: [
-    'HERMES_WORKER_TIMEOUT_SECONDS',   // Max per-worker runtime (default: 300)
-    'HERMES_MAX_CONCURRENT_WORKERS',   // Max parallel workers (default: 3)
-    'HERMES_WORKER_POOL',              // Worker pool config ref (default: stub)
-    'AGENT_OLYMPICS_RUN_DIR',          // Override output directory
+    'HERMES_WORKER_TIMEOUT_SECONDS', // Max per-worker runtime (default: 300)
+    'HERMES_MAX_CONCURRENT_WORKERS', // Max parallel workers (default: 3)
+    'HERMES_WORKER_POOL', // Worker pool config ref (default: stub)
+    'AGENT_OLYMPICS_RUN_DIR', // Override output directory
   ],
 
   /** Redaction rules applied by this adapter */
@@ -138,16 +138,22 @@ const ADAPTER_METADATA = Object.freeze({
 
   /** Evidence kinds this adapter can produce */
   evidence_capabilities: [
-    { kind: 'workflow_plan',       description: 'Task decomposition plan with worker assignments' },
-    { kind: 'worker_trace',        description: 'Individual worker trace with tool calls' },
-    { kind: 'memory_summary',      description: 'Memory retrieval summary per worker (redacted)' },
-    { kind: 'commander_report',    description: 'Synthesized findings after all workers complete' },
-    { kind: 'contradiction_log',   description: 'Log of contradictory worker evidence and resolution' },
-    { kind: 'worker_assignment',   description: 'Worker identifier and assigned subtask' },
-    { kind: 'workflow_state',      description: 'Workflow state transitions (pending → running → completed)' },
-    { kind: 'config_snippet',      description: 'Configuration snippet (no secrets)' },
-    { kind: 'probe_result',        description: 'Workflow or worker readiness probe result' },
-    { kind: 'artifact_hash',       description: 'Content hash for tamper detection' },
+    { kind: 'workflow_plan', description: 'Task decomposition plan with worker assignments' },
+    { kind: 'worker_trace', description: 'Individual worker trace with tool calls' },
+    { kind: 'memory_summary', description: 'Memory retrieval summary per worker (redacted)' },
+    { kind: 'commander_report', description: 'Synthesized findings after all workers complete' },
+    {
+      kind: 'contradiction_log',
+      description: 'Log of contradictory worker evidence and resolution',
+    },
+    { kind: 'worker_assignment', description: 'Worker identifier and assigned subtask' },
+    {
+      kind: 'workflow_state',
+      description: 'Workflow state transitions (pending → running → completed)',
+    },
+    { kind: 'config_snippet', description: 'Configuration snippet (no secrets)' },
+    { kind: 'probe_result', description: 'Workflow or worker readiness probe result' },
+    { kind: 'artifact_hash', description: 'Content hash for tamper detection' },
   ],
 
   /** Timeout handling */
@@ -163,7 +169,8 @@ const ADAPTER_METADATA = Object.freeze({
   /** Adapter modes */
   modes: Object.freeze({
     orchestrator: {
-      description: 'Orchestrator mode — full workflow decomposition with worker dispatch and result synthesis',
+      description:
+        'Orchestrator mode — full workflow decomposition with worker dispatch and result synthesis',
       default_worker_count: 3,
       allowed_worker_profiles: ['stub-small-vps', 'stub-medium-vps'],
       required_evidence: ['workflow_plan', 'worker_assignment', 'commander_report'],
@@ -198,11 +205,17 @@ const CAPABILITY_MATRIX = Object.freeze({
     mode_defaults: { orchestrator: {}, coordinator: {}, simulation: {} },
     applicable_statuses: ['completed', 'partial', 'failed', 'blocked', 'disqualified'],
     required_evidence_per_status: Object.freeze({
-      completed:     ['workflow_plan', 'worker_trace', 'commander_report', 'memory_summary', 'config_snippet'],
-      partial:       ['workflow_plan', 'worker_trace', 'commander_report', 'workflow_state'],
-      failed:        ['workflow_plan', 'worker_trace', 'contradiction_log'],
-      blocked:       ['workflow_plan', 'workflow_state'],
-      disqualified:  ['workflow_plan', 'contradiction_log', 'workflow_state'],
+      completed: [
+        'workflow_plan',
+        'worker_trace',
+        'commander_report',
+        'memory_summary',
+        'config_snippet',
+      ],
+      partial: ['workflow_plan', 'worker_trace', 'commander_report', 'workflow_state'],
+      failed: ['workflow_plan', 'worker_trace', 'contradiction_log'],
+      blocked: ['workflow_plan', 'workflow_state'],
+      disqualified: ['workflow_plan', 'contradiction_log', 'workflow_state'],
     }),
   },
   code: {
@@ -211,9 +224,15 @@ const CAPABILITY_MATRIX = Object.freeze({
     mode_defaults: { orchestrator: {}, simulation: {} },
     applicable_statuses: ['completed', 'partial', 'failed'],
     required_evidence_per_status: Object.freeze({
-      completed: ['workflow_plan', 'worker_trace', 'commander_report', 'memory_summary', 'artifact_hash'],
-      partial:   ['workflow_plan', 'worker_trace', 'commander_report'],
-      failed:    ['workflow_plan', 'worker_trace', 'contradiction_log'],
+      completed: [
+        'workflow_plan',
+        'worker_trace',
+        'commander_report',
+        'memory_summary',
+        'artifact_hash',
+      ],
+      partial: ['workflow_plan', 'worker_trace', 'commander_report'],
+      failed: ['workflow_plan', 'worker_trace', 'contradiction_log'],
     }),
   },
   smoke: {
@@ -223,7 +242,7 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'failed'],
     required_evidence_per_status: Object.freeze({
       completed: ['workflow_plan', 'commander_report', 'probe_result', 'config_snippet'],
-      failed:    ['workflow_plan', 'commander_report', 'contradiction_log'],
+      failed: ['workflow_plan', 'commander_report', 'contradiction_log'],
     }),
   },
   node: {
@@ -233,7 +252,7 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'failed'],
     required_evidence_per_status: Object.freeze({
       completed: ['workflow_plan', 'commander_report', 'config_snippet', 'probe_result'],
-      failed:    ['workflow_plan', 'worker_trace', 'contradiction_log'],
+      failed: ['workflow_plan', 'worker_trace', 'contradiction_log'],
     }),
   },
   wiki: {
@@ -242,9 +261,15 @@ const CAPABILITY_MATRIX = Object.freeze({
     mode_defaults: { orchestrator: {}, simulation: {} },
     applicable_statuses: ['completed', 'partial', 'failed'],
     required_evidence_per_status: Object.freeze({
-      completed: ['workflow_plan', 'worker_trace', 'commander_report', 'memory_summary', 'artifact_hash'],
-      partial:   ['workflow_plan', 'worker_trace', 'commander_report', 'workflow_state'],
-      failed:    ['workflow_plan', 'worker_trace', 'contradiction_log'],
+      completed: [
+        'workflow_plan',
+        'worker_trace',
+        'commander_report',
+        'memory_summary',
+        'artifact_hash',
+      ],
+      partial: ['workflow_plan', 'worker_trace', 'commander_report', 'workflow_state'],
+      failed: ['workflow_plan', 'worker_trace', 'contradiction_log'],
     }),
   },
   general: {
@@ -254,9 +279,9 @@ const CAPABILITY_MATRIX = Object.freeze({
     applicable_statuses: ['completed', 'partial', 'failed', 'blocked'],
     required_evidence_per_status: Object.freeze({
       completed: ['workflow_plan', 'worker_trace', 'commander_report', 'memory_summary'],
-      partial:   ['workflow_plan', 'worker_trace', 'workflow_state'],
-      failed:    ['workflow_plan', 'worker_trace', 'contradiction_log'],
-      blocked:   ['workflow_plan', 'workflow_state'],
+      partial: ['workflow_plan', 'worker_trace', 'workflow_state'],
+      failed: ['workflow_plan', 'worker_trace', 'contradiction_log'],
+      blocked: ['workflow_plan', 'workflow_state'],
     }),
   },
   coord: {
@@ -265,10 +290,16 @@ const CAPABILITY_MATRIX = Object.freeze({
     mode_defaults: { orchestrator: {}, coordinator: {} },
     applicable_statuses: ['completed', 'partial', 'failed', 'disqualified'],
     required_evidence_per_status: Object.freeze({
-      completed:     ['workflow_plan', 'worker_trace', 'commander_report', 'memory_summary', 'contradiction_log'],
-      partial:       ['workflow_plan', 'worker_trace', 'commander_report', 'workflow_state'],
-      failed:        ['workflow_plan', 'worker_trace', 'contradiction_log'],
-      disqualified:  ['workflow_plan', 'contradiction_log', 'workflow_state'],
+      completed: [
+        'workflow_plan',
+        'worker_trace',
+        'commander_report',
+        'memory_summary',
+        'contradiction_log',
+      ],
+      partial: ['workflow_plan', 'worker_trace', 'commander_report', 'workflow_state'],
+      failed: ['workflow_plan', 'worker_trace', 'contradiction_log'],
+      disqualified: ['workflow_plan', 'contradiction_log', 'workflow_state'],
     }),
   },
 });
@@ -283,18 +314,6 @@ const CAPABILITY_MATRIX = Object.freeze({
 // HERMES INTERNAL STATUS MAPPING
 // ---------------------------------------------------------------------------
 // Maps Hermes workflow states to standard result packet statuses.
-
-const HERMES_STATUS_MAP = Object.freeze({
-  workflow_completed_all_outputs_present: 'completed',
-  workflow_completed_some_outputs_missing: 'partial',
-  workflow_timed_out: 'partial',
-  workflow_blocked_worker_assignment: 'blocked',
-  workflow_blocked_memory_retrieval: 'blocked',
-  workflow_blocked_missing_plugin: 'blocked',
-  workflow_produced_wrong_result: 'failed',
-  workflow_contradictory_unresolved: 'failed',
-  value_exposure_detected: 'disqualified',
-});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -326,9 +345,19 @@ function parseArgs() {
       '  --contradictory           Simulate contradictory worker evidence (default: false)',
     ],
     defaults: {
-      exitCode: 0, agentId: 'sogyo', runtime: 'hermes', runtimeVersion: '1.0.0',
-      mode: 'orchestrator', eventFamily: 'ops', model: 'gpt-5.x', modelProvider: 'openai',
-      seed: null, timestamp: null, runDir: null, publishable: false, contradictory: false,
+      exitCode: 0,
+      agentId: 'sogyo',
+      runtime: 'hermes',
+      runtimeVersion: '1.0.0',
+      mode: 'orchestrator',
+      eventFamily: 'ops',
+      model: 'gpt-5.x',
+      modelProvider: 'openai',
+      seed: null,
+      timestamp: null,
+      runDir: null,
+      publishable: false,
+      contradictory: false,
     },
     options: {
       ...RUNTIME_ADAPTER_OPTIONS,
@@ -365,24 +394,39 @@ function parseArgs() {
  * Workflow outcome                 → status
  * Redacted data notes              → actions[].redacted, actions[].redaction_reason
  */
-function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
-  mode, eventFamily, model, modelProvider, status, startedAt, endedAt,
-  seed, publishable, contradictory) {
-
+function generateResultPacket(
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  runtimeVersion,
+  mode,
+  eventFamily,
+  model,
+  modelProvider,
+  status,
+  startedAt,
+  endedAt,
+  seed,
+  publishable,
+  contradictory
+) {
   const taskId = envelope.task_id || 'unknown-task';
   const workflowId = generateWorkflowId(taskId, agentId, seed, startedAt);
-  const division = {
-    orchestrator: 'open_stack',
-    coordinator: 'closed_stack',
-    simulation: 'open_stack',
-  }[mode] || 'open_stack';
-  const validity = {
-    completed: 'valid',
-    partial: 'partial_valid',
-    blocked: 'partial_valid',
-    failed: 'invalid',
-    disqualified: 'disqualified',
-  }[status] || 'invalid';
+  const division =
+    {
+      orchestrator: 'open_stack',
+      coordinator: 'closed_stack',
+      simulation: 'open_stack',
+    }[mode] || 'open_stack';
+  const validity =
+    {
+      completed: 'valid',
+      partial: 'partial_valid',
+      blocked: 'partial_valid',
+      failed: 'invalid',
+      disqualified: 'disqualified',
+    }[status] || 'invalid';
 
   // Build workflow plan summary
   const stepCount = getStepCountForFamily(eventFamily);
@@ -413,7 +457,15 @@ function generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
   const actions = buildActions(mode, eventFamily, status, contradictory);
 
   // Build evidence items including workflow plan, worker traces, memory summaries
-  const evidence = buildEvidence(mode, eventFamily, runId, workflowId, status, contradictory, stepCount);
+  const evidence = buildEvidence(
+    mode,
+    eventFamily,
+    runId,
+    workflowId,
+    status,
+    contradictory,
+    stepCount
+  );
 
   // Build findings
   const findings = buildFindings(taskId, workflowId, status, eventFamily, contradictory);
@@ -550,15 +602,37 @@ function getWorkerCountForMode(mode, eventFamily) {
 }
 
 function getWorkerProfilesForMode(mode) {
-  return ADAPTER_METADATA.modes[mode] ? ADAPTER_METADATA.modes[mode].allowed_worker_profiles : ['stub-small-vps'];
+  return ADAPTER_METADATA.modes[mode]
+    ? ADAPTER_METADATA.modes[mode].allowed_worker_profiles
+    : ['stub-small-vps'];
 }
 
 function buildToolUseProfile(mode) {
   const profiles = {
     orchestrator: {
-      allowed: ['read', 'write', 'exec', 'message', 'api_call', 'web_search', 'web_fetch', 'delegate', 'sessions_spawn'],
-      used: ['read', 'write', 'exec', 'message', 'web_search', 'web_fetch', 'delegate', 'sessions_spawn'],
-      notes: 'Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided: manual.',
+      allowed: [
+        'read',
+        'write',
+        'exec',
+        'message',
+        'api_call',
+        'web_search',
+        'web_fetch',
+        'delegate',
+        'sessions_spawn',
+      ],
+      used: [
+        'read',
+        'write',
+        'exec',
+        'message',
+        'web_search',
+        'web_fetch',
+        'delegate',
+        'sessions_spawn',
+      ],
+      notes:
+        'Orchestrator mode allows broad tool classes under the adapter safety policy. Intentionally avoided: manual.',
     },
     coordinator: {
       allowed: ['read', 'write', 'message', 'delegate'],
@@ -789,8 +863,14 @@ function buildFindings(taskId, workflowId, status, eventFamily, contradictory) {
 }
 
 function buildOutputs(envelope, mode, eventFamily, status) {
-  const outputs = buildCommonOutputs(envelope, 'hermes', mode, eventFamily, status,
-    ' Commander report synthesized.');
+  const outputs = buildCommonOutputs(
+    envelope,
+    'hermes',
+    mode,
+    eventFamily,
+    status,
+    ' Commander report synthesized.'
+  );
   if (Object.keys(outputs).length === 0) {
     outputs.commander_report = `[hermes-adapter:${mode}/${eventFamily}] Commander report. Status: ${status}.`;
   }
@@ -814,8 +894,17 @@ function buildOutputs(envelope, mode, eventFamily, status) {
  * Evidence cross-ref              → entries[].evidence_ref
  * Duration per action             → entries[].duration_ms
  */
-function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode, eventFamily, status, contradictory) {
-  const now = isoNow();
+function generateTraceRecord(
+  envelope,
+  runId,
+  agentId,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily,
+  status,
+  contradictory
+) {
   const entries = [
     {
       seq: 0,
@@ -982,7 +1071,17 @@ function generateTraceRecord(envelope, runId, agentId, startedAt, endedAt, mode,
  * Contradiction log YAML       → items[].kind=contradiction_log
  * Commander report YAML        → items[].kind=commander_report
  */
-function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFamily, status, contradictory, workflowId) {
+function generateEvidenceBundle(
+  envelope,
+  runId,
+  agentId,
+  endedAt,
+  mode,
+  eventFamily,
+  status,
+  contradictory,
+  _workflowId
+) {
   const items = [
     {
       id: 'ev-session-input',
@@ -1002,7 +1101,12 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       id: 'ev-workflow-plan',
       kind: 'workflow_plan',
       source: 'hermes workflow engine',
-      summary: 'Workflow plan with ' + getStepCountForFamily(eventFamily) + ' steps for event family "' + eventFamily + '"',
+      summary:
+        'Workflow plan with ' +
+        getStepCountForFamily(eventFamily) +
+        ' steps for event family "' +
+        eventFamily +
+        '"',
       content_ref: 'evidence/workflow-plan.yaml',
       content_type: 'application/x-yaml',
       size_bytes: 2560,
@@ -1016,7 +1120,8 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
       id: 'ev-worker-traces',
       kind: 'worker_trace',
       source: 'worker execution traces',
-      summary: 'Consolidated tool traces from ' + getWorkerCountForMode(mode, eventFamily) + ' workers',
+      summary:
+        'Consolidated tool traces from ' + getWorkerCountForMode(mode, eventFamily) + ' workers',
       content_ref: 'evidence/worker-traces.yaml',
       content_type: 'application/x-yaml',
       size_bytes: 4096,
@@ -1107,7 +1212,17 @@ function generateEvidenceBundle(envelope, runId, agentId, endedAt, mode, eventFa
  * Retention policy               → retention_policy
  * Runner metadata                → run_metadata
  */
-function generateManifest(runId, taskId, agentId, envelope, status, startedAt, endedAt, mode, eventFamily) {
+function generateManifest(
+  runId,
+  taskId,
+  agentId,
+  envelope,
+  status,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily
+) {
   return {
     schema_version: 1,
     manifest_id: `am-${runId}`,
@@ -1119,9 +1234,13 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
     created_at: startedAt,
     updated_at: endedAt,
     status_history: [
-      { status: 'pending',   timestamp: startedAt, note: 'Run directory created' },
-      { status: 'running',   timestamp: startedAt, note: `Hermes adapter execution started (mode: ${mode}, event: ${eventFamily})` },
-      { status: status,      timestamp: endedAt,   note: `Hermes adapter completed: ${status}` },
+      { status: 'pending', timestamp: startedAt, note: 'Run directory created' },
+      {
+        status: 'running',
+        timestamp: startedAt,
+        note: `Hermes adapter execution started (mode: ${mode}, event: ${eventFamily})`,
+      },
+      { status: status, timestamp: endedAt, note: `Hermes adapter completed: ${status}` },
     ],
     artifacts: [
       {
@@ -1218,14 +1337,41 @@ function generateManifest(runId, taskId, agentId, envelope, status, startedAt, e
   };
 }
 
-function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-  startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths) {
-  return generateCommonRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-    startedAt, endedAt, mode, eventFamily, runtimeVersion, artifactPaths, {
+function generateRunMetadata(
+  envelopePath,
+  envelope,
+  runId,
+  agentId,
+  runtime,
+  status,
+  exitCode,
+  startedAt,
+  endedAt,
+  mode,
+  eventFamily,
+  runtimeVersion,
+  artifactPaths
+) {
+  return generateCommonRunMetadata(
+    envelopePath,
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    exitCode,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily,
+    runtimeVersion,
+    artifactPaths,
+    {
       adapterType: 'hermes-orchestrator',
       adapterVersion: ADAPTER_METADATA.adapter_version,
       notes: `Hermes adapter run for lane 1/3 (sogyo). Adapter metadata, artifact mapping, capabilities, workflow plan, and validation examples. Mode: ${mode}, Event family: ${eventFamily}.`,
-    });
+    }
+  );
 }
 
 /**
@@ -1234,21 +1380,98 @@ function generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, st
 function generateWorkflowPlanContent(eventFamily, workflowId, stepCount) {
   const stepTemplates = {
     ops: [
-      { step_id: 's1-connectivity', description: 'Check gateway connectivity and TLS certificate validity', worker_count: 1, worker_profile: 'stub-small-vps', expected_duration_seconds: 30, depends_on: [] },
-      { step_id: 's2-config-integrity', description: 'Fetch and hash the current gateway configuration file', worker_count: 1, worker_profile: 'stub-medium-vps', expected_duration_seconds: 15, depends_on: ['s1-connectivity'] },
-      { step_id: 's3-log-inspection', description: 'Inspect gateway logs for 5xx errors in last 24 hours', worker_count: 2, worker_profile: 'stub-medium-vps', expected_duration_seconds: 60, depends_on: ['s1-connectivity'] },
-      { step_id: 's4-synthesis', description: 'Merge results from all prior steps into final report', worker_count: 1, worker_profile: 'stub-small-vps', expected_duration_seconds: 10, depends_on: ['s2-config-integrity', 's3-log-inspection'] },
+      {
+        step_id: 's1-connectivity',
+        description: 'Check gateway connectivity and TLS certificate validity',
+        worker_count: 1,
+        worker_profile: 'stub-small-vps',
+        expected_duration_seconds: 30,
+        depends_on: [],
+      },
+      {
+        step_id: 's2-config-integrity',
+        description: 'Fetch and hash the current gateway configuration file',
+        worker_count: 1,
+        worker_profile: 'stub-medium-vps',
+        expected_duration_seconds: 15,
+        depends_on: ['s1-connectivity'],
+      },
+      {
+        step_id: 's3-log-inspection',
+        description: 'Inspect gateway logs for 5xx errors in last 24 hours',
+        worker_count: 2,
+        worker_profile: 'stub-medium-vps',
+        expected_duration_seconds: 60,
+        depends_on: ['s1-connectivity'],
+      },
+      {
+        step_id: 's4-synthesis',
+        description: 'Merge results from all prior steps into final report',
+        worker_count: 1,
+        worker_profile: 'stub-small-vps',
+        expected_duration_seconds: 10,
+        depends_on: ['s2-config-integrity', 's3-log-inspection'],
+      },
     ],
     code: [
-      { step_id: 's1-analysis', description: 'Analyze codebase structure and identify regression points', worker_count: 1, worker_profile: 'stub-medium-vps', expected_duration_seconds: 45, depends_on: [] },
-      { step_id: 's2-fix', description: 'Apply regression fixes to identified test files', worker_count: 2, worker_profile: 'stub-medium-vps', expected_duration_seconds: 120, depends_on: ['s1-analysis'] },
-      { step_id: 's3-verify', description: 'Run type-checking and test suite to verify fixes', worker_count: 1, worker_profile: 'stub-small-vps', expected_duration_seconds: 60, depends_on: ['s2-fix'] },
+      {
+        step_id: 's1-analysis',
+        description: 'Analyze codebase structure and identify regression points',
+        worker_count: 1,
+        worker_profile: 'stub-medium-vps',
+        expected_duration_seconds: 45,
+        depends_on: [],
+      },
+      {
+        step_id: 's2-fix',
+        description: 'Apply regression fixes to identified test files',
+        worker_count: 2,
+        worker_profile: 'stub-medium-vps',
+        expected_duration_seconds: 120,
+        depends_on: ['s1-analysis'],
+      },
+      {
+        step_id: 's3-verify',
+        description: 'Run type-checking and test suite to verify fixes',
+        worker_count: 1,
+        worker_profile: 'stub-small-vps',
+        expected_duration_seconds: 60,
+        depends_on: ['s2-fix'],
+      },
     ],
     coord: [
-      { step_id: 's1-commander-brief', description: 'Commander agent receives and parses task objective', worker_count: 1, worker_profile: 'stub-small-vps', expected_duration_seconds: 20, depends_on: [] },
-      { step_id: 's2-subtask-scatter', description: 'Decompose objective into parallel subtask assignments', worker_count: 1, worker_profile: 'stub-medium-vps', expected_duration_seconds: 30, depends_on: ['s1-commander-brief'] },
-      { step_id: 's3-worker-execution', description: 'Workers execute assigned subtasks in parallel', worker_count: 3, worker_profile: 'stub-medium-vps', expected_duration_seconds: 180, depends_on: ['s2-subtask-scatter'] },
-      { step_id: 's4-gather-report', description: 'Commander gathers results and produces final report', worker_count: 1, worker_profile: 'stub-small-vps', expected_duration_seconds: 30, depends_on: ['s3-worker-execution'] },
+      {
+        step_id: 's1-commander-brief',
+        description: 'Commander agent receives and parses task objective',
+        worker_count: 1,
+        worker_profile: 'stub-small-vps',
+        expected_duration_seconds: 20,
+        depends_on: [],
+      },
+      {
+        step_id: 's2-subtask-scatter',
+        description: 'Decompose objective into parallel subtask assignments',
+        worker_count: 1,
+        worker_profile: 'stub-medium-vps',
+        expected_duration_seconds: 30,
+        depends_on: ['s1-commander-brief'],
+      },
+      {
+        step_id: 's3-worker-execution',
+        description: 'Workers execute assigned subtasks in parallel',
+        worker_count: 3,
+        worker_profile: 'stub-medium-vps',
+        expected_duration_seconds: 180,
+        depends_on: ['s2-subtask-scatter'],
+      },
+      {
+        step_id: 's4-gather-report',
+        description: 'Commander gathers results and produces final report',
+        worker_count: 1,
+        worker_profile: 'stub-small-vps',
+        expected_duration_seconds: 30,
+        depends_on: ['s3-worker-execution'],
+      },
     ],
   };
 
@@ -1282,10 +1505,29 @@ function generateWorkerTracesContent(eventFamily, workerCount) {
       step_id: `s1-${eventFamily}`,
       worker_id: `worker-${String.fromCharCode(97 + i)}`,
       timeline: [
-        { event: 'task_received', timestamp: isoNow(), detail: { envelope_ref: 'env-demo', step_description: `Worker ${i + 1} task for ${eventFamily}` } },
-        { event: 'tool_invocation_start', timestamp: isoNow(), detail: { tool_name: 'read_file', arguments: { path: '/var/log/sample.log' } } },
-        { event: 'tool_invocation_end', timestamp: isoNow(), detail: { tool_name: 'read_file', status: 'success', bytes_read: 8192 } },
-        { event: 'result_produced', timestamp: isoNow(), detail: { output_ref: `s1-${eventFamily}`, evidence_ref: `ev-worker-${i}` } },
+        {
+          event: 'task_received',
+          timestamp: isoNow(),
+          detail: {
+            envelope_ref: 'env-demo',
+            step_description: `Worker ${i + 1} task for ${eventFamily}`,
+          },
+        },
+        {
+          event: 'tool_invocation_start',
+          timestamp: isoNow(),
+          detail: { tool_name: 'read_file', arguments: { path: '/var/log/sample.log' } },
+        },
+        {
+          event: 'tool_invocation_end',
+          timestamp: isoNow(),
+          detail: { tool_name: 'read_file', status: 'success', bytes_read: 8192 },
+        },
+        {
+          event: 'result_produced',
+          timestamp: isoNow(),
+          detail: { output_ref: `s1-${eventFamily}`, evidence_ref: `ev-worker-${i}` },
+        },
       ],
       classification: 'complete',
     });
@@ -1306,14 +1548,39 @@ function generateMemorySummaryContent(workerCount) {
       workflow_id: 'wf-demo',
       retrieved_at: isoNow(),
       memory_sources_consulted: [
-        { source: 'worker_session_cache', keys_requested: ['previous_results', 'known_patterns'], keys_found: ['known_patterns'], keys_not_found: ['previous_results'] },
-        { source: 'shared_workflow_memory', keys_requested: ['config_paths'], keys_found: ['config_paths'], keys_not_found: [] },
+        {
+          source: 'worker_session_cache',
+          keys_requested: ['previous_results', 'known_patterns'],
+          keys_found: ['known_patterns'],
+          keys_not_found: ['previous_results'],
+        },
+        {
+          source: 'shared_workflow_memory',
+          keys_requested: ['config_paths'],
+          keys_found: ['config_paths'],
+          keys_not_found: [],
+        },
       ],
       memory_content_retrieved: [
-        { key: 'known_patterns', summary: 'Common patterns for this task type', value_type: 'reference_knowledge', approximate_size_chars: 1024 },
-        { key: 'config_paths', summary: 'Standard configuration paths', value_type: 'reference_knowledge', approximate_size_chars: 512 },
+        {
+          key: 'known_patterns',
+          summary: 'Common patterns for this task type',
+          value_type: 'reference_knowledge',
+          approximate_size_chars: 1024,
+        },
+        {
+          key: 'config_paths',
+          summary: 'Standard configuration paths',
+          value_type: 'reference_knowledge',
+          approximate_size_chars: 512,
+        },
       ],
-      usage_notes: { total_keys_requested: 3, total_keys_found: 2, cache_hit_ratio: 0.67, notes: 'Memory partially cached' },
+      usage_notes: {
+        total_keys_requested: 3,
+        total_keys_found: 2,
+        cache_hit_ratio: 0.67,
+        notes: 'Memory partially cached',
+      },
     });
   }
   return { memory_summaries: summaries };
@@ -1334,7 +1601,8 @@ function generateContradictionLog() {
         evidence_a: { key: 'config_hash', value: 'abc123def456' },
         evidence_b: { key: 'config_hash', value: '789ghi012jkl' },
         resolution_status: 'unresolved',
-        resolution_notes: 'Workers inspected different config file versions or deployment slots. Requires human operator to verify which is current.',
+        resolution_notes:
+          'Workers inspected different config file versions or deployment slots. Requires human operator to verify which is current.',
       },
       {
         contradiction_id: 'c-002',
@@ -1344,7 +1612,8 @@ function generateContradictionLog() {
         evidence_a: { key: 'config_path_timestamp', value: '2026-05-28T22:00:00Z' },
         evidence_b: { key: 'config_path_timestamp', value: '2026-05-29T08:00:00Z' },
         resolution_status: 'unresolved',
-        resolution_notes: 'Timestamp discrepancy suggests memory cache invalidation between worker dispatches.',
+        resolution_notes:
+          'Timestamp discrepancy suggests memory cache invalidation between worker dispatches.',
       },
     ],
   };
@@ -1363,11 +1632,25 @@ function generateCommanderReport(eventFamily, workerCount, contradictory) {
     contradictions_resolved: 0,
     summary: `Commander synthesis for ${eventFamily} task. ${contradictory ? 'Contradictions detected and logged for human resolution.' : 'All worker results merged cleanly.'}`,
     merged_findings: [
-      { finding_id: 'f-001', source_worker: 'all', description: 'Task-level analysis complete across all workers', confidence: contradictory ? 'medium' : 'high' },
-      { finding_id: 'f-002', source_worker: 'worker-alpha', description: 'Initial connectivity and configuration inspected', confidence: 'high' },
+      {
+        finding_id: 'f-001',
+        source_worker: 'all',
+        description: 'Task-level analysis complete across all workers',
+        confidence: contradictory ? 'medium' : 'high',
+      },
+      {
+        finding_id: 'f-002',
+        source_worker: 'worker-alpha',
+        description: 'Initial connectivity and configuration inspected',
+        confidence: 'high',
+      },
     ],
     recommendations: contradictory
-      ? ['Resolve config hash contradiction before proceeding', 'Verify active deployment slot', 'Check memory cache invalidation policy']
+      ? [
+          'Resolve config hash contradiction before proceeding',
+          'Verify active deployment slot',
+          'Check memory cache invalidation policy',
+        ]
       : ['All checks passed', 'No action required'],
   };
 }
@@ -1412,7 +1695,8 @@ function main() {
   const workflowId = generateWorkflowId(taskId, agentId, seed, startedAt);
 
   // --- Determine output directory (with evidence subdirectory) ---
-  const runDir = opts.runDir || path.resolve(__dirname, '..', 'results', `hermes-${taskId}-${runId}`);
+  const runDir =
+    opts.runDir || path.resolve(__dirname, '..', 'results', `hermes-${taskId}-${runId}`);
   ensureRunDir(runDir, true);
 
   // --- Capture stdout/stderr ---
@@ -1423,19 +1707,79 @@ function main() {
   const endedAt = overrideTimestamp || isoNow();
 
   // --- Generate output artifacts ---
-  const resultPacket = generateResultPacket(envelope, runId, agentId, runtime, runtimeVersion,
-    mode, eventFamily, model, modelProvider, status, startedAt, endedAt,
-    seed, publishable, contradictory);
-  const traceRecord = generateTraceRecord(envelope, runId, agentId, startedAt, endedAt,
-    mode, eventFamily, status, contradictory);
-  const evidenceBundle = generateEvidenceBundle(envelope, runId, agentId, endedAt,
-    mode, eventFamily, status, contradictory, workflowId);
-  const manifest = generateManifest(runId, taskId, agentId, envelope, status, startedAt, endedAt,
-    mode, eventFamily);
-  const runMeta = generateRunMetadata(envelopePath, envelope, runId, agentId, runtime, status, exitCode,
-    startedAt, endedAt, mode, eventFamily, runtimeVersion,
-    ['envelope-copy.yaml', 'result-packet.yaml', 'trace.yaml', 'evidence-bundle.yaml',
-      'manifest.yaml', 'run.yaml', 'adapter.log']);
+  const resultPacket = generateResultPacket(
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    runtimeVersion,
+    mode,
+    eventFamily,
+    model,
+    modelProvider,
+    status,
+    startedAt,
+    endedAt,
+    seed,
+    publishable,
+    contradictory
+  );
+  const traceRecord = generateTraceRecord(
+    envelope,
+    runId,
+    agentId,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily,
+    status,
+    contradictory
+  );
+  const evidenceBundle = generateEvidenceBundle(
+    envelope,
+    runId,
+    agentId,
+    endedAt,
+    mode,
+    eventFamily,
+    status,
+    contradictory,
+    workflowId
+  );
+  const manifest = generateManifest(
+    runId,
+    taskId,
+    agentId,
+    envelope,
+    status,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily
+  );
+  const runMeta = generateRunMetadata(
+    envelopePath,
+    envelope,
+    runId,
+    agentId,
+    runtime,
+    status,
+    exitCode,
+    startedAt,
+    endedAt,
+    mode,
+    eventFamily,
+    runtimeVersion,
+    [
+      'envelope-copy.yaml',
+      'result-packet.yaml',
+      'trace.yaml',
+      'evidence-bundle.yaml',
+      'manifest.yaml',
+      'run.yaml',
+      'adapter.log',
+    ]
+  );
 
   // Generate evidence sub-files
   const stepCount = getStepCountForFamily(eventFamily);
@@ -1463,7 +1807,10 @@ function main() {
   }
 
   if (status === 'completed') {
-    writeYaml('evidence/commander-report.yaml', generateCommanderReport(eventFamily, workerCount, contradictory));
+    writeYaml(
+      'evidence/commander-report.yaml',
+      generateCommanderReport(eventFamily, workerCount, contradictory)
+    );
   }
 
   writeYaml('envelope-copy.yaml', envelope);
@@ -1475,7 +1822,11 @@ function main() {
   // --- Self-validate (still captured into the adapter log) ---
   const validatePassed = validateOutput(runDir);
   const missingEvidence = checkRequiredEvidence(
-    resultPacket, CAPABILITY_MATRIX[eventFamily], status, 'hermes-adapter');
+    resultPacket,
+    CAPABILITY_MATRIX[eventFamily],
+    status,
+    'hermes-adapter'
+  );
 
   // run.yaml is written after validation so the outcome can be recorded
   // alongside the run metadata (run.yaml itself is not schema-validated).

@@ -148,68 +148,59 @@ function iterationToPacket(iter, report, options) {
 
   // --- Build evidence from raw measurements ---
   const evidence = [];
-  let evCount = 0;
 
   // Wall time evidence
   if (raw.wall_time_seconds != null) {
-    evCount++;
-    evidence.push(measurementEvidence(
-      `ev-wall-time-iter${iterNum}`,
-      'wall_time_seconds',
-      raw.wall_time_seconds
-    ));
+    evidence.push(
+      measurementEvidence(`ev-wall-time-iter${iterNum}`, 'wall_time_seconds', raw.wall_time_seconds)
+    );
   }
 
   // Phase timings as evidence
   for (const [phase, seconds] of Object.entries(phaseTimings)) {
     if (seconds != null) {
-      evCount++;
-      evidence.push(measurementEvidence(
-        `ev-${phase}-iter${iterNum}`,
-        phase,
-        seconds
-      ));
+      evidence.push(measurementEvidence(`ev-${phase}-iter${iterNum}`, phase, seconds));
     }
   }
 
   // Probe-related evidence
   if (raw.raw_probe_count != null) {
-    evCount++;
-    evidence.push(measurementEvidence(
-      `ev-probes-iter${iterNum}`,
-      'raw_probe_count',
-      raw.raw_probe_count
-    ));
+    evidence.push(
+      measurementEvidence(`ev-probes-iter${iterNum}`, 'raw_probe_count', raw.raw_probe_count)
+    );
   }
 
   // Test throughput
   if (raw.raw_test_throughput != null) {
-    evCount++;
-    evidence.push(measurementEvidence(
-      `ev-test-throughput-iter${iterNum}`,
-      'raw_test_throughput',
-      raw.raw_test_throughput
-    ));
+    evidence.push(
+      measurementEvidence(
+        `ev-test-throughput-iter${iterNum}`,
+        'raw_test_throughput',
+        raw.raw_test_throughput
+      )
+    );
   }
 
   // Validation latency
   if (raw.raw_validation_latency_ms != null) {
-    evCount++;
-    evidence.push(measurementEvidence(
-      `ev-val-latency-iter${iterNum}`,
-      'raw_validation_latency_ms',
-      raw.raw_validation_latency_ms
-    ));
+    evidence.push(
+      measurementEvidence(
+        `ev-val-latency-iter${iterNum}`,
+        'raw_validation_latency_ms',
+        raw.raw_validation_latency_ms
+      )
+    );
   }
 
   // Scored efficiency
   if (scored.efficiency_score != null) {
-    evCount++;
-    evidence.push(measurementEvidence(
-      `ev-efficiency-iter${iterNum}`,
-      'efficiency_score',
-      scored.efficiency_score
-    ));
+    evidence.push(
+      measurementEvidence(
+        `ev-efficiency-iter${iterNum}`,
+        'efficiency_score',
+        scored.efficiency_score
+      )
+    );
   }
 
   // Ensure we have at least 1 evidence item
@@ -224,49 +215,57 @@ function iterationToPacket(iter, report, options) {
 
   // --- Build findings ---
   const findings = [];
-  const findingEvidenceIds = evidence.map(e => e.id);
+  const findingEvidenceIds = evidence.map((e) => e.id);
 
   // Core completion finding
-  const wallDesc = raw.wall_time_seconds != null
-    ? ` in ${raw.wall_time_seconds}s wall time`
-    : '';
-  findings.push(measurementFinding(
-    `Iteration ${iterNum} of perf-001 workload completed${wallDesc}.`,
-    findingEvidenceIds,
-    'high'
-  ));
+  const wallDesc = raw.wall_time_seconds != null ? ` in ${raw.wall_time_seconds}s wall time` : '';
+  findings.push(
+    measurementFinding(
+      `Iteration ${iterNum} of perf-001 workload completed${wallDesc}.`,
+      findingEvidenceIds,
+      'high'
+    )
+  );
 
   // Raw/scored separation finding
-  findings.push(measurementFinding(
-    'Raw/scored separation maintained — no namespace collision detected.',
-    findingEvidenceIds,
-    'high'
-  ));
+  findings.push(
+    measurementFinding(
+      'Raw/scored separation maintained — no namespace collision detected.',
+      findingEvidenceIds,
+      'high'
+    )
+  );
 
   // Phase-specific findings
   if (raw.raw_test_throughput != null) {
-    findings.push(measurementFinding(
-      `Test throughput: ${raw.raw_test_throughput} tests/s.`,
-      ['ev-test-throughput-iter' + iterNum],
-      'high'
-    ));
+    findings.push(
+      measurementFinding(
+        `Test throughput: ${raw.raw_test_throughput} tests/s.`,
+        ['ev-test-throughput-iter' + iterNum],
+        'high'
+      )
+    );
   }
 
   if (raw.raw_validation_latency_ms != null) {
-    findings.push(measurementFinding(
-      `Validation latency: ${raw.raw_validation_latency_ms} ms per file.`,
-      ['ev-val-latency-iter' + iterNum],
-      'high'
-    ));
+    findings.push(
+      measurementFinding(
+        `Validation latency: ${raw.raw_validation_latency_ms} ms per file.`,
+        ['ev-val-latency-iter' + iterNum],
+        'high'
+      )
+    );
   }
 
   if (scored.efficiency_score != null) {
     const normDesc = scored.normalization || 'standard normalization';
-    findings.push(measurementFinding(
-      `Efficiency score: ${scored.efficiency_score} (normalized via ${normDesc}).`,
-      ['ev-efficiency-iter' + iterNum],
-      'high'
-    ));
+    findings.push(
+      measurementFinding(
+        `Efficiency score: ${scored.efficiency_score} (normalized via ${normDesc}).`,
+        ['ev-efficiency-iter' + iterNum],
+        'high'
+      )
+    );
   }
 
   // --- Build comparability caveats from iteration caveats ---
@@ -361,7 +360,8 @@ function iterationToPacket(iter, report, options) {
     started_at: now,
     ended_at: now,
     status: 'completed',
-    summary: `perf-harness iteration ${iterNum}: completed ${report.iterations_total || 1} iteration(s). ` +
+    summary:
+      `perf-harness iteration ${iterNum}: completed ${report.iterations_total || 1} iteration(s). ` +
       `Wall time: ${raw.wall_time_seconds != null ? raw.wall_time_seconds + 's' : 'N/A'}. ` +
       `Efficiency: ${scored.efficiency_score != null ? scored.efficiency_score : 'N/A'}. ` +
       `Caveats: ${comparabilityCaveats.length} noted.`,
@@ -370,7 +370,8 @@ function iterationToPacket(iter, report, options) {
     findings,
     outputs: {
       workload_metrics: { ...raw },
-      workload_summary: `Iteration ${iterNum} of perf-001 workload completed. ` +
+      workload_summary:
+        `Iteration ${iterNum} of perf-001 workload completed. ` +
         `Efficiency score: ${scored.efficiency_score != null ? scored.efficiency_score : 'N/A'}.`,
     },
     risks: [
@@ -420,7 +421,8 @@ function summaryToPacket(report, options) {
   // Build evidence from summary statistics
   const evidence = [];
   const statKeys = Object.keys(stats);
-  for (const key of statKeys.slice(0, 15)) {  // limit to avoid bloated packet
+  for (const key of statKeys.slice(0, 15)) {
+    // limit to avoid bloated packet
     const s = stats[key];
     if (s && s.mean !== undefined) {
       evidence.push({
@@ -442,7 +444,7 @@ function summaryToPacket(report, options) {
   }
 
   // Build findings
-  const allEvidenceIds = evidence.map(e => e.id);
+  const allEvidenceIds = evidence.map((e) => e.id);
   const findings = [
     measurementFinding(
       `${iterCount} iterations of perf-001 workload completed. Summary statistics available for ${statKeys.length} metrics.`,
@@ -457,19 +459,23 @@ function summaryToPacket(report, options) {
   ];
 
   // Add variance-related findings
-  const highVarMetrics = statKeys.filter(k => stats[k] && stats[k].cv > 0.3);
+  const highVarMetrics = statKeys.filter((k) => stats[k] && stats[k].cv > 0.3);
   if (highVarMetrics.length > 0) {
-    findings.push(measurementFinding(
-      `High variance detected (CV > 0.3) in: ${highVarMetrics.join(', ')}. Interpret with caution.`,
-      allEvidenceIds,
-      'medium'
-    ));
+    findings.push(
+      measurementFinding(
+        `High variance detected (CV > 0.3) in: ${highVarMetrics.join(', ')}. Interpret with caution.`,
+        allEvidenceIds,
+        'medium'
+      )
+    );
   } else {
-    findings.push(measurementFinding(
-      'All metrics show low variance (CV < 0.3) — measurements are stable.',
-      allEvidenceIds,
-      'high'
-    ));
+    findings.push(
+      measurementFinding(
+        'All metrics show low variance (CV < 0.3) — measurements are stable.',
+        allEvidenceIds,
+        'high'
+      )
+    );
   }
 
   // Build comparability caveats from harness-level caveats
@@ -704,17 +710,20 @@ function main() {
       // (preferring .json over .yaml), so callers don't need a fragile shell
       // glob to guess the extension (#269).
       if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
-        const reports = fs.readdirSync(resolved)
+        const reports = fs
+          .readdirSync(resolved)
           .filter((f) => /^perf-harness-report-.*\.(json|ya?ml)$/.test(f))
           .sort((a, b) => {
             const aj = a.endsWith('.json');
             const bj = b.endsWith('.json');
             if (aj !== bj) return aj ? -1 : 1; // .json first
-            return a < b ? 1 : -1;             // newest name last -> first
+            return a < b ? 1 : -1; // newest name last -> first
           })
           .map((f) => path.join(resolved, f));
         if (reports.length === 0) {
-          console.error(`ERROR: No perf-harness-report-*.{json,yaml} found in directory: ${resolved}`);
+          console.error(
+            `ERROR: No perf-harness-report-*.{json,yaml} found in directory: ${resolved}`
+          );
           process.exit(1);
         }
         reportFiles.push(reports[0]);
@@ -765,7 +774,9 @@ function main() {
     }
 
     if (!report.hardware_profile && !report.runtime_profile) {
-      console.warn('⚠  Report missing hardware_profile and runtime_profile. These fields are recommended.');
+      console.warn(
+        '⚠  Report missing hardware_profile and runtime_profile. These fields are recommended.'
+      );
     }
 
     if (!quiet) {
@@ -780,7 +791,9 @@ function main() {
       const filePath = writePacket(packet, outputDir);
       writtenFiles.push(filePath);
       if (verbose && !quiet) {
-        console.log(`  Iteration ${iter.iteration}: ${filePath} (evidence=${packet.evidence.length}, findings=${packet.findings.length})`);
+        console.log(
+          `  Iteration ${iter.iteration}: ${filePath} (evidence=${packet.evidence.length}, findings=${packet.findings.length})`
+        );
       }
     }
 
@@ -790,7 +803,9 @@ function main() {
       const summaryPath = writePacket(summaryPacket, outputDir);
       writtenFiles.push(summaryPath);
       if (verbose && !quiet) {
-        console.log(`  Summary:   ${summaryPath} (evidence=${summaryPacket.evidence.length}, findings=${summaryPacket.findings.length})`);
+        console.log(
+          `  Summary:   ${summaryPath} (evidence=${summaryPacket.evidence.length}, findings=${summaryPacket.findings.length})`
+        );
       }
     }
   }

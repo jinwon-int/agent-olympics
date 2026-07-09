@@ -1,0 +1,11 @@
+node_modules
+fixtures
+results
+runs
+evidence
+archive
+.tmp
+public-site
+.agent-olympics-remote-runs
+package-lock.json
+*.md
