@@ -67,6 +67,12 @@ jobs:
       - name: Run web result consumer test suite
         run: bash scripts/test-web-consumer.sh
 
+      - name: Run mission toolsets self-test
+        run: npm run test:mission_toolsets
+
+      - name: Run coordination round fixtures
+        run: npm run test:coordination_fixtures
+
       - name: Run judge harness fixtures
         run: make judge-fixtures
 

@@ -1,6 +1,7 @@
 # Agent Olympics — Validation and development targets
 #
-# Requires: Node.js >= 18, npm
+# Requires: Node.js >= 18, npm (see package.json "engines"). CI and .nvmrc pin
+# Node 24; local development can use any Node >= 18.
 
 .PHONY: all validate validate-envelopes validate-packets validate-all \
         validate-v2 validate-envelopes-v2 validate-packets-v2 validate-judges \
