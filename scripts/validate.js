@@ -71,68 +71,71 @@ const v1Schemas = {
 
 // ---------------------------------------------------------------------------
 // Load fixture schemas
+//
+// These are all OPTIONAL schemas: absent-on-disk is a legitimate soft skip, but
+// present-but-broken (bad JSON / bad $ref / compile failure) must fail loudly
+// rather than silently null the validator and skip a document type (issue #260,
+// finding 1). loadOptionalSchema enforces that distinction — it prints an ERROR
+// to stderr and throws (→ non-zero exit) for the present-but-broken case.
 // ---------------------------------------------------------------------------
 let fixtureBundleValidator = null;
 let seasonFixtureManifestValidator = null;
-try {
-  const fixtureBundleSchema = loadSchema('schemas/fixture-bundle.schema.json');
-  const fbAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(fbAjv);
-  fixtureBundleValidator = fbAjv.compile(fixtureBundleSchema);
-} catch { /* ignore */ }
-try {
-  const seasonFixtureManifestSchema = loadSchema('schemas/season-fixture-manifest.schema.json');
-  const sfAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(sfAjv);
-  seasonFixtureManifestValidator = sfAjv.compile(seasonFixtureManifestSchema);
-} catch { /* ignore */ }
+fixtureBundleValidator = loadOptionalSchema(
+  'schemas/fixture-bundle.schema.json',
+  (ajvInstance, schema) => ajvInstance.compile(schema),
+);
+seasonFixtureManifestValidator = loadOptionalSchema(
+  'schemas/season-fixture-manifest.schema.json',
+  (ajvInstance, schema) => ajvInstance.compile(schema),
+);
 
 // ---------------------------------------------------------------------------
 // Load round manifest schema
 // ---------------------------------------------------------------------------
-let roundManifestValidator = null;
-try {
-  const roundManifestSchema = loadSchema('schemas/round-manifest.schema.json');
-  const rmAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(rmAjv);
-  roundManifestValidator = rmAjv.compile(roundManifestSchema);
-} catch { /* ignore */ }
+let roundManifestValidator = loadOptionalSchema(
+  'schemas/round-manifest.schema.json',
+  (ajvInstance, schema) => ajvInstance.compile(schema),
+);
 
 // ---------------------------------------------------------------------------
 // Load node profile inventory schema
 // ---------------------------------------------------------------------------
 let nodeProfileSchema = null;
-let nodeProfileValidator = null;
-try {
-  nodeProfileSchema = loadSchema('schemas/node-profile-inventory.schema.json');
-  const npAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(npAjv);
-  nodeProfileValidator = npAjv.compile(nodeProfileSchema);
-} catch (e) { /* ignore */ }
+let nodeProfileValidator = loadOptionalSchema(
+  'schemas/node-profile-inventory.schema.json',
+  (ajvInstance, schema) => {
+    nodeProfileSchema = schema;
+    // `forbidden_field_patterns` is an intentional documentation-only annotation
+    // (field bans are enforced in application code, not by JSON Schema). Declare
+    // it so the schema compiles under strict mode without masking real typos.
+    ajvInstance.addKeyword('forbidden_field_patterns');
+    return ajvInstance.compile(schema);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Load adapter capability declaration schema
 // ---------------------------------------------------------------------------
 let adapterCapSchema = null;
-let adapterCapValidator = null;
-try {
-  adapterCapSchema = loadSchema('schemas/adapter-capability-declaration.schema.json');
-  const acAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(acAjv);
-  adapterCapValidator = acAjv.compile(adapterCapSchema);
-} catch (e) { /* ignore */ }
+let adapterCapValidator = loadOptionalSchema(
+  'schemas/adapter-capability-declaration.schema.json',
+  (ajvInstance, schema) => {
+    adapterCapSchema = schema;
+    return ajvInstance.compile(schema);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Load oracle schema
 // ---------------------------------------------------------------------------
 let oracleSchema = null;
-let oracleValidator = null;
-try {
-  oracleSchema = loadSchema('schemas/oracle.schema.json');
-  const oracleAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(oracleAjv);
-  oracleValidator = oracleAjv.compile(oracleSchema);
-} catch (e) { /* ignore */ }
+let oracleValidator = loadOptionalSchema(
+  'schemas/oracle.schema.json',
+  (ajvInstance, schema) => {
+    oracleSchema = schema;
+    return ajvInstance.compile(schema);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Load qualification entry schema
@@ -140,35 +143,44 @@ try {
 let qualificationSchema = null;
 let qualificationManifestValidator = null;
 let qualificationEntryValidator = null;
-try {
-  qualificationSchema = loadSchema('schemas/qualification-entry.schema.json');
-  const qAjv = new Ajv({ allErrors: true, verbose: true });
-  require('ajv-formats')(qAjv);
-  // Compile manifest validator from $defs
-  const mSchema = JSON.parse(JSON.stringify(qualificationSchema.$defs.qualification_manifest));
-  mSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-manifest';
-  qualificationManifestValidator = qAjv.compile(mSchema);
-  // Compile entry validator from $defs (standalone file mode)
-  const eSchema = JSON.parse(JSON.stringify(qualificationSchema.$defs.qualification_entry));
-  eSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-entry-file';
-  qualificationEntryValidator = qAjv.compile(eSchema);
-} catch (e) {
-  // Schema not available — skip qualification checks
+{
+  const qualValidators = loadOptionalSchema(
+    'schemas/qualification-entry.schema.json',
+    (qAjv, schema) => {
+      qualificationSchema = schema;
+      // Compile manifest validator from $defs
+      const mSchema = JSON.parse(JSON.stringify(schema.$defs.qualification_manifest));
+      mSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-manifest';
+      const manifest = qAjv.compile(mSchema);
+      // Compile entry validator from $defs (standalone file mode)
+      const eSchema = JSON.parse(JSON.stringify(schema.$defs.qualification_entry));
+      eSchema.$id = 'https://github.com/jinwon-int/agent-olympics/schemas/qualification-entry-file';
+      const entry = qAjv.compile(eSchema);
+      return { manifest, entry };
+    },
+  );
+  if (qualValidators) {
+    qualificationManifestValidator = qualValidators.manifest;
+    qualificationEntryValidator = qualValidators.entry;
+  }
 }
 
 // Load accreditation declaration schema
 // ---------------------------------------------------------------------------
 let accreditationSchema = null;
-let accreditationValidator = null;
-try {
-  accreditationSchema = loadSchema('schemas/accreditation-declaration.schema.json');
-  const accAjv = new Ajv({ allErrors: true, verbose: true });
-  addFormats(accAjv);
-  accreditationValidator = accAjv.compile(accreditationSchema);
-} catch (e) { /* ignore */ }
+let accreditationValidator = loadOptionalSchema(
+  'schemas/accreditation-declaration.schema.json',
+  (ajvInstance, schema) => {
+    accreditationSchema = schema;
+    return ajvInstance.compile(schema);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Load schemas (v2)
+//
+// v2 schemas are also optional (soft-skip when absent) but must not silently
+// null out when present-but-broken. loadOptionalSchema handles both.
 // ---------------------------------------------------------------------------
 let v2Schemas = {};
 for (const [name, relPath] of Object.entries({
@@ -176,11 +188,7 @@ for (const [name, relPath] of Object.entries({
   'result-packet': 'schemas/result-packet-v2.schema.json',
   'judge-record':  'schemas/judge-record-v2.schema.json',
 })) {
-  try {
-    v2Schemas[name] = loadSchema(relPath);
-  } catch {
-    v2Schemas[name] = null;
-  }
+  v2Schemas[name] = loadOptionalSchema(relPath, (ajvInstance, schema) => schema);
 }
 
 const ajv = new Ajv({ allErrors: true, verbose: true });
@@ -220,6 +228,47 @@ for (const name of Object.keys(v2Schemas)) {
 function loadSchema(relPath) {
   const raw = fs.readFileSync(path.join(ROOT, relPath), 'utf8');
   return JSON.parse(raw);
+}
+
+/**
+ * Load and compile an OPTIONAL schema.
+ *
+ * Distinguishes "file genuinely absent" (the schema is truly optional → return
+ * null quietly and let the caller soft-skip that document type) from "file
+ * present but failed to compile" (bad JSON / bad $ref / ajv.compile throw). The
+ * latter is a broken-but-shipped schema that would otherwise cause the
+ * validator to silently skip a document type and let a broken schema pass CI
+ * green (issue #260, finding 1). For that case we print a loud ERROR to stderr
+ * and throw so the process exits non-zero rather than continuing.
+ *
+ * @param {string} relPath        schema path relative to ROOT
+ * @param {(ajv: Ajv) => any} register  called with a fresh Ajv (formats added);
+ *                                 returns the compiled validator (or any value)
+ *                                 the caller wants; receives the already-parsed
+ *                                 schema as a second argument.
+ * @returns {any|null} whatever `register` returns, or null if the file is absent.
+ */
+function loadOptionalSchema(relPath, register) {
+  const abs = path.join(ROOT, relPath);
+  if (!fs.existsSync(abs)) {
+    // Genuinely optional and not present on disk — soft skip is fine.
+    return null;
+  }
+  let schema;
+  try {
+    schema = JSON.parse(fs.readFileSync(abs, 'utf8'));
+  } catch (e) {
+    console.error(`ERROR: schema ${relPath} exists but failed to load: ${e.message}`);
+    throw new Error(`Optional schema ${relPath} exists but failed to parse: ${e.message}`);
+  }
+  try {
+    const ajvInstance = new Ajv({ allErrors: true, verbose: true });
+    addFormats(ajvInstance);
+    return register(ajvInstance, schema);
+  } catch (e) {
+    console.error(`ERROR: schema ${relPath} exists but failed to load: ${e.message}`);
+    throw new Error(`Optional schema ${relPath} exists but failed to compile: ${e.message}`);
+  }
 }
 
 function loadYaml(relPath) {
@@ -542,11 +591,11 @@ function semanticChecks(doc, kind, file, schemaVersion) {
 }
 
 /** Rudimentary secret/heuristic scan for likely credential patterns. */
-function detectSecrets(obj, issues, path = '') {
+function detectSecrets(obj, issues, keyPath = '') {
   if (!obj || typeof obj !== 'object') return;
 
   for (const [key, val] of Object.entries(obj)) {
-    const fp = path ? `${path}.${key}` : key;
+    const fp = keyPath ? `${keyPath}.${key}` : key;
     // Check key names regardless of value type (flag the key itself once;
     // nested keys are evaluated on their own during recursion)
     if (SECRET_KEY_PATTERNS.some(r => r.test(key))) {
@@ -695,10 +744,16 @@ function detectAccreditation(doc) {
 
 /**
  * Resolve schema version from document, defaulting to 1 if not present.
+ *
+ * The field may legitimately be numeric (schema_version: 2) or a stringified
+ * number (schema_version: "2"); both are coerced via Number(). When the field
+ * is present but cannot be coerced to a number (e.g. "two"), NaN is returned so
+ * callers surface a validation error instead of silently defaulting to v1.
+ * When the field is genuinely absent, the historical default of 1 is kept.
  */
 function getSchemaVersion(doc) {
-  if (doc && typeof doc.schema_version === 'number') {
-    return doc.schema_version;
+  if (doc && doc.schema_version !== undefined && doc.schema_version !== null) {
+    return Number(doc.schema_version);
   }
   return 1;
 }
@@ -884,6 +939,26 @@ let totalErrors = 0;
 let totalWarnings = 0;
 let fileCount = 0;
 
+/**
+ * Print the standard `--- Summary ---` epilogue and exit (issue #260, finding 4).
+ *
+ * This is a behavior-preserving extraction of the ~13 duplicated summary/exit
+ * blocks in main(). Each mode branch passes the exact set of summary lines it
+ * used to print (already formatted, including their historical column
+ * alignment), so output stays byte-for-byte identical. Exit code semantics are
+ * preserved: 0 when totalErrors === 0, 1 otherwise.
+ *
+ * @param {string[]} lines  the body lines to print under the `--- Summary ---`
+ *                          header, in order, exactly as before.
+ */
+function printSummaryAndExit(lines) {
+  console.log(`\n--- Summary ---`);
+  for (const line of lines) {
+    console.log(line);
+  }
+  process.exit(totalErrors > 0 ? 1 : 0);
+}
+
 function validateFile(filePath, preParsedDoc) {
   const rel = path.relative(ROOT, filePath);
   let doc;
@@ -924,6 +999,12 @@ function validateFile(filePath, preParsedDoc) {
   }
 
   const schemaVersion = getSchemaVersion(doc);
+  if (Number.isNaN(schemaVersion)) {
+    console.error(`FAIL  ${rel}  - invalid schema_version: ${JSON.stringify(doc.schema_version)} (not a number)`);
+    totalErrors++;
+    fileCount++;
+    return;
+  }
 
   // Select validator based on schema version
   let validator, schemaName;
@@ -2028,11 +2109,11 @@ function main() {
     for (const f of files) {
       validateAdapterCapabilities(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Capability files:  ${files.length}`);
-    console.log(`Errors:           ${totalErrors}`);
-    console.log(`Warnings:         ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Capability files:  ${files.length}`,
+      `Errors:           ${totalErrors}`,
+      `Warnings:         ${totalWarnings}`,
+    ]);
   }
 
   // Adapter fixtures mode — validate all adapter sample fixture files
@@ -2077,11 +2158,11 @@ function main() {
       validateAdapterFixtureFile(f);
     }
 
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:                  ${files.length}`);
-    console.log(`Errors:                 ${totalErrors}`);
-    console.log(`Warnings:               ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:                  ${files.length}`,
+      `Errors:                 ${totalErrors}`,
+      `Warnings:               ${totalWarnings}`,
+    ]);
   }
 
   // Oracle mode
@@ -2096,11 +2177,11 @@ function main() {
     for (const f of files) {
       validateOracle(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Accreditation mode — validate all accreditation declarations
@@ -2119,11 +2200,11 @@ function main() {
     for (const f of files) {
       validateAccreditation(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Accreditation validity mode — validate accreditation validity fixtures
@@ -2142,11 +2223,11 @@ function main() {
     for (const f of files) {
       validateAccreditation(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Rounds mode
@@ -2165,11 +2246,11 @@ function main() {
     for (const f of files) {
       validateRoundManifest(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Profiles mode
@@ -2191,11 +2272,11 @@ function main() {
     for (const f of files) {
       validateNodeProfile(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Qualifications mode
@@ -2227,11 +2308,11 @@ function main() {
     for (const f of files) {
       validateQualification(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Live-probe enhanced redaction check mode
@@ -2270,11 +2351,11 @@ function main() {
     for (const f of files) {
       validateLiveProbe(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Competition-validity mode
@@ -2294,11 +2375,11 @@ function main() {
       totalErrors++;
     }
     fileCount++;
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Fixtures mode
@@ -2317,11 +2398,11 @@ function main() {
     for (const f of files) {
       validateFixtureBundle(f);
     }
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Single file mode
@@ -2329,11 +2410,11 @@ function main() {
     const files = [path.resolve(mode)];
     console.log(`Validating 1 file...\n`);
     validateFile(files[0]);
-    console.log(`\n--- Summary ---`);
-    console.log(`Files:     ${fileCount}`);
-    console.log(`Errors:    ${totalErrors}`);
-    console.log(`Warnings:  ${totalWarnings}`);
-    process.exit(totalErrors > 0 ? 1 : 0);
+    printSummaryAndExit([
+      `Files:     ${fileCount}`,
+      `Errors:    ${totalErrors}`,
+      `Warnings:  ${totalWarnings}`,
+    ]);
   }
 
   // Named mode
@@ -2396,16 +2477,16 @@ function main() {
   }
 
   const skippedCount = files.length - fileCount;
-  console.log(`\n--- Summary ---`);
-  console.log(`Files scanned:  ${files.length}`);
-  console.log(`Validated:     ${fileCount}`);
+  const summaryLines = [
+    `Files scanned:  ${files.length}`,
+    `Validated:     ${fileCount}`,
+  ];
   if (skippedCount > 0) {
-    console.log(`Skipped (ver): ${skippedCount}`);
+    summaryLines.push(`Skipped (ver): ${skippedCount}`);
   }
-  console.log(`Errors:        ${totalErrors}`);
-  console.log(`Warnings:      ${totalWarnings}`);
-
-  process.exit(totalErrors > 0 ? 1 : 0);
+  summaryLines.push(`Errors:        ${totalErrors}`);
+  summaryLines.push(`Warnings:      ${totalWarnings}`);
+  printSummaryAndExit(summaryLines);
 }
 
 main();
