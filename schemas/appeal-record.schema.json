@@ -54,5 +54,5 @@
       "then": { "required": ["reviewed_by"] }
     }
   ],
-  "additionalProperties": true
+  "additionalProperties": false
 }

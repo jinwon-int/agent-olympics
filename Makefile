@@ -468,14 +468,14 @@ perf-harness-validate:
 
 # Transform latest harness report into v2 result packets for scoreboard
 perf-harness-to-packets:
-	node scripts/harness-to-packet.js results/perf-harness-report-*.$$(ls results/perf-harness-report-*.json 2>/dev/null >/dev/null && echo json || echo yaml) --agent-id $${AGENT_ID:-perf-harness}
+	node scripts/harness-to-packet.js results/ --agent-id $${AGENT_ID:-perf-harness}
 
 # Full pipeline: harness → packets → scoreboard → validate
 perf-harness-pipeline: perf-harness perf-harness-to-packets score-aggregate
 
 # Validate the scoreboard schema
 validate-scoreboard:
-	node -e 'const fs = require("fs"); const Ajv = require("ajv/dist/2020"); const addFormats = require("ajv-formats"); const ajv = new Ajv({ allErrors: true, verbose: true }); addFormats(ajv); const schema = JSON.parse(fs.readFileSync("schemas/scoreboard.schema.json", "utf8")); ajv.addSchema(schema, schema.$$id); console.log("Scoreboard schema loaded and compiled.");'
+	node scripts/validate-scoreboard-schema.js
 
 # --- Blind scoring targets ---
 
@@ -521,7 +521,7 @@ web: score test-web-consumer web-consumer-sample
 
 # Validate scoreboard has all required web-display fields
 validate-web-fields:
-	node -e 'const sb = JSON.parse(require("fs").readFileSync("results/scoreboard.json", "utf8")); let missing = 0; for (const e of sb.entries) { if (!e.agent_id) { missing++; console.log("MISSING agent_id in " + e.entry_id); } if (!e.score && e.judge_type !== "pending") { missing++; console.log("MISSING score in " + e.entry_id); } if (!e.packet_ref) { missing++; console.log("MISSING packet_ref in " + e.entry_id); } if (!e.task_id) { missing++; console.log("MISSING task_id in " + e.entry_id); } } console.log(missing === 0 ? "All web-display fields present" : missing + " entries missing fields"); process.exit(missing > 0 ? 1 : 0);'
+	node scripts/validate-web-fields.js
 
 # Full web data bridge validation: scoreboard + blind + field check
 validate-web-bridge: score score-blind validate-web-fields
@@ -563,7 +563,7 @@ validate-gates:
 
 # Validate all dry-run evidence output format (after generation)
 validate-dry-run-evidence:
-	node -e 'const fs=require("fs"); const d="evidence/dry-run"; if(!fs.existsSync(d)){console.log("No dry-run evidence yet. Run a gate first.");process.exit(0);} const files=fs.readdirSync(d).filter(f=>f.endsWith(".json")); let ok=0;let bad=0; for(const f of files){try{const j=JSON.parse(fs.readFileSync(d+"/"+f,"utf8"));if(j.allPassed!==undefined)ok++;else bad++;console.log(f+": "+(j.allPassed!==undefined?"valid":"missing allPassed"));}catch(e){bad++;console.log(f+": parse error - "+e.message);}} console.log(ok+" valid, "+bad+" invalid"); process.exit(bad>0?1:0);'
+	node scripts/validate-dry-run-evidence.js
 
 # --- Dry-Run Execution targets ---
 
