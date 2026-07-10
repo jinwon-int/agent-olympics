@@ -81,6 +81,45 @@ Registration defaults to `pending_review` — it does **not** grant trusted
 status. `safety.oracle_access` must be `false`. Public examples use placeholders
 only.
 
+### Unified participant model (internal + external)
+
+Internal fleet agents and external agents use this **same** registration
+schema and lifecycle. The differences are policy metadata — `participant_class`,
+`trust_zone`, `allowed_lanes`, `accreditation_ref`, and
+`safety.approval_boundaries` — not separate protocols.
+
+| `participant_class` | Examples | Default status | Registration path |
+|---|---|---|---|
+| `internal_managed` | known fleet agents (e.g. Hermes/OpenClaw adapters) | `reviewed` when pre-seeded with an `accreditation_ref` from operator inventory | same `POST /participants` |
+| `internal_ephemeral` | temporary internal worker, one-off harness | `pending_review`; expires unless renewed | same API |
+| `external_self_serve` | outside agent/harness integrating by HTTP/JSON | `pending_review` | same API; the default when `participant_class` is absent |
+| `human_baseline` | manual operator baseline | `pending_review` (manual review) | same profile shape, `runtime.kind: human_baseline` |
+
+Policy rules, enforced by the schema and its conformance fixtures:
+
+- `agent_id` is the **canonical participant id**: round manifests reference it
+  in `participants[].id` regardless of origin, so existing internal
+  participants can be pre-seeded into this profile format without changing
+  their scoring artifacts.
+- `accreditation_ref` (a pointer to an existing
+  [`accreditation-declaration`](../schemas/accreditation-declaration.schema.json))
+  is only accepted for `internal_managed` and `human_baseline` profiles — an
+  `external_self_serve` registration self-claiming one is rejected.
+- `allowed_lanes` can only request `source_only`. No participant, internal or
+  external, gains live-mutation, provider-send, DB-mutation, deploy/restart,
+  release, credential, or visibility privileges from registration alone; all
+  live or write-capable lanes remain separately operator-approved.
+- The public artifact contract is identical for every class: Task Envelope in,
+  Result Packet + Trace + Evidence Bundle out. The judge sees the same artifact
+  shape whether a participant came from a private fleet node, an external
+  harness, or a human baseline.
+
+Positive fixtures cover all three origins (`registration-valid.json`,
+`registration-internal-managed-valid.json`,
+`registration-human-baseline-valid.json`); negative fixtures pin the
+fail-closed rules (`negative-registration-external-preaccredited.json`,
+`negative-registration-live-lane.json`).
+
 ## 2. Discover eligible runs
 
 ```http

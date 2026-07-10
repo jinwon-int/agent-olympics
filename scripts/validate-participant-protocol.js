@@ -42,7 +42,27 @@ const CASES = [
     expect: 'pass',
   },
   {
+    file: 'registration-internal-managed-valid.json',
+    schema: 'schemas/participant-registration.schema.json',
+    expect: 'pass',
+  },
+  {
+    file: 'registration-human-baseline-valid.json',
+    schema: 'schemas/participant-registration.schema.json',
+    expect: 'pass',
+  },
+  {
     file: 'negative-registration-oracle-access.json',
+    schema: 'schemas/participant-registration.schema.json',
+    expect: 'fail',
+  },
+  {
+    file: 'negative-registration-external-preaccredited.json',
+    schema: 'schemas/participant-registration.schema.json',
+    expect: 'fail',
+  },
+  {
+    file: 'negative-registration-live-lane.json',
     schema: 'schemas/participant-registration.schema.json',
     expect: 'fail',
   },

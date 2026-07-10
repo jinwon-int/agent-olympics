@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "agent_id": "sogyo",
+  "display_name": "Sogyo (internal Hermes fleet agent)",
+  "participant_class": "internal_managed",
+  "trust_zone": "internal_fleet",
+  "allowed_lanes": ["source_only"],
+  "accreditation_ref": "acc-hermes-competitor-001",
+  "runtime": { "kind": "hermes", "name": "Hermes", "version": "1.0.0" },
+  "capabilities": {
+    "event_families": ["ops", "code", "coord"],
+    "supports_task_envelope_v2": true,
+    "supports_result_packet_v2": true,
+    "supports_trace_record": true,
+    "supports_evidence_bundle": true,
+    "supports_polling": true,
+    "supports_webhook_delivery": false,
+    "max_concurrent_runs": 2
+  },
+  "safety": {
+    "approval_boundaries": ["no live mutation without explicit task authorization"],
+    "redaction_rules": ["no secrets in summaries", "node hostnames redacted to profile labels"],
+    "oracle_access": false
+  },
+  "contact": { "github": "example-org/internal-fleet" }
+}

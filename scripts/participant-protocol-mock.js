@@ -85,8 +85,21 @@ function createMockServer(validators) {
   return {
     register(registration) {
       assertValid(validators, 'registration', registration, 'register');
-      // A mock registration is always pending_review; it grants no trusted status.
-      return { status: 'pending_review', participant_id: registration.agent_id };
+      // Unified participant model: internal and external agents register through
+      // the same schema; only the accreditation policy differs by class. A
+      // pre-seeded internal_managed participant (operator inventory, carrying an
+      // accreditation_ref) starts as reviewed; everyone else starts as
+      // pending_review. Registration never grants a write-capable lane, for any
+      // class — allowed lanes stay source_only until separately operator-approved.
+      const participantClass = registration.participant_class || 'external_self_serve';
+      const preSeeded =
+        participantClass === 'internal_managed' && Boolean(registration.accreditation_ref);
+      return {
+        status: preSeeded ? 'reviewed' : 'pending_review',
+        participant_id: registration.agent_id,
+        participant_class: participantClass,
+        allowed_lanes: ['source_only'],
+      };
     },
 
     claim(idempotencyKey, request) {

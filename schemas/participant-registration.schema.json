@@ -2,7 +2,7 @@
   "$id": "https://github.com/jinwon-int/agent-olympics/schemas/participant-registration.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Participant Registration",
-  "description": "Self-serve agent registration/profile submitted to the HTTP/JSON participation surface (POST /participants). Maps to adapter-capability-declaration.schema.json for the repo-native path. snake_case matches the rest of the repo's schemas. See docs/http-json-participant-protocol.md.",
+  "description": "Agent registration/profile submitted to the HTTP/JSON participation surface (POST /participants). One unified schema for internal fleet agents, ephemeral internal workers, external self-serve agents, and human baselines — internal/external differences are policy metadata (participant_class, trust_zone, allowed_lanes, accreditation_ref), not separate protocols. Maps to adapter-capability-declaration.schema.json for the repo-native path. snake_case matches the rest of the repo's schemas. See docs/http-json-participant-protocol.md.",
   "type": "object",
   "required": [
     "schema_version",
@@ -17,9 +17,30 @@
     "agent_id": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$",
-      "description": "Stable participant identifier (public codename; never a node/model identity)."
+      "description": "Stable participant identifier (public codename; never a node/model identity). This is the canonical participant id: round manifests reference it in participants[].id regardless of origin."
     },
     "display_name": { "type": "string", "minLength": 1 },
+    "participant_class": {
+      "type": "string",
+      "enum": ["internal_managed", "internal_ephemeral", "external_self_serve", "human_baseline"],
+      "description": "Unified participant model: internal fleet agents, ephemeral internal workers, self-serve external agents, and human baselines all register through this same schema. Differences are policy metadata, not separate protocols. Absent means external_self_serve."
+    },
+    "trust_zone": {
+      "type": "string",
+      "enum": ["internal_fleet", "external", "human_operator"],
+      "description": "Origin trust zone. Affects accreditation policy only; the artifact contract (Task Envelope in, Result Packet + Trace + Evidence Bundle out) is identical across zones."
+    },
+    "allowed_lanes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "enum": ["source_only"] },
+      "description": "Lanes the participant requests. Only source_only can be requested via registration; live or write-capable lanes are separately operator-approved and can never be self-granted here, for any participant class."
+    },
+    "accreditation_ref": {
+      "type": "string",
+      "pattern": "^acc-[a-z0-9-]+-[a-z0-9-]+$",
+      "description": "Optional pointer to an existing accreditation declaration (accreditation-declaration.schema.json), used to pre-seed known internal participants or reviewed human baselines from operator inventory. It never self-grants trust: status is assigned by policy on the server side."
+    },
     "runtime": {
       "type": "object",
       "required": ["kind", "name"],
@@ -78,5 +99,48 @@
       "additionalProperties": false
     }
   },
+  "allOf": [
+    {
+      "if": { "required": ["accreditation_ref"] },
+      "then": {
+        "required": ["participant_class"],
+        "properties": {
+          "participant_class": { "enum": ["internal_managed", "human_baseline"] }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["participant_class"],
+        "properties": { "participant_class": { "const": "human_baseline" } }
+      },
+      "then": {
+        "properties": {
+          "runtime": { "properties": { "kind": { "const": "human_baseline" } } }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["participant_class"],
+        "properties": {
+          "participant_class": { "enum": ["internal_managed", "internal_ephemeral"] }
+        }
+      },
+      "then": {
+        "required": ["trust_zone"],
+        "properties": { "trust_zone": { "const": "internal_fleet" } }
+      }
+    },
+    {
+      "if": {
+        "required": ["participant_class"],
+        "properties": { "participant_class": { "const": "external_self_serve" } }
+      },
+      "then": {
+        "properties": { "trust_zone": { "const": "external" } }
+      }
+    }
+  ],
   "additionalProperties": false
 }
