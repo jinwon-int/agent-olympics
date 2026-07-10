@@ -25,6 +25,16 @@
     "scoreboard": {
       "type": "string",
       "enum": ["not_published", "published"]
+    },
+    "errors": {
+      "type": "array",
+      "description": "Public-safe machine-readable failure/recovery codes. Raw validator output and artifact contents are never returned here.",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_:-]{0,127}$"
+      }
     }
   },
   "additionalProperties": false

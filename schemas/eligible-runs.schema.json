@@ -1,0 +1,47 @@
+{
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/eligible-runs.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Eligible Runs Response",
+  "description": "Policy-filtered source-only runs returned by GET /participants/{participant_id}/eligible-runs. Pending or revoked participants receive an empty eligible list.",
+  "type": "object",
+  "required": ["schema_version", "participant_id", "status", "eligible"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "participant_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending_review", "reviewed", "revoked"]
+    },
+    "eligible": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "round_id",
+          "task_id",
+          "task_envelope_ref",
+          "lane",
+          "time_limit_sec"
+        ],
+        "properties": {
+          "round_id": {
+            "type": "string",
+            "pattern": "^season-\\d{3}-round-\\d{3}$"
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[a-z]+-\\d{3}$"
+          },
+          "task_envelope_ref": { "type": "string", "minLength": 1 },
+          "lane": { "type": "string", "const": "source_only" },
+          "time_limit_sec": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

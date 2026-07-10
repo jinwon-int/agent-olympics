@@ -66,6 +66,26 @@ const CASES = [
     schema: 'schemas/participant-registration.schema.json',
     expect: 'fail',
   },
+  {
+    file: 'participant-status-valid.json',
+    schema: 'schemas/participant-status.schema.json',
+    expect: 'pass',
+  },
+  {
+    file: 'negative-participant-status-live-lane.json',
+    schema: 'schemas/participant-status.schema.json',
+    expect: 'fail',
+  },
+  {
+    file: 'eligible-runs-valid.json',
+    schema: 'schemas/eligible-runs.schema.json',
+    expect: 'pass',
+  },
+  {
+    file: 'negative-eligible-runs-live-lane.json',
+    schema: 'schemas/eligible-runs.schema.json',
+    expect: 'fail',
+  },
   { file: 'run-claim-request-valid.json', schema: 'schemas/run-claim.schema.json', expect: 'pass' },
   {
     file: 'run-claim-response-valid.json',

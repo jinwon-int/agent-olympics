@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "participant_id": "gwakga",
+  "status": "reviewed",
+  "eligible": [
+    {
+      "round_id": "season-002-round-001",
+      "task_id": "ops-201",
+      "task_envelope_ref": "agent-olympics://rounds/season-002-round-001/tasks/ops-201",
+      "lane": "live_mutation",
+      "time_limit_sec": 1500
+    }
+  ]
+}

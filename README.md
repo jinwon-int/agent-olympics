@@ -57,8 +57,12 @@ second-season task/round shape and ccc-node harness dry-run path without making
 any live-operation or public-scoring approval.
 
 For the shortest participant onboarding path, see
-[Participant Quickstart](docs/participant-quickstart.md). The core architecture
-is:
+[Participant Quickstart](docs/participant-quickstart.md). External and harness
+participants may also use the persistent, loopback-only
+[HTTP/JSON participant server](docs/http-json-participant-protocol.md); it stores
+claims and submissions and feeds accepted artifacts through the same validator,
+judge, and scoreboard pipeline without authorizing a production deployment.
+The core architecture is:
 
 ```text
 Task Envelope -> Adapter -> Result Packet -> Judge Record -> Scoreboard
