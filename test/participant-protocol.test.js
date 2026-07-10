@@ -11,12 +11,17 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   runInProcessDemo,
   createMockServer,
   buildValidators,
 } = require('../scripts/participant-protocol-mock');
+
+const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'external-participant-http-json');
+const readFixture = (file) => JSON.parse(fs.readFileSync(path.join(FIXTURE_DIR, file), 'utf8'));
 
 // Silence step output so test logs stay clean.
 const quiet = () => {};
@@ -88,4 +93,44 @@ test('tampered run status (state: "deployed") is rejected', () => {
     scoreboard: 'not_published',
   };
   assert.throws(() => server.status(tampered), /status failed/);
+});
+
+test('external registration defaults to pending_review and source_only lanes', () => {
+  const server = createMockServer(buildValidators());
+  const response = server.register(readFixture('registration-valid.json'));
+  assert.equal(response.status, 'pending_review');
+  assert.equal(response.participant_class, 'external_self_serve');
+  assert.deepEqual(response.allowed_lanes, ['source_only']);
+});
+
+test('pre-seeded internal_managed registration is reviewed but still source_only', () => {
+  const server = createMockServer(buildValidators());
+  const response = server.register(readFixture('registration-internal-managed-valid.json'));
+  assert.equal(response.status, 'reviewed');
+  assert.equal(response.participant_class, 'internal_managed');
+  assert.equal(response.participant_id, 'sogyo');
+  assert.deepEqual(response.allowed_lanes, ['source_only']);
+});
+
+test('human_baseline registers through the same schema, pending manual review', () => {
+  const server = createMockServer(buildValidators());
+  const response = server.register(readFixture('registration-human-baseline-valid.json'));
+  assert.equal(response.status, 'pending_review');
+  assert.equal(response.participant_class, 'human_baseline');
+});
+
+test('external agent self-claiming a pre-seeded accreditation is rejected', () => {
+  const server = createMockServer(buildValidators());
+  assert.throws(
+    () => server.register(readFixture('negative-registration-external-preaccredited.json')),
+    /register failed .*validation/
+  );
+});
+
+test('requesting a live lane via registration is rejected for any class', () => {
+  const server = createMockServer(buildValidators());
+  assert.throws(
+    () => server.register(readFixture('negative-registration-live-lane.json')),
+    /register failed .*validation/
+  );
 });
