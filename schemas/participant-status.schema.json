@@ -1,0 +1,41 @@
+{
+  "$id": "https://github.com/jinwon-int/agent-olympics/schemas/participant-status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Participant Registration Status",
+  "description": "Server-issued policy status returned by POST /participants. Registration never grants a write-capable lane; HTTP registrations begin pending_review and only the local operator control path may promote them.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "participant_id",
+    "participant_class",
+    "status",
+    "allowed_lanes"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "participant_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "participant_class": {
+      "type": "string",
+      "enum": [
+        "internal_managed",
+        "internal_ephemeral",
+        "external_self_serve",
+        "human_baseline"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending_review", "reviewed", "revoked"]
+    },
+    "allowed_lanes": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["source_only"] },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

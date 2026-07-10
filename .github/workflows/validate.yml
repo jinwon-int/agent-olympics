@@ -76,6 +76,9 @@ jobs:
       - name: Run HTTP/JSON participant protocol conformance
         run: make external-participant-protocol-check
 
+      - name: Run persistent participant server integration
+        run: make participant-server-check
+
       - name: Run mission toolsets self-test
         run: npm run test:mission_toolsets
 

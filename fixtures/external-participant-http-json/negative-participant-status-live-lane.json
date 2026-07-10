@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "participant_id": "example-agent",
+  "participant_class": "external_self_serve",
+  "status": "reviewed",
+  "allowed_lanes": ["live_mutation"]
+}

@@ -26,7 +26,7 @@
         web-consumer web-consumer-blind web-consumer-sample test-web-consumer web \
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
-        external-participant-protocol-check \
+        external-participant-protocol-check participant-server-check \
         validate-a2a-effectiveness \
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
@@ -171,6 +171,11 @@ validate-accreditations-validity:
 external-participant-protocol-check:
 	@echo "=== HTTP/JSON participant protocol conformance ==="
 	node scripts/validate-participant-protocol.js
+
+# Persistent HTTP/JSON source server (#291) — ephemeral loopback + temp data only.
+participant-server-check:
+	@echo "=== HTTP/JSON persistent participant server integration ==="
+	node --test test/participant-server.test.js
 
 # Round engine CLI (alias for convenience)
 round:

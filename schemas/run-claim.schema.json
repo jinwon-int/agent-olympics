@@ -38,7 +38,11 @@
         "run_id": { "type": "string", "minLength": 1 },
         "task_envelope_ref": {
           "type": "string",
-          "description": "URL or opaque reference to the full task envelope (or an inline object may be delivered out of band)."
+          "description": "Public-safe URL or opaque reference to the participant-visible task envelope."
+        },
+        "task_envelope": {
+          "type": "object",
+          "description": "Optional inline participant-visible Task Envelope v2. The real server validates it against task-envelope-v2.schema.json and strips oracle_ref/judge_notes_ref before delivery."
         },
         "required_artifacts": {
           "type": "array",

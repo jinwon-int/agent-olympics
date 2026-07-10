@@ -1006,11 +1006,15 @@ async function buildScoreboard(resultsDir, blindMode) {
       blindRunSeq.set(blindIndex, seq);
       if (seq > 1) blindIndex = `${blindIndex}-${seq}`;
     }
+    const parentRunId = path.basename(path.dirname(f));
     const runId = blindMode
       ? `blinded-run-${blindIndex}`
       : kind === 'run-result'
         ? doc.run_id
-        : rp.run_id || `run-${rp.task_id}-${rp.agent_id}-${Date.now()}`;
+        : rp.run_id ||
+          (parentRunId.startsWith('run-')
+            ? parentRunId
+            : `run-${rp.task_id}-${rp.agent_id}-${Date.now()}`);
     const packetId = blindMode
       ? `blinded-packet-${blindIndex}`
       : rp.packet_id || path.basename(f, '.yaml');
