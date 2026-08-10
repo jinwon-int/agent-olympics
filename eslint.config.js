@@ -40,6 +40,12 @@ module.exports = [
       // still flagging every other loose comparison.
       eqeqeq: ['error', 'smart'],
       'prefer-const': 'error',
+      // Enabled by eslint:recommended as of @eslint/js 10. The tooling
+      // deliberately seeds `let ok = false` / `let detail = ''` before a switch
+      // or try/catch so a branch that forgets to assign yields a safe default
+      // instead of `undefined`. Dropping those initializers to satisfy the rule
+      // buys no behaviour change and removes that guard, so keep it off.
+      'no-useless-assignment': 'off',
     },
   },
 ];

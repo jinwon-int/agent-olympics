@@ -118,7 +118,7 @@ function loadYaml(filePath) {
     const raw = fs.readFileSync(filePath, 'utf8');
     return yaml.load(raw);
   } catch (err) {
-    throw new Error(`YAML parse error in ${filePath}: ${err.message}`);
+    throw new Error(`YAML parse error in ${filePath}: ${err.message}`, { cause: err });
   }
 }
 

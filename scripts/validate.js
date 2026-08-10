@@ -242,7 +242,9 @@ function loadOptionalSchema(relPath, register) {
     schema = JSON.parse(fs.readFileSync(abs, 'utf8'));
   } catch (e) {
     console.error(`ERROR: schema ${relPath} exists but failed to load: ${e.message}`);
-    throw new Error(`Optional schema ${relPath} exists but failed to parse: ${e.message}`);
+    throw new Error(`Optional schema ${relPath} exists but failed to parse: ${e.message}`, {
+      cause: e,
+    });
   }
   try {
     const ajvInstance = new Ajv({ allErrors: true, verbose: true });
@@ -250,7 +252,9 @@ function loadOptionalSchema(relPath, register) {
     return register(ajvInstance, schema);
   } catch (e) {
     console.error(`ERROR: schema ${relPath} exists but failed to load: ${e.message}`);
-    throw new Error(`Optional schema ${relPath} exists but failed to compile: ${e.message}`);
+    throw new Error(`Optional schema ${relPath} exists but failed to compile: ${e.message}`, {
+      cause: e,
+    });
   }
 }
 

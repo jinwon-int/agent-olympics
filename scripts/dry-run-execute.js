@@ -51,7 +51,7 @@ function loadYaml(filePath) {
     const raw = fs.readFileSync(resolved, 'utf8');
     return yaml.load(raw);
   } catch (err) {
-    throw new Error(`Cannot load ${resolved}: ${err.message}`);
+    throw new Error(`Cannot load ${resolved}: ${err.message}`, { cause: err });
   }
 }
 
