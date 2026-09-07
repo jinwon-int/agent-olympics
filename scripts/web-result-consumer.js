@@ -181,12 +181,15 @@ function formatWallTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Badge modifier classes are built from packet/judge-record values, so they are
+// escaped like any other interpolation — an unescaped quote here would break out
+// of the class attribute on the published page.
 function statusBadge(status) {
-  return `<span class="badge badge-${status}">${escapeHtml(status)}</span>`;
+  return `<span class="badge badge-${escapeHtml(status)}">${escapeHtml(status)}</span>`;
 }
 
 function verdictBadge(verdict) {
-  return `<span class="badge badge-${verdict}">${escapeHtml(verdict)}</span>`;
+  return `<span class="badge badge-${escapeHtml(verdict)}">${escapeHtml(verdict)}</span>`;
 }
 
 function rankClass(rank) {
@@ -378,7 +381,7 @@ function renderLeaderboard(scoreboard, blindMode, title) {
   const passCount = entries.filter((e) => e.score && e.score.verdict === 'pass').length;
 
   const displayTitle = title || `Agent Olympics ${blindMode ? '(Blind) ' : ''}Leaderboard`;
-  const displaySubtitle = `Round: ${escapeHtml(sb.round_id || '—')} | Generated: ${sb.generated_at || '—'}`;
+  const displaySubtitle = `Round: ${escapeHtml(sb.round_id || '—')} | Generated: ${escapeHtml(sb.generated_at || '—')}`;
 
   let html = pageHeader('', blindMode);
   html += `<h1>${escapeHtml(displayTitle)}</h1>
@@ -514,7 +517,7 @@ function renderDetail(entry, blindMode) {
 
   const pendingNote =
     entry.pending_dimensions && entry.pending_dimensions.length > 0
-      ? `<div class="pending-note">⏳ Pending human review dimensions: ${entry.pending_dimensions.join(', ')}</div>`
+      ? `<div class="pending-note">⏳ Pending human review dimensions: ${entry.pending_dimensions.map(escapeHtml).join(', ')}</div>`
       : '';
 
   html += `<h1>${escapeHtml(entry.agent_id)} — ${escapeHtml(entry.task_id)}</h1>

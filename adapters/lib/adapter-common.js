@@ -148,6 +148,10 @@ function parseAdapterArgs(config) {
       console.error(`Unknown option: ${args[i]}`);
       process.exit(3);
     }
+    if (spec.kind !== 'flag' && args[i + 1] === undefined) {
+      console.error(`Option ${args[i]} requires a value`);
+      process.exit(3);
+    }
     switch (spec.kind) {
       case 'path':
         opts[spec.key] = path.resolve(args[++i]);

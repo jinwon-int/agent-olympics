@@ -66,7 +66,17 @@ jobs:
             exit 1
           }
           echo "Derived identity blocklist: $blocklist"
-          leak=$(grep -rEi "$blocklist" public-site || true)
+          # grep exits 0 (match), 1 (no match), or >=2 (error — bad regex,
+          # unreadable path, ...). Only exit 1 means "clean"; an error must
+          # fail the publish rather than be swallowed into an empty result.
+          set +e
+          leak=$(grep -rEi "$blocklist" public-site)
+          grep_status=$?
+          set -e
+          if [ "$grep_status" -gt 1 ]; then
+            echo "Identity gate could not run (grep exited $grep_status) — refusing to publish." >&2
+            exit 1
+          fi
           if [ -n "$leak" ]; then
             echo "Participant identity leaked into the public blind leaderboard:" >&2
             echo "$leak" >&2
@@ -117,6 +127,10 @@ jobs:
 
       - name: Explain skipped Pages deploy
         if: steps.pages.outputs.enabled != 'true'
+        # The reason is passed through the environment rather than interpolated
+        # into the script body, so its content can never be parsed as shell.
+        env:
+          PAGES_REASON: ${{ steps.pages.outputs.reason }}
         run: |
-          echo "${{ steps.pages.outputs.reason }}"
+          echo "$PAGES_REASON"
           echo "No public leaderboard was published because repository Pages publishing is disabled or not configured for GitHub Actions."
