@@ -335,7 +335,10 @@ function deltaOf(prev, curr) {
   return curr.total_score - prev.total_score;
 }
 
-const KEY = (r) => `${r.task_id} ${r.participant_id}`;
+// U+0000 is used as the join separator because it cannot occur in a task or
+// participant id. It is written as an escape (not a literal NUL byte) so this
+// file stays plain text for git, grep, and diff tooling.
+const KEY = (r) => `${r.task_id}\u0000${r.participant_id}`;
 
 /**
  * Build a per-(task,participant) trend across the time-ordered snapshots.

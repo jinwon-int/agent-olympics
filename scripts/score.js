@@ -1076,13 +1076,21 @@ async function buildScoreboard(resultsDir, blindMode) {
       // Auto-generate automated judge record
       judgeRecord = generateAutoJudge(rp, f, semanticIssues, presenceResult, schemaResult);
       judgeType = 'automated';
-
-      const judgeFilename = `${path.basename(f, '.yaml')}-auto-judge.yaml`;
-      const judgePath = path.join(judgeDir, judgeFilename);
-      fs.writeFileSync(judgePath, yaml.dump(judgeRecord, { indent: 2, lineWidth: 200 }));
-      judgeRecordRef = path.relative(ROOT, judgePath);
       autoJudgeCount++;
-      console.log(`   Judge: auto-generated — ${judgeRecordRef}`);
+
+      if (blindMode) {
+        // Blind mode must not mutate the results tree: a record generated here
+        // carries the blinded agent_id, and persisting it would make every
+        // later non-blind run reuse a judge record attributed to
+        // "blinded-participant-N". Keep it in memory for this scoreboard only.
+        console.log('   Judge: auto-generated in memory (blind mode — not persisted)');
+      } else {
+        const judgeFilename = `${path.basename(f, '.yaml')}-auto-judge.yaml`;
+        const judgePath = path.join(judgeDir, judgeFilename);
+        fs.writeFileSync(judgePath, yaml.dump(judgeRecord, { indent: 2, lineWidth: 200 }));
+        judgeRecordRef = path.relative(ROOT, judgePath);
+        console.log(`   Judge: auto-generated — ${judgeRecordRef}`);
+      }
     }
 
     // Extract comparable submission metadata
