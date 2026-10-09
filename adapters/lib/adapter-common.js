@@ -25,6 +25,7 @@
 
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
@@ -69,7 +70,11 @@ function shortId(seed) {
     }
     return (Math.abs(hash) % 0xffffff).toString(16).padStart(6, '0');
   }
-  return Math.random().toString(16).slice(2, 8);
+  // Unseeded: 6 hex chars from the CSPRNG. These ids are labels (run ids,
+  // evidence probe/message ids), never tokens, but Math.random() let CodeQL
+  // js/insecure-randomness flow into probe_id (agent-olympics#314); the
+  // format is unchanged and the seeded path above stays deterministic.
+  return crypto.randomBytes(3).toString('hex');
 }
 
 function generatePrefixedId(prefix, taskId, agentId, seed, timestamp) {
