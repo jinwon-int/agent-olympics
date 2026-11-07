@@ -27,7 +27,7 @@
         validate-web-fields validate-web-bridge \
         validate-accreditations validate-accreditations-validity \
         external-participant-protocol-check participant-server-check \
-        validate-a2a-effectiveness \
+        validate-a2a-effectiveness validate-fleet-eval \
         validate-competition validate-run-manifests validate-engine-outputs \
         validate-consistency validate-cv verify-artifacts \
         ci-round live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
@@ -56,6 +56,9 @@ validate-all:
 
 validate-a2a-effectiveness:
 	node scripts/validate-a2a-effectiveness.js
+
+validate-fleet-eval:
+	node scripts/validate-fleet-eval.js
 
 # Validate all judge records (v1)
 validate-judges:
@@ -188,7 +191,7 @@ validate: validate-all validate-v2 validate-oracle validate-smoke validate-fixtu
         validate-scoreboard validate-competition-fixtures validate-openclaw test-openclaw \
         live-runner-readiness-check round-hardening-check declaration-cross-check proof-token-verify \
         safety-trial-verify appeal-fixtures longitudinal-fixtures human-baseline-fixtures \
-        validate-a2a-effectiveness
+        validate-a2a-effectiveness validate-fleet-eval
 
 proof-token-verify:
 	npm run test:proof_token_verify
