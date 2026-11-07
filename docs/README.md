@@ -39,6 +39,7 @@ the [end-to-end walkthrough](walkthrough.md), then the [glossary](glossary.md).
 - [Appeals workflow](appeals-workflow.md)
 - [Longitudinal measurement](longitudinal-measurement.md)
 - [A2A effectiveness benchmark](a2a-effectiveness-benchmark.md)
+- [Fleet evaluation gate (Q-set)](fleet-eval.md)
 
 ## Round engine & execution
 - [Round engine](round-engine.md)

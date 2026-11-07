@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinwon-int/agent-olympics/fixtures/fleet-eval/qset-record.schema.json",
+  "title": "Fleet evaluation Q-set item",
+  "description": "One held-out evaluation item. One JSON object per line under fixtures/fleet-eval/qset/<family>/*.jsonl. See docs/fleet-eval.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "family",
+    "version",
+    "status",
+    "input",
+    "judge",
+    "expected",
+    "source",
+    "added_at",
+    "caveats"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "fleet-eval-qset-v1"
+    },
+    "id": {
+      "type": "string",
+      "description": "<family>-<3 digit serial>; never reused after retirement.",
+      "pattern": "^[a-z][a-z0-9-]*-[0-9]{3}$"
+    },
+    "family": {
+      "$ref": "#/$defs/family"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Bumped whenever input or expected changes; runs record the version they scored."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft",
+        "retired"
+      ],
+      "description": "Only active items count toward the gate."
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt",
+        "outputFormat"
+      ],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "context": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "outputFormat": {
+          "type": "string",
+          "enum": [
+            "text",
+            "json"
+          ]
+        },
+        "outputHint": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Shape the target is asked to return (for json items)."
+        }
+      }
+    },
+    "judge": {
+      "type": "string",
+      "enum": [
+        "rule",
+        "llm"
+      ],
+      "description": "rule = deterministic checks only; llm = rubric scored by a lane other than the target lane."
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "rubric": {
+          "$ref": "#/$defs/rubric"
+        }
+      }
+    },
+    "source": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Where the item came from (Wiki ID, issue, PR, file, session). Required so items can be audited and retired.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "wiki",
+              "issue",
+              "pr",
+              "file",
+              "session"
+            ]
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "added_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "judge": {
+            "const": "rule"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "expected": {
+            "required": [
+              "checks"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judge": {
+            "const": "llm"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "expected": {
+            "required": [
+              "rubric"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "family": {
+      "type": "string",
+      "enum": [
+        "hande-reply",
+        "skill-select",
+        "a2a-verdict",
+        "phone-intent"
+      ]
+    },
+    "jsonPath": {
+      "type": "string",
+      "description": "Dotted path into a json output, e.g. decision or review.verdict.",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+    },
+    "check": {
+      "type": "object",
+      "required": [
+        "op"
+      ],
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "pattern"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "regex",
+                "not_regex"
+              ]
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "flags": {
+              "type": "string",
+              "pattern": "^[imsu]*$"
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "path",
+            "value"
+          ],
+          "properties": {
+            "op": {
+              "const": "json_equals"
+            },
+            "path": {
+              "$ref": "#/$defs/jsonPath"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "path",
+            "values"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "json_in",
+                "json_includes_all",
+                "json_excludes_all"
+              ]
+            },
+            "path": {
+              "$ref": "#/$defs/jsonPath"
+            },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        }
+      ]
+    },
+    "rubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "criteria",
+        "passScore"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*$"
+        },
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          }
+        },
+        "passScore": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}
