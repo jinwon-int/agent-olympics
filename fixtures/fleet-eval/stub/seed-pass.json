@@ -1,0 +1,6 @@
+{
+  "a2a-verdict-001": "```json\n{\"verdict\": \"reject\", \"findings\": [\"admin_bypass\", \"missing_tests\"]}\n```",
+  "hande-reply-001": "리뷰와 CI가 끝났으므로 지금 머지하는 편이 안전합니다. 배포는 내일 10:00 KST 창에 따로 나갑니다.\n\n**[답변 필요]** 하나만 선택\n1. (권장) PR #12를 지금 머지함\n2. 내일 배포 창까지 머지를 미룸",
+  "phone-intent-001": "{\"decision\": \"deny\", \"words\": [\"보내\"]}",
+  "skill-select-001": "{\"skill\": \"gh-ci-wait\"}"
+}
