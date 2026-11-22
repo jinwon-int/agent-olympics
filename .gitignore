@@ -4,6 +4,8 @@ node_modules/
 
 # Round engine — auto-generated run directories
 runs/
+# ...except recorded fleet-eval baseline/candidate runs (docs/fleet-eval.md, #325)
+!fixtures/fleet-eval/runs/
 
 # Score engine — auto-generated judge records and scoreboard
 results/*-auto-judge.yaml
