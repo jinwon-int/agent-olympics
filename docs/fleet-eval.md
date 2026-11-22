@@ -20,8 +20,8 @@ repository already has (`ajv`, `ajv-formats`).
 | Slice | Content | State |
 |---|---|---|
 | 1 | Item and run record schemas, validator, this design, one seed item per family | done (#326) |
-| 2a | `scripts/fleet-eval.js` runner (`run`, `gate`) with the rule judge, `stub` and `command` adapters, tests | this PR |
-| 2b | 30–50 active items (8–12 per family) | next |
+| 2a | `scripts/fleet-eval.js` runner (`run`, `gate`) with the rule judge, `stub` and `command` adapters, tests | done (#327) |
+| 2b | 43 active items (10–12 per family, every family gated), stub outputs passing all of them | this PR |
 | 2c | First recorded baseline run on `main` (real model calls, operator-run) | next |
 | 3 | llm judge pilot on one family (target lane ≠ judge lane), results recorded | next |
 | 4 | Gate wiring PRs in fleet-skills `validate.yml` and ccc-node (observe with `continue-on-error`, then enforce) | next |
