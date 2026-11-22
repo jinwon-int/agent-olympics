@@ -22,9 +22,10 @@ repository already has (`ajv`, `ajv-formats`).
 | 1 | Item and run record schemas, validator, this design, one seed item per family | done (#326) |
 | 2a | `scripts/fleet-eval.js` runner (`run`, `gate`) with the rule judge, `stub` and `command` adapters, tests | done (#327) |
 | 2b | 43 active items (10–12 per family, every family gated), stub outputs passing all of them | done (#328) |
-| 2c | First recorded baseline run on `main` (real model calls, operator-run). A first trial run found three item defects, fixed as v2 (skill-select names in context, phone-intent-001 rule context, a2a-verdict-010 verdict) | this PR fixes items; the run follows |
+| 2c | First recorded baseline run on `main` (real model calls, operator-run). A first trial run found three item defects, fixed as v2 (skill-select names in context, phone-intent-001 rule context, a2a-verdict-010 verdict) | done (#329, #330) — baseline `runs/2026-11-22-3ed5bdb-claude-code.jsonl`, 129/129 |
 | 3 | llm judge pilot on one family (target lane ≠ judge lane), results recorded | next |
-| 4 | Gate wiring PRs in fleet-skills `validate.yml` and ccc-node (observe with `continue-on-error`, then enforce) | next |
+| 4a | Caller-gate pieces in this repo: run `subject`, overlay renderer, caller CI check (see [Caller gate](#caller-gate-slice-4)) | this PR |
+| 4b–4f | Overlay lane wrapper on the operator node, ccc-node wiring, skill-catalog overlay, fleet-skills wiring, enforcement | next ([#325 design](https://github.com/jinwon-int/agent-olympics/issues/325#issuecomment-7086334122)) |
 
 ## Layout
 
@@ -38,6 +39,8 @@ fixtures/fleet-eval/
   stub/*.json                  # fixed outputs for the stub adapter (runner tests, CI)
 scripts/validate-fleet-eval.js # schema + cross-field validation (npm test, make validate)
 scripts/fleet-eval.js          # runner (run) and gate (gate)
+scripts/fleet-eval-overlay.js  # caller overlay renderer (render, sha)
+scripts/fleet-eval-ci.js       # caller CI check: find runs, check binding, gate
 ```
 
 ## Q-set item
@@ -132,6 +135,7 @@ node scripts/fleet-eval.js run \
   | --adapter command --command <bin> [--command-arg <arg>]...
   [--family <f>]... [--attempts 3] [--timeout-ms 120000]
   [--out fixtures/fleet-eval/runs] [--qset-commit <sha>] [--run-suffix <s>] [--qset-dir <dir>]
+  [--subject-repo <owner/repo> --overlay <file>]
 node scripts/fleet-eval.js gate --baseline <run.jsonl> --candidate <run.jsonl> [--json] [--qset-dir <dir>]
 ```
 
@@ -191,6 +195,100 @@ error (nothing is written and no adapter is called).
 5. Rollout: callers add the gate with `continue-on-error: true` first, record
    two weeks of results, then enforce. Gate numbers are recorded in the Wiki
    roadmap (TM-4444) when enforcement starts.
+
+## Caller gate (slice 4)
+
+The baseline lane `claude-code` measures what a node has **installed**
+(`~/.claude` output style and CLAUDE.md, tools off). A pull request in a caller
+repository changes files that this lane never reads, so a run made the same way
+cannot tell whether the PR made anything worse. Slice 4 measures the PR's own
+files instead and binds the run to them.
+
+### Lock file (caller repository)
+
+`eval/fleet-eval.lock.json` in the caller repository:
+
+```json
+{
+  "schemaVersion": "fleet-eval-lock-v1",
+  "agentOlympics": "<40-hex agent-olympics commit the CI checks out>",
+  "repo": "jinwon-int/ccc-node",
+  "lane": "claude-code-overlay",
+  "overlay": ["claude/output-styles/ccc-report.md", "claude/CLAUDE.md.template"],
+  "runsDir": "eval/fleet-eval/runs"
+}
+```
+
+Paths are repository-relative (no `..`, no absolute path, no backslash).
+Unknown keys are refused.
+
+### Overlay
+
+`scripts/fleet-eval-overlay.js render --repo-dir <caller> --ref <ref> --out <file>`
+reads every `overlay` path **from the git ref** (never the working tree) and
+writes one file: for each path, a line `<!-- fleet-eval overlay v1: <path> -->`,
+the file's bytes and a newline, in lock order. `sha` prints its sha256. The
+overlay lane wrapper (slice 4b, operator node) gives the target only this file
+(for Claude Code the plan is `--safe-mode --append-system-prompt-file "$FLEET_EVAL_OVERLAY"`;
+that `--safe-mode` keeps the appended file is still to be confirmed by a one-turn
+probe in 4b), so installed customizations do not leak into the measurement. Overlay lanes
+have their own baselines; they never compare with `claude-code`.
+
+### Binding
+
+`run --subject-repo <owner/repo> --overlay <file>` adds
+`subject: { repo, overlaySha256 }` to every record, passes
+`FLEET_EVAL_OVERLAY=<absolute path>` to the `command` adapter, and refuses to
+write the run if the file changed during the run. `gate` refuses a baseline and
+candidate whose subject repositories differ, or where only one has a subject.
+The overlay hash may differ — that is the change being measured. Committing the
+run file does not change the overlay inputs, so the hash has no cycle.
+
+### Caller CI check
+
+```
+node <agent-olympics>/scripts/fleet-eval-ci.js --repo-dir . --base <base sha> --head <checked-out sha> [--json]
+```
+
+The caller's workflow checks out its own repository with `fetch-depth: 0`
+(the check diffs `base...head`), checks out this repository at the lock's
+`agentOlympics` commit, runs `npm ci` there and then this command. It calls no
+model and needs no secret. Pass the commit that is actually checked out as
+`--head` (for `pull_request` that is the merge commit, so a change on `main`
+to an overlay file makes an older run stale, as it should).
+
+| Status | Exit | When |
+|---|---|---|
+| `not_applicable` | 0 | overlay unchanged and the PR adds no run file |
+| `pass` / `fail` | 0 / 1 | `gate` of the candidate against the baseline |
+| `candidate_needed` | 1 | overlay changed and no added run carries the head overlay hash (prints the commands to record one) |
+| `stale_run` | 1 | the PR added a run, but for another overlay hash (the PR changed after the run) |
+| `baseline_needed` | 1 | no base run for the base overlay hash, and the PR adds only one matching run |
+| input error | 2 | invalid lock or run file, a run file modified/renamed/deleted (run files are append-only), a run for another lane or repository, or a file name that is not `<runId>.jsonl` |
+
+- **Candidate**: the newest added run (by latest `startedAt`) for the lock lane
+  and repository whose `overlaySha256` equals the head overlay.
+- **Baseline**: the newest run already at `base` for the same lane, repository
+  and the **base** overlay hash. After a PR merges, its candidate becomes the
+  next baseline — no separate baseline PR.
+- **Introduction / A/A**: with no baseline at `base`, a PR that adds two
+  matching runs compares the newer with the older (`baseline.source = "pr"`).
+  The first wiring PR uses this to record a baseline and an A/A run together;
+  an A/A failure means tolerance 0 is too strict for that lane.
+- Every added run is schema-checked, must use one `runId` equal to its file
+  name, one lane and one subject, and records scored on the current item
+  version must pass the validator's cross-field rules.
+
+### What the check cannot prove
+
+The check trusts that a committed run was really executed: records are
+body-free and unsigned. Today the trust rests on who can push to the PR branch
+(fleet accounts) and on external PRs never merging without owner approval.
+Signing runs needs a node key and is a separate, approved task.
+
+The workflow-level `paths:` filter is deliberately not used: once the check is
+required, a skipped workflow would leave its context unreported. The job always
+runs and reports `not_applicable` itself.
 
 ## Out of scope
 

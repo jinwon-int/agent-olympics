@@ -59,6 +59,25 @@
     "target": {
       "$ref": "#/$defs/lane"
     },
+    "subject": {
+      "type": "object",
+      "description": "What the run measured, for caller-repo gates (#325 slice 4): the caller repository and the sha256 of the overlay file the target was given. Absent for runs of a node's installed configuration. Every record of one run carries the same subject.",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "overlaySha256"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "overlaySha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
     "judge": {
       "type": "object",
       "additionalProperties": false,

@@ -8,6 +8,7 @@
  *     --adapter command --command <bin> [--command-arg <arg>]...
  *     [--family <f>]... [--attempts 3] [--timeout-ms 120000]
  *     [--out fixtures/fleet-eval/runs] [--qset-commit <sha>] [--run-suffix <s>]
+ *     [--subject-repo <owner/repo> --overlay <file>]
  *   node scripts/fleet-eval.js gate --baseline <run.jsonl> --candidate <run.jsonl> [--json]
  *
  * `run` loads the active Q-set items, sends each item's prompt to the target
@@ -26,7 +27,9 @@
  *   command  spawns <bin> [args] without a shell, writes the prompt to stdin and
  *            reads the final output text from stdout. stderr is discarded and
  *            never stored. This is the only path that calls a model, and only
- *            when an operator runs it explicitly.
+ *            when an operator runs it explicitly. With --overlay the child also
+ *            gets FLEET_EVAL_OVERLAY=<absolute path>, so the lane wrapper hands
+ *            the target the same file whose sha256 the records carry.
  *
  * Exit codes: 0 ok / gate passed, 1 gate failed, 2 usage or input error.
  */
@@ -49,6 +52,7 @@ const DEFAULT_TIMEOUT_MS = 120000;
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 const MIN_GATED_ITEMS = 8;
 const LANE_RE = /^[a-z0-9][a-z0-9._-]*$/;
+const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 class UsageError extends Error {}
 
@@ -243,8 +247,11 @@ function loadStubOutputs(file) {
   return value;
 }
 
-/** Command adapter: prompt on stdin, final output text on stdout. No shell. */
-function commandAdapter(command, args = []) {
+/**
+ * Command adapter: prompt on stdin, final output text on stdout. No shell.
+ * `extraEnv` is added to the inherited environment (FLEET_EVAL_OVERLAY).
+ */
+function commandAdapter(command, args = [], extraEnv = null) {
   return {
     name: 'command',
     call(_item, prompt, _attempt, timeoutMs) {
@@ -260,7 +267,10 @@ function commandAdapter(command, args = []) {
         };
         let child;
         try {
-          child = spawn(command, args, { stdio: ['pipe', 'pipe', 'ignore'] });
+          child = spawn(command, args, {
+            stdio: ['pipe', 'pipe', 'ignore'],
+            env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
+          });
         } catch (_err) {
           resolve({ error: 'adapter_error' });
           return;
@@ -298,6 +308,10 @@ function sha256(text) {
   return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
+function fileSha256(file) {
+  return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
 function gitShortSha() {
   try {
     return execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], {
@@ -323,6 +337,7 @@ async function runEval({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   qsetCommit,
   runSuffix,
+  subject = null,
   now = () => new Date(),
   schemas = compileSchemas(),
 }) {
@@ -354,8 +369,9 @@ async function runEval({
         itemVersion: item.version,
         attempt,
         target,
-        judge: { kind: 'rule' },
       };
+      if (subject) record.subject = subject;
+      record.judge = { kind: 'rule' };
       if (result.error) {
         Object.assign(record, { verdict: 'error', score: 0, error: { type: result.error } });
       } else {
@@ -411,6 +427,8 @@ function itemOutcomes(records) {
   const lanes = new Set(records.map((r) => r.target.lane));
   if (runIds.size !== 1) throw new UsageError(`run file mixes runIds: ${[...runIds].join(', ')}`);
   if (lanes.size !== 1) throw new UsageError(`run file mixes target lanes: ${[...lanes]}`);
+  const subjects = new Set(records.map((r) => subjectKey(r.subject)));
+  if (subjects.size !== 1) throw new UsageError(`run file mixes subjects: ${[...subjects]}`);
   const out = new Map();
   for (const r of records) {
     const cur = out.get(r.itemId) || {
@@ -429,7 +447,16 @@ function itemOutcomes(records) {
     out.set(r.itemId, cur);
   }
   for (const cur of out.values()) cur.pass = cur.passes >= requiredPasses(cur.attempts);
-  return { runId: [...runIds][0], lane: [...lanes][0], items: out };
+  return {
+    runId: [...runIds][0],
+    lane: [...lanes][0],
+    subject: records[0].subject || null,
+    items: out,
+  };
+}
+
+function subjectKey(subject) {
+  return subject ? `${subject.repo}@${subject.overlaySha256}` : 'none';
 }
 
 function rate(passed, total) {
@@ -468,6 +495,15 @@ function gate(baselineRecords, candidateRecords, items) {
   const cand = itemOutcomes(candidateRecords);
   if (base.lane !== cand.lane) {
     throw new UsageError(`target lanes differ: baseline ${base.lane}, candidate ${cand.lane}`);
+  }
+  // The overlay may differ (that is what a caller gate measures), the subject
+  // repository may not, and a subject run never compares with an installed run.
+  const baseRepo = base.subject ? base.subject.repo : null;
+  const candRepo = cand.subject ? cand.subject.repo : null;
+  if (baseRepo !== candRepo) {
+    throw new UsageError(
+      `subjects differ: baseline ${baseRepo || 'none'}, candidate ${candRepo || 'none'}`
+    );
   }
   const counts = activeCounts(items);
   const gatedFamilies = new Set(
@@ -548,6 +584,10 @@ function gate(baselineRecords, candidateRecords, items) {
     baselineRunId: base.runId,
     candidateRunId: cand.runId,
     lane: base.lane,
+    subject: {
+      baseline: base.subject,
+      candidate: cand.subject,
+    },
     families: rows,
     overall,
     excluded,
@@ -609,6 +649,8 @@ const RUN_KEYS = new Set([
   'qset-commit',
   'run-suffix',
   'qset-dir',
+  'subject-repo',
+  'overlay',
 ]);
 const GATE_KEYS = new Set(['baseline', 'candidate', 'qset-dir', 'json']);
 
@@ -625,13 +667,31 @@ async function cmdRun(opts, log) {
     if (!opts[key]) throw new UsageError(`--${key} is required`);
   }
   if (!LANE_RE.test(opts['target-lane'])) throw new UsageError('--target-lane is not a lane id');
+  if (Boolean(opts['subject-repo']) !== Boolean(opts.overlay)) {
+    throw new UsageError('--subject-repo and --overlay go together');
+  }
+  let overlay = null;
+  if (opts.overlay) {
+    if (!REPO_RE.test(opts['subject-repo'])) {
+      throw new UsageError('--subject-repo must be <owner>/<repo>');
+    }
+    const file = path.resolve(opts.overlay);
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      throw new UsageError(`--overlay ${opts.overlay} is not a file`);
+    }
+    overlay = { file, sha: fileSha256(file) };
+  }
   let adapter;
   if (opts.adapter === 'stub') {
     if (!opts['stub-outputs']) throw new UsageError('--adapter stub needs --stub-outputs');
     adapter = stubAdapter(loadStubOutputs(opts['stub-outputs']));
   } else if (opts.adapter === 'command') {
     if (!opts.command) throw new UsageError('--adapter command needs --command');
-    adapter = commandAdapter(opts.command, opts['command-arg']);
+    adapter = commandAdapter(
+      opts.command,
+      opts['command-arg'],
+      overlay ? { FLEET_EVAL_OVERLAY: overlay.file } : null
+    );
   } else {
     throw new UsageError('--adapter must be stub or command');
   }
@@ -655,11 +715,16 @@ async function cmdRun(opts, log) {
     timeoutMs: intOpt(opts, 'timeout-ms', DEFAULT_TIMEOUT_MS, 1, 3600000),
     qsetCommit,
     runSuffix: opts['run-suffix'],
+    subject: overlay ? { repo: opts['subject-repo'], overlaySha256: overlay.sha } : null,
     schemas,
   });
   if (result.records.length === 0) throw new UsageError('no rule-judged active items selected');
+  if (overlay && fileSha256(overlay.file) !== overlay.sha) {
+    throw new UsageError('--overlay changed during the run; nothing written');
+  }
   const file = writeRecords(opts.out || RUNS_DIR, result.runId, result.records);
   log(`run ${result.runId}: ${result.records.length} records -> ${path.relative(ROOT, file)}`);
+  if (overlay) log(`subject ${opts['subject-repo']} overlay sha256 ${overlay.sha}`);
   for (const s of result.skipped) log(`SKIP  ${s.itemId} (${s.reason})`);
   for (const row of summarize(itemOutcomes(result.records), items)) {
     log(
@@ -739,5 +804,8 @@ module.exports = {
   summarize,
   gate,
   main,
+  readJsonlValues,
+  fileSha256,
+  UsageError,
   MIN_GATED_ITEMS,
 };
