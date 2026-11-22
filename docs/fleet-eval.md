@@ -19,8 +19,10 @@ repository already has (`ajv`, `ajv-formats`).
 
 | Slice | Content | State |
 |---|---|---|
-| 1 | Item and run record schemas, validator, this design, one seed item per family | this PR |
-| 2 | 30–50 active items (8–12 per family), `scripts/fleet-eval.js` runner with the rule judge, first recorded run | next |
+| 1 | Item and run record schemas, validator, this design, one seed item per family | done (#326) |
+| 2a | `scripts/fleet-eval.js` runner (`run`, `gate`) with the rule judge, `stub` and `command` adapters, tests | this PR |
+| 2b | 30–50 active items (8–12 per family) | next |
+| 2c | First recorded baseline run on `main` (real model calls, operator-run) | next |
 | 3 | llm judge pilot on one family (target lane ≠ judge lane), results recorded | next |
 | 4 | Gate wiring PRs in fleet-skills `validate.yml` and ccc-node (observe with `continue-on-error`, then enforce) | next |
 
@@ -31,9 +33,11 @@ fixtures/fleet-eval/
   qset-record.schema.json      # one Q-set item
   run-record.schema.json       # one judged attempt
   qset/<family>/*.jsonl        # the Q-set (one item per line)
-  runs/<YYYY-MM-DD>-<sha>.jsonl  # recorded runs (body-free)
+  runs/<runId>.jsonl           # recorded runs (body-free), runId = <YYYY-MM-DD>-<sha>[-<suffix>]
   examples/*.jsonl             # format examples, validated like runs
+  stub/*.json                  # fixed outputs for the stub adapter (runner tests, CI)
 scripts/validate-fleet-eval.js # schema + cross-field validation (npm test, make validate)
+scripts/fleet-eval.js          # runner (run) and gate (gate)
 ```
 
 ## Q-set item
@@ -72,7 +76,8 @@ moves the pass rate by more than 12 points.
 Checks are evaluated in order against the target output. For `text` items the
 output string is used as-is. For `json` items the output must parse as a JSON
 object (after stripping one surrounding Markdown code fence); otherwise the
-attempt is `fail` with `error.type = unparseable_output`.
+attempt is `fail` with `error.type = unparseable_output`, **every** check is
+recorded as not ok and `score` is 0.
 
 | `op` | Passes when |
 |---|---|
@@ -114,27 +119,54 @@ record against the Q-set:
 - `verdict = error` carries `error.type` (`timeout`, `adapter_error`,
   `unparseable_output`, `judge_error`).
 
-## Runner contract (slice 2)
+## Runner contract (slice 2a)
 
 `scripts/fleet-eval.js` (CommonJS like the rest of `scripts/`, so lint and
 Prettier already cover it; the issue's `tools/fleet_eval/run.mjs` path was
-changed for that reason).
+changed for that reason). No new dependencies.
 
 ```
 node scripts/fleet-eval.js run \
-  --target-lane <lane> --target-model <model> --adapter <adapter> \
-  [--family <f>]... [--attempts 3] [--timeout-ms 120000] [--out fixtures/fleet-eval/runs/]
-node scripts/fleet-eval.js gate --baseline <run.jsonl> --candidate <run.jsonl>
+  --target-lane <lane> --target-model <model> \
+  --adapter stub --stub-outputs <file.json>
+  | --adapter command --command <bin> [--command-arg <arg>]...
+  [--family <f>]... [--attempts 3] [--timeout-ms 120000]
+  [--out fixtures/fleet-eval/runs] [--qset-commit <sha>] [--run-suffix <s>] [--qset-dir <dir>]
+node scripts/fleet-eval.js gate --baseline <run.jsonl> --candidate <run.jsonl> [--json] [--qset-dir <dir>]
 ```
 
-- Loads active items, calls the target through an adapter that follows
-  [adapter-execution-contract.md](adapter-execution-contract.md) (the item's
-  `input` is sent as the prompt; the adapter returns the final output text),
-  judges each attempt, appends run records and prints a family summary.
-- A `stub` adapter returning fixed outputs ships with the runner so CI can test
-  the runner without any model call.
-- Model calls only happen when an operator or a caller workflow runs `run`
-  explicitly. This repository's own CI validates fixtures and runner tests only.
+Exit codes: `0` run written / gate passed, `1` gate failed, `2` usage or input
+error (nothing is written and no adapter is called).
+
+- `run` loads and validates the Q-set, selects active `rule` items (optionally
+  by `--family`), sends each item's prompt to the target `--attempts` times,
+  judges every attempt and writes the records to `<out>/<runId>.jsonl`.
+  `runId` is `<UTC date>-<qsetCommit>[-<run-suffix>]`; `qsetCommit` defaults to
+  `git rev-parse --short=7 HEAD`. An existing run file is never overwritten —
+  record another run with a different `--run-suffix`. Every record is checked
+  against the run schema and the validator's cross-field rules before the file
+  is written. `llm` items are listed as skipped until slice 3.
+- **Prompt.** The target receives `input.prompt`, then `상황 자료:` +
+  `input.context` when present, then for `json` items one line asking for a
+  single JSON object in the `outputHint` shape (`buildPrompt`).
+- **Adapters** return the final output text or an error type:
+  - `stub` — fixed outputs per item id from a JSON object: a string (every
+    attempt), an array (one entry per attempt, the last repeats) or
+    `{ "error": "timeout" }` / `{ "error": "adapter_error" }`. An id missing
+    from the file is an `adapter_error`. CI uses only this adapter
+    (`fixtures/fleet-eval/stub/seed-pass.json` passes every seed item).
+  - `command` — spawns `<bin> [args]` **without a shell**, writes the prompt to
+    stdin and reads stdout as the output. A non-zero exit, a spawn failure or
+    more than 1 MiB of output is an `adapter_error`; exceeding `--timeout-ms`
+    kills the process and records `timeout`. stderr is discarded. This is the
+    only path that calls a model; any credentials are the wrapped CLI's own
+    concern and never pass through the runner or the run file.
+  - The heavier [adapter-execution-contract.md](adapter-execution-contract.md)
+    (task envelopes, result packets) is not used: a Q-set item is one prompt and
+    one answer. Only its exit-code idea (success / failure / timeout) carries over.
+- Model calls only happen when an operator runs `run --adapter command`
+  explicitly. This repository's own CI validates fixtures and runs the runner
+  tests with the stub adapter only.
 
 ## Gate rule
 
@@ -142,13 +174,20 @@ node scripts/fleet-eval.js gate --baseline <run.jsonl> --candidate <run.jsonl>
    of 3 attempts pass**. (With 8–12 items per family, confidence intervals are
    too wide to be useful; repeated attempts absorb sampling noise instead.)
    `error` attempts count as failures but are reported separately so an outage
-   is not mistaken for a regression.
-2. Family pass rate = passing items / active items in that family.
+   is not mistaken for a regression. With a different attempt count the item
+   needs `ceil(2/3 × attempts)` passes.
+2. Family pass rate = passing items / comparable items in that family (see 3).
 3. **Baseline** = the most recent run recorded from `main` for the same target
    lane. Items whose `version` differs between baseline and candidate, or that
-   are new, are excluded from the comparison and listed.
+   are new, are excluded from the comparison and listed. `gate` refuses a
+   baseline and candidate on different target lanes, and a run file that mixes
+   run ids or lanes.
 4. The gate **fails** when any gated family's pass rate is lower than the
    baseline, or the overall pass rate is lower than the baseline (tolerance 0).
+   "Overall" counts the comparable items of **gated** families only, so a family
+   below 8 active items still cannot fail the gate. A comparable baseline item
+   of a gated family that the candidate did not run also fails the gate, so a
+   run cannot pass by skipping a family with `--family`.
 5. Rollout: callers add the gate with `continue-on-error: true` first, record
    two weeks of results, then enforce. Gate numbers are recorded in the Wiki
    roadmap (TM-4444) when enforcement starts.
@@ -163,5 +202,18 @@ speed/price benchmarks are out of scope.
 
 ```
 npm run validate:fleet_eval     # or: make validate-fleet-eval
-node --test test/fleet-eval.test.js
+node --test test/fleet-eval.test.js test/fleet-eval-runner.test.js
 ```
+
+## Running the runner without a model
+
+```
+node scripts/fleet-eval.js run --target-lane stub --target-model stub-fixed \
+  --adapter stub --stub-outputs fixtures/fleet-eval/stub/seed-pass.json \
+  --out /tmp/fleet-eval-runs --run-suffix smoke
+node scripts/fleet-eval.js gate --baseline /tmp/fleet-eval-runs/<runId>.jsonl \
+  --candidate /tmp/fleet-eval-runs/<runId>.jsonl
+```
+
+Use a scratch `--out` for trial runs; only a deliberate baseline or candidate
+run belongs in `fixtures/fleet-eval/runs/`.
