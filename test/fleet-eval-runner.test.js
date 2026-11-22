@@ -18,6 +18,7 @@ const {
   requiredPasses,
   gate,
   main,
+  MIN_GATED_ITEMS,
 } = require('../scripts/fleet-eval.js');
 const { validate } = require('../scripts/validate-fleet-eval.js');
 
@@ -25,6 +26,9 @@ const ROOT = path.resolve(__dirname, '..');
 const STUB_PASS = path.join(ROOT, 'fixtures', 'fleet-eval', 'stub', 'seed-pass.json');
 const TARGET = { lane: 'stub', model: 'stub-fixed', adapter: 'stub' };
 const items = loadQset();
+const ACTIVE_RULE = [...items.values()].filter(
+  (i) => i.status === 'active' && i.judge === 'rule'
+).length;
 
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-eval-'));
@@ -175,7 +179,7 @@ test('runEval with the seed stub passes every item and writes body-free valid re
   });
   assert.equal(runId, '2026-11-22-abcdef1-test');
   assert.equal(skipped.length, 0);
-  assert.equal(records.length, 4 * 3);
+  assert.equal(records.length, ACTIVE_RULE * 3);
   assert.ok(records.every((r) => r.verdict === 'pass'));
   const serialized = JSON.stringify(records);
   for (const text of Object.values(outputs)) {
@@ -256,10 +260,9 @@ test('command adapter runs end to end through runEval', async () => {
     'process.stdin.resume();process.stdin.on("end",()=>process.stdout.write(\'{"skill":"gh-ci-wait"}\'))',
   ]);
   const { records } = await runEval({
-    items,
+    items: new Map([['skill-select-001', item('skill-select-001')]]),
     adapter: answer,
     target: { lane: 'local-test', model: 'node', adapter: 'command' },
-    families: ['skill-select'],
     attempts: 1,
     qsetCommit: 'abcdef1',
   });
@@ -376,7 +379,7 @@ test('CLI run writes a validator-clean run file; gate on itself passes', async (
   assert.match(files[0], /^\d{4}-\d{2}-\d{2}-abcdef1-cli\.jsonl$/);
   const counts = validate({ runDirs: [out], log: () => {} });
   assert.equal(counts.errors, 0);
-  assert.equal(counts.runs, 12);
+  assert.equal(counts.runs, ACTIVE_RULE * 3);
 
   assert.equal(await main(args, q.log), 2, 'refuses to overwrite an existing run file');
   assert.match(q.lines.at(-1), /already exists/);
@@ -384,7 +387,13 @@ test('CLI run writes a validator-clean run file; gate on itself passes', async (
   const file = path.join(out, files[0]);
   const g = quiet();
   assert.equal(await main(['gate', '--baseline', file, '--candidate', file], g.log), 0);
-  assert.ok(g.lines.includes('note: no family has 8 active items yet'));
+  assert.equal(g.lines[0], 'gate PASS lane=stub');
+  for (const family of ['a2a-verdict', 'hande-reply', 'phone-intent', 'skill-select']) {
+    assert.ok(
+      g.lines.some((l) => l.startsWith(`GATED ${family}: 100.0% -> 100.0%`)),
+      `${family} is gated with at least ${MIN_GATED_ITEMS} active items`
+    );
+  }
   const j = quiet();
   assert.equal(await main(['gate', '--baseline', file, '--candidate', file, '--json'], j.log), 0);
   assert.equal(JSON.parse(j.lines[0]).pass, true);
@@ -432,5 +441,57 @@ test('CLI usage errors exit 2 without calling any adapter', async () => {
     const q = quiet();
     assert.equal(await main(argv, q.log), 2, argv.join(' '));
     assert.match(q.lines.at(-1), /^ERR /);
+  }
+});
+
+// --- Q-set content (slice 2b) ---------------------------------------------
+
+test('every family is gated: 8-12 active items, each with a source', () => {
+  const byFamily = new Map();
+  for (const it of items.values()) {
+    if (it.status !== 'active') continue;
+    byFamily.set(it.family, (byFamily.get(it.family) || 0) + 1);
+    assert.ok(it.source.length >= 1, `${it.id} has a source`);
+  }
+  assert.deepEqual([...byFamily.keys()].sort(), [
+    'a2a-verdict',
+    'hande-reply',
+    'phone-intent',
+    'skill-select',
+  ]);
+  for (const [family, n] of byFamily) {
+    assert.ok(n >= MIN_GATED_ITEMS && n <= 12, `${family} has ${n} active items`);
+  }
+  const total = [...byFamily.values()].reduce((a, b) => a + b, 0);
+  assert.ok(total >= 30 && total <= 50, `total ${total} active items`);
+});
+
+test('plausible wrong answers fail the check each item is about', () => {
+  const wrong = [
+    [
+      'hande-reply-003',
+      '이름을 골라 주세요.\n\n**[답변 필요]** 하나만 선택\n1. (권장) results.json',
+    ],
+    ['hande-reply-004', '**[답변 필요]** 하나만 선택\n1. dungae에 먼저 적용 (권장)\n2. sogyo'],
+    [
+      'hande-reply-005',
+      'T1 브로커를 재시작했습니다.\n\n**[답변 필요]** 하나만 선택\n1. (권장) 확인',
+    ],
+    [
+      'hande-reply-008',
+      '**[답변 필요]** 여러 개 선택 가능\n1. (권장) 50 머지\n\n**[답변 필요]** 하나만 선택\n1. (권장) A',
+    ],
+    [
+      'hande-reply-009',
+      '**[답변 필요]** 하나만 선택\n1. (권장) squash로 할까요?\n2. merge commit?',
+    ],
+    ['phone-intent-012', '{"decision":"allow","words":[]}'],
+    ['phone-intent-011', '{"decision":"deny","words":["주문"]}'],
+    ['a2a-verdict-009', '{"verdict":"accept","findings":["secret_exposure"]}'],
+    ['a2a-verdict-010', '{"verdict":"reject","findings":["secret_exposure"]}'],
+    ['skill-select-006', '{"skill":"scheduled-verification-with-session-fallback"}'],
+  ];
+  for (const [id, out] of wrong) {
+    assert.equal(judgeRule(item(id), out).verdict, 'fail', id);
   }
 });
