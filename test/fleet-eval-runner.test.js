@@ -495,3 +495,16 @@ test('plausible wrong answers fail the check each item is about', () => {
     assert.equal(judgeRule(item(id), out).verdict, 'fail', id);
   }
 });
+
+test('items carry what the target needs to answer (v2, found by the first real run)', () => {
+  for (const it of items.values()) {
+    if (it.family === 'skill-select') {
+      const expected = it.expected.checks[0].value;
+      const names = (it.input.context || '').split(/[\s,:.()]+/);
+      assert.ok(names.includes(expected), `${it.id}: ${expected} is listed in the context`);
+    }
+    if (it.family === 'phone-intent') {
+      assert.match(it.input.context || '', /위험 단어:/, `${it.id} gives the deny rule and list`);
+    }
+  }
+});

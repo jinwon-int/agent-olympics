@@ -31,7 +31,7 @@ function baseRun(overrides = {}) {
     qsetCommit: '07d32c3',
     itemId: 'phone-intent-001',
     family: 'phone-intent',
-    itemVersion: 1,
+    itemVersion: seed('phone-intent').version,
     attempt: 1,
     target: { lane: 'claude-code', model: 'm', adapter: 'cli' },
     judge: { kind: 'rule' },
@@ -133,7 +133,8 @@ test('an error verdict must carry an error type', () => {
 test('run records are cross-checked against the item', () => {
   assert.deepEqual(runProblems(baseRun(), index), []);
   assert.match(runProblems(baseRun({ itemId: 'phone-intent-999' }), index).join(';'), /unknown/);
-  assert.match(runProblems(baseRun({ itemVersion: 2 }), index).join(';'), /itemVersion/);
+  const wrongVersion = seed('phone-intent').version + 1;
+  assert.match(runProblems(baseRun({ itemVersion: wrongVersion }), index).join(';'), /itemVersion/);
   const missingCheck = baseRun({ checks: [{ op: 'json_equals', ok: true }] });
   assert.match(runProblems(missingCheck, index).join(';'), /do not match item checks/);
   const lying = baseRun({
