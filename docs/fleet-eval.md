@@ -25,7 +25,9 @@ repository already has (`ajv`, `ajv-formats`).
 | 2c | First recorded baseline run on `main` (real model calls, operator-run). A first trial run found three item defects, fixed as v2 (skill-select names in context, phone-intent-001 rule context, a2a-verdict-010 verdict) | done (#329, #330) — baseline `runs/2026-11-22-3ed5bdb-claude-code.jsonl`, 129/129 |
 | 3 | llm judge pilot on one family (target lane ≠ judge lane), results recorded | next |
 | 4a | Caller-gate pieces in this repo: run `subject`, overlay renderer, caller CI check (see [Caller gate](#caller-gate-slice-4)) | this PR |
-| 4b–4f | Overlay lane wrapper on the operator node, ccc-node wiring, skill-catalog overlay, fleet-skills wiring, enforcement | next ([#325 design](https://github.com/jinwon-int/agent-olympics/issues/325#issuecomment-7086334122)) |
+| 4b–4c | Overlay lane wrapper on the operator node, ccc-node wiring | done (operator node, ccc-node#2869) |
+| 4d | Skill-catalog overlay: lock `catalog`, `catalog` command (see [Skill catalog](#skill-catalog-slice-4d)) | this PR — renderer only; the gated `skill-select` items still carry their own candidate list |
+| 4e–4f | fleet-skills wiring, enforcement | next ([#325 design](https://github.com/jinwon-int/agent-olympics/issues/325#issuecomment-7086334122)) |
 
 ## Layout
 
@@ -39,7 +41,7 @@ fixtures/fleet-eval/
   stub/*.json                  # fixed outputs for the stub adapter (runner tests, CI)
 scripts/validate-fleet-eval.js # schema + cross-field validation (npm test, make validate)
 scripts/fleet-eval.js          # runner (run) and gate (gate)
-scripts/fleet-eval-overlay.js  # caller overlay renderer (render, sha)
+scripts/fleet-eval-overlay.js  # caller overlay renderer (render, sha, catalog)
 scripts/fleet-eval-ci.js       # caller CI check: find runs, check binding, gate
 ```
 
@@ -220,7 +222,8 @@ files instead and binds the run to them.
 ```
 
 Paths are repository-relative (no `..`, no absolute path, no backslash).
-Unknown keys are refused.
+Unknown keys are refused. A lock names files (`overlay`), a skill catalog
+(`catalog`, below) or both; one of the two is required.
 
 ### Overlay
 
@@ -233,6 +236,75 @@ overlay lane wrapper (slice 4b, operator node) gives the target only this file
 that `--safe-mode` keeps the appended file is still to be confirmed by a one-turn
 probe in 4b), so installed customizations do not leak into the measurement. Overlay lanes
 have their own baselines; they never compare with `claude-code`.
+
+### Skill catalog (slice 4d)
+
+A caller whose change is a **skill** (fleet-skills `approved/`, ccc-node
+`skills/`) has nothing to put in `overlay`: what the target sees of a skill is
+its line in the skill list, not a file. The lock can name the directories that
+hold skills instead:
+
+```json
+{
+  "schemaVersion": "fleet-eval-lock-v1",
+  "agentOlympics": "<40-hex>",
+  "repo": "jinwon-int/fleet-skills",
+  "lane": "claude-code-overlay",
+  "catalog": {
+    "dirs": ["approved/shared"],
+    "include": "eval/catalog-include.txt",
+    "nameOnly": "eval/catalog-name-only.txt"
+  },
+  "runsDir": "eval/fleet-eval/runs"
+}
+```
+
+- `dirs` (required, up to 16): every `<dir>/<name>/SKILL.md` at the ref is one
+  skill; `<name>` is the directory name. A sub-directory without `SKILL.md` and
+  loose files are ignored. The same name in two directories is an error.
+- `include` / `nameOnly` (optional): repository files with one skill name per
+  line (`#` comments and blank lines allowed), read from the same ref. `include`
+  keeps only those skills; `nameOnly` lists those skills without a description.
+  A name that is not in the catalog is an error — a typo or a retired skill
+  cannot silently shrink the list.
+
+The renderer appends, after any `overlay` files:
+
+```
+<!-- fleet-eval catalog v1 -->
+The following skills are available:
+
+- <name>: <description>
+- <name>
+```
+
+sorted by name. The description is the `description` of the SKILL.md front
+matter with white space collapsed, cut at 1024 code points; a skill without one
+is listed by name only. The skill **body is not part of the catalog**, so a
+body-only edit leaves the overlay hash alone, while a changed description, an
+added or removed skill and a changed list file all move it — the caller CI check
+then asks for a candidate run exactly as it does for a changed overlay file.
+
+Two things this slice does not do:
+
+- The gated `skill-select` items (v2) still give their own 33 candidate names in
+  `input.context`. A catalog overlay only measures something with items that
+  take the candidates from the overlay; those items, and a lock in fleet-skills,
+  are slice 4e.
+- The overlay is an appended system prompt, not the path a real skill list
+  takes into the target. Overlay-lane numbers stay separate from live ones.
+
+For experiments on an **installed** skill tree (not a git ref, so not bound to
+any lock) the same list can be rendered from plain directories:
+
+```
+node scripts/fleet-eval-overlay.js catalog --skills-dir <dir> [--skills-dir <dir>]... \
+  [--include <file>] [--name-only <file>] [--out <file>]
+```
+
+Without `--out` it prints the sha256 only. The output file is written `0600`
+and never overwritten; it can carry private skill names and descriptions, so
+keep it on the operator node — a run record stores only its hash.
 
 ### Binding
 
