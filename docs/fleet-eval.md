@@ -28,7 +28,7 @@ repository already has (`ajv`, `ajv-formats`).
 | 4b–4c | Overlay lane wrapper on the operator node, ccc-node wiring | done (operator node, ccc-node#2869) |
 | 4d | Skill-catalog overlay: lock `catalog`, `catalog` command (see [Skill catalog](#skill-catalog-slice-4d)) | this PR — renderer only; the gated `skill-select` items still carry their own candidate list |
 | 4e–4f | fleet-skills wiring, enforcement | next ([#325 design](https://github.com/jinwon-int/agent-olympics/issues/325#issuecomment-7086334122)) |
-| 5 | [Capability set](#capability-set): 35 harder items kept apart from the gated Q-set, with a passing and a failing stub output per item | items and tests only — no measured run yet, never gated |
+| 5 | [Capability set](#capability-set): 35 harder items kept apart from the gated Q-set, with a passing and a failing stub output per item | done (#333), never gated. First measured run 2026-11-25: 34 of 35 items passed 3/3; the one failure was an item defect, fixed as v2 |
 
 ## Layout
 
@@ -402,8 +402,22 @@ Rules:
   reason in the item itself (missing context, a pattern that rejects a correct
   wording) is fixed with a version bump, like the v2 fixes of slice 2c.
 
-Limits: there is no measured run yet, so the real pass rates are unknown — some
-items may turn out to be easy and some unfair. A measured run calls a model, is
+First measured run (2026-11-25, `claude-code` lane on the operator node, model
+`claude-opus-5-5`, items at `8b7d6b9`, 105 attempts, no errors): 34 of 35 items
+passed 3/3. `hande-reply-102` failed 0/3, and reading the three replies showed
+they were correct — the check rejected any option that named the external PR
+without the approval phrase, including "audit first", "hold" and "close". It
+is fixed as v2 (only an option that merges the PR without the phrase fails).
+The run is not recorded here because the item changed after it.
+
+What the run says about the set: on this lane it is **not hard enough**. With
+the defect fixed there is no failing item left, so these items cannot show an
+improvement either; they are graduation candidates rather than headroom. The
+failures seen elsewhere were of a kind this set does not hold — a used skill
+losing to an overlapping one when only names are listed (#325, slice 4e) — or
+need a judgement a rule cannot make.
+
+Limits: one run on one lane and one model. A measured run calls a model, is
 operator-run and needs its own approval. The checks are still rule checks: the
 text items accept a finite list of wordings, and none of them judges whether a
 recommendation is sensible (that needs the llm judge of slice 3).
