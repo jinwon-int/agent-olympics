@@ -28,6 +28,7 @@ repository already has (`ajv`, `ajv-formats`).
 | 4b–4c | Overlay lane wrapper on the operator node, ccc-node wiring | done (operator node, ccc-node#2869) |
 | 4d | Skill-catalog overlay: lock `catalog`, `catalog` command (see [Skill catalog](#skill-catalog-slice-4d)) | this PR — renderer only; the gated `skill-select` items still carry their own candidate list |
 | 4e–4f | fleet-skills wiring, enforcement | next ([#325 design](https://github.com/jinwon-int/agent-olympics/issues/325#issuecomment-7086334122)) |
+| 5 | [Capability set](#capability-set): 35 harder items kept apart from the gated Q-set, with a passing and a failing stub output per item | items and tests only — no measured run yet, never gated |
 
 ## Layout
 
@@ -39,6 +40,9 @@ fixtures/fleet-eval/
   runs/<runId>.jsonl           # recorded runs (body-free), runId = <YYYY-MM-DD>-<sha>[-<suffix>]
   examples/*.jsonl             # format examples, validated like runs
   stub/*.json                  # fixed outputs for the stub adapter (runner tests, CI)
+  capability/qset/<family>/*.jsonl  # capability items (same schema, never gated)
+  capability/stub/*.json       # per-item correct output (pass.json) and plausible wrong output (naive-fail.json)
+  capability/runs/<runId>.jsonl     # measured capability runs, when there are any
 scripts/validate-fleet-eval.js # schema + cross-field validation (npm test, make validate)
 scripts/fleet-eval.js          # runner (run) and gate (gate)
 scripts/fleet-eval-overlay.js  # caller overlay renderer (render, sha, catalog)
@@ -362,6 +366,55 @@ The workflow-level `paths:` filter is deliberately not used: once the check is
 required, a skipped workflow would leave its context unreported. The job always
 runs and reports `not_applicable` itself.
 
+## Capability set
+
+The gated Q-set is a **regression set**: the first baseline scored 129/129, so it
+can show that a change made things worse, never that it made things better.
+The capability set holds harder items, where a fleet agent is expected to fail
+some of the time. It answers "did this change improve anything?" and feeds the
+gated set once an item has become reliable.
+
+| Family | Items | What they ask for |
+|---|---|---|
+| `hande-reply` | 101–108 | Independent approvals asked now and the exclusive choice deferred, without being told to (101); an external PR kept out of a bulk merge and behind its own approval phrase (102); no confirmation question for a reversible next step (103); the approval option naming PR and head (104); asking again after the head moved (105); a failed test reported as failed, cause unknown (106); an absolute KST end time for a timed test (107); an instruction embedded in an external issue reported, not followed (108) |
+| `a2a-verdict` | 101–108 | Four more finding codes, each defined in the item: `unverified_completion` (101, 108), `stale_head_approval` (102), `gate_weakening` with `scope_creep` (105), `external_pr_unapproved` (106); three packets that look wrong and are fine — fake values in a redaction test (103), a merge-queue retry of the same approved head (104), a large refactor that matches its description (107) |
+| `skill-select` | 101–109 | Near neighbours in the same candidate list (101–105, 107, 108) and two situations where no listed skill applies and the answer is `null` (106, 109) |
+| `phone-intent` | 101–110 | Edges of the deny rule: a Korean deny word inside another word (101, 103, 106, 107), an English deny word only inside a longer word (102, 104, 108), a two-word phrase (105), a mixed sentence (109), case (110) |
+
+Rules:
+
+- **Never gated.** The items live under `fixtures/fleet-eval/capability/qset/`,
+  outside `qset/`, so the default `run`, the `gate` and the caller CI check do
+  not see them. Score them with `--qset-dir`. A capability score going down is
+  information, not a failed check.
+- **Same schema and validator.** `npm test` validates both directories. Ids are
+  unique across both sets, numbered from 101 and tagged `capability`, so an
+  item graduates by moving its line into `qset/<family>/` unchanged.
+- **Two outputs per item, no model needed.** `capability/stub/pass.json` holds a
+  correct output and `capability/stub/naive-fail.json` a plausible wrong one.
+  `test/fleet-eval-capability.test.js` requires the first to pass and the second
+  to fail for every item, recomputes the `phone-intent` answers from the deny
+  rule in the item, and checks that every expected skill name and finding code
+  is given to the target.
+- **Graduation is its own decision.** Proposed rule, not yet adopted: an item
+  that passes every attempt in two measured runs in a row may move to the gated
+  set, in a pull request of its own. An item the target cannot answer for a
+  reason in the item itself (missing context, a pattern that rejects a correct
+  wording) is fixed with a version bump, like the v2 fixes of slice 2c.
+
+Limits: there is no measured run yet, so the real pass rates are unknown — some
+items may turn out to be easy and some unfair. A measured run calls a model, is
+operator-run and needs its own approval. The checks are still rule checks: the
+text items accept a finite list of wordings, and none of them judges whether a
+recommendation is sensible (that needs the llm judge of slice 3).
+
+```
+node scripts/fleet-eval.js run --target-lane stub --target-model stub-fixed \
+  --adapter stub --stub-outputs fixtures/fleet-eval/capability/stub/pass.json \
+  --qset-dir fixtures/fleet-eval/capability/qset \
+  --out /tmp/fleet-eval-capability --run-suffix capability
+```
+
 ## Out of scope
 
 Self-improvement loops (autoresearch-style nightly edit → evaluate) build on this
@@ -372,7 +425,7 @@ speed/price benchmarks are out of scope.
 
 ```
 npm run validate:fleet_eval     # or: make validate-fleet-eval
-node --test test/fleet-eval.test.js test/fleet-eval-runner.test.js
+node --test test/fleet-eval.test.js test/fleet-eval-runner.test.js test/fleet-eval-capability.test.js
 ```
 
 ## Running the runner without a model

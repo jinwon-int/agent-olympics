@@ -24,6 +24,9 @@ const ROOT = path.resolve(__dirname, '..');
 const EVAL_DIR = path.join(ROOT, 'fixtures', 'fleet-eval');
 const QSET_DIR = path.join(EVAL_DIR, 'qset');
 const RUN_DIRS = [path.join(EVAL_DIR, 'runs'), path.join(EVAL_DIR, 'examples')];
+// Capability items (docs/fleet-eval.md#capability-set): validated like the Q-set, never gated.
+const CAPABILITY_QSET_DIR = path.join(EVAL_DIR, 'capability', 'qset');
+const CAPABILITY_RUN_DIRS = [path.join(EVAL_DIR, 'capability', 'runs')];
 
 // Personal contact data that must never be pasted into an item.
 const PERSONAL_PATTERNS = [
@@ -213,19 +216,28 @@ function validate({ qsetDir = QSET_DIR, runDirs = RUN_DIRS, log = console.log } 
     }
   }
 
-  if (counts.items === 0) fail('fixtures/fleet-eval/qset', 'no Q-set items found');
+  if (counts.items === 0) fail(path.relative(ROOT, qsetDir), 'no Q-set items found');
   return counts;
 }
 
 function main() {
   const counts = validate();
+  const capability = fs.existsSync(CAPABILITY_QSET_DIR)
+    ? validate({ qsetDir: CAPABILITY_QSET_DIR, runDirs: CAPABILITY_RUN_DIRS })
+    : null;
+  const errors = counts.errors + (capability ? capability.errors : 0);
   console.log('\n--- Fleet eval summary ---');
   console.log(`Items:   ${counts.items} (active ${counts.active})`);
+  if (capability) {
+    console.log(
+      `Capability: ${capability.items} items, ${capability.runs} run records (never gated)`
+    );
+  }
   console.log(`Runs:    ${counts.runs}`);
-  console.log(`Errors:  ${counts.errors}`);
-  process.exit(counts.errors > 0 ? 1 : 0);
+  console.log(`Errors:  ${errors}`);
+  process.exit(errors > 0 ? 1 : 0);
 }
 
 if (require.main === module) main();
 
-module.exports = { validate, itemProblems, runProblems, compileSchemas };
+module.exports = { validate, itemProblems, runProblems, compileSchemas, CAPABILITY_QSET_DIR };
